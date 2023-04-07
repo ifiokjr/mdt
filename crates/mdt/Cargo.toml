@@ -1,0 +1,23 @@
+[package]
+name = "mdt"
+version = { workspace = true }
+categories = { workspace = true }
+documentation = "https://docs.rs/mdt"
+edition = { workspace = true }
+include = { workspace = true }
+keywords = ["markdown", "templates"]
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "update markdown content anywhere using comments as template tags"
+
+[dependencies]
+doc-comment = { workspace = true }
+markdown = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
