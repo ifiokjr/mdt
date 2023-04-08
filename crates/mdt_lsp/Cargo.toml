@@ -1,0 +1,23 @@
+[package]
+name = "mdt_lsp"
+version = { workspace = true }
+categories = { workspace = true }
+documentation = "https://docs.rs/mdt_lsp"
+edition = { workspace = true }
+include = { workspace = true }
+keywords = ["markdown", "templates"]
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "update markdown content anywhere using comments as template tags"
+
+[dependencies]
+mdt = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tower-lsp = { workspace = true, features = ["proposed"] }
+
+[dev-dependencies]
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
