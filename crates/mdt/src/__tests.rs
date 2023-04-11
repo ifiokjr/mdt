@@ -24,6 +24,7 @@ fn matches_tokens(#[case] group: TokenGroup, #[case] pattern: Vec<PatternMatcher
 #[case::provider(r#"<!-- {@exampleProvider} -->"#, vec![provider_token_group()])]
 #[case::closing(r#"<!-- {/example} -->"#, vec![closing_token_group()])]
 #[case::closing_whitespace(" <!--\n{/example}--> ", vec![closing_token_group_no_whitespace()])]
+#[case::consumer(r#"<!-- {=exampleName|trim|indent:"/// "} -->"#, vec![consumer_token_group_with_arguments()])]
 fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> Result<()> {
   let nodes = get_html_nodes(input)?;
   let result = tokenize(nodes)?;
@@ -53,6 +54,38 @@ fn consumer_token_group() -> TokenGroup {
         line: 1,
         column: 24,
         offset: 23,
+      },
+    },
+  }
+}
+
+fn consumer_token_group_with_arguments() -> TokenGroup {
+  TokenGroup {
+    tokens: vec![
+      Token::HtmlCommentOpen,
+      Token::Whitespace,
+      Token::ConsumerTag,
+      Token::Ident("exampleName".to_string()),
+      Token::Pipe,
+      Token::Ident("trim".to_string()),
+      Token::Pipe,
+      Token::Ident("indent".to_string()),
+      Token::ArgumentDelimiter,
+      Token::String("/// ".to_string(), '"'),
+      Token::BraceClose,
+      Token::Whitespace,
+      Token::HtmlCommentClose,
+    ],
+    position: Position {
+      start: Point {
+        line: 1,
+        column: 1,
+        offset: 0,
+      },
+      end: Point {
+        line: 1,
+        column: 43,
+        offset: 42,
       },
     },
   }

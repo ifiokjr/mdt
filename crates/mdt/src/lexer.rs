@@ -1,4 +1,6 @@
 use markdown::mdast::Html;
+use nom::AsChar;
+use snailquote::unescape;
 
 use crate::Position;
 use crate::Result;
@@ -80,11 +82,110 @@ impl TokenizerState {
     };
 
     let token = Token::Ident(ident);
-    let _steps = token.increment();
 
     self.update_token_group(token, false);
 
     true
+  }
+
+  fn collect_string(&mut self, delimiter: u8) -> bool {
+    let Some(content) = self.content.as_ref() else {
+      return false;
+    };
+
+    let mut escaped = false;
+    let mut has_escapes = false;
+    let length = content
+      .as_bytes()
+      .iter()
+      .skip(1)
+      .take_while(|&&byte| {
+        match (escaped, byte) {
+          (true, _) => {
+            escaped = false;
+            true
+          }
+          (_, b'\\') => {
+            escaped = true;
+            has_escapes = true;
+            true
+          }
+          (_, c) if c == delimiter => false,
+          _ => true,
+        }
+      })
+      .count();
+    if escaped || content.as_bytes().get(length + 1) != Some(&delimiter) {
+      return false;
+    }
+
+    let Some(string) = self
+    .advance(length + 2) else {
+      return false;
+    };
+
+    let Some (mut string) = string.get(1..string.len() - 1).map(|string| string.to_string()) else {
+      return false;
+    };
+
+    if has_escapes {
+      string = match unescape(&string).ok() {
+        Some(unescaped) => unescaped,
+        None => return false,
+      };
+    }
+
+    let token = Token::String(string, delimiter.as_char());
+    self.update_token_group(token, false);
+    true
+  }
+
+  fn collect_number(&mut self) -> bool {
+    let Some(content) = self.content.as_ref() else {
+      return false;
+    };
+
+    #[derive(Copy, Clone)]
+    enum State {
+      Integer,      // 123
+      Fraction,     // .123
+      Exponent,     // E | e
+      ExponentSign, // +|-
+    }
+
+    let mut state = State::Integer;
+    let mut length = content.chars().take_while(|&c| c.is_ascii_digit()).count();
+    for ch in content.chars().skip(length) {
+      state = match (ch, state) {
+        ('.', State::Integer) => State::Fraction,
+        ('E' | 'e', State::Integer | State::Fraction) => State::Exponent,
+        ('+' | '-', State::Exponent) => State::ExponentSign,
+        ('0'..='9', State::Exponent) => State::ExponentSign,
+        ('0'..='9', state) => state,
+        _ => break,
+      };
+      length += 1;
+    }
+    let is_float = !matches!(state, State::Integer);
+
+    let num = self.advance(length);
+
+    let Some(num) = num else {
+      return false;
+    };
+
+    let token = if is_float {
+      num.parse().map(Token::Float).ok()
+    } else {
+      num.parse().map(Token::Int).ok()
+    };
+
+    if let Some(token) = token {
+      self.update_token_group(token, false);
+      true
+    } else {
+      false
+    }
   }
 
   /// Push the token group to the groups `Vec` and reset the token group.
@@ -179,11 +280,10 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
       Some(LexerContext::Outside) => {
         if let Some("<!--") = content.get(0..4) {
           let token = Token::HtmlCommentOpen;
-          let steps = token.increment();
           // Entering an html comment
           state.stack.push(LexerContext::HtmlComment);
           state.update_token_group(token, true);
-          state.advance(steps);
+          state.advance(4);
 
           continue;
         }
@@ -193,10 +293,9 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
       Some(LexerContext::HtmlComment) => {
         if let Some("-->") = content.get(0..3) {
           let token = Token::HtmlCommentClose;
-          let steps = token.increment();
           state.stack.pop();
           state.update_token_group(token, false);
-          state.advance(steps);
+          state.advance(3);
           state.push_token_group();
           continue;
         }
@@ -204,26 +303,23 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
         match content.get(0..2) {
           Some("{=") => {
             let token = Token::ConsumerTag;
-            let steps = token.increment();
             state.stack.push(LexerContext::Tag);
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(2);
             continue;
           }
           Some("{@") => {
             let token = Token::ProviderTag;
-            let steps = token.increment();
             state.stack.push(LexerContext::Tag);
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(2);
             continue;
           }
           Some("{/") => {
             let token = Token::CloseTag;
-            let steps = token.increment();
             state.stack.push(LexerContext::Tag);
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(2);
             continue;
           }
           _ => {}
@@ -232,16 +328,14 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
         match content.bytes().next() {
           Some(b'\n') => {
             let token = Token::Newline;
-            let steps = token.increment();
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(1);
             continue;
           }
           Some(byte) if byte.is_ascii_whitespace() => {
             let token = Token::Whitespace;
-            let steps = token.increment();
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(1);
             continue;
           }
           _ => {
@@ -254,32 +348,28 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
         match content.bytes().next() {
           Some(b'\n') => {
             let token = Token::Newline;
-            let steps = token.increment();
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(1);
             continue;
           }
           Some(ch) if ch.is_ascii_whitespace() => {
             let token = Token::Whitespace;
-            let steps = token.increment();
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(1);
             continue;
           }
           Some(b'}') => {
             let token = Token::BraceClose;
-            let steps = token.increment();
             state.update_token_group(token, false);
-            state.advance(steps);
+            state.advance(1);
             state.stack.pop();
             continue;
           }
           Some(b'|') => {
             let token = Token::Pipe;
-            let steps = token.increment();
             state.update_token_group(token, false);
             state.stack.push(LexerContext::Filter);
-            state.advance(steps);
+            state.advance(1);
             continue;
           }
           Some(ch) if ch.is_ascii_alphabetic() => {
@@ -300,22 +390,71 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
         break;
       }
       Some(LexerContext::Filter) => {
-        if let Some(b':') = content.bytes().next() {
-          let token = Token::ArgumentDelimiter;
-          let steps = token.increment();
-          state.stack.push(LexerContext::Arguments);
-          state.update_token_group(token, false);
-          state.advance(steps);
-          continue;
-        }
-        state.push_token_group();
-        break;
-      }
-      Some(LexerContext::Arguments) => {
-        state.push_token_group();
-        break;
-      }
+        match content.bytes().next() {
+          Some(b'\n') => {
+            let token = Token::Newline;
+            state.update_token_group(token, false);
+            state.advance(1);
+            continue;
+          }
+          Some(byte) if byte.is_ascii_whitespace() => {
+            let token = Token::Whitespace;
+            state.update_token_group(token, false);
+            state.advance(1);
+            continue;
+          }
+          Some(b':') => {
+            let token = Token::ArgumentDelimiter;
+            state.update_token_group(token, false);
+            state.advance(1);
+            continue;
+          }
+          Some(b'|') => {
+            let token = Token::Pipe;
+            state.update_token_group(token, false);
+            state.advance(1);
+            continue;
+          }
+          Some(b'}') => {
+            let token = Token::BraceClose;
+            state.update_token_group(token, false);
+            state.advance(1);
+            state.stack.pop();
+            state.stack.pop();
+            continue;
+          }
+          Some(symbol @ (b'\'' | b'"')) => {
+            let collected = state.collect_string(symbol);
 
+            if !collected {
+              state.exit_comment_block();
+            }
+
+            continue;
+          }
+          Some(ch) if ch.is_ascii_digit() => {
+            let collected = state.collect_number();
+
+            if !collected {
+              state.exit_comment_block();
+            }
+
+            continue;
+          }
+          Some(ch) if ch.is_ascii_alphabetic() => {
+            let collected = state.collect_identifier();
+
+            if !collected {
+              state.exit_comment_block();
+            }
+
+            continue;
+          }
+          _ => {
+            state.exit_comment_block();
+          }
+        }
+      }
       None => panic!("stack should never be empty"),
     }
   }
@@ -366,8 +505,6 @@ enum LexerContext {
   HtmlComment,
   /// The lexer is currently inside a consumer, provider or closing tag.
   Tag,
-  /// The lexer is currently inside a filter.
+  /// The lexer is currently inside a filters.
   Filter,
-  /// The lexer is currently inside arguments.
-  Arguments,
 }

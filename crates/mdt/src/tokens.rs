@@ -1,9 +1,11 @@
 use std::fmt::Display;
 
+use float_cmp::approx_eq;
+
 use crate::Position;
 
 /// Only tokenize the blocks, not the content inside them or anything else.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Token {
   /// `\n`
   Newline,
@@ -26,9 +28,36 @@ pub enum Token {
   /// `:`
   ArgumentDelimiter,
   /// String content passed into a filter function e.g. `"my content"`
-  String(String),
+  String(String, char),
   /// An identifier, e.g. `exampleName`
   Ident(String),
+  /// An integer number, e.g. `123`
+  Int(i64),
+  /// A floating point number, e.g. `123.456`
+  Float(f64),
+}
+
+impl Eq for Token {}
+impl PartialEq for Token {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (Token::Newline, Token::Newline) => true,
+      (Token::Whitespace, Token::Whitespace) => true,
+      (Token::HtmlCommentOpen, Token::HtmlCommentOpen) => true,
+      (Token::HtmlCommentClose, Token::HtmlCommentClose) => true,
+      (Token::ConsumerTag, Token::ConsumerTag) => true,
+      (Token::ProviderTag, Token::ProviderTag) => true,
+      (Token::CloseTag, Token::CloseTag) => true,
+      (Token::BraceClose, Token::BraceClose) => true,
+      (Token::Pipe, Token::Pipe) => true,
+      (Token::ArgumentDelimiter, Token::ArgumentDelimiter) => true,
+      (Token::String(a, _), Token::String(b, _)) => a == b,
+      (Token::Ident(a), Token::Ident(b)) => a == b,
+      (Token::Int(a), Token::Int(b)) => a == b,
+      (Token::Float(a), Token::Float(b)) => approx_eq!(f64, *a, *b, ulps = 2),
+      _ => false,
+    }
+  }
 }
 
 impl Token {
@@ -44,15 +73,20 @@ impl Token {
       Token::BraceClose => 1,
       Token::Pipe => 1,
       Token::ArgumentDelimiter => 1,
-      Token::String(string) => string.len() + 2,
+      Token::String(string, _) => string.len() + 2,
       Token::Ident(ident) => ident.len(),
+      Token::Int(number) => number.to_string().len(),
+      Token::Float(number) => number.to_string().len(),
     }
   }
 
   pub fn same_type(&self, other: &Token) -> bool {
     match (self, other) {
-      (Token::String(_), Token::String(_)) => true,
-      (Token::Ident(_), Token::Ident(_)) => true,
+      (Token::String(..), Token::String(..)) => true,
+      (Token::Int(_), Token::Int(_)) => true,
+      (Token::Float(_), Token::Float(_)) => true,
+      // Ident can be a wildcard or specific name like `true` false`
+      (Token::Ident(a), Token::Ident(b)) => a == b || a == "*" || b == "*",
       _ => self == other,
     }
   }
@@ -71,8 +105,10 @@ impl Display for Token {
       Token::BraceClose => write!(f, "}}"),
       Token::Pipe => write!(f, "|"),
       Token::ArgumentDelimiter => write!(f, ":"),
-      Token::String(string) => write!(f, "\"{}\"", string),
-      Token::Ident(ident) => write!(f, "{}", ident),
+      Token::String(string, ch) => write!(f, "{ch}{string}{ch}"),
+      Token::Ident(ident) => write!(f, "{ident}"),
+      Token::Int(number) => write!(f, "{number}"),
+      Token::Float(number) => write!(f, "{number}"),
     }
   }
 }

@@ -15,10 +15,12 @@ description = "update markdown content anywhere using comments as template tags"
 [dependencies]
 derive_more = { workspace = true }
 doc-comment = { workspace = true }
+float-cmp = { workspace = true }
 markdown = { workspace = true }
 miette = { workspace = true }
 nom = { workspace = true }
 readonly = { workspace = true }
+snailquote = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

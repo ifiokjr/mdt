@@ -11,7 +11,7 @@ pub fn closing_pattern() -> Vec<PatternMatcher> {
     optional_many(vec![Token::Whitespace, Token::Newline]),
     one(vec![Token::CloseTag]),
     optional_many(vec![Token::Whitespace]),
-    one(vec![Token::Ident("".into())]),
+    one(vec![Token::any()]),
     optional_many(vec![Token::Whitespace]),
     one(vec![Token::BraceClose]),
     optional_many(vec![Token::Whitespace, Token::Newline]),
@@ -25,17 +25,23 @@ pub fn consumer_pattern() -> Vec<PatternMatcher> {
     optional_many(vec![Token::Whitespace, Token::Newline]),
     one(vec![Token::ConsumerTag]),
     optional_many(vec![Token::Whitespace]),
-    one(vec![Token::Ident("".into())]),
+    one(vec![Token::any()]),
     optional_many(vec![Token::Whitespace]),
     optional_many_group(vec![
       one(vec![Token::Pipe]),
       optional_many(vec![Token::Whitespace]),
-      one(vec![Token::Ident("".into())]),
+      one(vec![Token::any()]),
       optional_many(vec![Token::Whitespace]),
       optional_many_group(vec![
         one(vec![Token::ArgumentDelimiter]),
         optional_many(vec![Token::Whitespace]),
-        one(vec![Token::String("".into())]),
+        one(vec![
+          Token::string(),
+          Token::r#true(),
+          Token::r#false(),
+          Token::int(),
+          Token::float(),
+        ]),
         optional_many(vec![Token::Whitespace]),
       ]),
     ]),
@@ -51,17 +57,23 @@ pub fn provider_pattern() -> Vec<PatternMatcher> {
     optional_many(vec![Token::Whitespace, Token::Newline]),
     one(vec![Token::ProviderTag]),
     optional_many(vec![Token::Whitespace]),
-    one(vec![Token::Ident("".into())]),
+    one(vec![Token::any()]),
     optional_many(vec![Token::Whitespace]),
     optional_many_group(vec![
       one(vec![Token::Pipe]),
       optional_many(vec![Token::Whitespace]),
-      one(vec![Token::Ident("".into())]),
+      one(vec![Token::any()]),
       optional_many(vec![Token::Whitespace]),
       optional_many_group(vec![
         one(vec![Token::ArgumentDelimiter]),
         optional_many(vec![Token::Whitespace]),
-        one(vec![Token::String("".into())]),
+        one(vec![
+          Token::string(),
+          Token::r#true(),
+          Token::r#false(),
+          Token::int(),
+          Token::float(),
+        ]),
         optional_many(vec![Token::Whitespace]),
       ]),
     ]),
@@ -202,5 +214,31 @@ impl TokenGroup {
     }
 
     false
+  }
+}
+
+impl Token {
+  fn r#true() -> Self {
+    Self::Ident("true".into())
+  }
+
+  fn r#false() -> Self {
+    Self::Ident("false".into())
+  }
+
+  fn any() -> Self {
+    Self::Ident("*".into())
+  }
+
+  fn string() -> Self {
+    Self::String("*".into(), '"')
+  }
+
+  pub fn int() -> Self {
+    Self::Int(0)
+  }
+
+  pub fn float() -> Self {
+    Self::Float(0.0)
   }
 }
