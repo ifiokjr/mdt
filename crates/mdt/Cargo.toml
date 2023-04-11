@@ -13,11 +13,15 @@ rust-version = { workspace = true }
 description = "update markdown content anywhere using comments as template tags"
 
 [dependencies]
+derive_more = { workspace = true }
 doc-comment = { workspace = true }
 markdown = { workspace = true }
+miette = { workspace = true }
+nom = { workspace = true }
+readonly = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
-pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+similar-asserts = { workspace = true }
