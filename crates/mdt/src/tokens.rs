@@ -18,7 +18,7 @@ pub enum Token {
   /// `{@`
   ProviderTag,
   /// `{/`
-  TagClose,
+  CloseTag,
   /// `}`
   BraceClose,
   /// `|`
@@ -40,7 +40,7 @@ impl Token {
       Token::HtmlCommentClose => 3,
       Token::ProviderTag => 2,
       Token::ConsumerTag => 2,
-      Token::TagClose => 2,
+      Token::CloseTag => 2,
       Token::BraceClose => 1,
       Token::Pipe => 1,
       Token::ArgumentDelimiter => 1,
@@ -67,7 +67,7 @@ impl Display for Token {
       Token::HtmlCommentClose => write!(f, "-->"),
       Token::ConsumerTag => write!(f, "{{="),
       Token::ProviderTag => write!(f, "{{@"),
-      Token::TagClose => write!(f, "{{/"),
+      Token::CloseTag => write!(f, "{{/"),
       Token::BraceClose => write!(f, "}}"),
       Token::Pipe => write!(f, "|"),
       Token::ArgumentDelimiter => write!(f, ":"),

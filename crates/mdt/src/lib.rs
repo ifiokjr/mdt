@@ -18,6 +18,7 @@ pub fn get_node_from_content(content: impl AsRef<str>) -> Result<Node> {
 }
 
 mod error;
+pub mod patterns;
 mod position;
 mod tokens;
 
