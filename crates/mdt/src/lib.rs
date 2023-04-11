@@ -12,7 +12,7 @@ pub use tokens::*;
 
 pub fn get_node_from_content(content: impl AsRef<str>) -> Result<Node> {
   let options = ParseOptions::gfm();
-  let mdast = to_mdast(content.as_ref(), &options).map_err(Error::MarkdownError)?;
+  let mdast = to_mdast(content.as_ref(), &options).map_err(MdtError::Markdown)?;
 
   Ok(mdast)
 }

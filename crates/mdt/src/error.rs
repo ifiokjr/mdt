@@ -1,9 +1,21 @@
-use thiserror::Error as ThisError;
+use miette::Diagnostic;
+use thiserror::Error;
 
-#[derive(Debug, ThisError, Clone)]
-pub enum Error {
+#[derive(Debug, Diagnostic, Error)]
+pub enum MdtError {
+  #[error(transparent)]
+  #[diagnostic(code(mdt::io_error))]
+  Io(#[from] std::io::Error),
+
   #[error("failure to load markdown: {0}")]
-  MarkdownError(String),
+  #[diagnostic(code(mdt::io_error))]
+  Markdown(String),
+  #[diagnostic(code(mdt::missing_closing_tag))]
+  #[error("missing closing tag for block: {0}")]
+  MissingClosingTag(String),
+  #[error("invalid token sequence")]
+  #[diagnostic(code(mdt::invalid_token_sequence))]
+  InvalidTokenSequence(usize),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, MdtError>;
