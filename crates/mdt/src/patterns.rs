@@ -108,11 +108,8 @@ pub fn many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
   Box::new(move |token_group: &TokenGroup, index: usize| {
     let mut next_index = method(token_group, index)?;
 
-    loop {
-      match method(token_group, next_index) {
-        Ok(index) => next_index = index,
-        Err(_) => break,
-      }
+    while let Ok(index) = method(token_group, next_index) {
+      next_index = index
     }
 
     Ok(next_index)
@@ -189,5 +186,21 @@ impl TokenGroup {
     }
 
     Ok(index == self.tokens.len())
+  }
+
+  pub fn is_valid(&self) -> bool {
+    let patterns = vec![closing_pattern(), provider_pattern(), consumer_pattern()];
+
+    for pattern in patterns {
+      let Some(result) = self.matches_pattern(pattern).ok() else {
+        continue;
+      };
+
+      if result {
+        return true;
+      }
+    }
+
+    false
   }
 }

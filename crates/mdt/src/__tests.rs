@@ -1,4 +1,5 @@
 use rstest::rstest;
+use similar_asserts::assert_eq;
 
 use super::*;
 use crate::patterns::PatternMatcher;
@@ -10,6 +11,22 @@ use crate::patterns::PatternMatcher;
 fn matches_tokens(#[case] group: TokenGroup, #[case] pattern: Vec<PatternMatcher>) -> Result<()> {
   let matches = group.matches_pattern(pattern)?;
   assert!(matches);
+
+  Ok(())
+}
+
+#[rstest]
+#[case::without_comment("<div /><p>awesome</p>", vec![])]
+#[case::empty_html_comment("<!--\n-->", vec![])]
+#[case::invalid_html_comment(r#"<!-- abcd -->"#, vec![])]
+#[case::multi_invalid_html_comment(r#"<!-- abcd --> <!-- abcd -->"#, vec![])]
+#[case::consumer(r#"<!-- {=exampleName} -->"#, vec![consumer_token_group()])]
+#[case::provider(r#"<!-- {@exampleProvider} -->"#, vec![provider_token_group()])]
+#[case::closing(r#"<!-- {/example} -->"#, vec![closing_token_group()])]
+fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> Result<()> {
+  let nodes = get_html_nodes(input)?;
+  let result = tokenize(nodes)?;
+  assert_eq!(result, expected);
 
   Ok(())
 }
@@ -59,8 +76,8 @@ fn provider_token_group() -> TokenGroup {
       },
       end: Point {
         line: 1,
-        column: 24,
-        offset: 23,
+        column: 28,
+        offset: 27,
       },
     },
   }
@@ -85,8 +102,8 @@ fn closing_token_group() -> TokenGroup {
       },
       end: Point {
         line: 1,
-        column: 24,
-        offset: 23,
+        column: 20,
+        offset: 19,
       },
     },
   }
