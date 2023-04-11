@@ -8,6 +8,7 @@ use markdown::mdast::Node;
 use markdown::to_mdast;
 use markdown::ParseOptions;
 pub use position::*;
+pub use tokens::*;
 
 pub fn get_node_from_content(content: impl AsRef<str>) -> Result<Node> {
   let options = ParseOptions::gfm();
@@ -18,6 +19,7 @@ pub fn get_node_from_content(content: impl AsRef<str>) -> Result<Node> {
 
 mod error;
 mod position;
+mod tokens;
 
 #[cfg(test)]
 mod __tests;
