@@ -51,7 +51,7 @@ impl PartialEq for Token {
       (Token::BraceClose, Token::BraceClose) => true,
       (Token::Pipe, Token::Pipe) => true,
       (Token::ArgumentDelimiter, Token::ArgumentDelimiter) => true,
-      (Token::String(a, _), Token::String(b, _)) => a == b,
+      (Token::String(a, c), Token::String(b, d)) => a == b && c == d,
       (Token::Ident(a), Token::Ident(b)) => a == b,
       (Token::Int(a), Token::Int(b)) => a == b,
       (Token::Float(a), Token::Float(b)) => approx_eq!(f64, *a, *b, ulps = 2),
