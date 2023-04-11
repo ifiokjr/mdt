@@ -23,6 +23,7 @@ fn matches_tokens(#[case] group: TokenGroup, #[case] pattern: Vec<PatternMatcher
 #[case::consumer(r#"<!-- {=exampleName} -->"#, vec![consumer_token_group()])]
 #[case::provider(r#"<!-- {@exampleProvider} -->"#, vec![provider_token_group()])]
 #[case::closing(r#"<!-- {/example} -->"#, vec![closing_token_group()])]
+#[case::closing_whitespace(" <!--\n{/example}--> ", vec![closing_token_group_no_whitespace()])]
 fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> Result<()> {
   let nodes = get_html_nodes(input)?;
   let result = tokenize(nodes)?;
@@ -103,6 +104,31 @@ fn closing_token_group() -> TokenGroup {
       end: Point {
         line: 1,
         column: 20,
+        offset: 19,
+      },
+    },
+  }
+}
+
+fn closing_token_group_no_whitespace() -> TokenGroup {
+  TokenGroup {
+    tokens: vec![
+      Token::HtmlCommentOpen,
+      Token::Newline,
+      Token::CloseTag,
+      Token::Ident("example".to_string()),
+      Token::BraceClose,
+      Token::HtmlCommentClose,
+    ],
+    position: Position {
+      start: Point {
+        line: 1,
+        column: 2,
+        offset: 1,
+      },
+      end: Point {
+        line: 2,
+        column: 13,
         offset: 19,
       },
     },
