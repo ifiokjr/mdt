@@ -18,6 +18,7 @@ doc-comment = { workspace = true }
 float-cmp = { workspace = true }
 markdown = { workspace = true }
 miette = { workspace = true }
+minijinja = { workspace = true }
 nom = { workspace = true }
 readonly = { workspace = true }
 snailquote = { workspace = true }

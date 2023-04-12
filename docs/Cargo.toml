@@ -1,0 +1,9 @@
+[package]
+name = "monochange_book"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+
+[dependencies]
+doc-comment = { workspace = true }
+mdt = { workspace = true }

@@ -21,7 +21,7 @@ content in your files. For example:
 ## Solution
 
 This project allows you to wrap the content you want to keep updated in a markdown comment block
-`<!-- ={exampleBlock} --><!-- {/exampleBlock}-->`. A build command is then run which injects values
+`<!-- {=exampleBlock} --><!-- {/exampleBlock}-->`. A build command is then run which injects values
 into the comment tag while preserving the tags. This means that blocks can be updated multiple times
 with new data.
 
@@ -39,7 +39,7 @@ following syntax:
 #### Opening tag
 
 ```markdown
-<!-- ={exampleBlock} -->
+<!-- {=exampleBlock} -->
 ```
 
 #### Closing Tag
@@ -59,7 +59,7 @@ following to your `readme.md` file:
 
 ## API documentation
 
-<!-- ={api} -->
+<!-- {=api} -->
 
 This is automatically replaced with the API documentation.
 
@@ -78,7 +78,7 @@ times. Below is an example of using the templates in rust files. The same flow c
 //! The block below will automatically be replaced when running the `mdt`
 //! command.
 //!
-//! <!-- ={codeExample} -->
+//! <!-- {=codeExample} -->
 //! ```rust
 //! use my_precious::be_precious;
 //!
@@ -103,12 +103,12 @@ are defined.
 #### Defining a template block
 
 ````markdown
-<!-- @{exampleBlock} -->
+<!-- {@exampleBlock} -->
 
 This content will be injected into any markdown content which has the following tag
 
 ```markdown
-<!-- ={exampleBlock} -->
+<!-- {=exampleBlock} -->
 
 ...
 
@@ -124,10 +124,10 @@ In the following example the `{{example.version}}` is a template value. This val
 with the value defined in the configuration when running the `mdt` command.
 
 ````markdown
-<!-- @{codeExample} -->
+<!-- {@codeExample} -->
 
 ```ts
-import { bePrecious } from "https://deno.land/x/my_precious@{{example.version}}/mod.ts";
+import { bePrecious } from "https://deno.land/x/my_precious{@{example.version}}/mod.ts";
 
 bePrecious();
 ```
@@ -156,7 +156,7 @@ mdt = "0.0.0"
 [crate-link]: https://crates.io/crates/mdt
 [docs-image]: https://docs.rs/mdt/badge.svg
 [docs-link]: https://docs.rs/mdt/
-[ci-status-image]: https://github.com/ifiokjr/monochange/workflows/ci/badge.svg
-[ci-status-link]: https://github.com/ifiokjr/monochange/actions?query=workflow:ci
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense

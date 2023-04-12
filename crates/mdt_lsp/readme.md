@@ -156,7 +156,7 @@ mdt = "0.0.0"
 [crate-link]: https://crates.io/crates/mdt
 [docs-image]: https://docs.rs/mdt/badge.svg
 [docs-link]: https://docs.rs/mdt/
-[ci-status-image]: https://github.com/ifiokjr/monochange/workflows/ci/badge.svg
-[ci-status-link]: https://github.com/ifiokjr/monochange/actions?query=workflow:ci
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense
