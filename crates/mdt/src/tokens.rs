@@ -10,7 +10,6 @@ use std::ops::RangeToInclusive;
 use derive_more::Deref;
 use derive_more::DerefMut;
 use float_cmp::approx_eq;
-use nom::AsChar;
 
 use crate::Position;
 

@@ -14,13 +14,11 @@ description = "update markdown content anywhere using comments as template tags"
 
 [dependencies]
 derive_more = { workspace = true }
-doc-comment = { workspace = true }
+doc-comment = { workspace = true } # TODO replace with `mdt` template
 float-cmp = { workspace = true }
 markdown = { workspace = true }
 miette = { workspace = true }
 minijinja = { workspace = true }
-nom = { workspace = true }
-readonly = { workspace = true }
 snailquote = { workspace = true }
 thiserror = { workspace = true }
 
