@@ -51,8 +51,8 @@ pub fn consumer_token_group_with_arguments() -> TokenGroup {
       },
       end: Point {
         line: 1,
-        column: 43,
-        offset: 42,
+        column: 45,
+        offset: 44,
       },
     },
   }
