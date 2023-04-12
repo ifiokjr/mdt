@@ -1,14 +1,17 @@
 use rstest::rstest;
 use similar_asserts::assert_eq;
 
+use super::__fixtures::*;
 use super::*;
-use crate::patterns::PatternMatcher;
 
 #[rstest]
 #[case::consumer(consumer_token_group(), patterns::consumer_pattern())]
 #[case::provider(provider_token_group(), patterns::provider_pattern())]
 #[case::closing(closing_token_group(), patterns::closing_pattern())]
-fn matches_tokens(#[case] group: TokenGroup, #[case] pattern: Vec<PatternMatcher>) -> Result<()> {
+fn matches_tokens(
+  #[case] group: TokenGroup,
+  #[case] pattern: Vec<PatternMatcher>,
+) -> MdtResult<()> {
   let matches = group.matches_pattern(pattern)?;
   assert!(matches);
 
@@ -25,7 +28,7 @@ fn matches_tokens(#[case] group: TokenGroup, #[case] pattern: Vec<PatternMatcher
 #[case::closing(r#"<!-- {/example} -->"#, vec![closing_token_group()])]
 #[case::closing_whitespace(" <!--\n{/example}--> ", vec![closing_token_group_no_whitespace()])]
 #[case::consumer(r#"<!-- {=exampleName|trim|indent:"/// "} -->"#, vec![consumer_token_group_with_arguments()])]
-fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> Result<()> {
+fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> MdtResult<()> {
   let nodes = get_html_nodes(input)?;
   let result = tokenize(nodes)?;
   assert_eq!(result, expected);
@@ -33,137 +36,19 @@ fn generate_tokens(#[case] input: &str, #[case] expected: Vec<TokenGroup>) -> Re
   Ok(())
 }
 
-fn consumer_token_group() -> TokenGroup {
-  TokenGroup {
-    tokens: vec![
-      Token::HtmlCommentOpen,
-      Token::Whitespace,
-      Token::ConsumerTag,
-      Token::Ident("exampleName".to_string()),
-      Token::BraceClose,
-      Token::Whitespace,
-      Token::HtmlCommentClose,
-    ],
-    position: Position {
-      start: Point {
-        line: 1,
-        column: 1,
-        offset: 0,
-      },
-      end: Point {
-        line: 1,
-        column: 24,
-        offset: 23,
-      },
-    },
-  }
-}
-
-fn consumer_token_group_with_arguments() -> TokenGroup {
-  TokenGroup {
-    tokens: vec![
-      Token::HtmlCommentOpen,
-      Token::Whitespace,
-      Token::ConsumerTag,
-      Token::Ident("exampleName".to_string()),
-      Token::Pipe,
-      Token::Ident("trim".to_string()),
-      Token::Pipe,
-      Token::Ident("indent".to_string()),
-      Token::ArgumentDelimiter,
-      Token::String("/// ".to_string(), '"'),
-      Token::BraceClose,
-      Token::Whitespace,
-      Token::HtmlCommentClose,
-    ],
-    position: Position {
-      start: Point {
-        line: 1,
-        column: 1,
-        offset: 0,
-      },
-      end: Point {
-        line: 1,
-        column: 43,
-        offset: 42,
-      },
-    },
-  }
-}
-
-fn provider_token_group() -> TokenGroup {
-  TokenGroup {
-    tokens: vec![
-      Token::HtmlCommentOpen,
-      Token::Whitespace,
-      Token::ProviderTag,
-      Token::Ident("exampleProvider".to_string()),
-      Token::BraceClose,
-      Token::Whitespace,
-      Token::HtmlCommentClose,
-    ],
-    position: Position {
-      start: Point {
-        line: 1,
-        column: 1,
-        offset: 0,
-      },
-      end: Point {
-        line: 1,
-        column: 28,
-        offset: 27,
-      },
-    },
-  }
-}
-
-fn closing_token_group() -> TokenGroup {
-  TokenGroup {
-    tokens: vec![
-      Token::HtmlCommentOpen,
-      Token::Whitespace,
-      Token::CloseTag,
-      Token::Ident("example".to_string()),
-      Token::BraceClose,
-      Token::Whitespace,
-      Token::HtmlCommentClose,
-    ],
-    position: Position {
-      start: Point {
-        line: 1,
-        column: 1,
-        offset: 0,
-      },
-      end: Point {
-        line: 1,
-        column: 20,
-        offset: 19,
-      },
-    },
-  }
-}
-
-fn closing_token_group_no_whitespace() -> TokenGroup {
-  TokenGroup {
-    tokens: vec![
-      Token::HtmlCommentOpen,
-      Token::Newline,
-      Token::CloseTag,
-      Token::Ident("example".to_string()),
-      Token::BraceClose,
-      Token::HtmlCommentClose,
-    ],
-    position: Position {
-      start: Point {
-        line: 1,
-        column: 2,
-        offset: 1,
-      },
-      end: Point {
-        line: 2,
-        column: 13,
-        offset: 19,
-      },
-    },
-  }
+#[rstest]
+#[case(0..1, closing_token_group(), Position::new(1, 1, 0, 1, 5, 4))]
+#[case(1.., closing_token_group(), Position::new(1, 5, 4, 1, 20, 19))]
+#[case(2..4, closing_token_group(), Position::new(1, 6, 5, 1, 15, 14))]
+#[case(2..=4, closing_token_group(), Position::new(1, 6, 5, 1, 16, 15))]
+#[case(..6, closing_token_group(), Position::new(1, 1, 0, 1, 17, 16))]
+#[case(1..100, closing_token_group(), Position::new(1, 5, 4, 1, 20, 19))]
+#[case(3, closing_token_group(), Position::new(1, 8, 7, 1, 15, 14))]
+fn get_position_of_tokens(
+  #[case] bounds: impl GetDynamicRange,
+  #[case] group: TokenGroup,
+  #[case] expected: Position,
+) {
+  let position = group.position_of_range(bounds);
+  assert_eq!(position, expected);
 }

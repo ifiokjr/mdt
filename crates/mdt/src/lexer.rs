@@ -1,9 +1,8 @@
 use markdown::mdast::Html;
-use nom::AsChar;
 use snailquote::unescape;
 
+use crate::MdtResult;
 use crate::Position;
-use crate::Result;
 use crate::Token;
 use crate::TokenGroup;
 
@@ -60,6 +59,18 @@ impl TokenizerState {
       group.position.advance_end(&token);
       group.tokens.push(token);
     }
+  }
+
+  fn whitespace(&mut self, byte: u8) {
+    let token = Token::Whitespace(byte);
+    self.update_token_group(token, false);
+    self.advance(1);
+  }
+
+  fn newline(&mut self) {
+    let token = Token::Newline;
+    self.update_token_group(token, false);
+    self.advance(1);
   }
 
   /// Collect the next identifier starting from the current character. Returns
@@ -135,7 +146,7 @@ impl TokenizerState {
       };
     }
 
-    let token = Token::String(string, delimiter.as_char());
+    let token = Token::String(string, delimiter);
     self.update_token_group(token, false);
     true
   }
@@ -246,7 +257,7 @@ impl TokenizerState {
   }
 }
 
-pub fn tokenize(nodes: Vec<Html>) -> Result<Vec<TokenGroup>> {
+pub fn tokenize(nodes: Vec<Html>) -> MdtResult<Vec<TokenGroup>> {
   let mut state = TokenizerState {
     nodes,
     groups: vec![],
@@ -270,7 +281,7 @@ pub fn tokenize(nodes: Vec<Html>) -> Result<Vec<TokenGroup>> {
   Ok(state.groups)
 }
 
-fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
+fn tokenize_node(state: &mut TokenizerState) -> MdtResult<()> {
   loop {
     let (Some(_position), Some(content)) = (state.position.as_ref(), state.content.as_ref()) else {
       break;
@@ -327,15 +338,11 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
 
         match content.bytes().next() {
           Some(b'\n') => {
-            let token = Token::Newline;
-            state.update_token_group(token, false);
-            state.advance(1);
+            state.newline();
             continue;
           }
           Some(byte) if byte.is_ascii_whitespace() => {
-            let token = Token::Whitespace;
-            state.update_token_group(token, false);
-            state.advance(1);
+            state.whitespace(byte);
             continue;
           }
           _ => {
@@ -347,15 +354,11 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
       Some(LexerContext::Tag) => {
         match content.bytes().next() {
           Some(b'\n') => {
-            let token = Token::Newline;
-            state.update_token_group(token, false);
-            state.advance(1);
+            state.newline();
             continue;
           }
-          Some(ch) if ch.is_ascii_whitespace() => {
-            let token = Token::Whitespace;
-            state.update_token_group(token, false);
-            state.advance(1);
+          Some(byte) if byte.is_ascii_whitespace() => {
+            state.whitespace(byte);
             continue;
           }
           Some(b'}') => {
@@ -392,15 +395,11 @@ fn tokenize_node(state: &mut TokenizerState) -> Result<()> {
       Some(LexerContext::Filter) => {
         match content.bytes().next() {
           Some(b'\n') => {
-            let token = Token::Newline;
-            state.update_token_group(token, false);
-            state.advance(1);
+            state.newline();
             continue;
           }
           Some(byte) if byte.is_ascii_whitespace() => {
-            let token = Token::Whitespace;
-            state.update_token_group(token, false);
-            state.advance(1);
+            state.whitespace(byte);
             continue;
           }
           Some(b':') => {

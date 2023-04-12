@@ -1,20 +1,20 @@
 use crate::MdtError;
-use crate::Result;
+use crate::MdtResult;
 use crate::Token;
 use crate::TokenGroup;
 
-pub type PatternMatcher = Box<dyn Fn(&TokenGroup, usize) -> Result<usize> + 'static>;
+pub type PatternMatcher = Box<dyn Fn(&TokenGroup, usize) -> MdtResult<usize> + 'static>;
 
 pub fn closing_pattern() -> Vec<PatternMatcher> {
   vec![
     one(vec![Token::HtmlCommentOpen]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::CloseTag]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     one(vec![Token::any()]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     one(vec![Token::BraceClose]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::HtmlCommentClose]),
   ]
 }
@@ -22,19 +22,19 @@ pub fn closing_pattern() -> Vec<PatternMatcher> {
 pub fn consumer_pattern() -> Vec<PatternMatcher> {
   vec![
     one(vec![Token::HtmlCommentOpen]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::ConsumerTag]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     one(vec![Token::any()]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     optional_many_group(vec![
       one(vec![Token::Pipe]),
-      optional_many(vec![Token::Whitespace]),
+      optional_many(vec![Token::whitespace()]),
       one(vec![Token::any()]),
-      optional_many(vec![Token::Whitespace]),
+      optional_many(vec![Token::whitespace()]),
       optional_many_group(vec![
         one(vec![Token::ArgumentDelimiter]),
-        optional_many(vec![Token::Whitespace]),
+        optional_many(vec![Token::whitespace()]),
         one(vec![
           Token::string(),
           Token::r#true(),
@@ -42,11 +42,11 @@ pub fn consumer_pattern() -> Vec<PatternMatcher> {
           Token::int(),
           Token::float(),
         ]),
-        optional_many(vec![Token::Whitespace]),
+        optional_many(vec![Token::whitespace()]),
       ]),
     ]),
     one(vec![Token::BraceClose]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::HtmlCommentClose]),
   ]
 }
@@ -54,19 +54,19 @@ pub fn consumer_pattern() -> Vec<PatternMatcher> {
 pub fn provider_pattern() -> Vec<PatternMatcher> {
   vec![
     one(vec![Token::HtmlCommentOpen]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::ProviderTag]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     one(vec![Token::any()]),
-    optional_many(vec![Token::Whitespace]),
+    optional_many(vec![Token::whitespace()]),
     optional_many_group(vec![
       one(vec![Token::Pipe]),
-      optional_many(vec![Token::Whitespace]),
+      optional_many(vec![Token::whitespace()]),
       one(vec![Token::any()]),
-      optional_many(vec![Token::Whitespace]),
+      optional_many(vec![Token::whitespace()]),
       optional_many_group(vec![
         one(vec![Token::ArgumentDelimiter]),
-        optional_many(vec![Token::Whitespace]),
+        optional_many(vec![Token::whitespace()]),
         one(vec![
           Token::string(),
           Token::r#true(),
@@ -74,11 +74,11 @@ pub fn provider_pattern() -> Vec<PatternMatcher> {
           Token::int(),
           Token::float(),
         ]),
-        optional_many(vec![Token::Whitespace]),
+        optional_many(vec![Token::whitespace()]),
       ]),
     ]),
     one(vec![Token::BraceClose]),
-    optional_many(vec![Token::Whitespace, Token::Newline]),
+    optional_many(vec![Token::whitespace(), Token::Newline]),
     one(vec![Token::HtmlCommentClose]),
   ]
 }
@@ -190,7 +190,7 @@ impl TokenGroup {
   /// Checks if the token group matches the given pattern. Returns a result
   /// wrapped in a boolean if the pattern matches otherwise it returns an
   /// error.
-  pub fn matches_pattern(&self, pattern: Vec<PatternMatcher>) -> Result<bool> {
+  pub fn matches_pattern(&self, pattern: Vec<PatternMatcher>) -> MdtResult<bool> {
     let mut index = 0;
 
     for matcher in pattern.iter() {
@@ -218,6 +218,10 @@ impl TokenGroup {
 }
 
 impl Token {
+  fn whitespace() -> Self {
+    Self::Whitespace(b'*')
+  }
+
   fn r#true() -> Self {
     Self::Ident("true".into())
   }
@@ -231,14 +235,14 @@ impl Token {
   }
 
   fn string() -> Self {
-    Self::String("*".into(), '"')
+    Self::String("*".into(), b'"')
   }
 
-  pub fn int() -> Self {
+  fn int() -> Self {
     Self::Int(0)
   }
 
-  pub fn float() -> Self {
+  fn float() -> Self {
     Self::Float(0.0)
   }
 }

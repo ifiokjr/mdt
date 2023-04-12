@@ -18,4 +18,4 @@ pub enum MdtError {
   InvalidTokenSequence(usize),
 }
 
-pub type Result<T> = std::result::Result<T, MdtError>;
+pub type MdtResult<T> = std::result::Result<T, MdtError>;
