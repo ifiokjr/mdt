@@ -37,6 +37,7 @@
   },
   "excludes": [
     "**/dist",
+    "docs/book",
     ".devenv/**",
     "**/fixtures",
     "**/snapshots",
