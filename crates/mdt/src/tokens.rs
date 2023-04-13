@@ -114,7 +114,7 @@ impl Display for Token {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Token::Newline => writeln!(f),
-      Token::Whitespace(byte) => write!(f, "{}", byte.as_char()),
+      Token::Whitespace(byte) => write!(f, "{}", *byte as char),
       Token::HtmlCommentOpen => write!(f, "<!--"),
       Token::HtmlCommentClose => write!(f, "-->"),
       Token::ConsumerTag => write!(f, "{{="),
