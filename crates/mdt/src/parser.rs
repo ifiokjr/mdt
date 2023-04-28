@@ -16,12 +16,9 @@ pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
   let _block_creators = Vec::<BlockCreator>::new();
 
   for node in html_nodes {
-    let Some(ref position) = node.position else {
+    let Some(ref _position) = node.position else {
       continue;
     };
-
-    println!("{:?}", position);
-    println!("VALUE: {:?}", node.value);
 
     for _ch in content.chars() {}
   }
