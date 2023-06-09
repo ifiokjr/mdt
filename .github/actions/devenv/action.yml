@@ -7,6 +7,9 @@ inputs:
   nix-cache:
     description: The location of the nix cache
     required: true
+  rust:
+    description: The version of rust to use
+    required: true
 
 runs:
   using: composite
@@ -19,8 +22,13 @@ runs:
         key: ${{ runner.os }}-nix-cache-${{ hashFiles('**/devenv.nix', '**/devenv.yaml', '**/devenv.lock') }}
         restore-keys: ${{ runner.os }}-nix-cache-
 
+    - name: rust toolchain
+      run: |
+        sed -i 's/channel = ".*"/channel = "${{ inputs.rust }}"/' rust-toolchain.toml
+      shell: bash
+
     - name: install nix
-      uses: cachix/install-nix-action@v20
+      uses: cachix/install-nix-action@v21
       with:
         github_access_token: ${{ inputs.github-token }}
 

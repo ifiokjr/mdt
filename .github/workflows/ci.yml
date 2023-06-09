@@ -9,11 +9,17 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   checks:
+    timeout-minutes: 10
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
+        rust: [stable, 1.69.0, nightly]
     runs-on: ${{ matrix.os }}
     steps:
       - name: checkout repository
@@ -24,6 +30,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           nix-cache: /tmp/nixcache
+          rust: ${{ matrix.rust }}
 
       - name: cache rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -36,4 +43,8 @@ jobs:
 
       - name: lint
         run: lint:all
+        shell: bash
+
+      - name: test
+        run: test:all
         shell: bash

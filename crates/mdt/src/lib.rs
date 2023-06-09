@@ -19,7 +19,6 @@ mod position;
 mod tokens;
 
 #[cfg(test)]
-mod __tests;
-
-#[cfg(test)]
 mod __fixtures;
+#[cfg(test)]
+mod __tests;
