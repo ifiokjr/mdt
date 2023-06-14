@@ -1,0 +1,27 @@
+[package]
+name = "mdt_cli"
+version = { workspace = true }
+categories = { workspace = true }
+documentation = "https://docs.rs/mdt_cli"
+edition = { workspace = true }
+include = { workspace = true }
+keywords = ["markdown", "templates", "cli"]
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "the cli which updates markdown content anywhere using comments as template tags"
+
+[[bin]]
+name = "mdt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+mdt = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = { workspace = true }
+insta = { workspace = true }
+rstest = { workspace = true }
+similar-asserts = { workspace = true }

@@ -4,26 +4,32 @@ default-members = ["crates/*", "docs"]
 resolver = "2"
 
 [workspace.dependencies]
+assert_cmd = "2"
+clap = "4"
 derive_more = "0.99"
 doc-comment = "0.3"
 float-cmp = "0.9"
+globset = "0.4"
 insta = "1"
+logos = "0.13"
 markdown = "1.0.0-alpha.9"
 miette = "5"
 minijinja = "0.34"
-similar-asserts = "1"
-snailquote = "0.3"
 readonly = "0.2"
 rstest = "0.17"
 serde = "1"
 serde_json = "1"
+similar-asserts = "1"
+snailquote = "0.3"
 thiserror = "1"
 tokio = "1"
 tower-lsp = "0.19"
 typed-builder = "0.14"
+vfs = "0.9"
 
 # Internal crates
 mdt = { path = "./crates/mdt", version = "0.0.0" }
+mdt_cli = { path = "./crates/mdt_cli", version = "0.0.0" }
 mdt_lsp = { path = "./crates/mdt_lsp", version = "0.0.0" }
 
 [workspace.package]
