@@ -37,3 +37,14 @@ To setup recommended configuration for your favourite editor run the following c
 setup:vscode # Setup vscode
 setup:helix  # Setup helix configuration
 ```
+
+### Upgrading `devenv`
+
+If you have an outdated version of `devenv` you can update it by running the following commands. If
+you know an easier way, please create a PR and I'll update these docs.
+
+```bash
+nix profile list # find the index of the nxi package
+nix profile remove <index>
+nix profile install --accept-flake-config github:cachix/devenv/<version>
+```

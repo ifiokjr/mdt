@@ -7,7 +7,7 @@ fn main() {
 
   match args.command {
     Some(Commands::Init) => {
-      // Initialize the project
+      println!("initializing project!");
     }
     Some(Commands::Check) => {
       // Check the mdt code blocks

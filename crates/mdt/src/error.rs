@@ -20,5 +20,5 @@ pub enum MdtError {
 
 pub type MdtResult<T> = std::result::Result<T, MdtError>;
 pub type AnyError = Box<dyn std::error::Error>;
-pub type AnyEmptyResult = Result<(), AnyError>;
-pub type AnyResult<T> = Result<T, AnyError>;
+pub type AnyEmptyResult = std::result::Result<(), AnyError>;
+pub type AnyResult<T> = std::result::Result<T, AnyError>;
