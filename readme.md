@@ -18,7 +18,13 @@ markdown in their documentation comments (which is most of them).
 ## Contributing
 
 [`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this
-project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
+project. Follow the [getting started instructions](https://devenvdevent.sh/getting-started/).
+
+If you want to use flakes you may need to run the following command after initial setup.
+
+```bash
+echo "experimental-features = nix-command flakes" >> $HOME/.config/nix/nix.conf
+```
 
 To automatically load the environment you should
 [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
