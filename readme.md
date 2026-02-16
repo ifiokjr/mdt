@@ -2,23 +2,65 @@
 
 > manage **m**ark**d**own **t**emplates across your project
 
+**Status:** Early development (v0.0.0)
+
 ## Motivation
 
-When managing larger libraries I find myself copying and pasting the examples across markdown and
-code documentation.
+When managing larger libraries I find myself copying and pasting the examples across markdown and code documentation.
 
 These examples and explanations are often identical but need to be presented in separate places.
 
 The problem, examples can quickly fall out of date and synchronizing them is painful.
 
-This project provides a syntax to manage markdown templates `mdt` across all the files in your
-project. It can also manage the templates inside code documentation for any language that supports
-markdown in their documentation comments (which is most of them).
+This project provides a syntax to manage markdown templates `mdt` across all the files in your project. It can also manage the templates inside code documentation for any language that supports markdown in their documentation comments (which is most of them).
+
+## Template Syntax
+
+### Provider Tags
+
+Define template blocks in `*.t.md` definition files:
+
+```markdown
+<!-- {@blockName} -->
+
+Content to inject into consumer tags
+
+<!-- {/blockName} -->
+```
+
+### Consumer Tags
+
+Mark where content should be injected:
+
+```markdown
+<!-- {=blockName} -->
+
+This content gets replaced automatically
+
+<!-- {/blockName} -->
+```
+
+### Filters and Pipes
+
+Template values support Jinja-style filters:
+
+```markdown
+<!-- {=block|prefix:"\n"|indent:"  "} -->
+```
+
+## CLI Commands
+
+- `mdt init` — Initialize mdt configuration in a project
+- `mdt check` — Verify all template blocks are up-to-date
+- `mdt update` — Update all template blocks with latest content
+
+## LSP
+
+Language server protocol support is planned via the `mdt_lsp` crate. This will provide editor integration for template validation and auto-completion.
 
 ## Contributing
 
-[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this
-project. Follow the [getting started instructions](https://devenvdevent.sh/getting-started/).
+[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
 
 If you want to use flakes you may need to run the following command after initial setup.
 
@@ -26,8 +68,7 @@ If you want to use flakes you may need to run the following command after initia
 echo "experimental-features = nix-command flakes" >> $HOME/.config/nix/nix.conf
 ```
 
-To automatically load the environment you should
-[install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
+To automatically load the environment you should [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
 
 ```bash
 # The security mechanism didn't allow to load the `.envrc`.
@@ -35,7 +76,7 @@ To automatically load the environment you should
 direnv allow .
 ```
 
-At this point you should see the `nix` commands available in your terminal.
+At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling.
 
 To setup recommended configuration for your favourite editor run the following commands.
 
@@ -46,11 +87,10 @@ setup:helix  # Setup helix configuration
 
 ### Upgrading `devenv`
 
-If you have an outdated version of `devenv` you can update it by running the following commands. If
-you know an easier way, please create a PR and I'll update these docs.
+If you have an outdated version of `devenv` you can update it by running the following commands. If you know an easier way, please create a PR and I'll update these docs.
 
 ```bash
-nix profile list # find the index of the nxi package
+nix profile list # find the index of the nix package
 nix profile remove <index>
 nix profile install --accept-flake-config github:cachix/devenv/<version>
 ```

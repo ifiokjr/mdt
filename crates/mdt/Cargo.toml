@@ -26,3 +26,6 @@ thiserror = { workspace = true }
 insta = { workspace = true }
 rstest = { workspace = true }
 similar-asserts = { workspace = true }
+
+[lints]
+workspace = true

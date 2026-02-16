@@ -4,26 +4,20 @@
 
 <br />
 
-[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link]
-[![Status][ci-status-image]][ci-status-link] [![Unlicense][unlicense-image]][unlicense-link]
+[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link] [![Status][ci-status-image]][ci-status-link] [![Unlicense][unlicense-image]][unlicense-link]
 
 <br />
 
 ## Why?
 
-Often, while developing a project, you will want to automatically update sections of markdown
-content in your files. For example:
+Often, while developing a project, you will want to automatically update sections of markdown content in your files. For example:
 
 - The `version` has been updated and should be reflected in multiple files.
-- The API has changed and you want to automatically generate documentation that is placed within the
-  `readme.md` file.
+- The API has changed and you want to automatically generate documentation that is placed within the `readme.md` file.
 
 ## Solution
 
-This project allows you to wrap the content you want to keep updated in a markdown comment block
-`<!-- ={exampleBlock} --><!-- {/exampleBlock}-->`. A build command is then run which injects values
-into the comment tag while preserving the tags. This means that blocks can be updated multiple times
-with new data.
+This project allows you to wrap the content you want to keep updated in a markdown comment block `<!-- ={exampleBlock} --><!-- {/exampleBlock}-->`. A build command is then run which injects values into the comment tag while preserving the tags. This means that blocks can be updated multiple times with new data.
 
 Blocks can also be checked during continuous integration to ensure that they are up-to-date.
 
@@ -33,8 +27,7 @@ Here is a deeper explanation of the `mdt` flow.
 
 ### Step 1: Define templates
 
-Define replacement blocks within the markdown content. A replacement block is defined with the
-following syntax:
+Define replacement blocks within the markdown content. A replacement block is defined with the following syntax:
 
 #### Opening tag
 
@@ -48,9 +41,7 @@ following syntax:
 <!-- {/exampleBlock}-->
 ```
 
-This markdown content can be anywhere that takes markdown content. For example you might want to
-keep you `readme.md` up to date with the latest API documentation. You can do this by adding the
-following to your `readme.md` file:
+This markdown content can be anywhere that takes markdown content. For example you might want to keep you `readme.md` up to date with the latest API documentation. You can do this by adding the following to your `readme.md` file:
 
 ```markdown
 # my_precious
@@ -66,9 +57,7 @@ This is automatically replaced with the API documentation.
 <!-- {/api}-->
 ```
 
-You may also want to reuse code examples in multiple places without having to redefine the multiple
-times. Below is an example of using the templates in rust files. The same flow can be used for
-`TypeScript`, `Dart` and other languages that support markdown in their documentation comments.
+You may also want to reuse code examples in multiple places without having to redefine the multiple times. Below is an example of using the templates in rust files. The same flow can be used for `TypeScript`, `Dart` and other languages that support markdown in their documentation comments.
 
 ````rust
 //! This is the API documentation for my_precious
@@ -87,18 +76,15 @@ times. Below is an example of using the templates in rust files. The same flow c
 //! <!-- {/codeExample} -->
 
 pub fn be_precious() {
-  println!("I am precious");
+	println!("I am precious");
 }
 ````
 
 ### Step 2: Define definition files
 
-The tags in the previous step are pulling in their content from somewhere. In mdt this is from the
-`definition` files. A definition file is a markdown file with the following naming convention
-`*.t.md`.
+The tags in the previous step are pulling in their content from somewhere. In mdt this is from the `definition` files. A definition file is a markdown file with the following naming convention `*.t.md`.
 
-These file are comprised of template blocks of content where the blocks used in the previous section
-are defined.
+These file are comprised of template blocks of content where the blocks used in the previous section are defined.
 
 #### Defining a template block
 
@@ -120,8 +106,7 @@ This content will be injected into any markdown content which has the following 
 
 #### Defining a template block with template values
 
-In the following example the `{{example.version}}` is a template value. This value will be replaced
-with the value defined in the configuration when running the `mdt` command.
+In the following example the `{{example.version}}` is a template value. This value will be replaced with the value defined in the configuration when running the `mdt` command.
 
 ````markdown
 <!-- @{codeExample} -->

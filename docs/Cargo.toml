@@ -7,3 +7,6 @@ publish = false
 [dependencies]
 doc-comment = { workspace = true }
 mdt = { workspace = true }
+
+[lints]
+workspace = true

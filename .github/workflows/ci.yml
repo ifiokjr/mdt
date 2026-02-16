@@ -1,10 +1,11 @@
 name: "ci"
-
+permissions:
+  pull-requests: write
+  contents: write
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
@@ -14,37 +15,58 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  checks:
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        rust: [stable, 1.69.0, nightly]
-    runs-on: ${{ matrix.os }}
+  lint:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: setup development environment
+      - name: setup
         uses: ./.github/actions/devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          nix-cache: /tmp/nixcache
-          rust: ${{ matrix.rust }}
 
-      - name: cache rust dependencies
-        uses: Swatinem/rust-cache@v2
+      - name: lint clippy
+        run: lint:clippy
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: lint formatting
+        run: lint:format
+        shell: devenv shell -c -- bash -e {0}
+
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup
+        uses: ./.github/actions/devenv
         with:
-          key: ${{ runner.os }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: run tests
+        run: test:all
+        shell: devenv shell -c -- bash -e {0}
+
+  build:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: build
-        run: build:all
-        shell: bash
+        run: cargo build --locked
+        shell: devenv shell -c -- bash -e {0}
 
-      - name: lint
-        run: lint:all
-        shell: bash
-
-      - name: test
-        run: test:all
-        shell: bash
+      - name: build all features
+        run: cargo build --all-features --locked
+        shell: devenv shell -c -- bash -e {0}
