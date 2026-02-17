@@ -4,7 +4,7 @@ use std::process;
 use clap::Parser;
 use mdt::check_project;
 use mdt::compute_updates;
-use mdt::project::find_missing_providers;
+use mdt::project::ProjectContext;
 use mdt::project::scan_project_with_config;
 use mdt::write_updates;
 use mdt_cli::Commands;
@@ -64,32 +64,36 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
-fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
-	let (project, data) = scan_project_with_config(&root)?;
+	let ctx = scan_project_with_config(&root)?;
 
 	if args.verbose {
 		println!(
 			"Scanned project: {} provider(s), {} consumer(s)",
-			project.providers.len(),
-			project.consumers.len()
+			ctx.project.providers.len(),
+			ctx.project.consumers.len()
 		);
 
-		if !project.providers.is_empty() {
+		if !ctx.project.providers.is_empty() {
 			println!("  Providers:");
-			for (name, entry) in &project.providers {
+			for (name, entry) in &ctx.project.providers {
 				println!("    @{name} ({})", entry.file.display());
 			}
 		}
 	}
 
 	// Warn about consumers referencing non-existent providers
-	let missing = find_missing_providers(&project);
-	for name in &missing {
+	for name in &ctx.find_missing_providers() {
 		eprintln!("warning: consumer block `{name}` has no matching provider");
 	}
 
-	let result = check_project(&project, &data)?;
+	Ok(ctx)
+}
+
+fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+	let ctx = scan_and_warn(args)?;
+	let result = check_project(&ctx)?;
 
 	if result.is_ok() {
 		println!("All consumer blocks are up to date.");
@@ -111,24 +115,8 @@ fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run_update(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::error::Error>> {
-	let root = resolve_root(args);
-	let (project, data) = scan_project_with_config(&root)?;
-
-	if args.verbose {
-		println!(
-			"Scanned project: {} provider(s), {} consumer(s)",
-			project.providers.len(),
-			project.consumers.len()
-		);
-	}
-
-	// Warn about consumers referencing non-existent providers
-	let missing = find_missing_providers(&project);
-	for name in &missing {
-		eprintln!("warning: consumer block `{name}` has no matching provider");
-	}
-
-	let updates = compute_updates(&project, &data)?;
+	let ctx = scan_and_warn(args)?;
+	let updates = compute_updates(&ctx)?;
 
 	if updates.updated_count == 0 {
 		println!("All consumer blocks are already up to date.");

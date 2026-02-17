@@ -1,5 +1,3 @@
-use derive_more::Deref;
-use derive_more::DerefMut;
 use markdown::ParseOptions;
 use markdown::mdast::Html;
 use markdown::mdast::Node;
@@ -8,12 +6,12 @@ use markdown::to_mdast;
 use super::MdtError;
 use super::MdtResult;
 use crate::Position;
-use crate::Token;
-use crate::TokenGroup;
 use crate::lexer::tokenize;
 use crate::patterns::closing_pattern;
 use crate::patterns::consumer_pattern;
 use crate::patterns::provider_pattern;
+use crate::tokens::Token;
+use crate::tokens::TokenGroup;
 
 /// Parse markdown content and return all blocks (provider and consumer) found
 /// within it.
@@ -271,15 +269,6 @@ fn extract_close_name(group: &TokenGroup) -> String {
 	String::new()
 }
 
-#[derive(Debug, Clone, Deref, DerefMut)]
-pub struct Blocks(Vec<Block>);
-
-impl From<Vec<Block>> for Blocks {
-	fn from(blocks: Vec<Block>) -> Self {
-		Self(blocks)
-	}
-}
-
 struct BlockCreator {
 	name: String,
 	r#type: BlockType,
@@ -351,6 +340,22 @@ pub enum TransformerType {
 	Prefix,
 }
 
+impl std::fmt::Display for TransformerType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Trim => write!(f, "trim"),
+			Self::TrimStart => write!(f, "trimStart"),
+			Self::TrimEnd => write!(f, "trimEnd"),
+			Self::Wrap => write!(f, "wrap"),
+			Self::Indent => write!(f, "indent"),
+			Self::CodeBlock => write!(f, "codeBlock"),
+			Self::Code => write!(f, "code"),
+			Self::Replace => write!(f, "replace"),
+			Self::Prefix => write!(f, "prefix"),
+		}
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
 	/// These are the blocks that are used to provide a value to any consumers.
@@ -371,4 +376,13 @@ pub enum BlockType {
 	/// <!-- {/exampleConsumer} -->
 	/// ```
 	Consumer,
+}
+
+impl std::fmt::Display for BlockType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Provider => write!(f, "provider"),
+			Self::Consumer => write!(f, "consumer"),
+		}
+	}
 }

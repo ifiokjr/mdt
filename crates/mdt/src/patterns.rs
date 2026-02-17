@@ -1,7 +1,7 @@
 use crate::MdtError;
 use crate::MdtResult;
-use crate::Token;
-use crate::TokenGroup;
+use crate::tokens::Token;
+use crate::tokens::TokenGroup;
 
 pub type PatternMatcher = Box<dyn Fn(&TokenGroup, usize) -> MdtResult<usize> + 'static>;
 
@@ -83,16 +83,6 @@ pub fn provider_pattern() -> Vec<PatternMatcher> {
 	]
 }
 
-pub fn optional_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
-	let method = group(matchers);
-	Box::new(move |token_group: &TokenGroup, index: usize| {
-		match method(token_group, index) {
-			Ok(index) => Ok(index),
-			Err(_) => Ok(index),
-		}
-	})
-}
-
 pub fn group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 	Box::new(move |token_group: &TokenGroup, index: usize| {
 		let mut next_index = index;
@@ -125,16 +115,6 @@ pub fn many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 		}
 
 		Ok(next_index)
-	})
-}
-
-pub fn optional(tokens: Vec<Token>) -> PatternMatcher {
-	let method = one(tokens);
-	Box::new(move |token_group: &TokenGroup, index: usize| {
-		match method(token_group, index) {
-			Ok(index) => Ok(index),
-			Err(_) => Ok(index),
-		}
 	})
 }
 

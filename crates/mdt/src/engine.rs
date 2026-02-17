@@ -7,7 +7,7 @@ use crate::MdtResult;
 use crate::Transformer;
 use crate::TransformerType;
 use crate::project::ConsumerEntry;
-use crate::project::Project;
+use crate::project::ProjectContext;
 
 /// Result of checking a project for stale consumers.
 #[derive(Debug)]
@@ -75,19 +75,15 @@ fn has_template_syntax(content: &str) -> bool {
 
 /// Check whether all consumer blocks in the project are up to date.
 /// Consumer blocks that reference non-existent providers are silently skipped.
-#[allow(clippy::implicit_hasher)]
-pub fn check_project(
-	project: &Project,
-	data: &HashMap<String, serde_json::Value>,
-) -> MdtResult<CheckResult> {
+pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 
-	for consumer in &project.consumers {
-		let Some(provider) = project.providers.get(&consumer.block.name) else {
+	for consumer in &ctx.project.consumers {
+		let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
 			continue;
 		};
 
-		let rendered = render_template(&provider.content, data)?;
+		let rendered = render_template(&provider.content, &ctx.data)?;
 		let expected = apply_transformers(&rendered, &consumer.block.transformers);
 
 		if consumer.content != expected {
@@ -104,17 +100,13 @@ pub fn check_project(
 }
 
 /// Compute the updated file contents for all consumer blocks.
-#[allow(clippy::implicit_hasher)]
-pub fn compute_updates(
-	project: &Project,
-	data: &HashMap<String, serde_json::Value>,
-) -> MdtResult<UpdateResult> {
+pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 
 	// Group consumers by file
 	let mut consumers_by_file: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
-	for consumer in &project.consumers {
+	for consumer in &ctx.project.consumers {
 		consumers_by_file
 			.entry(consumer.file.clone())
 			.or_default()
@@ -137,11 +129,11 @@ pub fn compute_updates(
 			.sort_by(|a, b| b.block.opening.end.offset.cmp(&a.block.opening.end.offset));
 
 		for consumer in sorted_consumers {
-			let Some(provider) = project.providers.get(&consumer.block.name) else {
+			let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
 				continue;
 			};
 
-			let rendered = render_template(&provider.content, data)?;
+			let rendered = render_template(&provider.content, &ctx.data)?;
 			let new_content = apply_transformers(&rendered, &consumer.block.transformers);
 
 			if consumer.content != new_content {

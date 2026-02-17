@@ -164,21 +164,6 @@ impl TokenGroup {
 	}
 }
 
-pub fn get_bounds_index(bounds: impl RangeBounds<usize>) -> (Option<usize>, Option<usize>) {
-	let start = match bounds.start_bound() {
-		Bound::Included(value) | Bound::Excluded(value) => Some(*value),
-		Bound::Unbounded => None,
-	};
-
-	let end = match bounds.end_bound() {
-		Bound::Included(value) => Some(*value + 1),
-		Bound::Excluded(value) => Some(*value),
-		Bound::Unbounded => None,
-	};
-
-	(start, end)
-}
-
 #[derive(Deref, DerefMut)]
 pub struct DynamicRange<B>(
 	#[deref]

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use mdt::TransformerType;
 use mdt::parse;
 use mdt::project::ConsumerEntry;
 use mdt::project::ProviderEntry;
@@ -713,20 +714,14 @@ fn parse_document_content_source_file() {
 }
 
 #[test]
-fn transformer_type_name_all() {
-	assert_eq!(transformer_type_name(TransformerType::Trim), "trim");
-	assert_eq!(
-		transformer_type_name(TransformerType::TrimStart),
-		"trimStart"
-	);
-	assert_eq!(transformer_type_name(TransformerType::TrimEnd), "trimEnd");
-	assert_eq!(transformer_type_name(TransformerType::Indent), "indent");
-	assert_eq!(transformer_type_name(TransformerType::Prefix), "prefix");
-	assert_eq!(transformer_type_name(TransformerType::Wrap), "wrap");
-	assert_eq!(
-		transformer_type_name(TransformerType::CodeBlock),
-		"codeBlock"
-	);
-	assert_eq!(transformer_type_name(TransformerType::Code), "code");
-	assert_eq!(transformer_type_name(TransformerType::Replace), "replace");
+fn transformer_type_display_all() {
+	assert_eq!(TransformerType::Trim.to_string(), "trim");
+	assert_eq!(TransformerType::TrimStart.to_string(), "trimStart");
+	assert_eq!(TransformerType::TrimEnd.to_string(), "trimEnd");
+	assert_eq!(TransformerType::Indent.to_string(), "indent");
+	assert_eq!(TransformerType::Prefix.to_string(), "prefix");
+	assert_eq!(TransformerType::Wrap.to_string(), "wrap");
+	assert_eq!(TransformerType::CodeBlock.to_string(), "codeBlock");
+	assert_eq!(TransformerType::Code.to_string(), "code");
+	assert_eq!(TransformerType::Replace.to_string(), "replace");
 }

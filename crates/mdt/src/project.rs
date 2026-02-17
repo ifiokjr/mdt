@@ -24,6 +24,27 @@ pub struct Project {
 	pub consumers: Vec<ConsumerEntry>,
 }
 
+/// A scanned project together with its loaded template data context.
+///
+/// This is the main entry point returned by [`scan_project_with_config`] and
+/// consumed by [`check_project`](crate::check_project) and
+/// [`compute_updates`](crate::compute_updates).
+#[derive(Debug)]
+pub struct ProjectContext {
+	/// The scanned project with providers and consumers.
+	pub project: Project,
+	/// Template data loaded from files referenced in `mdt.toml`.
+	pub data: HashMap<String, serde_json::Value>,
+}
+
+impl ProjectContext {
+	/// Find all provider block names referenced by consumers but missing a
+	/// provider definition.
+	pub fn find_missing_providers(&self) -> Vec<String> {
+		find_missing_providers(&self.project)
+	}
+}
+
 /// A provider block with its source file and content.
 #[derive(Debug, Clone)]
 pub struct ProviderEntry {
@@ -48,9 +69,7 @@ pub fn scan_project(root: &Path) -> MdtResult<Project> {
 }
 
 /// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
-pub fn scan_project_with_config(
-	root: &Path,
-) -> MdtResult<(Project, HashMap<String, serde_json::Value>)> {
+pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let config = MdtConfig::load(root)?;
 	let exclude_patterns = config
 		.as_ref()
@@ -63,7 +82,7 @@ pub fn scan_project_with_config(
 		None => HashMap::new(),
 	};
 
-	Ok((project, data))
+	Ok(ProjectContext { project, data })
 }
 
 /// Build a `GlobSet` from a list of glob pattern strings.
