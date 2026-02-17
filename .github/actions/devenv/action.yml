@@ -4,59 +4,39 @@ inputs:
   github-token:
     description: Provide a github token
     required: true
-  nix-cache:
-    description: The location of the nix cache
-    required: true
-  rust:
-    description: The version of rust to use
-    required: true
+  cache-version:
+    description: The version of the cache to use.
+    required: false
+    default: "v1"
 
 runs:
   using: composite
   steps:
-    - name: cache nix store
-      uses: actions/cache@v3
-      id: nix-cache
+    - name: cache rust dependencies
+      uses: Swatinem/rust-cache@v2
       with:
-        path: ${{ inputs.nix-cache }}
-        key: ${{ runner.os }}-nix-cache-${{ hashFiles('**/devenv.nix', '**/devenv.yaml', '**/devenv.lock') }}
-        restore-keys: ${{ runner.os }}-nix-cache-
+        prefix-key: "${{ inputs.cache-version }}"
 
-    - name: rust toolchain
-      run: |
-        sed -i 's/channel = ".*"/channel = "${{ inputs.rust }}"/' rust-toolchain.toml
-      shell: bash
+    - name: cache cargo binaries
+      uses: actions/cache@v4
+      with:
+        path: ./.bin
+        key: ${{ runner.os }}-cargo-bin-${{ inputs.cache-version }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-bin-${{ inputs.cache-version }}-
 
     - name: install nix
-      uses: cachix/install-nix-action@v21
+      uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ inputs.github-token }}
 
-    - name: import nix store cache
-      if: steps.nix-cache.outputs.cache-hit == 'true'
-      run: nix-store --import < ${{ inputs.nix-cache }}
-      shell: bash
-
-    - name: enable cachix
-      uses: cachix/cachix-action@v12
-      with:
-        name: devenv
-
-    - name: install devenv.sh
+    - name: setup nix environment
       run: |
+        nix profile add --accept-flake-config nixpkgs#cachix
         cachix use devenv
-        nix profile install --accept-flake-config github:cachix/devenv/v0.6.3
+        nix profile add nixpkgs#devenv
       shell: bash
 
-    - name: run devenv in ci
-      run: devenv ci
-      shell: bash
-
-    - name: update paths
-      run: devenv shell setup:ci
-      shell: bash
-
-    - name: export nix store cache
-      if: steps.nix-cache.outputs.cache-hit != 'true'
-      run: nix-store --export $(find /nix/store -maxdepth 1 -name '*-*')> ${{ inputs.nix-cache }}
-      shell: bash
+    - name: install dependencies
+      run: install:cargo:bin
+      shell: devenv shell -- bash -e {0}

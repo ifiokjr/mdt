@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
 inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/nixpkgs-unstable
@@ -5,3 +6,6 @@ inputs:
     url: github:oxalica/rust-overlay
     overlays:
       - default
+
+# If you're using non-OSS software, you can set allowUnfree to true.
+allowUnfree: true

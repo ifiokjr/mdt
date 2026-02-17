@@ -1,0 +1,72 @@
+[packages.mdt]
+versioned_files = [
+	"crates/mdt/Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt" },
+	"Cargo.lock",
+]
+scopes = ["mdt"]
+changelog = "crates/mdt/changelog.md"
+extra_changelog_sections = [{ name = "Notes", types = ["note"] }, { name = "Documentation", types = ["docs"] }]
+
+[packages.mdt_cli]
+versioned_files = [
+	"crates/mdt_cli/Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt_cli" },
+	"Cargo.lock",
+]
+scopes = ["mdt_cli"]
+changelog = "crates/mdt_cli/changelog.md"
+extra_changelog_sections = [{ name = "Notes", types = ["note"] }, { name = "Documentation", types = ["docs"] }]
+
+[[workflows]]
+name = "release"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+ignore_conventional_commits = true
+
+[[workflows.steps]]
+type = "Command"
+command = "dprint fmt"
+
+[[workflows.steps]]
+type = "Command"
+command = "git add --all"
+
+[[workflows.steps]]
+type = "Command"
+command = 'git commit -m "chore: prepare releases"'
+
+[[workflows.steps]]
+type = "Command"
+command = "git push"
+
+[[workflows.steps]]
+type = "Release"
+
+[[workflows]]
+name = "document-change"
+
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+[[workflows.steps]]
+type = "Command"
+command = "dprint fmt .changeset/* --allow-no-files"
+
+[[workflows]]
+name = "forced-release"
+
+[[workflows.steps]]
+type = "Release"
+
+[[workflows]]
+name = "publish"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo workspaces publish --from-git --yes"
+
+[github]
+owner = "ifiokjr"
+repo = "mdt"

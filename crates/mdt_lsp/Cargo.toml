@@ -5,12 +5,13 @@ categories = { workspace = true }
 documentation = "https://docs.rs/mdt_lsp"
 edition = { workspace = true }
 include = { workspace = true }
-keywords = ["markdown", "templates"]
+keywords = ["markdown", "templates", "lsp"]
 license = { workspace = true }
+publish = false
 readme = { workspace = true }
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "update markdown content anywhere using comments as template tags"
+description = "LSP server for mdt (manage markdown templates)"
 
 [dependencies]
 mdt = { workspace = true }
@@ -21,3 +22,6 @@ tower-lsp = { workspace = true, features = ["proposed"] }
 insta = { workspace = true }
 rstest = { workspace = true }
 similar-asserts = { workspace = true }
+
+[lints]
+workspace = true
