@@ -10,9 +10,9 @@ mdt (manage **m**ark**d**own **t**emplates) is a data-driven template engine for
 
 1. **Content synchronization**: Provider blocks define content in `*.t.md` template files. Consumer blocks in other files reference providers by name and get replaced with the provider content on `mdt update`.
 
-2. **Data interpolation** (planned, via `minijinja`): Provider content can reference data pulled from project files (e.g., `package.json` version, `Cargo.toml` metadata). A config file will map source files to namespaces for template variable access.
+2. **Data interpolation** (via `minijinja`): Provider content can reference data pulled from project files (e.g., `package.json` version, `Cargo.toml` metadata) using `{{ namespace.key }}` syntax. An `mdt.toml` config file maps source files to namespaces. Supports JSON, TOML, YAML, and KDL data sources.
 
-3. **Source file scanning** (planned): Consumer tags will be supported inside code comments (`//`, `#`, `///`, `//!`, etc.) in any language, not just markdown files. This enables keeping Rust doc comments, JSDoc, Python docstrings, etc. in sync with central template definitions.
+3. **Source file scanning**: Consumer tags are detected inside code comments in any language (`.rs`, `.ts`, `.py`, `.go`, `.java`, etc.), not just markdown files. This enables keeping Rust doc comments, JSDoc, Python docstrings, etc. in sync with central template definitions.
 
 4. **Transformers**: Pipe-delimited filters modify content during injection — `trim`, `indent`, `prefix`, `wrap`, `codeBlock`, `code`, `replace`. Example: `<!-- {=docs|prefix:"\n"|indent:"//! "} -->` turns content into Rust doc comments.
 
@@ -71,7 +71,7 @@ Key style rules: hard tabs, max width 100, one import per line (`imports_granula
 
 ### Workspace Crates
 
-- **`crates/mdt`** — Core library. Provides the lexer, parser, pattern matcher, project scanner, and template engine for processing markdown template tags. Uses `minijinja` for template rendering (planned for data interpolation) and `miette` for error reporting.
+- **`crates/mdt`** — Core library. Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
 - **`crates/mdt_cli`** — CLI tool. Provides `init`, `check`, and `update` commands for managing markdown templates via the command line. Uses `clap` for argument parsing.
 - **`crates/mdt_lsp`** — LSP server (planned, `publish = false`). Will provide language server protocol support for editor integration using `tower-lsp`. Not published until real features are implemented.
 - **`docs/`** — mdbook documentation.
@@ -129,7 +129,8 @@ This content gets replaced
 - `*.t.md` — Template definition files containing provider blocks. Only provider blocks in these files are recognized.
 - All other `.md`/`.mdx`/`.markdown` files — Scanned for consumer blocks.
 - Hidden directories (`.git`, etc.), `node_modules`, and `target` are skipped during scanning.
-- Future: source code files (`.rs`, `.ts`, `.py`, etc.) will also be scanned for consumer tags inside code comments.
+- Source code files (`.rs`, `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.java`, `.kt`, `.swift`, `.c`, `.cpp`, `.h`, `.cs`) are scanned for consumer tags inside code comments.
+- Subdirectories with their own `mdt.toml` are treated as separate project scopes and not scanned from the parent.
 
 ### CLI Commands
 
@@ -137,20 +138,20 @@ This content gets replaced
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
 
-### Future: Data Interpolation
+### Data Interpolation
 
-Provider content will support `minijinja` template variables populated from project files. A config file (e.g., `.mdt.toml`) will map source files to namespaces:
+Provider content supports `minijinja` template variables populated from project files. The `mdt.toml` config file maps source files to namespaces:
 
 ```toml
-# Example (planned syntax)
-[data.pkg]
-source = "package.json"
-
-[data.cargo]
-source = "Cargo.toml"
+# mdt.toml
+[data]
+pkg = "package.json"
+cargo = "Cargo.toml"
 ```
 
-Then in templates: `Version: {{ pkg.version }}` or `Edition: {{ cargo.package.edition }}`.
+Then in provider blocks: `Version: {{ pkg.version }}` or `Edition: {{ cargo.package.edition }}`.
+
+Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`.
 
 ## Toolchain
 
@@ -230,3 +231,34 @@ Defined in `.cargo/config.toml` — these proxy to `cargo-run-bin`:
 - `clippy::correctness` is **denied** (not just warned)
 - `clippy::wildcard_dependencies` is **denied**
 - `Result::expect` is a disallowed method (use `unwrap_or_else` with explicit panic message instead)
+
+## Workflow Rules
+
+### Pull Request Workflow
+
+**Every change MUST be made via a pull request.** Do not commit directly to `main`. The workflow is:
+
+1. Create a feature branch from `main`
+2. Make all changes on the feature branch
+3. Create a PR with a descriptive title and summary
+4. Monitor CI checks — wait for all checks to pass
+5. Merge the PR back into `main` only after all checks pass
+6. If checks fail, fix the issues on the branch and push again
+
+### Logic Bug Testing Protocol
+
+**When a logic bug is discovered, it MUST be reproduced with a failing test before fixing:**
+
+1. **Identify** the bug and understand the root cause
+2. **Write a test** that reliably reproduces the bug — this test MUST fail before the fix
+3. **Verify** the test fails for the right reason (not a test setup error)
+4. **Implement** the fix
+5. **Verify** the test now passes along with all other tests
+6. **Never** fix a bug without first having a failing test that proves the bug exists
+
+### Test Quality Standards
+
+- Every test must have a clear purpose — no redundant or trivial tests
+- Tests should cover edge cases, error paths, and real-world usage patterns
+- Integration tests should use realistic fixtures (like the TypeScript workspace fixture)
+- Unit tests should be focused and fast

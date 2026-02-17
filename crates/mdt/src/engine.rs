@@ -41,16 +41,54 @@ pub struct UpdateResult {
 	pub updated_count: usize,
 }
 
+/// Render provider content through minijinja using the given data context.
+/// If data is empty or the content has no template syntax, returns the
+/// content unchanged.
+#[allow(clippy::implicit_hasher)]
+pub fn render_template(
+	content: &str,
+	data: &HashMap<String, serde_json::Value>,
+) -> MdtResult<String> {
+	if data.is_empty() || !has_template_syntax(content) {
+		return Ok(content.to_string());
+	}
+
+	let mut env = minijinja::Environment::new();
+	env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
+	env.add_template("__inline__", content)
+		.map_err(|e| MdtError::TemplateRender(e.to_string()))?;
+
+	let template = env
+		.get_template("__inline__")
+		.map_err(|e| MdtError::TemplateRender(e.to_string()))?;
+
+	let ctx = minijinja::Value::from_serialize(data);
+	template
+		.render(ctx)
+		.map_err(|e| MdtError::TemplateRender(e.to_string()))
+}
+
+/// Check whether content contains minijinja template syntax.
+fn has_template_syntax(content: &str) -> bool {
+	content.contains("{{") || content.contains("{%") || content.contains("{#")
+}
+
 /// Check whether all consumer blocks in the project are up to date.
-pub fn check_project(project: &Project) -> MdtResult<CheckResult> {
+/// Consumer blocks that reference non-existent providers are silently skipped.
+#[allow(clippy::implicit_hasher)]
+pub fn check_project(
+	project: &Project,
+	data: &HashMap<String, serde_json::Value>,
+) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 
 	for consumer in &project.consumers {
 		let Some(provider) = project.providers.get(&consumer.block.name) else {
-			return Err(MdtError::MissingProvider(consumer.block.name.clone()));
+			continue;
 		};
 
-		let expected = apply_transformers(&provider.content, &consumer.block.transformers);
+		let rendered = render_template(&provider.content, data)?;
+		let expected = apply_transformers(&rendered, &consumer.block.transformers);
 
 		if consumer.content != expected {
 			stale.push(StaleEntry {
@@ -66,7 +104,11 @@ pub fn check_project(project: &Project) -> MdtResult<CheckResult> {
 }
 
 /// Compute the updated file contents for all consumer blocks.
-pub fn compute_updates(project: &Project) -> MdtResult<UpdateResult> {
+#[allow(clippy::implicit_hasher)]
+pub fn compute_updates(
+	project: &Project,
+	data: &HashMap<String, serde_json::Value>,
+) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 
@@ -95,10 +137,11 @@ pub fn compute_updates(project: &Project) -> MdtResult<UpdateResult> {
 
 		for consumer in sorted_consumers {
 			let Some(provider) = project.providers.get(&consumer.block.name) else {
-				return Err(MdtError::MissingProvider(consumer.block.name.clone()));
+				continue;
 			};
 
-			let new_content = apply_transformers(&provider.content, &consumer.block.transformers);
+			let rendered = render_template(&provider.content, data)?;
+			let new_content = apply_transformers(&rendered, &consumer.block.transformers);
 
 			if consumer.content != new_content {
 				let start = consumer.block.opening.end.offset;

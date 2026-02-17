@@ -16,16 +16,22 @@ description = "update markdown content anywhere using comments as template tags"
 derive_more = { workspace = true }
 doc-comment = { workspace = true } # TODO replace with `mdt` template
 float-cmp = { workspace = true }
+kdl = { workspace = true }
 markdown = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 minijinja = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yml = { workspace = true }
 snailquote = { workspace = true }
 thiserror = { workspace = true }
+toml = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
 rstest = { workspace = true }
 similar-asserts = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

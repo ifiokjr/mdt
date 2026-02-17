@@ -21,10 +21,27 @@ pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
 	let content = content.as_ref();
 	let html_nodes = get_html_nodes(content)?;
 	let token_groups = tokenize(html_nodes)?;
+	build_blocks_from_groups(&token_groups)
+}
+
+/// Build blocks from already-tokenized groups. This is the shared logic used
+/// by both markdown parsing and source file scanning.
+pub fn build_blocks_from_groups(token_groups: &[TokenGroup]) -> MdtResult<Vec<Block>> {
+	build_blocks_inner(token_groups, false)
+}
+
+/// Like `build_blocks_from_groups`, but silently discards unclosed blocks
+/// instead of returning an error. Used for source files where HTML comments
+/// may appear in string literals without matching close tags.
+pub fn build_blocks_from_groups_lenient(token_groups: &[TokenGroup]) -> MdtResult<Vec<Block>> {
+	build_blocks_inner(token_groups, true)
+}
+
+fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<Vec<Block>> {
 	let mut pending: Vec<BlockCreator> = vec![];
 	let mut blocks: Vec<Block> = vec![];
 
-	for group in &token_groups {
+	for group in token_groups {
 		match classify_group(group) {
 			GroupKind::Provider { name, transformers } => {
 				pending.push(BlockCreator {
@@ -59,9 +76,12 @@ pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
 		}
 	}
 
-	// Any remaining unclosed blocks are errors
-	if let Some(creator) = pending.into_iter().next() {
-		return Err(MdtError::MissingClosingTag(creator.name));
+	// Any remaining unclosed blocks are errors in strict mode,
+	// silently discarded in lenient mode.
+	if !lenient {
+		if let Some(creator) = pending.into_iter().next() {
+			return Err(MdtError::MissingClosingTag(creator.name));
+		}
 	}
 
 	Ok(blocks)

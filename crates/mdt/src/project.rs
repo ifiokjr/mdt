@@ -6,7 +6,9 @@ use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
+use crate::config::MdtConfig;
 use crate::parser::parse;
+use crate::source_scanner::parse_source;
 
 /// A scanned project containing all discovered blocks.
 #[derive(Debug)]
@@ -45,7 +47,11 @@ pub fn scan_project(root: &Path) -> MdtResult<Project> {
 
 	for file in &files {
 		let content = std::fs::read_to_string(file)?;
-		let blocks = parse(&content)?;
+		let blocks = if is_markdown_file(file) {
+			parse(&content)?
+		} else {
+			parse_source(&content)?
+		};
 		let is_template = file
 			.file_name()
 			.and_then(|name| name.to_str())
@@ -85,6 +91,19 @@ pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	})
 }
 
+/// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
+pub fn scan_project_with_config(
+	root: &Path,
+) -> MdtResult<(Project, HashMap<String, serde_json::Value>)> {
+	let project = scan_project(root)?;
+	let data = match MdtConfig::load(root)? {
+		Some(config) => config.load_data(root)?,
+		None => HashMap::new(),
+	};
+
+	Ok((project, data))
+}
+
 /// Extract the text content between a block's opening tag end and closing tag
 /// start. The opening position's end marks where the opening comment ends,
 /// and the closing position's start marks where the closing comment begins.
@@ -102,13 +121,13 @@ pub fn extract_content_between_tags(source: &str, block: &Block) -> String {
 /// Collect all markdown and relevant source files from a directory tree.
 fn collect_files(root: &Path) -> MdtResult<Vec<PathBuf>> {
 	let mut files = Vec::new();
-	walk_dir(root, &mut files)?;
+	walk_dir(root, &mut files, true)?;
 	// Sort for deterministic ordering
 	files.sort();
 	Ok(files)
 }
 
-fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>) -> MdtResult<()> {
+fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>, is_root: bool) -> MdtResult<()> {
 	if !dir.is_dir() {
 		return Ok(());
 	}
@@ -127,7 +146,12 @@ fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>) -> MdtResult<()> {
 		}
 
 		if path.is_dir() {
-			walk_dir(&path, files)?;
+			// Skip subdirectories that have their own mdt.toml (separate
+			// project scope).
+			if !is_root && path.join("mdt.toml").exists() {
+				continue;
+			}
+			walk_dir(&path, files, false)?;
 		} else if is_scannable_file(&path) {
 			files.push(path);
 		}
@@ -138,6 +162,26 @@ fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>) -> MdtResult<()> {
 
 /// Check if a file should be scanned for mdt blocks.
 fn is_scannable_file(path: &Path) -> bool {
+	let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+		return false;
+	};
+
+	matches!(
+		ext,
+		"md" | "mdx"
+			| "markdown"
+			| "rs" | "ts"
+			| "tsx" | "js"
+			| "jsx" | "py"
+			| "go" | "java"
+			| "kt" | "swift"
+			| "c" | "cpp"
+			| "h" | "cs"
+	)
+}
+
+/// Check if a file is a markdown file (parsed via the markdown AST).
+fn is_markdown_file(path: &Path) -> bool {
 	let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
 		return false;
 	};
