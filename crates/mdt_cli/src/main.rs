@@ -17,6 +17,7 @@ fn main() {
 		Some(Commands::Init) => run_init(&args),
 		Some(Commands::Check) => run_check(&args),
 		Some(Commands::Update { dry_run }) => run_update(&args, dry_run),
+		Some(Commands::Lsp) => run_lsp(),
 		None => {
 			eprintln!("No subcommand specified. Run `mdt --help` for usage.");
 			process::exit(1);
@@ -158,5 +159,11 @@ fn run_update(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::error::Er
 		}
 	}
 
+	Ok(())
+}
+
+fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
+	let rt = tokio::runtime::Runtime::new()?;
+	rt.block_on(mdt_lsp::run_server());
 	Ok(())
 }

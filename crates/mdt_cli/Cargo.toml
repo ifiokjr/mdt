@@ -19,6 +19,8 @@ path = "src/main.rs"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 mdt = { workspace = true }
+mdt_lsp = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 
 [dev-dependencies]
 assert_cmd = { workspace = true }

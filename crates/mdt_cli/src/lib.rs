@@ -46,4 +46,10 @@ pub enum Commands {
 		#[arg(long, default_value_t = false)]
 		dry_run: bool,
 	},
+	/// Start the mdt language server (LSP).
+	///
+	/// Communicates over stdin/stdout using the Language Server Protocol.
+	/// Configure your editor to run `mdt lsp` as the language server
+	/// command for markdown and template files.
+	Lsp,
 }

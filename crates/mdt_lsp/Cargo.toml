@@ -15,6 +15,7 @@ description = "LSP server for mdt (manage markdown templates)"
 
 [dependencies]
 mdt = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower-lsp = { workspace = true, features = ["proposed"] }
 
@@ -22,6 +23,7 @@ tower-lsp = { workspace = true, features = ["proposed"] }
 insta = { workspace = true }
 rstest = { workspace = true }
 similar-asserts = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true
