@@ -753,10 +753,12 @@ dependencies = [
  "clap",
  "insta",
  "mdt",
+ "mdt_lsp",
  "predicates",
  "rstest",
  "similar-asserts",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -766,7 +768,9 @@ dependencies = [
  "insta",
  "mdt",
  "rstest",
+ "serde_json",
  "similar-asserts",
+ "tempfile",
  "tokio",
  "tower-lsp",
 ]
