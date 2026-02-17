@@ -4,29 +4,29 @@ default-members = ["crates/*", "docs"]
 resolver = "2"
 
 [workspace.dependencies]
-assert_cmd = "2"
-clap = "4"
-derive_more = { version = "2", features = ["deref", "deref_mut"] }
-doc-comment = "0.3"
-float-cmp = "0.10"
-globset = "0.4"
-insta = "1"
-kdl = "6"
-markdown = "1"
-miette = "7"
-minijinja = "2"
-predicates = "3"
-rstest = "0.26"
-serde = "1"
-serde_json = "1"
-serde_yml = "0.0.12"
-similar-asserts = "1"
-snailquote = "0.3"
-tempfile = "3"
-thiserror = "2"
-tokio = "1"
-toml = "1"
-tower-lsp = "0.20"
+assert_cmd = { default-features = false, version = "^2" }
+clap = { default-features = false, version = "^4" }
+derive_more = { version = "2", features = ["deref", "deref_mut"], default-features = false }
+doc-comment = { default-features = false, version = "^0.3" }
+float-cmp = { default-features = false, version = "^0.10" }
+globset = { default-features = false, version = "^0.4" }
+insta = { default-features = false, version = "^1" }
+kdl = { default-features = false, version = "^6" }
+markdown = { default-features = false, version = "^1" }
+miette = { default-features = false, version = "^7" }
+minijinja = { default-features = false, version = "^2" }
+predicates = { default-features = false, version = "^3" }
+rstest = { default-features = false, version = "^0.26" }
+serde = { default-features = false, version = "^1" }
+serde_json = { default-features = false, version = "^1" }
+serde_yml = { default-features = false, version = "^0.0.12" }
+similar-asserts = { default-features = false, version = "^1" }
+snailquote = { default-features = false, version = "^0.3" }
+tempfile = { default-features = false, version = "^3" }
+thiserror = { default-features = false, version = "^2" }
+tokio = { default-features = false, version = "^1" }
+toml = { default-features = false, version = "^1" }
+tower-lsp = { default-features = false, version = "^0.20" }
 
 # Internal crates
 mdt = { path = "./crates/mdt", version = "0.0.0" }
