@@ -17,18 +17,18 @@ name = "mdt"
 path = "src/main.rs"
 
 [dependencies]
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive"], default-features = true }
 mdt = { workspace = true }
 mdt_lsp = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["full"], default-features = true }
 
 [dev-dependencies]
-assert_cmd = { workspace = true }
-insta = { workspace = true }
-predicates = { workspace = true }
-rstest = { workspace = true }
-similar-asserts = { workspace = true }
-tempfile = { workspace = true }
+assert_cmd = { workspace = true, default-features = true }
+insta = { workspace = true, default-features = true }
+predicates = { workspace = true, default-features = true }
+rstest = { workspace = true, default-features = true }
+similar-asserts = { workspace = true, default-features = true }
+tempfile = { workspace = true, default-features = true }
 
 [lints]
 workspace = true

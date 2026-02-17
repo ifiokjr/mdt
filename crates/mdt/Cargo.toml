@@ -13,25 +13,25 @@ rust-version = { workspace = true }
 description = "update markdown content anywhere using comments as template tags"
 
 [dependencies]
-derive_more = { workspace = true }
-float-cmp = { workspace = true }
-globset = { workspace = true }
-kdl = { workspace = true }
-markdown = { workspace = true }
-miette = { workspace = true, features = ["fancy"] }
-minijinja = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-serde_yml = { workspace = true }
-snailquote = { workspace = true }
-thiserror = { workspace = true }
-toml = { workspace = true }
+derive_more = { workspace = true, default-features = true }
+float-cmp = { workspace = true, default-features = true }
+globset = { workspace = true, default-features = true }
+kdl = { workspace = true, default-features = true }
+markdown = { workspace = true, default-features = true }
+miette = { workspace = true, features = ["fancy"], default-features = true }
+minijinja = { workspace = true, default-features = true }
+serde = { workspace = true, features = ["derive"], default-features = true }
+serde_json = { workspace = true, default-features = true }
+serde_yml = { workspace = true, default-features = true }
+snailquote = { workspace = true, default-features = true }
+thiserror = { workspace = true, default-features = true }
+toml = { workspace = true, default-features = true }
 
 [dev-dependencies]
-insta = { workspace = true }
-rstest = { workspace = true }
-similar-asserts = { workspace = true }
-tempfile = { workspace = true }
+insta = { workspace = true, default-features = true }
+rstest = { workspace = true, default-features = true }
+similar-asserts = { workspace = true, default-features = true }
+tempfile = { workspace = true, default-features = true }
 
 [lints]
 workspace = true
