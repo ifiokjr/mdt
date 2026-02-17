@@ -8,17 +8,15 @@ assert_cmd = "2"
 clap = "4"
 derive_more = { version = "2", features = ["deref", "deref_mut"] }
 doc-comment = "0.3"
-float-cmp = "0.9"
+float-cmp = "0.10"
 globset = "0.4"
 insta = "1"
 kdl = "6"
-logos = "0.15"
 markdown = "1"
 miette = "7"
 minijinja = "2"
 predicates = "3"
-readonly = "0.2"
-rstest = "0.25"
+rstest = "0.26"
 serde = "1"
 serde_json = "1"
 serde_yml = "0.0.12"
@@ -27,10 +25,8 @@ snailquote = "0.3"
 tempfile = "3"
 thiserror = "2"
 tokio = "1"
-toml = "0.8"
+toml = "1"
 tower-lsp = "0.20"
-typed-builder = "0.21"
-vfs = "0.12"
 
 # Internal crates
 mdt = { path = "./crates/mdt", version = "0.0.0" }
@@ -50,12 +46,12 @@ repository = "https://github.com/ifiokjr/mdt"
 rust-version = "1.86.0"
 
 [workspace.metadata.bin]
-cargo-insta = { version = "1.44.3" }
-cargo-llvm-cov = { version = "0.6.21" }
-cargo-nextest = { version = "0.9.114" }
-cargo-semver-checks = { version = "0.45.0" }
+cargo-insta = { version = "1.46.3" }
+cargo-llvm-cov = { version = "0.8.4" }
+cargo-nextest = { version = "0.9.127" }
+cargo-semver-checks = { version = "0.46.0" }
 cargo-workspaces = { version = "0.4.2" }
-knope = { version = "0.21.7", bins = ["knope"] }
+knope = { version = "0.22.3", bins = ["knope"] }
 
 [workspace.lints.rust]
 # Group lints

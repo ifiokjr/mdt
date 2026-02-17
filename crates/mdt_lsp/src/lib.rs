@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use mdt::Block;
 use mdt::BlockType;
-use mdt::TransformerType;
 use mdt::apply_transformers;
 use mdt::parse;
 use mdt::parse_source;
@@ -51,10 +50,10 @@ impl WorkspaceState {
 		};
 
 		match scan_project_with_config(root) {
-			Ok((project, data)) => {
-				self.providers = project.providers;
-				self.consumers = project.consumers;
-				self.data = data;
+			Ok(ctx) => {
+				self.providers = ctx.project.providers;
+				self.consumers = ctx.project.consumers;
+				self.data = ctx.data;
 			}
 			Err(e) => {
 				eprintln!("mdt-lsp: failed to scan project: {e}");
@@ -422,7 +421,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Url, position: Position) -> Optio
 					let names: Vec<String> = block
 						.transformers
 						.iter()
-						.map(|t| transformer_type_name(t.r#type))
+						.map(|t| t.r#type.to_string())
 						.collect();
 					parts.push(format!("\n**Transformers:** {}", names.join(" | ")));
 				}
@@ -472,21 +471,6 @@ fn compute_hover(state: &WorkspaceState, uri: &Url, position: Position) -> Optio
 		}),
 		range: Some(to_lsp_range(&block.opening)),
 	})
-}
-
-/// Get the display name for a transformer type.
-fn transformer_type_name(t: TransformerType) -> String {
-	match t {
-		TransformerType::Trim => "trim".to_string(),
-		TransformerType::TrimStart => "trimStart".to_string(),
-		TransformerType::TrimEnd => "trimEnd".to_string(),
-		TransformerType::Indent => "indent".to_string(),
-		TransformerType::Prefix => "prefix".to_string(),
-		TransformerType::Wrap => "wrap".to_string(),
-		TransformerType::CodeBlock => "codeBlock".to_string(),
-		TransformerType::Code => "code".to_string(),
-		TransformerType::Replace => "replace".to_string(),
-	}
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,12 @@ use similar_asserts::assert_eq;
 
 use super::__fixtures::*;
 use super::*;
+use crate::lexer::tokenize;
+use crate::patterns;
+use crate::patterns::PatternMatcher;
+use crate::project::ProjectContext;
+use crate::tokens::GetDynamicRange;
+use crate::tokens::TokenGroup;
 
 #[rstest]
 #[case::consumer(consumer_token_group(), patterns::consumer_pattern())]
@@ -361,9 +367,11 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let result = check_project(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let result = check_project(&ctx)?;
 	assert!(result.is_ok());
 
 	Ok(())
@@ -383,9 +391,11 @@ fn check_project_detects_stale() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let result = check_project(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let result = check_project(&ctx)?;
 	assert!(!result.is_ok());
 	assert_eq!(result.stale.len(), 1);
 	assert_eq!(result.stale[0].block_name, "block");
@@ -407,9 +417,11 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 1);
 	assert_eq!(updates.updated_files.len(), 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
@@ -437,9 +449,11 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -468,9 +482,11 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	// Only the existing consumer should be updated
 	assert_eq!(updates.updated_count, 1);
 
@@ -491,9 +507,11 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
 	assert!(updates.updated_files.is_empty());
 
@@ -515,15 +533,20 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	// First update
-	let project = scan_project(tmp.path())?;
-	let data = HashMap::new();
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	write_updates(&updates)?;
 	assert_eq!(updates.updated_count, 1);
 
 	// Second update should be noop
-	let project = scan_project(tmp.path())?;
-	let updates = compute_updates(&project, &data)?;
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
 
 	Ok(())
@@ -554,8 +577,8 @@ fn compute_updates_with_template_rendering() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let (project, data) = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&project, &data)?;
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -711,11 +734,11 @@ fn scan_project_with_exclude_patterns() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let (project, _data) = scan_project_with_config(tmp.path())?;
+	let ctx = scan_project_with_config(tmp.path())?;
 	// Should find the readme consumer but not the vendor one
-	assert_eq!(project.consumers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
 	assert!(
-		project.consumers[0]
+		ctx.project.consumers[0]
 			.file
 			.to_string_lossy()
 			.contains("readme.md")
@@ -1124,13 +1147,13 @@ fn source_scanner_extract_html_comments() {
 
 #[test]
 fn source_scanner_parse_source_ts() -> MdtResult<()> {
-	let content = r#"/**
+	let content = r"/**
  * <!-- {=docs} -->
  * old content
  * <!-- {/docs} -->
  */
 export function hello() {}
-"#;
+";
 	let blocks = parse_source(content)?;
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "docs");
@@ -1141,12 +1164,12 @@ export function hello() {}
 
 #[test]
 fn source_scanner_parse_source_rs() -> MdtResult<()> {
-	let content = r#"//! <!-- {=myDocs} -->
+	let content = r"//! <!-- {=myDocs} -->
 //! Some documentation.
 //! <!-- {/myDocs} -->
 
 pub fn main() {}
-"#;
+";
 	let blocks = parse_source(content)?;
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "myDocs");
@@ -1289,7 +1312,7 @@ fn parse_consumer_with_numeric_argument() -> MdtResult<()> {
 	assert_eq!(blocks[0].transformers.len(), 1);
 	assert_eq!(blocks[0].transformers[0].args.len(), 1);
 	match &blocks[0].transformers[0].args[0] {
-		Argument::Number(n) => assert_eq!(*n, 4.0),
+		Argument::Number(n) => assert!((n - 4.0).abs() < f64::EPSILON),
 		other => panic!("expected Number, got {other:?}"),
 	}
 

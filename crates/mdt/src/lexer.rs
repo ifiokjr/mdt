@@ -3,8 +3,8 @@ use snailquote::unescape;
 
 use crate::MdtResult;
 use crate::Position;
-use crate::Token;
-use crate::TokenGroup;
+use crate::tokens::Token;
+use crate::tokens::TokenGroup;
 
 struct TokenizerState {
 	/// The remaining html nodes
@@ -252,6 +252,7 @@ impl TokenizerState {
 	}
 }
 
+#[allow(clippy::unnecessary_wraps)]
 pub fn tokenize(nodes: Vec<Html>) -> MdtResult<Vec<TokenGroup>> {
 	let mut state = TokenizerState {
 		nodes,
@@ -434,10 +435,6 @@ fn remove_first<T>(list: &mut Vec<T>) -> Option<T> {
 	} else {
 		Some(list.remove(0))
 	}
-}
-
-pub fn memchr(haystack: &[u8], needle: u8) -> Option<usize> {
-	haystack.iter().position(|&x| x == needle)
 }
 
 pub fn memstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {

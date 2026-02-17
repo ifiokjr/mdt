@@ -7,24 +7,21 @@
 pub use config::*;
 pub use engine::*;
 pub use error::*;
-pub use lexer::*;
 pub use parser::*;
-pub use patterns::PatternMatcher;
 pub use position::*;
 pub use project::*;
 pub use source_scanner::*;
-pub use tokens::*;
 
 pub mod config;
 mod engine;
 mod error;
-mod lexer;
+pub(crate) mod lexer;
 mod parser;
-pub mod patterns;
+pub(crate) mod patterns;
 mod position;
 pub mod project;
 mod source_scanner;
-mod tokens;
+pub(crate) mod tokens;
 
 #[cfg(test)]
 mod __fixtures;
