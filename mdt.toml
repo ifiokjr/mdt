@@ -1,0 +1,3 @@
+[data]
+cargo_mdt = "crates/mdt/Cargo.toml"
+cargo_mdt_cli = "crates/mdt_cli/Cargo.toml"

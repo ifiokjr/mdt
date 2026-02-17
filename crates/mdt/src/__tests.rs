@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+
 use rstest::rstest;
 use similar_asserts::assert_eq;
 
@@ -134,6 +137,289 @@ old
 	assert_eq!(blocks[0].transformers.len(), 2);
 	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Prefix);
 	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Indent);
+
+	Ok(())
+}
+
+// Config tests
+
+#[test]
+fn config_load_missing_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let config = MdtConfig::load(tmp.path())?;
+	assert!(config.is_none());
+	Ok(())
+}
+
+#[test]
+fn config_load_valid() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npackage = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?;
+	assert!(config.is_some());
+	let config = config.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(
+		config.data.get("package"),
+		Some(&PathBuf::from("package.json"))
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_load_malformed() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "not valid toml {{{{")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = MdtConfig::load(tmp.path());
+	assert!(result.is_err());
+}
+
+#[test]
+fn config_load_data_json() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\npkg = \"data.json\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.json"),
+		r#"{"name": "test", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	let pkg = data.get("pkg").unwrap_or_else(|| panic!("expected pkg"));
+	assert_eq!(pkg["name"], "test");
+	assert_eq!(pkg["version"], "1.0.0");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_toml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\ncargo = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		"[package]\nname = \"my-crate\"\nversion = \"0.1.0\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	let cargo = data
+		.get("cargo")
+		.unwrap_or_else(|| panic!("expected cargo"));
+	assert_eq!(cargo["package"]["name"], "my-crate");
+	assert_eq!(cargo["package"]["version"], "0.1.0");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_yaml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\ninfo = \"data.yaml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.yaml"),
+		"name: my-project\nversion: 2.0.0\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	let info = data.get("info").unwrap_or_else(|| panic!("expected info"));
+	assert_eq!(info["name"], "my-project");
+	assert_eq!(info["version"], "2.0.0");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_kdl() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"name \"my-app\"\nversion \"3.0\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert_eq!(conf["name"], "my-app");
+	assert_eq!(conf["version"], "3.0");
+
+	Ok(())
+}
+
+#[test]
+fn config_unsupported_format() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\ndata = \"data.xml\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.xml"), "<data/>").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+// Template rendering tests
+
+#[test]
+fn render_template_with_variables() -> MdtResult<()> {
+	let mut data = HashMap::new();
+	data.insert(
+		"package".to_string(),
+		serde_json::json!({"name": "my-lib", "version": "1.2.3"}),
+	);
+
+	let content = "Install {{ package.name }} v{{ package.version }}";
+	let result = render_template(content, &data)?;
+	assert_eq!(result, "Install my-lib v1.2.3");
+
+	Ok(())
+}
+
+#[test]
+fn render_template_empty_data() -> MdtResult<()> {
+	let data = HashMap::new();
+	let content = "No variables here.";
+	let result = render_template(content, &data)?;
+	assert_eq!(result, "No variables here.");
+
+	Ok(())
+}
+
+#[test]
+fn render_template_no_syntax() -> MdtResult<()> {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"name": "test"}));
+
+	let content = "Plain text without template syntax.";
+	let result = render_template(content, &data)?;
+	assert_eq!(result, "Plain text without template syntax.");
+
+	Ok(())
+}
+
+#[test]
+fn render_template_nested_access() -> MdtResult<()> {
+	let mut data = HashMap::new();
+	data.insert(
+		"cargo".to_string(),
+		serde_json::json!({
+			"package": {
+				"name": "my-crate",
+				"version": "0.1.0",
+				"edition": "2024"
+			}
+		}),
+	);
+
+	let content = "{{ cargo.package.name }} edition {{ cargo.package.edition }}";
+	let result = render_template(content, &data)?;
+	assert_eq!(result, "my-crate edition 2024");
+
+	Ok(())
+}
+
+// Source scanner tests
+
+#[test]
+fn source_scanner_extract_html_comments() {
+	let content = "// some code\n// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
+	let nodes = extract_html_comments(content);
+	assert_eq!(nodes.len(), 2);
+	assert_eq!(nodes[0].value, "<!-- {=block} -->");
+	assert_eq!(nodes[1].value, "<!-- {/block} -->");
+}
+
+#[test]
+fn source_scanner_parse_source_ts() -> MdtResult<()> {
+	let content = r#"/**
+ * <!-- {=docs} -->
+ * old content
+ * <!-- {/docs} -->
+ */
+export function hello() {}
+"#;
+	let blocks = parse_source(content)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "docs");
+	assert_eq!(blocks[0].r#type, BlockType::Consumer);
+
+	Ok(())
+}
+
+#[test]
+fn source_scanner_parse_source_rs() -> MdtResult<()> {
+	let content = r#"//! <!-- {=myDocs} -->
+//! Some documentation.
+//! <!-- {/myDocs} -->
+
+pub fn main() {}
+"#;
+	let blocks = parse_source(content)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "myDocs");
+	assert_eq!(blocks[0].r#type, BlockType::Consumer);
+
+	Ok(())
+}
+
+#[test]
+fn source_scanner_lenient_unclosed() -> MdtResult<()> {
+	let content = "// <!-- {=unclosed} -->\n// no close tag\n";
+	let blocks = parse_source(content)?;
+	assert!(blocks.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn source_scanner_with_transformers() -> MdtResult<()> {
+	let content = r#"// <!-- {=block|trim|indent:"/// "} -->
+// old
+// <!-- {/block} -->
+"#;
+	let blocks = parse_source(content)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 2);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Trim);
+	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Indent);
+
+	Ok(())
+}
+
+#[test]
+fn source_scanner_no_comments() -> MdtResult<()> {
+	let content = "fn main() {\n\tprintln!(\"hello\");\n}\n";
+	let blocks = parse_source(content)?;
+	assert!(blocks.is_empty());
 
 	Ok(())
 }

@@ -22,6 +22,18 @@ pub enum MdtError {
 	#[error("consumer block `{name}` in {file} is out of date")]
 	#[diagnostic(code(mdt::stale_consumer))]
 	StaleConsumer { name: String, file: String },
+	#[error("failed to parse config file: {0}")]
+	#[diagnostic(code(mdt::config_parse))]
+	ConfigParse(String),
+	#[error("failed to load data file `{path}`: {reason}")]
+	#[diagnostic(code(mdt::data_file))]
+	DataFile { path: String, reason: String },
+	#[error("unsupported data file format: {0}")]
+	#[diagnostic(code(mdt::unsupported_format))]
+	UnsupportedDataFormat(String),
+	#[error("template rendering failed: {0}")]
+	#[diagnostic(code(mdt::template_render))]
+	TemplateRender(String),
 }
 
 pub type MdtResult<T> = Result<T, MdtError>;

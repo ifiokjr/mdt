@@ -4,7 +4,7 @@ use std::process;
 use clap::Parser;
 use mdt::check_project;
 use mdt::compute_updates;
-use mdt::project::scan_project;
+use mdt::project::scan_project_with_config;
 use mdt::write_updates;
 use mdt_cli::Commands;
 use mdt_cli::MdtCli;
@@ -64,7 +64,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
-	let project = scan_project(&root)?;
+	let (project, data) = scan_project_with_config(&root)?;
 
 	if args.verbose {
 		println!(
@@ -74,7 +74,7 @@ fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		);
 	}
 
-	let result = check_project(&project)?;
+	let result = check_project(&project, &data)?;
 
 	if result.is_ok() {
 		println!("All consumer blocks are up to date.");
@@ -97,7 +97,7 @@ fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_update(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
-	let project = scan_project(&root)?;
+	let (project, data) = scan_project_with_config(&root)?;
 
 	if args.verbose {
 		println!(
@@ -107,7 +107,7 @@ fn run_update(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::error::Er
 		);
 	}
 
-	let updates = compute_updates(&project)?;
+	let updates = compute_updates(&project, &data)?;
 
 	if updates.updated_count == 0 {
 		println!("All consumer blocks are already up to date.");

@@ -4,55 +4,55 @@
 
 **Status:** Early development (v0.0.0)
 
-## Motivation
+<!-- {=mdtPackageDocumentation} -->
 
-When managing larger libraries I find myself copying and pasting the examples across markdown and code documentation.
+`mdt` is a data-driven template engine for keeping documentation synchronized across your project. It uses comment-based template tags to define content once and distribute it to multiple locations — markdown files, code documentation comments (in any language), READMEs, mdbook docs, and more.
 
-These examples and explanations are often identical but need to be presented in separate places.
+<!-- {/mdtPackageDocumentation} -->
 
-The problem, examples can quickly fall out of date and synchronizing them is painful.
+<!-- {=mdtTemplateSyntax} -->
 
-This project provides a syntax to manage markdown templates `mdt` across all the files in your project. It can also manage the templates inside code documentation for any language that supports markdown in their documentation comments (which is most of them).
+### Template Syntax
 
-## Template Syntax
-
-### Provider Tags
-
-Define template blocks in `*.t.md` definition files:
+**Provider tag** (defines a template block in `*.t.md` definition files):
 
 ```markdown
 <!-- {@blockName} -->
 
-Content to inject into consumer tags
+Content to inject
 
 <!-- {/blockName} -->
 ```
 
-### Consumer Tags
-
-Mark where content should be injected:
+**Consumer tag** (marks where content should be injected):
 
 ```markdown
 <!-- {=blockName} -->
 
-This content gets replaced automatically
+This content gets replaced
 
 <!-- {/blockName} -->
 ```
 
-### Filters and Pipes
-
-Template values support Jinja-style filters:
+**Filters and pipes:** Template values support pipe-delimited transformers:
 
 ```markdown
 <!-- {=block|prefix:"\n"|indent:"  "} -->
 ```
 
-## CLI Commands
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wrap`, `codeBlock`, `code`, `replace`.
 
-- `mdt init` — Initialize mdt configuration in a project
-- `mdt check` — Verify all template blocks are up-to-date
-- `mdt update` — Update all template blocks with latest content
+<!-- {/mdtTemplateSyntax} -->
+
+<!-- {=mdtCliUsage} -->
+
+### CLI Commands
+
+- `mdt init [--path <dir>]` — Create a sample `template.t.md` file with getting-started instructions.
+- `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
+- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
+
+<!-- {/mdtCliUsage} -->
 
 ## LSP
 
