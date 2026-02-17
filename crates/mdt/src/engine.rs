@@ -222,7 +222,74 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 			let replacement = get_string_arg(&transformer.args, 1).unwrap_or_default();
 			content.replace(&search, &replacement)
 		}
+		TransformerType::Suffix => {
+			let suffix = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			format!("{content}{suffix}")
+		}
+		TransformerType::LinePrefix => {
+			let prefix = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			content
+				.lines()
+				.map(|line| {
+					if line.is_empty() {
+						String::new()
+					} else {
+						format!("{prefix}{line}")
+					}
+				})
+				.collect::<Vec<_>>()
+				.join("\n")
+		}
+		TransformerType::LineSuffix => {
+			let suffix = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			content
+				.lines()
+				.map(|line| {
+					if line.is_empty() {
+						String::new()
+					} else {
+						format!("{line}{suffix}")
+					}
+				})
+				.collect::<Vec<_>>()
+				.join("\n")
+		}
 	}
+}
+
+/// Validate that all transformer arguments are well-formed. Returns an error
+/// for the first invalid transformer found.
+pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
+	for t in transformers {
+		let (min, max) = match t.r#type {
+			TransformerType::Trim
+			| TransformerType::TrimStart
+			| TransformerType::TrimEnd
+			| TransformerType::Code => (0, 0),
+			TransformerType::Indent
+			| TransformerType::Prefix
+			| TransformerType::Suffix
+			| TransformerType::LinePrefix
+			| TransformerType::LineSuffix
+			| TransformerType::Wrap
+			| TransformerType::CodeBlock => (0, 1),
+			TransformerType::Replace => (2, 2),
+		};
+
+		if t.args.len() < min || t.args.len() > max {
+			let expected = if min == max {
+				format!("{min}")
+			} else {
+				format!("{min}-{max}")
+			};
+			return Err(MdtError::InvalidTransformerArgs {
+				name: t.r#type.to_string(),
+				expected,
+				got: t.args.len(),
+			});
+		}
+	}
+	Ok(())
 }
 
 fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {

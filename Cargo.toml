@@ -15,11 +15,14 @@ kdl = { default-features = false, version = "^6" }
 markdown = { default-features = false, version = "^1" }
 miette = { default-features = false, version = "^7" }
 minijinja = { default-features = false, version = "^2" }
+notify = { default-features = false, version = "^8" }
+owo-colors = { default-features = false, version = "^4" }
 predicates = { default-features = false, version = "^3" }
 rstest = { default-features = false, version = "^0.26" }
 serde = { default-features = false, version = "^1" }
 serde_json = { default-features = false, version = "^1" }
 serde_yml = { default-features = false, version = "^0.0.12" }
+similar = { default-features = false, version = "^2" }
 similar-asserts = { default-features = false, version = "^1" }
 snailquote = { default-features = false, version = "^0.3" }
 tempfile = { default-features = false, version = "^3" }

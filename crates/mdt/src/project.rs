@@ -65,7 +65,7 @@ pub struct ConsumerEntry {
 
 /// Scan a directory and discover all provider and consumer blocks.
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
-	scan_project_with_excludes(root, &GlobSet::empty())
+	scan_project_with_options(root, &GlobSet::empty(), &GlobSet::empty(), &[])
 }
 
 /// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
@@ -75,8 +75,17 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		.as_ref()
 		.map(|c| &c.exclude.patterns[..])
 		.unwrap_or_default();
+	let include_patterns = config
+		.as_ref()
+		.map(|c| &c.include.patterns[..])
+		.unwrap_or_default();
+	let template_paths = config
+		.as_ref()
+		.map(|c| &c.templates.paths[..])
+		.unwrap_or_default();
 	let exclude_set = build_glob_set(exclude_patterns);
-	let project = scan_project_with_excludes(root, &exclude_set)?;
+	let include_set = build_glob_set(include_patterns);
+	let project = scan_project_with_options(root, &exclude_set, &include_set, template_paths)?;
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
@@ -96,12 +105,35 @@ fn build_glob_set(patterns: &[String]) -> GlobSet {
 	builder.build().unwrap_or_else(|_| GlobSet::empty())
 }
 
-/// Scan a directory with exclude patterns applied.
-fn scan_project_with_excludes(root: &Path, exclude_set: &GlobSet) -> MdtResult<Project> {
-	let mut providers = HashMap::new();
+/// Scan a directory with exclude/include patterns and extra template paths.
+fn scan_project_with_options(
+	root: &Path,
+	exclude_set: &GlobSet,
+	include_set: &GlobSet,
+	template_paths: &[PathBuf],
+) -> MdtResult<Project> {
+	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
 	let mut consumers = Vec::new();
 
-	let files = collect_files(root, exclude_set)?;
+	let mut files = collect_files(root, exclude_set)?;
+
+	// Collect files from additional template directories.
+	for template_dir in template_paths {
+		let abs_dir = root.join(template_dir);
+		if abs_dir.is_dir() {
+			let extra_files = collect_files(&abs_dir, exclude_set)?;
+			for f in extra_files {
+				if !files.contains(&f) {
+					files.push(f);
+				}
+			}
+		}
+	}
+
+	// Collect files matching include patterns.
+	if !include_set.is_empty() {
+		collect_included_files(root, root, include_set, exclude_set, &mut files)?;
+	}
 
 	for file in &files {
 		let content = std::fs::read_to_string(file)?;
@@ -122,6 +154,13 @@ fn scan_project_with_excludes(root: &Path, exclude_set: &GlobSet) -> MdtResult<P
 				BlockType::Provider => {
 					if !is_template {
 						continue;
+					}
+					if let Some(existing) = providers.get(&block.name) {
+						return Err(MdtError::DuplicateProvider {
+							name: block.name.clone(),
+							first_file: existing.file.display().to_string(),
+							second_file: file.display().to_string(),
+						});
 					}
 					providers.insert(
 						block.name.clone(),
@@ -212,6 +251,48 @@ fn walk_dir(
 			walk_dir(root, &path, files, false, exclude_set)?;
 		} else if is_scannable_file(&path) {
 			files.push(path);
+		}
+	}
+
+	Ok(())
+}
+
+/// Recursively collect files matching include patterns.
+fn collect_included_files(
+	root: &Path,
+	dir: &Path,
+	include_set: &GlobSet,
+	exclude_set: &GlobSet,
+	files: &mut Vec<PathBuf>,
+) -> MdtResult<()> {
+	if !dir.is_dir() {
+		return Ok(());
+	}
+
+	let entries = std::fs::read_dir(dir)?;
+
+	for entry in entries {
+		let entry = entry?;
+		let path = entry.path();
+
+		if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+			if name.starts_with('.') || name == "node_modules" || name == "target" {
+				continue;
+			}
+		}
+
+		if let Ok(rel_path) = path.strip_prefix(root) {
+			if !exclude_set.is_empty() && exclude_set.is_match(rel_path) {
+				continue;
+			}
+
+			if path.is_file() && include_set.is_match(rel_path) && !files.contains(&path) {
+				files.push(path.clone());
+			}
+		}
+
+		if path.is_dir() {
+			collect_included_files(root, &path, include_set, exclude_set, files)?;
 		}
 	}
 

@@ -16,6 +16,12 @@ use crate::MdtResult;
 ///
 /// [exclude]
 /// patterns = ["vendor/**", "generated/**"]
+///
+/// [include]
+/// patterns = ["docs/**/*.rs"]
+///
+/// [templates]
+/// paths = ["shared/templates"]
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct MdtConfig {
@@ -25,6 +31,12 @@ pub struct MdtConfig {
 	/// Exclusion configuration.
 	#[serde(default)]
 	pub exclude: ExcludeConfig,
+	/// Inclusion configuration — additional glob patterns to scan.
+	#[serde(default)]
+	pub include: IncludeConfig,
+	/// Template paths — additional directories to search for `*.t.md` files.
+	#[serde(default)]
+	pub templates: TemplatesConfig,
 }
 
 /// Configuration for excluding files and directories from scanning.
@@ -34,6 +46,24 @@ pub struct ExcludeConfig {
 	/// These are relative to the project root.
 	#[serde(default)]
 	pub patterns: Vec<String>,
+}
+
+/// Configuration for including additional files in scanning.
+#[derive(Debug, Default, Deserialize)]
+pub struct IncludeConfig {
+	/// Additional glob patterns for files to scan.
+	/// These are relative to the project root.
+	#[serde(default)]
+	pub patterns: Vec<String>,
+}
+
+/// Configuration for additional template search paths.
+#[derive(Debug, Default, Deserialize)]
+pub struct TemplatesConfig {
+	/// Additional directories to search for `*.t.md` template files.
+	/// These are relative to the project root.
+	#[serde(default)]
+	pub paths: Vec<PathBuf>,
 }
 
 impl MdtConfig {
