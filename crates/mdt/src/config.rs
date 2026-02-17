@@ -13,12 +13,27 @@ use crate::MdtResult;
 /// [data]
 /// package = "package.json"
 /// cargo = "Cargo.toml"
+///
+/// [exclude]
+/// patterns = ["vendor/**", "generated/**"]
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct MdtConfig {
 	/// Map of namespace name to relative file path for data sources.
 	#[serde(default)]
 	pub data: HashMap<String, PathBuf>,
+	/// Exclusion configuration.
+	#[serde(default)]
+	pub exclude: ExcludeConfig,
+}
+
+/// Configuration for excluding files and directories from scanning.
+#[derive(Debug, Default, Deserialize)]
+pub struct ExcludeConfig {
+	/// Glob patterns for directories or files to skip during scanning.
+	/// These are relative to the project root.
+	#[serde(default)]
+	pub patterns: Vec<String>,
 }
 
 impl MdtConfig {

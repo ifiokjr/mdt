@@ -2,6 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
+use globset::Glob;
+use globset::GlobSet;
+use globset::GlobSetBuilder;
+
 use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
@@ -40,10 +44,45 @@ pub struct ConsumerEntry {
 
 /// Scan a directory and discover all provider and consumer blocks.
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
+	scan_project_with_excludes(root, &GlobSet::empty())
+}
+
+/// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
+pub fn scan_project_with_config(
+	root: &Path,
+) -> MdtResult<(Project, HashMap<String, serde_json::Value>)> {
+	let config = MdtConfig::load(root)?;
+	let exclude_patterns = config
+		.as_ref()
+		.map(|c| &c.exclude.patterns[..])
+		.unwrap_or_default();
+	let exclude_set = build_glob_set(exclude_patterns);
+	let project = scan_project_with_excludes(root, &exclude_set)?;
+	let data = match config {
+		Some(config) => config.load_data(root)?,
+		None => HashMap::new(),
+	};
+
+	Ok((project, data))
+}
+
+/// Build a `GlobSet` from a list of glob pattern strings.
+fn build_glob_set(patterns: &[String]) -> GlobSet {
+	let mut builder = GlobSetBuilder::new();
+	for pattern in patterns {
+		if let Ok(glob) = Glob::new(pattern) {
+			builder.add(glob);
+		}
+	}
+	builder.build().unwrap_or_else(|_| GlobSet::empty())
+}
+
+/// Scan a directory with exclude patterns applied.
+fn scan_project_with_excludes(root: &Path, exclude_set: &GlobSet) -> MdtResult<Project> {
 	let mut providers = HashMap::new();
 	let mut consumers = Vec::new();
 
-	let files = collect_files(root)?;
+	let files = collect_files(root, exclude_set)?;
 
 	for file in &files {
 		let content = std::fs::read_to_string(file)?;
@@ -91,19 +130,6 @@ pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	})
 }
 
-/// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
-pub fn scan_project_with_config(
-	root: &Path,
-) -> MdtResult<(Project, HashMap<String, serde_json::Value>)> {
-	let project = scan_project(root)?;
-	let data = match MdtConfig::load(root)? {
-		Some(config) => config.load_data(root)?,
-		None => HashMap::new(),
-	};
-
-	Ok((project, data))
-}
-
 /// Extract the text content between a block's opening tag end and closing tag
 /// start. The opening position's end marks where the opening comment ends,
 /// and the closing position's start marks where the closing comment begins.
@@ -119,15 +145,21 @@ pub fn extract_content_between_tags(source: &str, block: &Block) -> String {
 }
 
 /// Collect all markdown and relevant source files from a directory tree.
-fn collect_files(root: &Path) -> MdtResult<Vec<PathBuf>> {
+fn collect_files(root: &Path, exclude_set: &GlobSet) -> MdtResult<Vec<PathBuf>> {
 	let mut files = Vec::new();
-	walk_dir(root, &mut files, true)?;
+	walk_dir(root, root, &mut files, true, exclude_set)?;
 	// Sort for deterministic ordering
 	files.sort();
 	Ok(files)
 }
 
-fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>, is_root: bool) -> MdtResult<()> {
+fn walk_dir(
+	root: &Path,
+	dir: &Path,
+	files: &mut Vec<PathBuf>,
+	is_root: bool,
+	exclude_set: &GlobSet,
+) -> MdtResult<()> {
 	if !dir.is_dir() {
 		return Ok(());
 	}
@@ -145,13 +177,20 @@ fn walk_dir(dir: &Path, files: &mut Vec<PathBuf>, is_root: bool) -> MdtResult<()
 			}
 		}
 
+		// Check against exclude patterns using relative path
+		if let Ok(rel_path) = path.strip_prefix(root) {
+			if !exclude_set.is_empty() && exclude_set.is_match(rel_path) {
+				continue;
+			}
+		}
+
 		if path.is_dir() {
 			// Skip subdirectories that have their own mdt.toml (separate
 			// project scope).
 			if !is_root && path.join("mdt.toml").exists() {
 				continue;
 			}
-			walk_dir(&path, files, false)?;
+			walk_dir(root, &path, files, false, exclude_set)?;
 		} else if is_scannable_file(&path) {
 			files.push(path);
 		}

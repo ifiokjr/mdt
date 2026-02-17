@@ -129,6 +129,7 @@ pub fn compute_updates(
 		};
 
 		let mut result = original.clone();
+		let mut had_update = false;
 		// Process consumers in reverse offset order so earlier replacements
 		// don't shift the positions of later ones.
 		let mut sorted_consumers: Vec<&&ConsumerEntry> = consumers.iter().collect();
@@ -148,13 +149,19 @@ pub fn compute_updates(
 				let end = consumer.block.closing.start.offset;
 
 				if start <= end && end <= result.len() {
-					result = format!("{}{}{}", &result[..start], new_content, &result[end..]);
+					let mut buf =
+						String::with_capacity(result.len() - (end - start) + new_content.len());
+					buf.push_str(&result[..start]);
+					buf.push_str(&new_content);
+					buf.push_str(&result[end..]);
+					result = buf;
+					had_update = true;
 					updated_count += 1;
 				}
 			}
 		}
 
-		if result != original {
+		if had_update {
 			file_contents.insert(file.clone(), result);
 		}
 	}

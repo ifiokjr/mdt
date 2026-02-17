@@ -4,6 +4,7 @@ use std::process;
 use clap::Parser;
 use mdt::check_project;
 use mdt::compute_updates;
+use mdt::project::find_missing_providers;
 use mdt::project::scan_project_with_config;
 use mdt::write_updates;
 use mdt_cli::Commands;
@@ -68,10 +69,23 @@ fn run_check(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 	if args.verbose {
 		println!(
-			"Scanned project: {} providers, {} consumers",
+			"Scanned project: {} provider(s), {} consumer(s)",
 			project.providers.len(),
 			project.consumers.len()
 		);
+
+		if !project.providers.is_empty() {
+			println!("  Providers:");
+			for (name, entry) in &project.providers {
+				println!("    @{name} ({})", entry.file.display());
+			}
+		}
+	}
+
+	// Warn about consumers referencing non-existent providers
+	let missing = find_missing_providers(&project);
+	for name in &missing {
+		eprintln!("warning: consumer block `{name}` has no matching provider");
 	}
 
 	let result = check_project(&project, &data)?;
@@ -101,10 +115,16 @@ fn run_update(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::error::Er
 
 	if args.verbose {
 		println!(
-			"Scanned project: {} providers, {} consumers",
+			"Scanned project: {} provider(s), {} consumer(s)",
 			project.providers.len(),
 			project.consumers.len()
 		);
+	}
+
+	// Warn about consumers referencing non-existent providers
+	let missing = find_missing_providers(&project);
+	for name in &missing {
+		eprintln!("warning: consumer block `{name}` has no matching provider");
 	}
 
 	let updates = compute_updates(&project, &data)?;

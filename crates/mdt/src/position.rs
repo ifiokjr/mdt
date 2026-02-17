@@ -26,9 +26,9 @@ impl Point {
 		}
 	}
 
-	pub fn advance(&mut self, text: impl Display) {
-		for char in text.to_string().chars() {
-			if char == '\n' {
+	pub fn advance_str(&mut self, text: &str) {
+		for byte in text.bytes() {
+			if byte == b'\n' {
 				self.line += 1;
 				self.column = 0;
 				self.offset += 1;
@@ -37,6 +37,10 @@ impl Point {
 				self.offset += 1;
 			}
 		}
+	}
+
+	pub fn advance(&mut self, text: impl Display) {
+		self.advance_str(&text.to_string());
 	}
 }
 
@@ -92,6 +96,10 @@ impl Position {
 
 	pub fn from_points(start: Point, end: Point) -> Self {
 		Self { start, end }
+	}
+
+	pub fn advance_start_str(&mut self, text: &str) {
+		self.start.advance_str(text);
 	}
 
 	pub fn advance_start(&mut self, text: impl Display) {
