@@ -34,7 +34,8 @@ fn update_typescript_workspace() -> AnyEmptyResult {
 	copy_fixture(tmp.path());
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -78,6 +79,7 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 
 	// First update
 	Command::cargo_bin("mdt")?
+		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -86,6 +88,7 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 
 	// Then check — should pass
 	Command::cargo_bin("mdt")?
+		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -103,6 +106,7 @@ fn check_typescript_workspace_stale() -> AnyEmptyResult {
 
 	// Check without updating — should fail because content is stale
 	Command::cargo_bin("mdt")?
+		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -120,13 +124,14 @@ fn dry_run_typescript_workspace() -> AnyEmptyResult {
 	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 
 	Command::cargo_bin("mdt")?
+		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
 		.success()
-		.stdout(predicates::str::contains("Dry run"));
+		.stdout(predicates::str::contains("would update"));
 
 	// File should NOT have changed
 	let readme_after = std::fs::read_to_string(tmp.path().join("readme.md"))?;

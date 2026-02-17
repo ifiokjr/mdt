@@ -61,6 +61,49 @@ impl WorkspaceState {
 		}
 	}
 
+	/// Incrementally update a single document in the project state.
+	/// For template files, this updates providers without a full rescan.
+	/// For non-template files, this updates consumers for that file.
+	fn update_document_in_project(&mut self, uri: &Url) {
+		let Some(doc) = self.documents.get(uri) else {
+			return;
+		};
+
+		let Ok(file_path) = uri.to_file_path() else {
+			return;
+		};
+
+		let is_template = uri.path().ends_with(".t.md");
+
+		for block in &doc.blocks {
+			let block_content = extract_content_between_tags(&doc.content, block);
+
+			if block.r#type == BlockType::Provider && is_template {
+				self.providers.insert(
+					block.name.clone(),
+					ProviderEntry {
+						block: block.clone(),
+						file: file_path.clone(),
+						content: block_content,
+					},
+				);
+			}
+		}
+
+		// Update consumers for this file: remove existing then re-add.
+		self.consumers.retain(|c| c.file != file_path);
+		for block in &doc.blocks {
+			if block.r#type == BlockType::Consumer {
+				let block_content = extract_content_between_tags(&doc.content, block);
+				self.consumers.push(ConsumerEntry {
+					block: block.clone(),
+					file: file_path.clone(),
+					content: block_content,
+				});
+			}
+		}
+	}
+
 	/// Parse a single document and update its cached state. Returns the
 	/// parsed blocks.
 	fn parse_document(&mut self, uri: &Url, content: String) -> Vec<Block> {
@@ -215,13 +258,21 @@ impl LanguageServer for MdtLanguageServer {
 	}
 
 	async fn did_save(&self, params: DidSaveTextDocumentParams) {
-		// On save, rescan the entire project to pick up cross-file changes.
+		let uri = &params.text_document.uri;
+		let is_config = uri.path().ends_with("mdt.toml");
+
 		{
 			let mut state = self.state.write().await;
-			state.rescan_project();
+			if is_config {
+				// Config changed — full rescan needed for data and exclude changes.
+				state.rescan_project();
+			} else {
+				// Incrementally update this document's providers/consumers.
+				state.update_document_in_project(uri);
+			}
 		}
-		self.publish_diagnostics_for(&params.text_document.uri)
-			.await;
+
+		self.publish_diagnostics_for(uri).await;
 	}
 
 	async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -564,6 +615,18 @@ fn transformer_completions() -> Vec<CompletionItem> {
 		(
 			"prefix",
 			"Add a prefix before content. Usage: `prefix:\"// \"`",
+		),
+		(
+			"suffix",
+			"Add a suffix after content. Usage: `suffix:\"\\n\"`",
+		),
+		(
+			"linePrefix",
+			"Add a prefix before each line. Usage: `linePrefix:\"/// \"`",
+		),
+		(
+			"lineSuffix",
+			"Add a suffix after each line. Usage: `lineSuffix:\" \\\\\"`",
 		),
 		("wrap", "Wrap content with a string. Usage: `wrap:\"**\"`"),
 		(

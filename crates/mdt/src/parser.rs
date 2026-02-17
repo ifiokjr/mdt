@@ -208,6 +208,9 @@ fn parse_transformer(
 		"code" => TransformerType::Code,
 		"replace" => TransformerType::Replace,
 		"prefix" => TransformerType::Prefix,
+		"suffix" => TransformerType::Suffix,
+		"linePrefix" | "line_prefix" => TransformerType::LinePrefix,
+		"lineSuffix" | "line_suffix" => TransformerType::LineSuffix,
 		_ => return None,
 	};
 
@@ -231,8 +234,12 @@ fn parse_transformer(
 
 				match iter.next() {
 					Some(Token::String(s, _)) => args.push(Argument::String(s.clone())),
-					Some(Token::Int(n)) => args.push(Argument::Number(*n as f64)),
-					Some(Token::Float(n)) => args.push(Argument::Number(*n)),
+					Some(Token::Int(n)) => {
+						args.push(Argument::Number(OrderedFloat(*n as f64)));
+					}
+					Some(Token::Float(n)) => {
+						args.push(Argument::Number(OrderedFloat(*n)));
+					}
 					Some(Token::Ident(s)) if s == "true" => args.push(Argument::Boolean(true)),
 					Some(Token::Ident(s)) if s == "false" => args.push(Argument::Boolean(false)),
 					_ => break,
@@ -295,7 +302,7 @@ impl BlockCreator {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Block {
 	/// The name of the block used for matching providers to consumers.
 	pub name: String,
@@ -305,17 +312,34 @@ pub struct Block {
 	pub transformers: Vec<Transformer>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Transformer {
 	pub r#type: TransformerType,
 	pub args: Vec<Argument>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Argument {
 	String(String),
-	Number(f64),
+	Number(OrderedFloat),
 	Boolean(bool),
+}
+
+/// A float wrapper that implements `Eq` via approximate comparison,
+/// allowing `Argument` to derive `PartialEq` cleanly.
+#[derive(Debug, Clone, Copy)]
+pub struct OrderedFloat(pub f64);
+
+impl PartialEq for OrderedFloat {
+	fn eq(&self, other: &Self) -> bool {
+		float_cmp::approx_eq!(f64, self.0, other.0)
+	}
+}
+
+impl std::fmt::Display for OrderedFloat {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -338,6 +362,12 @@ pub enum TransformerType {
 	Replace,
 	/// Add a prefix string before the content.
 	Prefix,
+	/// Add a suffix string after the content.
+	Suffix,
+	/// Add a prefix string before each line.
+	LinePrefix,
+	/// Add a suffix string after each line.
+	LineSuffix,
 }
 
 impl std::fmt::Display for TransformerType {
@@ -352,6 +382,9 @@ impl std::fmt::Display for TransformerType {
 			Self::Code => write!(f, "code"),
 			Self::Replace => write!(f, "replace"),
 			Self::Prefix => write!(f, "prefix"),
+			Self::Suffix => write!(f, "suffix"),
+			Self::LinePrefix => write!(f, "linePrefix"),
+			Self::LineSuffix => write!(f, "lineSuffix"),
 		}
 	}
 }

@@ -18,7 +18,8 @@ fn update_replaces_stale_content() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -47,7 +48,8 @@ fn update_noop_when_in_sync() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -71,13 +73,14 @@ fn update_dry_run_does_not_write() -> AnyEmptyResult {
 	std::fs::write(tmp.path().join("readme.md"), consumer_content)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
 		.success()
-		.stdout(predicates::str::contains("Dry run"));
+		.stdout(predicates::str::contains("would update"));
 
 	// File should not have changed
 	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
@@ -101,7 +104,8 @@ fn update_with_transformers() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -127,7 +131,8 @@ fn update_verbose_shows_files() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--verbose")
 		.arg("--path")
 		.arg(tmp.path())
@@ -148,7 +153,8 @@ fn update_warns_missing_provider() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -174,7 +180,8 @@ fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -203,7 +210,8 @@ fn update_dry_run_shows_file_list() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")
 		.arg(tmp.path())
@@ -237,7 +245,8 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -264,7 +273,8 @@ fn update_preserves_surrounding_content() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("update")
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()

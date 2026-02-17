@@ -18,7 +18,8 @@ fn check_passes_when_up_to_date() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -45,7 +46,8 @@ fn check_fails_when_stale() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -62,7 +64,8 @@ fn check_with_no_blocks() -> AnyEmptyResult {
 	std::fs::write(tmp.path().join("readme.md"), "# Just a readme\n")?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -86,7 +89,8 @@ fn check_verbose_shows_provider_count() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--verbose")
 		.arg("--path")
 		.arg(tmp.path())
@@ -109,7 +113,8 @@ fn check_warns_missing_provider() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -135,7 +140,8 @@ fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()
@@ -160,7 +166,8 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
-	cmd.arg("check")
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
 		.assert()

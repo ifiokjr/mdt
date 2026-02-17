@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use clap::Subcommand;
+use clap::ValueEnum;
 
 #[derive(Parser)]
 #[command(
@@ -26,6 +27,10 @@ pub struct MdtCli {
 	/// Enable verbose output.
 	#[arg(long, short, global = true, default_value_t = false)]
 	pub verbose: bool,
+
+	/// Disable colored output.
+	#[arg(long, global = true, default_value_t = false)]
+	pub no_color: bool,
 }
 
 #[derive(Subcommand)]
@@ -36,7 +41,15 @@ pub enum Commands {
 	///
 	/// Exits with a non-zero status code if any consumer blocks are stale.
 	/// Use this in CI to ensure documentation stays synchronized.
-	Check,
+	Check {
+		/// Show a diff for each stale consumer block.
+		#[arg(long, default_value_t = false)]
+		diff: bool,
+
+		/// Output format for check results.
+		#[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+		format: OutputFormat,
+	},
 	/// Update all consumer blocks with the latest provider content.
 	///
 	/// Reads provider blocks from *.t.md template files and replaces
@@ -45,11 +58,27 @@ pub enum Commands {
 		/// Show what would change without writing files.
 		#[arg(long, default_value_t = false)]
 		dry_run: bool,
+
+		/// Watch for file changes and re-run updates automatically.
+		#[arg(long, default_value_t = false)]
+		watch: bool,
 	},
+	/// List all provider and consumer blocks in the project.
+	List,
 	/// Start the mdt language server (LSP).
 	///
 	/// Communicates over stdin/stdout using the Language Server Protocol.
 	/// Configure your editor to run `mdt lsp` as the language server
 	/// command for markdown and template files.
 	Lsp,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum OutputFormat {
+	/// Human-readable text output.
+	Text,
+	/// JSON output for programmatic consumption.
+	Json,
+	/// GitHub Actions annotation format.
+	Github,
 }

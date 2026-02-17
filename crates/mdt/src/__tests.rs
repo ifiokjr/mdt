@@ -1312,7 +1312,7 @@ fn parse_consumer_with_numeric_argument() -> MdtResult<()> {
 	assert_eq!(blocks[0].transformers.len(), 1);
 	assert_eq!(blocks[0].transformers[0].args.len(), 1);
 	match &blocks[0].transformers[0].args[0] {
-		Argument::Number(n) => assert!((n - 4.0).abs() < f64::EPSILON),
+		Argument::Number(n) => assert!((n.0 - 4.0).abs() < f64::EPSILON),
 		other => panic!("expected Number, got {other:?}"),
 	}
 
@@ -1480,4 +1480,329 @@ fn point_advance_str_empty() {
 	assert_eq!(point.line, 1);
 	assert_eq!(point.column, 5);
 	assert_eq!(point.offset, 10);
+}
+
+// --- Suffix transformer tests ---
+
+#[test]
+fn transformer_suffix() {
+	let result = apply_transformers(
+		"Hello",
+		&[Transformer {
+			r#type: TransformerType::Suffix,
+			args: vec![Argument::String("!".to_string())],
+		}],
+	);
+	assert_eq!(result, "Hello!");
+}
+
+#[test]
+fn transformer_suffix_empty_arg() {
+	let result = apply_transformers(
+		"Hello",
+		&[Transformer {
+			r#type: TransformerType::Suffix,
+			args: vec![],
+		}],
+	);
+	assert_eq!(result, "Hello");
+}
+
+#[test]
+fn transformer_line_prefix() {
+	let result = apply_transformers(
+		"line1\nline2\nline3",
+		&[Transformer {
+			r#type: TransformerType::LinePrefix,
+			args: vec![Argument::String("// ".to_string())],
+		}],
+	);
+	assert_eq!(result, "// line1\n// line2\n// line3");
+}
+
+#[test]
+fn transformer_line_prefix_preserves_empty_lines() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LinePrefix,
+			args: vec![Argument::String("# ".to_string())],
+		}],
+	);
+	assert_eq!(result, "# line1\n\n# line3");
+}
+
+#[test]
+fn transformer_line_suffix() {
+	let result = apply_transformers(
+		"line1\nline2\nline3",
+		&[Transformer {
+			r#type: TransformerType::LineSuffix,
+			args: vec![Argument::String(" \\".to_string())],
+		}],
+	);
+	assert_eq!(result, "line1 \\\nline2 \\\nline3 \\");
+}
+
+#[test]
+fn transformer_line_suffix_preserves_empty_lines() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LineSuffix,
+			args: vec![Argument::String(";".to_string())],
+		}],
+	);
+	assert_eq!(result, "line1;\n\nline3;");
+}
+
+#[test]
+fn transformer_chain_line_prefix_and_suffix() {
+	let result = apply_transformers(
+		"hello\nworld",
+		&[
+			Transformer {
+				r#type: TransformerType::LinePrefix,
+				args: vec![Argument::String("* ".to_string())],
+			},
+			Transformer {
+				r#type: TransformerType::LineSuffix,
+				args: vec![Argument::String("!".to_string())],
+			},
+		],
+	);
+	assert_eq!(result, "* hello!\n* world!");
+}
+
+// --- Parse new transformer names ---
+
+#[test]
+fn parse_suffix_transformer() -> MdtResult<()> {
+	let input = r#"<!-- {=block|suffix:"!"} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Suffix);
+
+	Ok(())
+}
+
+#[test]
+fn parse_line_prefix_transformer() -> MdtResult<()> {
+	let input = r#"<!-- {=block|linePrefix:"// "} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(
+		blocks[0].transformers[0].r#type,
+		TransformerType::LinePrefix
+	);
+
+	Ok(())
+}
+
+#[test]
+fn parse_line_prefix_snake_case() -> MdtResult<()> {
+	let input = r#"<!-- {=block|line_prefix:"// "} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(
+		blocks[0].transformers[0].r#type,
+		TransformerType::LinePrefix
+	);
+
+	Ok(())
+}
+
+#[test]
+fn parse_line_suffix_transformer() -> MdtResult<()> {
+	let input = r#"<!-- {=block|lineSuffix:";"} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(
+		blocks[0].transformers[0].r#type,
+		TransformerType::LineSuffix
+	);
+
+	Ok(())
+}
+
+#[test]
+fn parse_line_suffix_snake_case() -> MdtResult<()> {
+	let input = r#"<!-- {=block|line_suffix:";"} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(
+		blocks[0].transformers[0].r#type,
+		TransformerType::LineSuffix
+	);
+
+	Ok(())
+}
+
+// --- Duplicate provider detection tests ---
+
+#[test]
+fn duplicate_provider_detected() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nfirst\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("other.t.md"),
+		"<!-- {@block} -->\n\nsecond\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = scan_project(tmp.path());
+	assert!(result.is_err());
+	let err = result.unwrap_err();
+	let msg = err.to_string();
+	assert!(msg.contains("duplicate provider"));
+	assert!(msg.contains("block"));
+}
+
+#[test]
+fn error_duplicate_provider_message() {
+	let err = MdtError::DuplicateProvider {
+		name: "myBlock".to_string(),
+		first_file: "a.t.md".to_string(),
+		second_file: "b.t.md".to_string(),
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("myBlock"));
+	assert!(msg.contains("a.t.md"));
+	assert!(msg.contains("b.t.md"));
+}
+
+// --- Validate transformers tests ---
+
+#[test]
+fn validate_transformers_valid() -> MdtResult<()> {
+	let transformers = vec![
+		Transformer {
+			r#type: TransformerType::Trim,
+			args: vec![],
+		},
+		Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![Argument::String("  ".to_string())],
+		},
+		Transformer {
+			r#type: TransformerType::Replace,
+			args: vec![
+				Argument::String("old".to_string()),
+				Argument::String("new".to_string()),
+			],
+		},
+	];
+	validate_transformers(&transformers)?;
+	Ok(())
+}
+
+#[test]
+fn validate_transformers_trim_with_args_fails() {
+	let transformers = vec![Transformer {
+		r#type: TransformerType::Trim,
+		args: vec![Argument::String("extra".to_string())],
+	}];
+	let result = validate_transformers(&transformers);
+	assert!(result.is_err());
+	let msg = result.unwrap_err().to_string();
+	assert!(msg.contains("trim"));
+	assert!(msg.contains("0"));
+}
+
+#[test]
+fn validate_transformers_replace_missing_args_fails() {
+	let transformers = vec![Transformer {
+		r#type: TransformerType::Replace,
+		args: vec![Argument::String("only_one".to_string())],
+	}];
+	let result = validate_transformers(&transformers);
+	assert!(result.is_err());
+	let msg = result.unwrap_err().to_string();
+	assert!(msg.contains("replace"));
+}
+
+#[test]
+fn validate_transformers_empty_is_ok() -> MdtResult<()> {
+	validate_transformers(&[])?;
+	Ok(())
+}
+
+// --- Unknown transformer and invalid args error tests ---
+
+#[test]
+fn error_unknown_transformer_message() {
+	let err = MdtError::UnknownTransformer("foobar".to_string());
+	let msg = err.to_string();
+	assert!(msg.contains("foobar"));
+}
+
+#[test]
+fn error_invalid_transformer_args_message() {
+	let err = MdtError::InvalidTransformerArgs {
+		name: "replace".to_string(),
+		expected: "2".to_string(),
+		got: 1,
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("replace"));
+	assert!(msg.contains("2"));
+	assert!(msg.contains("1"));
+}
+
+// --- Block PartialEq tests ---
+
+#[test]
+fn block_partial_eq() -> MdtResult<()> {
+	let input = "<!-- {=myBlock} -->\n\ncontent\n\n<!-- {/myBlock} -->\n";
+	let blocks1 = parse(input)?;
+	let blocks2 = parse(input)?;
+	assert_eq!(blocks1, blocks2);
+
+	Ok(())
+}
+
+#[test]
+fn transformer_partial_eq() {
+	let t1 = Transformer {
+		r#type: TransformerType::Indent,
+		args: vec![Argument::String("  ".to_string())],
+	};
+	let t2 = Transformer {
+		r#type: TransformerType::Indent,
+		args: vec![Argument::String("  ".to_string())],
+	};
+	assert_eq!(t1, t2);
+}
+
+#[test]
+fn transformer_partial_ne() {
+	let t1 = Transformer {
+		r#type: TransformerType::Indent,
+		args: vec![Argument::String("  ".to_string())],
+	};
+	let t2 = Transformer {
+		r#type: TransformerType::Prefix,
+		args: vec![Argument::String("  ".to_string())],
+	};
+	assert_ne!(t1, t2);
 }
