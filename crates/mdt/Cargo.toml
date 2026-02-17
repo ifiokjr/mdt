@@ -16,6 +16,7 @@ description = "update markdown content anywhere using comments as template tags"
 derive_more = { workspace = true }
 doc-comment = { workspace = true } # TODO replace with `mdt` template
 float-cmp = { workspace = true }
+globset = { workspace = true }
 kdl = { workspace = true }
 markdown = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }

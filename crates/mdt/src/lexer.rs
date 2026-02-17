@@ -30,7 +30,7 @@ impl TokenizerState {
 				let (skipped, remaining) = content.split_at(steps);
 				self.position
 					.iter_mut()
-					.for_each(|position| position.advance_start(skipped));
+					.for_each(|position| position.advance_start_str(skipped));
 				let remaining = if remaining.is_empty() {
 					None
 				} else {
@@ -423,7 +423,7 @@ fn tokenize_node(state: &mut TokenizerState) {
 					}
 				}
 			}
-			None => panic!("stack should never be empty"),
+			None => break,
 		}
 	}
 }

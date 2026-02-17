@@ -43,3 +43,39 @@ fn init_does_not_overwrite() -> AnyEmptyResult {
 
 	Ok(())
 }
+
+#[test]
+fn init_creates_valid_template() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	Command::cargo_bin("mdt")?
+		.arg("init")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success();
+
+	// The generated template should be parseable by mdt
+	let template_content = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
+	let blocks = mdt::parse(&template_content)?;
+	assert!(!blocks.is_empty(), "init should create at least one block");
+	assert_eq!(blocks[0].r#type, mdt::BlockType::Provider);
+
+	Ok(())
+}
+
+#[test]
+fn init_shows_next_steps() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	Command::cargo_bin("mdt")?
+		.arg("init")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.stdout(predicates::str::contains("Next steps"))
+		.stdout(predicates::str::contains("mdt update"));
+
+	Ok(())
+}
