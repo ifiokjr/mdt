@@ -86,6 +86,27 @@ pub enum MdtError {
 		expected: String,
 		got: usize,
 	},
+
+	#[error("file too large: `{path}` is {size} bytes (limit: {limit} bytes)")]
+	#[diagnostic(
+		code(mdt::file_too_large),
+		help("increase the file size limit in mdt.toml or exclude this file")
+	)]
+	FileTooLarge { path: String, size: u64, limit: u64 },
+
+	#[error("symlink cycle detected at: `{path}`")]
+	#[diagnostic(
+		code(mdt::symlink_cycle),
+		help("remove the circular symlink or exclude this path")
+	)]
+	SymlinkCycle { path: String },
+
+	#[error("unconvertible float value in data file `{path}`: {value}")]
+	#[diagnostic(
+		code(mdt::unconvertible_float),
+		help("NaN and Infinity are not valid JSON numbers")
+	)]
+	UnconvertibleFloat { path: String, value: String },
 }
 
 pub type MdtResult<T> = Result<T, MdtError>;

@@ -6,6 +6,7 @@ use mdt::parse;
 use mdt::project::ConsumerEntry;
 use mdt::project::ProviderEntry;
 use mdt::project::extract_content_between_tags;
+#[allow(unused_imports)]
 use tower_lsp::lsp_types::*;
 
 use super::*;

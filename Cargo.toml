@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "docs"]
-default-members = ["crates/*", "docs"]
+default-members = ["crates/mdt", "crates/mdt_cli", "crates/mdt_lsp", "docs"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -18,7 +18,9 @@ minijinja = { default-features = false, version = "^2" }
 notify = { default-features = false, version = "^8" }
 owo-colors = { default-features = false, version = "^4" }
 predicates = { default-features = false, version = "^3" }
+rmcp = { default-features = false, version = "^0.16" }
 rstest = { default-features = false, version = "^0.26" }
+schemars = { default-features = false, version = "^0.8" }
 serde = { default-features = false, version = "^1" }
 serde_json = { default-features = false, version = "^1" }
 serde_yml = { default-features = false, version = "^0.0.12" }
@@ -35,6 +37,7 @@ tower-lsp = { default-features = false, version = "^0.20" }
 mdt = { path = "./crates/mdt", version = "0.0.0" }
 mdt_cli = { path = "./crates/mdt_cli", version = "0.0.0" }
 mdt_lsp = { path = "./crates/mdt_lsp", version = "0.0.0" }
+mdt_mcp = { path = "./crates/mdt_mcp", version = "0.0.0" }
 
 [workspace.package]
 version = "0.0.0"

@@ -69,6 +69,7 @@ fn main() {
 		Some(Commands::Update { dry_run, watch }) => run_update(&args, dry_run, watch),
 		Some(Commands::List) => run_list(&args),
 		Some(Commands::Lsp) => run_lsp(),
+		Some(Commands::Mcp) => run_mcp(),
 		None => {
 			eprintln!("No subcommand specified. Run `mdt --help` for usage.");
 			process::exit(1);
@@ -77,7 +78,7 @@ fn main() {
 
 	if let Err(e) = result {
 		eprintln!("{} {e}", colored!("error:", red));
-		process::exit(1);
+		process::exit(2);
 	}
 }
 
@@ -362,6 +363,12 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
 	rt.block_on(mdt_lsp::run_server());
+	Ok(())
+}
+
+fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
+	let rt = tokio::runtime::Runtime::new()?;
+	rt.block_on(mdt_mcp::run_server());
 	Ok(())
 }
 

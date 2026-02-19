@@ -26,6 +26,8 @@
     set -e
     # Ensure the nightly toolchain is available for rustfmt (used by dprint)
     rustup toolchain install nightly --component rustfmt --no-self-update 2>/dev/null || true
+    # Ensure stable is at least 1.88 (required by rmcp/darling for mdt_mcp)
+    rustup update stable --no-self-update 2>/dev/null || true
   '';
 
   # disable dotenv since it breaks the variable interpolation supported by `direnv`
