@@ -1,0 +1,84 @@
+name: "release"
+
+on:
+  release:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
+  cancel-in-progress: true
+
+jobs:
+  upload_assets:
+    env:
+      CARGO_PROFILE_RELEASE_LTO: true
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 1
+      CARGO_PROFILE_RELEASE_STRIP: symbols
+    permissions:
+      contents: write
+    # Only build binaries for mdt_cli releases (not the mdt library releases).
+    if: github.repository_owner == 'ifiokjr' && startsWith(github.event.release.tag_name, 'mdt_cli')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Extract the version from the tag (e.g. "mdt_cli/v0.1.0" -> "v0.1.0")
+      - name: extract version from tag
+        id: version
+        run: echo "version=${TAG#*/}" >> "${GITHUB_OUTPUT}"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+
+      - name: setup cross toolchain
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+        if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
+
+      - name: install cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+        if: contains(matrix.target, '-musl')
+
+      - name: set static crt linkage
+        run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
+        if: endsWith(matrix.target, 'windows-msvc')
+
+      - name: upload binaries
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: mdt
+          manifest-path: crates/mdt_cli/Cargo.toml
+          archive: mdt-$target-${{ steps.version.outputs.version }}
+          target: ${{ matrix.target }}
+          tar: all
+          zip: windows
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checksum: sha256,sha512
