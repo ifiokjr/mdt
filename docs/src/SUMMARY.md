@@ -1,10 +1,29 @@
 # Summary
 
-# Summary
-
 [Introduction](./readme.md)
+
+# Getting Started
+
+- [Installation](./getting-started/installation.md)
+- [Quick Start](./getting-started/quick-start.md)
+
+# Core Concepts
+
+- [How mdt Works](./concepts/how-it-works.md)
+- [Providers and Consumers](./concepts/providers-and-consumers.md)
+- [Template Files](./concepts/template-files.md)
 
 # User Guide
 
-- [Installation](guide/01-installation.md)
-- [Setting up a project](guide/02-setup.md)
+- [Configuration](./guide/configuration.md)
+- [Data Interpolation](./guide/data-interpolation.md)
+- [Transformers](./guide/transformers.md)
+- [Source File Support](./guide/source-files.md)
+- [CI Integration](./guide/ci-integration.md)
+
+# Reference
+
+- [CLI](./reference/cli.md)
+- [Template Syntax](./reference/template-syntax.md)
+- [Transformer Reference](./reference/transformers.md)
+- [Configuration Reference](./reference/configuration.md)

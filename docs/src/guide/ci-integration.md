@@ -1,0 +1,123 @@
+# CI Integration
+
+mdt's `check` command is designed for CI pipelines. It verifies that all consumer blocks are up to date and exits with a non-zero status code if any are stale.
+
+## Basic CI check
+
+Add a step to your CI workflow that runs `mdt check`:
+
+```yaml
+- name: check documentation is up to date
+  run: mdt check
+```
+
+If any consumer blocks are out of date, the step fails and the pipeline reports which blocks need updating.
+
+## GitHub Actions
+
+### Full workflow example
+
+```yaml
+name: docs
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install mdt
+        run: cargo install mdt_cli
+
+      - name: check documentation sync
+        run: mdt check
+```
+
+### GitHub Actions annotations
+
+Use `--format github` to produce GitHub Actions annotation output. This adds inline warnings on the pull request diff showing exactly which files have stale blocks:
+
+```yaml
+- name: check documentation sync
+  run: mdt check --format github
+```
+
+This produces output like:
+
+```
+::warning file=readme.md::Consumer block `install` is out of date
+```
+
+GitHub renders these as yellow warning annotations directly on the affected lines in the PR diff.
+
+### With diff output
+
+Use `--diff` to include a unified diff in the CI output showing what changed:
+
+```yaml
+- name: check documentation sync
+  run: mdt check --diff
+```
+
+## JSON output
+
+For integration with other tools, use `--format json`:
+
+```yaml
+- name: check documentation sync
+  run: mdt check --format json
+```
+
+Output when everything is up to date:
+
+```json
+{ "ok": true, "stale": [] }
+```
+
+Output when blocks are stale:
+
+```json
+{
+	"ok": false,
+	"stale": [
+		{ "file": "readme.md", "block": "install" },
+		{ "file": "src/lib.rs", "block": "docs" }
+	]
+}
+```
+
+## Pre-commit hook
+
+You can also use mdt as a pre-commit check to prevent committing stale docs:
+
+```bash
+#!/bin/sh
+# .git/hooks/pre-commit
+
+mdt check --format text
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Documentation is out of date. Run 'mdt update' before committing."
+  exit 1
+fi
+```
+
+## Automated fixes
+
+If you prefer to auto-fix in CI rather than just check, run `mdt update` and commit the result:
+
+```yaml
+- name: update documentation
+  run: mdt update
+
+- name: check for changes
+  run: |
+    if [ -n "$(git status --porcelain)" ]; then
+      echo "mdt update produced changes. Please run 'mdt update' locally and commit."
+      git diff
+      exit 1
+    fi
+```
