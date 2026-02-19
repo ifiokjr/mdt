@@ -5,7 +5,6 @@ edition = { workspace = true }
 publish = false
 
 [dependencies]
-doc-comment = { workspace = true, default-features = true }
 mdt = { workspace = true }
 
 [lints]
