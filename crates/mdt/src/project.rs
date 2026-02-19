@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -10,6 +11,7 @@ use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
+use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
 use crate::parser::parse;
 use crate::source_scanner::parse_source;
@@ -65,7 +67,13 @@ pub struct ConsumerEntry {
 
 /// Scan a directory and discover all provider and consumer blocks.
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
-	scan_project_with_options(root, &GlobSet::empty(), &GlobSet::empty(), &[])
+	scan_project_with_options(
+		root,
+		&GlobSet::empty(),
+		&GlobSet::empty(),
+		&[],
+		DEFAULT_MAX_FILE_SIZE,
+	)
 }
 
 /// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
@@ -83,9 +91,18 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		.as_ref()
 		.map(|c| &c.templates.paths[..])
 		.unwrap_or_default();
+	let max_file_size = config
+		.as_ref()
+		.map_or(DEFAULT_MAX_FILE_SIZE, |c| c.max_file_size);
 	let exclude_set = build_glob_set(exclude_patterns);
 	let include_set = build_glob_set(include_patterns);
-	let project = scan_project_with_options(root, &exclude_set, &include_set, template_paths)?;
+	let project = scan_project_with_options(
+		root,
+		&exclude_set,
+		&include_set,
+		template_paths,
+		max_file_size,
+	)?;
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
@@ -105,12 +122,22 @@ fn build_glob_set(patterns: &[String]) -> GlobSet {
 	builder.build().unwrap_or_else(|_| GlobSet::empty())
 }
 
+/// Normalize CRLF line endings to LF.
+pub fn normalize_line_endings(content: &str) -> String {
+	if content.contains('\r') {
+		content.replace("\r\n", "\n").replace('\r', "\n")
+	} else {
+		content.to_string()
+	}
+}
+
 /// Scan a directory with exclude/include patterns and extra template paths.
-fn scan_project_with_options(
+pub(crate) fn scan_project_with_options(
 	root: &Path,
 	exclude_set: &GlobSet,
 	include_set: &GlobSet,
 	template_paths: &[PathBuf],
+	max_file_size: u64,
 ) -> MdtResult<Project> {
 	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
 	let mut consumers = Vec::new();
@@ -136,7 +163,18 @@ fn scan_project_with_options(
 	}
 
 	for file in &files {
-		let content = std::fs::read_to_string(file)?;
+		// Check file size before reading.
+		let metadata = std::fs::metadata(file)?;
+		if metadata.len() > max_file_size {
+			return Err(MdtError::FileTooLarge {
+				path: file.display().to_string(),
+				size: metadata.len(),
+				limit: max_file_size,
+			});
+		}
+
+		let raw_content = std::fs::read_to_string(file)?;
+		let content = normalize_line_endings(&raw_content);
 		let blocks = if is_markdown_file(file) {
 			parse(&content)?
 		} else {
@@ -205,7 +243,8 @@ pub fn extract_content_between_tags(source: &str, block: &Block) -> String {
 /// Collect all markdown and relevant source files from a directory tree.
 fn collect_files(root: &Path, exclude_set: &GlobSet) -> MdtResult<Vec<PathBuf>> {
 	let mut files = Vec::new();
-	walk_dir(root, root, &mut files, true, exclude_set)?;
+	let mut visited_dirs = HashSet::new();
+	walk_dir(root, root, &mut files, true, exclude_set, &mut visited_dirs)?;
 	// Sort for deterministic ordering
 	files.sort();
 	Ok(files)
@@ -217,9 +256,18 @@ fn walk_dir(
 	files: &mut Vec<PathBuf>,
 	is_root: bool,
 	exclude_set: &GlobSet,
+	visited_dirs: &mut HashSet<PathBuf>,
 ) -> MdtResult<()> {
 	if !dir.is_dir() {
 		return Ok(());
+	}
+
+	// Detect symlink cycles by tracking canonical paths.
+	let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+	if !visited_dirs.insert(canonical.clone()) {
+		return Err(MdtError::SymlinkCycle {
+			path: dir.display().to_string(),
+		});
 	}
 
 	let entries = std::fs::read_dir(dir)?;
@@ -248,7 +296,7 @@ fn walk_dir(
 			if !is_root && path.join("mdt.toml").exists() {
 				continue;
 			}
-			walk_dir(root, &path, files, false, exclude_set)?;
+			walk_dir(root, &path, files, false, exclude_set, visited_dirs)?;
 		} else if is_scannable_file(&path) {
 			files.push(path);
 		}

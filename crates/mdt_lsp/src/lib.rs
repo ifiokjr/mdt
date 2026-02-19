@@ -330,7 +330,7 @@ impl LanguageServer for MdtLanguageServer {
 		if symbols.is_empty() {
 			Ok(None)
 		} else {
-			Ok(Some(DocumentSymbolResponse::Flat(symbols)))
+			Ok(Some(DocumentSymbolResponse::Nested(symbols)))
 		}
 	}
 
@@ -712,9 +712,9 @@ fn compute_goto_definition(
 // Document Symbols
 // ---------------------------------------------------------------------------
 
-/// Compute document symbols for the outline view.
-#[allow(deprecated)]
-fn compute_document_symbols(state: &WorkspaceState, uri: &Url) -> Vec<SymbolInformation> {
+/// Compute document symbols for the outline view using `DocumentSymbol`
+/// (hierarchical, non-deprecated).
+fn compute_document_symbols(state: &WorkspaceState, uri: &Url) -> Vec<DocumentSymbol> {
 	let Some(doc) = state.documents.get(uri) else {
 		return Vec::new();
 	};
@@ -730,20 +730,22 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Url) -> Vec<SymbolInfo
 				BlockType::Provider => "@",
 				BlockType::Consumer => "=",
 			};
+			let full_range = Range {
+				start: to_lsp_position(&block.opening.start),
+				end: to_lsp_position(&block.closing.end),
+			};
+			let selection_range = to_lsp_range(&block.opening);
 
-			SymbolInformation {
+			#[allow(deprecated)]
+			DocumentSymbol {
 				name: format!("{prefix}{}", block.name),
+				detail: None,
 				kind,
 				tags: None,
 				deprecated: None,
-				location: Location {
-					uri: uri.clone(),
-					range: Range {
-						start: to_lsp_position(&block.opening.start),
-						end: to_lsp_position(&block.closing.end),
-					},
-				},
-				container_name: None,
+				range: full_range,
+				selection_range,
+				children: None,
 			}
 		})
 		.collect()

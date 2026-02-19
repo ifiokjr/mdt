@@ -71,6 +71,12 @@ pub enum Commands {
 	/// Configure your editor to run `mdt lsp` as the language server
 	/// command for markdown and template files.
 	Lsp,
+	/// Start the mdt MCP (Model Context Protocol) server.
+	///
+	/// Communicates over stdin/stdout using the Model Context Protocol.
+	/// Configure your AI assistant to run `mdt mcp` as an MCP server
+	/// to give it structured access to mdt's template system.
+	Mcp,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

@@ -16,6 +16,44 @@ pub fn parse_source(content: &str) -> MdtResult<Vec<Block>> {
 	build_blocks_from_groups_lenient(&token_groups)
 }
 
+/// Pre-computed table of line-start byte offsets for efficient offset-to-point
+/// conversion. Instead of scanning the entire string for each offset (O(n*m)),
+/// we build this table once (O(n)) and use binary search (O(log n)) per lookup.
+struct LineTable {
+	/// Byte offsets of the start of each line. `line_starts[0]` is always 0.
+	line_starts: Vec<usize>,
+}
+
+impl LineTable {
+	fn new(content: &str) -> Self {
+		let mut line_starts = vec![0];
+		for (i, byte) in content.bytes().enumerate() {
+			if byte == b'\n' {
+				line_starts.push(i + 1);
+			}
+		}
+		Self { line_starts }
+	}
+
+	/// Convert a byte offset to a `markdown::unist::Point` (1-indexed
+	/// line/column). Uses binary search over the pre-computed line table.
+	fn offset_to_point(&self, offset: usize) -> UnistPoint {
+		// Binary search for the line containing this offset.
+		let line_idx = match self.line_starts.binary_search(&offset) {
+			Ok(exact) => exact,
+			Err(insert) => insert.saturating_sub(1),
+		};
+		let line = line_idx + 1; // 1-indexed
+		let column = offset - self.line_starts[line_idx] + 1; // 1-indexed
+
+		UnistPoint {
+			line,
+			column,
+			offset,
+		}
+	}
+}
+
 /// Extract HTML comments (`<!-- ... -->`) from raw text content, returning
 /// `Html` nodes with correct byte positions. This is used for source files
 /// where the markdown AST parser won't find HTML comments inside code
@@ -26,6 +64,7 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 	let close_marker = b"-->";
 	let mut nodes = Vec::new();
 	let mut search_from = 0;
+	let line_table = LineTable::new(content);
 
 	while search_from < bytes.len() {
 		let Some(open_offset) = memstr(&bytes[search_from..], open_marker) else {
@@ -45,8 +84,8 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 
 		let value = String::from_utf8_lossy(&bytes[abs_open..abs_close_end]).to_string();
 
-		let start_point = offset_to_point(content, abs_open);
-		let end_point = offset_to_point(content, abs_close_end);
+		let start_point = line_table.offset_to_point(abs_open);
+		let end_point = line_table.offset_to_point(abs_close_end);
 
 		nodes.push(Html {
 			value,
@@ -60,28 +99,4 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 	}
 
 	nodes
-}
-
-/// Convert a byte offset to a `markdown::unist::Point` (1-indexed line/column).
-fn offset_to_point(content: &str, offset: usize) -> UnistPoint {
-	let mut line: usize = 1;
-	let mut column: usize = 1;
-
-	for (i, ch) in content.bytes().enumerate() {
-		if i == offset {
-			break;
-		}
-		if ch == b'\n' {
-			line += 1;
-			column = 1;
-		} else {
-			column += 1;
-		}
-	}
-
-	UnistPoint {
-		line,
-		column,
-		offset,
-	}
 }

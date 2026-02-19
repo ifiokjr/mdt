@@ -10,6 +10,7 @@ use crate::lexer::tokenize;
 use crate::patterns;
 use crate::patterns::PatternMatcher;
 use crate::project::ProjectContext;
+use crate::project::scan_project_with_options;
 use crate::tokens::GetDynamicRange;
 use crate::tokens::TokenGroup;
 
@@ -1805,4 +1806,145 @@ fn transformer_partial_ne() {
 		args: vec![Argument::String("  ".to_string())],
 	};
 	assert_ne!(t1, t2);
+}
+
+// --- CRLF normalization tests ---
+
+#[test]
+fn normalize_line_endings_lf_passthrough() {
+	let content = "line1\nline2\nline3\n";
+	let result = normalize_line_endings(content);
+	assert_eq!(result, content);
+}
+
+#[test]
+fn normalize_line_endings_crlf_to_lf() {
+	let content = "line1\r\nline2\r\nline3\r\n";
+	let result = normalize_line_endings(content);
+	assert_eq!(result, "line1\nline2\nline3\n");
+}
+
+#[test]
+fn normalize_line_endings_bare_cr_to_lf() {
+	let content = "line1\rline2\rline3\r";
+	let result = normalize_line_endings(content);
+	assert_eq!(result, "line1\nline2\nline3\n");
+}
+
+#[test]
+fn normalize_line_endings_mixed() {
+	let content = "line1\r\nline2\rline3\n";
+	let result = normalize_line_endings(content);
+	assert_eq!(result, "line1\nline2\nline3\n");
+}
+
+#[test]
+fn crlf_content_parsed_correctly() {
+	let content = "<!-- {=myBlock} -->\r\n\r\nsome content\r\n\r\n<!-- {/myBlock} -->\r\n";
+	let normalized = normalize_line_endings(content);
+	let blocks = parse(&normalized).unwrap_or_else(|e| panic!("parse failed: {e}"));
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "myBlock");
+}
+
+// --- File size limit tests ---
+
+#[test]
+fn file_too_large_error() {
+	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let large_file = dir.path().join("huge.md");
+	// Write a file slightly larger than a 100-byte limit.
+	std::fs::write(&large_file, "x".repeat(200)).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = scan_project_with_options(
+		dir.path(),
+		&globset::GlobSet::empty(),
+		&globset::GlobSet::empty(),
+		&[],
+		100, // 100-byte limit
+	);
+
+	assert!(result.is_err());
+	let err_msg = format!("{}", result.unwrap_err());
+	assert!(
+		err_msg.contains("file too large"),
+		"expected 'file too large', got: {err_msg}"
+	);
+}
+
+#[test]
+fn file_within_size_limit_succeeds() {
+	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let small_file = dir.path().join("small.md");
+	std::fs::write(&small_file, "<!-- {=test} -->\ncontent\n<!-- {/test} -->\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = scan_project_with_options(
+		dir.path(),
+		&globset::GlobSet::empty(),
+		&globset::GlobSet::empty(),
+		&[],
+		10_000, // 10KB limit
+	);
+
+	assert!(result.is_ok());
+}
+
+// --- UTF-8 edge case tests ---
+
+#[test]
+fn parse_content_with_emoji() {
+	let content = "<!-- {=emoji} -->\n\n🦀 Hello 🌍\n\n<!-- {/emoji} -->\n";
+	let blocks = parse(content).unwrap_or_else(|e| panic!("parse failed: {e}"));
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "emoji");
+}
+
+#[test]
+fn parse_content_with_cjk() {
+	let content = "<!-- {=cjk} -->\n\n日本語テキスト\n\n<!-- {/cjk} -->\n";
+	let blocks = parse(content).unwrap_or_else(|e| panic!("parse failed: {e}"));
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "cjk");
+}
+
+#[test]
+fn scan_project_with_emoji_content() {
+	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let template = dir.path().join("template.t.md");
+	std::fs::write(
+		&template,
+		"<!-- {@emoji} -->\n\n🦀 Hello 🌍\n\n<!-- {/emoji} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(dir.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let provider = project
+		.providers
+		.get("emoji")
+		.unwrap_or_else(|| panic!("no provider"));
+	assert!(provider.content.contains("🦀 Hello 🌍"));
+}
+
+#[test]
+fn transformer_indent_with_multibyte_chars() {
+	let content = "🦀 crab\n🌍 world\n";
+	let result = apply_transformers(
+		content,
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![Argument::String("  ".to_string())],
+		}],
+	);
+	assert_eq!(result, "  🦀 crab\n  🌍 world");
+}
+
+// --- No trailing newline edge case ---
+
+#[test]
+fn parse_block_without_trailing_newline() {
+	let content = "<!-- {=test} -->\ncontent\n<!-- {/test} -->";
+	let blocks = parse(content).unwrap_or_else(|e| panic!("parse failed: {e}"));
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "test");
 }
