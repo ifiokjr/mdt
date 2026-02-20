@@ -1,29 +1,49 @@
+[changes]
+ignore_conventional_commits = true
+
 [packages.mdt]
 versioned_files = [
-	"crates/mdt/Cargo.toml",
+	"Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt" },
-	"Cargo.lock",
+	{ path = "Cargo.lock", dependency = "mdt" },
 ]
-scopes = ["mdt"]
 changelog = "crates/mdt/changelog.md"
-extra_changelog_sections = [{ name = "Notes", types = ["note"] }, { name = "Documentation", types = ["docs"] }]
+scopes = ["mdt"]
+
+[[packages.mdt.extra_changelog_sections]]
+name = "Notes"
+footers = []
+types = ["note"]
+
+[[packages.mdt.extra_changelog_sections]]
+name = "Documentation"
+footers = []
+types = ["docs"]
 
 [packages.mdt_cli]
 versioned_files = [
-	"crates/mdt_cli/Cargo.toml",
+	"Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
-	"Cargo.lock",
+	{ path = "Cargo.lock", dependency = "mdt_cli" },
 ]
-scopes = ["mdt_cli"]
 changelog = "crates/mdt_cli/changelog.md"
-extra_changelog_sections = [{ name = "Notes", types = ["note"] }, { name = "Documentation", types = ["docs"] }]
+scopes = ["mdt_cli"]
+
+[[packages.mdt_cli.extra_changelog_sections]]
+name = "Notes"
+footers = []
+types = ["note"]
+
+[[packages.mdt_cli.extra_changelog_sections]]
+name = "Documentation"
+footers = []
+types = ["docs"]
 
 [[workflows]]
 name = "release"
 
 [[workflows.steps]]
 type = "PrepareRelease"
-ignore_conventional_commits = true
 
 [[workflows.steps]]
 type = "Command"

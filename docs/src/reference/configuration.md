@@ -94,6 +94,18 @@ paths = ["templates", "shared/docs"]
 
 By default (when this section is absent), mdt finds `*.t.md` files anywhere in the project tree.
 
+### `max_file_size`
+
+Maximum file size in bytes that mdt will scan.
+
+```toml
+max_file_size = 10485760
+```
+
+If a scanned file exceeds this value, mdt returns an error instead of reading it.
+
+Default value: `10485760` (10 MB).
+
 ## Complete example
 
 ```toml
@@ -120,6 +132,9 @@ patterns = ["src/**", "docs/**"]
 # Only look for templates in this directory
 [templates]
 paths = ["templates"]
+
+# Refuse to scan files larger than 10 MB
+max_file_size = 10485760
 ```
 
 ## Minimal example
@@ -139,3 +154,4 @@ If `mdt.toml` doesn't exist, mdt uses defaults:
 - No extra exclusions (only built-in exclusions apply)
 - No include filtering (all scannable files are scanned)
 - Templates found anywhere in the project tree
+- `max_file_size` defaults to 10 MB

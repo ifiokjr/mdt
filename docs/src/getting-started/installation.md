@@ -35,4 +35,4 @@ mdt = "0.0.0"
 mdt --help
 ```
 
-You should see the available commands: `init`, `check`, `update`, `list`, and `lsp`.
+You should see the available commands: `init`, `check`, `update`, `list`, `lsp`, and `mcp`.

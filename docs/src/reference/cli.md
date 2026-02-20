@@ -3,7 +3,7 @@
 ## Global options
 
 ```
-mdt [OPTIONS] <COMMAND>
+mdt [OPTIONS] [COMMAND]
 ```
 
 | Option            | Description                                                                |
@@ -164,6 +164,16 @@ The LSP provides:
 - **Go to definition** — Jump from a consumer tag to its provider definition.
 - **Document symbols** — Lists all blocks in the current file.
 - **Code actions** — Quick-fix to update a stale consumer block in place.
+
+### `mdt mcp`
+
+Start the MCP server for AI integrations. Communicates over stdin/stdout using the Model Context Protocol.
+
+```sh
+mdt mcp
+```
+
+Use this command when you want an AI assistant to query template providers, consumers, and render context directly from your project.
 
 ## Environment variables
 

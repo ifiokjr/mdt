@@ -12,6 +12,7 @@
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
+- `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
 
 <!-- {/mdtCliUsage} -->
 

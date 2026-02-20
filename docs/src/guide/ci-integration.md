@@ -121,3 +121,49 @@ If you prefer to auto-fix in CI rather than just check, run `mdt update` and com
       exit 1
     fi
 ```
+
+## Publish mdBook on release
+
+This repository publishes the mdBook on every GitHub release (`release.published`) using GitHub Pages.
+
+The workflow lives at `.github/workflows/docs-pages.yml` and:
+
+1. Builds the book with `mdbook build docs`
+2. Uploads `docs/book` as a Pages artifact
+3. Deploys to GitHub Pages
+
+Equivalent workflow structure:
+
+```yaml
+name: docs-pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook
+      - uses: actions/configure-pages@v5
+      - run: mdbook build docs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/book
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/deploy-pages@v4
+```
