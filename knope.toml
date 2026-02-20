@@ -39,6 +39,44 @@ name = "Documentation"
 footers = []
 types = ["docs"]
 
+[packages.mdt_lsp]
+versioned_files = [
+	"Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt_lsp" },
+	{ path = "Cargo.lock", dependency = "mdt_lsp" },
+]
+changelog = "crates/mdt_lsp/changelog.md"
+scopes = ["mdt_lsp"]
+
+[[packages.mdt_lsp.extra_changelog_sections]]
+name = "Notes"
+footers = []
+types = ["note"]
+
+[[packages.mdt_lsp.extra_changelog_sections]]
+name = "Documentation"
+footers = []
+types = ["docs"]
+
+[packages.mdt_mcp]
+versioned_files = [
+	"Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt_mcp" },
+	{ path = "Cargo.lock", dependency = "mdt_mcp" },
+]
+changelog = "crates/mdt_mcp/changelog.md"
+scopes = ["mdt_mcp"]
+
+[[packages.mdt_mcp.extra_changelog_sections]]
+name = "Notes"
+footers = []
+types = ["note"]
+
+[[packages.mdt_mcp.extra_changelog_sections]]
+name = "Documentation"
+footers = []
+types = ["docs"]
+
 [[workflows]]
 name = "release"
 

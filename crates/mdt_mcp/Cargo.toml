@@ -7,7 +7,6 @@ edition = { workspace = true }
 include = { workspace = true }
 keywords = ["markdown", "templates", "mcp"]
 license = { workspace = true }
-publish = false
 readme = { workspace = true }
 repository = { workspace = true }
 rust-version = { workspace = true }
