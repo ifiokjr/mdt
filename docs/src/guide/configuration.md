@@ -77,6 +77,16 @@ paths = ["templates", "shared/docs"]
 
 When set, only `*.t.md` files within these directories are recognized as template files.
 
+### `max_file_size` — Safety limit for scanned files
+
+Set the maximum file size (in bytes) that mdt will scan. Files larger than this limit return an error.
+
+```toml
+max_file_size = 10485760 # 10 MB
+```
+
+If omitted, mdt uses a default of `10 MB`.
+
 ## Sub-project boundaries
 
 If mdt encounters a directory containing its own `mdt.toml`, it treats that directory as a separate project and skips it. This is useful in monorepos where each package manages its own templates:
@@ -113,4 +123,6 @@ patterns = ["src/**"]
 
 [templates]
 paths = ["templates"]
+
+max_file_size = 10485760
 ```

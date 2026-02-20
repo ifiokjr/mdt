@@ -51,3 +51,4 @@ After running `mdt update`, every consumer named `install` has identical content
 - **CI-friendly** — `mdt check` exits non-zero when docs are stale, with JSON and GitHub Actions output formats
 - **Watch mode** — `mdt update --watch` auto-syncs on file changes during development
 - **LSP support** — Language server for editor integration with diagnostics, completions, and hover
+- **MCP support** — `mdt mcp` exposes template data to AI assistants via the Model Context Protocol
