@@ -12,10 +12,10 @@ use mdt::project::extract_content_between_tags;
 use mdt::project::scan_project_with_config;
 use mdt::render_template;
 use tokio::sync::RwLock;
-use tower_lsp::Client;
-use tower_lsp::LanguageServer;
-use tower_lsp::jsonrpc::Result as LspResult;
-use tower_lsp::lsp_types::*;
+use tower_lsp_server::Client;
+use tower_lsp_server::LanguageServer;
+use tower_lsp_server::jsonrpc::Result as LspResult;
+use tower_lsp_server::ls_types::*;
 
 /// State for a single open document.
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ struct WorkspaceState {
 	/// The workspace root path.
 	root: Option<PathBuf>,
 	/// Open documents keyed by URI.
-	documents: HashMap<Url, DocumentState>,
+	documents: HashMap<Uri, DocumentState>,
 	/// Cached providers from the last project scan.
 	providers: HashMap<String, ProviderEntry>,
 	/// Cached consumers from the last project scan.
@@ -64,16 +64,16 @@ impl WorkspaceState {
 	/// Incrementally update a single document in the project state.
 	/// For template files, this updates providers without a full rescan.
 	/// For non-template files, this updates consumers for that file.
-	fn update_document_in_project(&mut self, uri: &Url) {
+	fn update_document_in_project(&mut self, uri: &Uri) {
 		let Some(doc) = self.documents.get(uri) else {
 			return;
 		};
 
-		let Ok(file_path) = uri.to_file_path() else {
+		let Some(file_path) = uri.to_file_path().map(|p| p.into_owned()) else {
 			return;
 		};
 
-		let is_template = uri.path().ends_with(".t.md");
+		let is_template = uri.path().as_str().ends_with(".t.md");
 
 		for block in &doc.blocks {
 			let block_content = extract_content_between_tags(&doc.content, block);
@@ -106,7 +106,7 @@ impl WorkspaceState {
 
 	/// Parse a single document and update its cached state. Returns the
 	/// parsed blocks.
-	fn parse_document(&mut self, uri: &Url, content: String) -> Vec<Block> {
+	fn parse_document(&mut self, uri: &Uri, content: String) -> Vec<Block> {
 		let blocks = parse_document_content(uri, &content);
 		self.documents.insert(
 			uri.clone(),
@@ -120,9 +120,10 @@ impl WorkspaceState {
 }
 
 /// Parse document content, choosing the right parser based on file extension.
-fn parse_document_content(uri: &Url, content: &str) -> Vec<Block> {
+fn parse_document_content(uri: &Uri, content: &str) -> Vec<Block> {
 	let is_markdown = uri
 		.path()
+		.as_str()
 		.rsplit('.')
 		.next()
 		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"));
@@ -169,7 +170,7 @@ impl MdtLanguageServer {
 	}
 
 	/// Publish diagnostics for a single document.
-	async fn publish_diagnostics_for(&self, uri: &Url) {
+	async fn publish_diagnostics_for(&self, uri: &Uri) {
 		let diagnostics = {
 			let state = self.state.read().await;
 			compute_diagnostics(&state, uri)
@@ -182,7 +183,7 @@ impl MdtLanguageServer {
 
 	/// Handle a document being opened or changed — parse it and publish
 	/// diagnostics.
-	async fn on_document_change(&self, uri: &Url, content: String) {
+	async fn on_document_change(&self, uri: &Uri, content: String) {
 		{
 			let mut state = self.state.write().await;
 			state.parse_document(uri, content);
@@ -191,14 +192,13 @@ impl MdtLanguageServer {
 	}
 }
 
-#[tower_lsp::async_trait]
 impl LanguageServer for MdtLanguageServer {
 	async fn initialize(&self, params: InitializeParams) -> LspResult<InitializeResult> {
 		// Determine workspace root
 		let root = params
 			.root_uri
 			.as_ref()
-			.and_then(|uri| uri.to_file_path().ok());
+			.and_then(|uri| uri.to_file_path().map(|p| p.into_owned()));
 
 		{
 			let mut state = self.state.write().await;
@@ -259,7 +259,7 @@ impl LanguageServer for MdtLanguageServer {
 
 	async fn did_save(&self, params: DidSaveTextDocumentParams) {
 		let uri = &params.text_document.uri;
-		let is_config = uri.path().ends_with("mdt.toml");
+		let is_config = uri.path().as_str().ends_with("mdt.toml");
 
 		{
 			let mut state = self.state.write().await;
@@ -354,7 +354,7 @@ impl LanguageServer for MdtLanguageServer {
 // ---------------------------------------------------------------------------
 
 /// Compute diagnostics for a single document.
-fn compute_diagnostics(state: &WorkspaceState, uri: &Url) -> Vec<Diagnostic> {
+fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 	let Some(doc) = state.documents.get(uri) else {
 		return Vec::new();
 	};
@@ -399,7 +399,7 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Url) -> Vec<Diagnostic> {
 			}
 			BlockType::Provider => {
 				// Check if this provider is in a template file.
-				let is_template = uri.path().ends_with(".t.md");
+				let is_template = uri.path().as_str().ends_with(".t.md");
 				if !is_template {
 					diagnostics.push(Diagnostic {
 						range: to_lsp_range(&block.opening),
@@ -449,7 +449,7 @@ fn position_in_range(pos: Position, range: Range) -> bool {
 }
 
 /// Compute hover information at a position.
-fn compute_hover(state: &WorkspaceState, uri: &Url, position: Position) -> Option<Hover> {
+fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Option<Hover> {
 	let doc = state.documents.get(uri)?;
 	let block = find_block_at_position(&doc.blocks, position)?;
 
@@ -531,7 +531,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Url, position: Position) -> Optio
 /// Compute completion items at a position.
 fn compute_completions(
 	state: &WorkspaceState,
-	uri: &Url,
+	uri: &Uri,
 	position: Position,
 ) -> Vec<CompletionItem> {
 	let Some(doc) = state.documents.get(uri) else {
@@ -662,7 +662,7 @@ fn transformer_completions() -> Vec<CompletionItem> {
 /// Compute go-to-definition: consumer → provider.
 fn compute_goto_definition(
 	state: &WorkspaceState,
-	uri: &Url,
+	uri: &Uri,
 	position: Position,
 ) -> Option<GotoDefinitionResponse> {
 	let doc = state.documents.get(uri)?;
@@ -672,7 +672,7 @@ fn compute_goto_definition(
 		BlockType::Consumer => {
 			// Navigate to the provider definition.
 			let provider = state.providers.get(&block.name)?;
-			let target_uri = Url::from_file_path(&provider.file).ok()?;
+			let target_uri = Uri::from_file_path(&provider.file)?;
 			let target_range = to_lsp_range(&provider.block.opening);
 
 			Some(GotoDefinitionResponse::Scalar(Location {
@@ -687,7 +687,7 @@ fn compute_goto_definition(
 				.iter()
 				.filter(|c| c.block.name == block.name)
 				.filter_map(|c| {
-					let consumer_uri = Url::from_file_path(&c.file).ok()?;
+					let consumer_uri = Uri::from_file_path(&c.file)?;
 					Some(Location {
 						uri: consumer_uri,
 						range: to_lsp_range(&c.block.opening),
@@ -714,7 +714,7 @@ fn compute_goto_definition(
 
 /// Compute document symbols for the outline view using `DocumentSymbol`
 /// (hierarchical, non-deprecated).
-fn compute_document_symbols(state: &WorkspaceState, uri: &Url) -> Vec<DocumentSymbol> {
+fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSymbol> {
 	let Some(doc) = state.documents.get(uri) else {
 		return Vec::new();
 	};
@@ -759,7 +759,7 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Url) -> Vec<DocumentSy
 /// consumers.
 fn compute_code_actions(
 	state: &WorkspaceState,
-	uri: &Url,
+	uri: &Uri,
 	range: Range,
 ) -> Vec<CodeActionOrCommand> {
 	let Some(doc) = state.documents.get(uri) else {
@@ -848,8 +848,8 @@ pub async fn run_server() {
 	let stdin = tokio::io::stdin();
 	let stdout = tokio::io::stdout();
 
-	let (service, socket) = tower_lsp::LspService::new(MdtLanguageServer::new);
-	tower_lsp::Server::new(stdin, stdout, socket)
+	let (service, socket) = tower_lsp_server::LspService::new(MdtLanguageServer::new);
+	tower_lsp_server::Server::new(stdin, stdout, socket)
 		.serve(service)
 		.await;
 }
