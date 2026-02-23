@@ -1948,3 +1948,289 @@ fn parse_block_without_trailing_newline() {
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "test");
 }
+
+// --- Insta snapshot tests ---
+
+#[test]
+fn snapshot_tokenize_consumer() -> MdtResult<()> {
+	let nodes = get_html_nodes(r#"<!-- {=exampleName|trim|indent:"/// "} -->"#)?;
+	let groups = tokenize(nodes)?;
+	insta::assert_debug_snapshot!(groups);
+	Ok(())
+}
+
+#[test]
+fn snapshot_tokenize_provider() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {@myProvider} -->")?;
+	let groups = tokenize(nodes)?;
+	insta::assert_debug_snapshot!(groups);
+	Ok(())
+}
+
+#[test]
+fn snapshot_tokenize_closing() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {/blockName} -->")?;
+	let groups = tokenize(nodes)?;
+	insta::assert_debug_snapshot!(groups);
+	Ok(())
+}
+
+#[test]
+fn snapshot_parse_full_document() -> MdtResult<()> {
+	let input = r#"# Title
+
+<!-- {@header} -->
+
+# Welcome to {{ pkg.name }}
+
+<!-- {/header} -->
+
+## Content
+
+<!-- {=header} -->
+
+old content
+
+<!-- {/header} -->
+
+<!-- {=docs|trim|indent:"  "} -->
+
+old docs
+
+<!-- {/docs} -->
+"#;
+	let blocks = parse(input)?;
+	insta::assert_debug_snapshot!(blocks);
+	Ok(())
+}
+
+#[test]
+fn snapshot_parse_consumer_with_all_transformers() -> MdtResult<()> {
+	let input = r##"<!-- {=block|trim|trimStart|trimEnd|indent:"  "|prefix:"# "|wrap:"**"|codeBlock:"rs"|code|replace:"a":"b"} -->
+old
+<!-- {/block} -->
+"##;
+	let blocks = parse(input)?;
+	insta::assert_debug_snapshot!(blocks);
+	Ok(())
+}
+
+// --- Edge case tests ---
+
+#[test]
+fn parse_empty_provider_content() -> MdtResult<()> {
+	let input = "<!-- {@block} -->\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "block");
+	let content = extract_content_between_tags(input, &blocks[0]);
+	assert_eq!(content, "\n");
+	Ok(())
+}
+
+#[test]
+fn parse_very_long_block_name() -> MdtResult<()> {
+	let long_name = "a".repeat(200);
+	let input = format!("<!-- {{@{long_name}}} -->\n\ncontent\n\n<!-- {{/{long_name}}} -->\n");
+	let blocks = parse(&input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, long_name);
+	Ok(())
+}
+
+#[test]
+fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@shared} -->\n\nShared content.\n\n<!-- {/shared} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("a.md"),
+		"<!-- {=shared} -->\n\nold a\n\n<!-- {/shared} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("b.md"),
+		"<!-- {=shared} -->\n\nold b\n\n<!-- {/shared} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+	};
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 2);
+	assert_eq!(updates.updated_files.len(), 2);
+	for content in updates.updated_files.values() {
+		assert!(content.contains("Shared content."));
+	}
+	Ok(())
+}
+
+#[test]
+fn transformer_with_boolean_argument() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:true} -->\nold\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	match &blocks[0].transformers[0].args[0] {
+		Argument::Boolean(b) => assert!(b),
+		other => panic!("expected Boolean, got {other:?}"),
+	}
+	Ok(())
+}
+
+#[test]
+fn config_multiple_data_formats() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\njson_data = \"data.json\"\ntoml_data = \"data.toml\"\nyaml_data = \"data.yaml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.json"), r#"{"key": "json_value"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.toml"), "key = \"toml_value\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.yaml"), "key: yaml_value\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["json_data"]["key"], "json_value");
+	assert_eq!(data["toml_data"]["key"], "toml_value");
+	assert_eq!(data["yaml_data"]["key"], "yaml_value");
+	Ok(())
+}
+
+#[test]
+fn render_template_deeply_nested_data() -> MdtResult<()> {
+	let mut data = HashMap::new();
+	data.insert(
+		"a".to_string(),
+		serde_json::json!({"b": {"c": {"d": "deep_value"}}}),
+	);
+	let content = "{{ a.b.c.d }}";
+	let result = render_template(content, &data)?;
+	assert_eq!(result, "deep_value");
+	Ok(())
+}
+
+#[test]
+fn source_scanner_mixed_comment_styles() -> MdtResult<()> {
+	let content = r"// Single line comment with <!-- {=blockA} -->
+// content A
+// <!-- {/blockA} -->
+
+/* Block comment */
+/* <!-- {=blockB} --> */
+/* content B */
+/* <!-- {/blockB} --> */
+";
+	let blocks = parse_source(content)?;
+	// At least blockA should be found (single-line comments)
+	assert!(!blocks.is_empty());
+	assert!(blocks.iter().any(|b| b.name == "blockA"));
+	Ok(())
+}
+
+#[test]
+fn tokenize_malformed_incomplete_comment() -> MdtResult<()> {
+	// Malformed HTML comments should not panic
+	let nodes = get_html_nodes("<!-- {= -->")?;
+	let groups = tokenize(nodes)?;
+	assert!(groups.is_empty());
+	Ok(())
+}
+
+#[test]
+fn tokenize_malformed_no_close_brace() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {=name -->")?;
+	let groups = tokenize(nodes)?;
+	assert!(groups.is_empty());
+	Ok(())
+}
+
+#[test]
+fn tokenize_empty_tag_name() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {=} -->")?;
+	let groups = tokenize(nodes)?;
+	assert!(groups.is_empty());
+	Ok(())
+}
+
+// --- Fuzz-style no-panic tests ---
+
+#[test]
+fn fuzz_tokenizer_no_panic() {
+	let long_input = "<!-- {=".to_string() + &"x".repeat(10000) + "} -->";
+	let inputs: Vec<&str> = vec![
+		"",
+		"<!-- -->",
+		"<!---->",
+		"<!-- { -->",
+		"<!-- {= -->",
+		"<!-- {@ -->",
+		"<!-- {/ -->",
+		"<!-- {=} -->",
+		"<!-- {@} -->",
+		"<!-- {/} -->",
+		"<!-- {=name} --> <!-- {/other} -->",
+		"<!-- {=a|b|c|d|e|f} -->",
+		r#"<!-- {=a|b:"c":"d":"e"} -->"#,
+		"<!-- {=a|} -->",
+		"<!-- {=a||} -->",
+		"<!-- {=a|b:} -->",
+		"<-- {=a} -->",
+		"<!- {=a} -->",
+		"<!-- {=a} --",
+		"<!-- {=a} ->",
+		"<!-- {=a\n} -->",
+		&long_input,
+		"<!-- {=name|trim|trim|trim|trim|trim|trim|trim|trim} -->",
+	];
+
+	for input in &inputs {
+		let result = get_html_nodes(input);
+		if let Ok(nodes) = result {
+			let _ = tokenize(nodes);
+		}
+	}
+}
+
+#[test]
+fn fuzz_parser_no_panic() {
+	let inputs = [
+		"",
+		"<!-- {@a} -->\n<!-- {/a} -->\n",
+		"<!-- {=a} -->\n<!-- {/a} -->\n",
+		"<!-- {@a} -->\n<!-- {@b} -->\n<!-- {/b} -->\n<!-- {/a} -->\n",
+		"<!-- {/orphan} -->\n",
+		"<!-- {@a} -->\ncontent\n<!-- {/b} -->\n",
+		"<!-- {=a} -->\n<!-- {=b} -->\n<!-- {/a} -->\n<!-- {/b} -->\n",
+	];
+
+	for input in &inputs {
+		let _ = parse(input);
+	}
+}
+
+#[test]
+fn fuzz_source_scanner_no_panic() {
+	let inputs = [
+		"",
+		"no comments here",
+		"// <!-- partial",
+		"// <!-- {= -->",
+		"<!-- unmatched",
+		"--><!-- --><!--",
+		"// <!-- {=a} -->\n// <!-- {/b} -->\n",
+	];
+
+	for input in &inputs {
+		let _ = parse_source(input);
+	}
+}

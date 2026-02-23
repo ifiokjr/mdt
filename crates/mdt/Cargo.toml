@@ -29,7 +29,7 @@ thiserror = { workspace = true, default-features = true }
 toml = { workspace = true, default-features = true }
 
 [dev-dependencies]
-insta = { workspace = true, default-features = true }
+insta = { workspace = true, features = ["yaml"], default-features = true }
 rstest = { workspace = true, default-features = true }
 similar-asserts = { workspace = true, default-features = true }
 tempfile = { workspace = true, default-features = true }
