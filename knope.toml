@@ -89,6 +89,10 @@ command = "dprint fmt"
 
 [[workflows.steps]]
 type = "Command"
+command = "cargo check --workspace"
+
+[[workflows.steps]]
+type = "Command"
 command = "git add --all"
 
 [[workflows.steps]]
