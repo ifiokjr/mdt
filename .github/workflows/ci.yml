@@ -70,3 +70,13 @@ jobs:
       - name: build all features
         run: cargo build --all-features --locked
         shell: devenv shell -c -- bash -e {0}
+
+  security:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
