@@ -14,7 +14,7 @@
       deno
       dprint
       mdbook
-      nixfmt-rfc-style
+      nixfmt
       rustup
       shfmt
     ]
