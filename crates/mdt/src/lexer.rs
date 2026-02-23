@@ -1,3 +1,4 @@
+use logos::Logos;
 use markdown::mdast::Html;
 use snailquote::unescape;
 
@@ -6,461 +7,42 @@ use crate::Position;
 use crate::tokens::Token;
 use crate::tokens::TokenGroup;
 
-struct TokenizerState {
-	/// The remaining html nodes
-	nodes: Vec<Html>,
-	/// The resolved token groups.
-	groups: Vec<TokenGroup>,
-	/// The current position
-	position: Option<Position>,
-	///  The current node being used.
-	node: Option<Html>,
-	/// The current token group
-	token_group: Option<TokenGroup>,
-	/// The current remaining content
-	content: Option<String>,
-	/// Whether we are currently inside an html comment.
-	stack: Vec<LexerContext>,
+/// Raw tokens produced by logos for flat tokenization of HTML node content.
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"")]
+enum RawToken {
+	#[token("<!--")]
+	HtmlCommentOpen,
+	#[token("-->")]
+	HtmlCommentClose,
+	#[token("{=")]
+	ConsumerTag,
+	#[token("{@")]
+	ProviderTag,
+	#[token("{/")]
+	CloseTag,
+	#[token("}")]
+	BraceClose,
+	#[token("|")]
+	Pipe,
+	#[token(":")]
+	ArgumentDelimiter,
+	#[token("\n")]
+	Newline,
+	#[regex(r"[ \t\r]")]
+	Whitespace,
+	#[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+	Ident,
+	#[regex(r#""([^"\\]|\\.)*""#)]
+	DoubleQuotedString,
+	#[regex(r"'([^'\\]|\\.)*'")]
+	SingleQuotedString,
+	#[regex(r"[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?")]
+	Number,
 }
 
-impl TokenizerState {
-	fn advance(&mut self, steps: usize) -> Option<String> {
-		let (skipped, remaining) = match self.content.as_ref() {
-			Some(content) => {
-				let (skipped, remaining) = content.split_at(steps);
-				self.position
-					.iter_mut()
-					.for_each(|position| position.advance_start_str(skipped));
-				let remaining = if remaining.is_empty() {
-					None
-				} else {
-					Some(remaining.to_string())
-				};
-				(Some(skipped.to_string()), remaining)
-			}
-			None => (None, None),
-		};
-
-		self.content = remaining;
-		skipped
-	}
-
-	/// Should be called before advance as it uses the current position.
-	fn update_token_group(&mut self, token: Token, update_start: bool) {
-		if let Some(group) = self.token_group.as_mut() {
-			if update_start {
-				if let Some(position) = self.position.as_ref() {
-					group.position.start = position.start;
-					group.position.end = position.start;
-				}
-			}
-
-			group.position.advance_end(&token);
-			group.tokens.push(token);
-		}
-	}
-
-	fn whitespace(&mut self, byte: u8) {
-		let token = Token::Whitespace(byte);
-		self.update_token_group(token, false);
-		self.advance(1);
-	}
-
-	fn newline(&mut self) {
-		let token = Token::Newline;
-		self.update_token_group(token, false);
-		self.advance(1);
-	}
-
-	/// Collect the next identifier starting from the current character. Returns
-	/// false if no identifier is found.
-	fn collect_identifier(&mut self) -> bool {
-		let Some(content) = self.content.as_ref() else {
-			return false;
-		};
-
-		let ident_length = lex_identifier(content);
-
-		if ident_length == 0 {
-			return false;
-		}
-
-		let ident = self.advance(ident_length);
-
-		let Some(ident) = ident else {
-			return false;
-		};
-
-		let token = Token::Ident(ident);
-
-		self.update_token_group(token, false);
-
-		true
-	}
-
-	fn collect_string(&mut self, delimiter: u8) -> bool {
-		let Some(content) = self.content.as_ref() else {
-			return false;
-		};
-
-		let mut escaped = false;
-		let mut has_escapes = false;
-		let length = content
-			.as_bytes()
-			.iter()
-			.skip(1)
-			.take_while(|&&byte| {
-				match (escaped, byte) {
-					(true, _) => {
-						escaped = false;
-						true
-					}
-					(_, b'\\') => {
-						escaped = true;
-						has_escapes = true;
-						true
-					}
-					(_, c) if c == delimiter => false,
-					_ => true,
-				}
-			})
-			.count();
-		if escaped || content.as_bytes().get(length + 1) != Some(&delimiter) {
-			return false;
-		}
-
-		let Some(string) = self.advance(length + 2) else {
-			return false;
-		};
-
-		let Some(mut string) = string.get(1..string.len() - 1).map(ToString::to_string) else {
-			return false;
-		};
-
-		if has_escapes {
-			string = match unescape(&string).ok() {
-				Some(unescaped) => unescaped,
-				None => return false,
-			};
-		}
-
-		let token = Token::String(string, delimiter);
-		self.update_token_group(token, false);
-		true
-	}
-
-	fn collect_number(&mut self) -> bool {
-		let Some(content) = self.content.as_ref() else {
-			return false;
-		};
-
-		#[derive(Copy, Clone)]
-		enum State {
-			Integer,      // 123
-			Fraction,     // .123
-			Exponent,     // E | e
-			ExponentSign, // +|-
-		}
-
-		let mut state = State::Integer;
-		let mut length = content.chars().take_while(|&c| c.is_ascii_digit()).count();
-		for ch in content.chars().skip(length) {
-			state = match (ch, state) {
-				('.', State::Integer) => State::Fraction,
-				('E' | 'e', State::Integer | State::Fraction) => State::Exponent,
-				('+' | '-' | '0'..='9', State::Exponent) => State::ExponentSign,
-				('0'..='9', state) => state,
-				_ => break,
-			};
-			length += 1;
-		}
-		let is_float = !matches!(state, State::Integer);
-
-		let num = self.advance(length);
-
-		let Some(num) = num else {
-			return false;
-		};
-
-		let token = if is_float {
-			num.parse().map(Token::Float).ok()
-		} else {
-			num.parse().map(Token::Int).ok()
-		};
-
-		if let Some(token) = token {
-			self.update_token_group(token, false);
-			true
-		} else {
-			false
-		}
-	}
-
-	/// Push the token group to the groups `Vec` and reset the token group.
-	fn push_token_group(&mut self) {
-		let Some(group) = self.token_group.take() else {
-			return;
-		};
-
-		if group.is_valid() {
-			self.groups.push(group);
-		}
-
-		self.reset_token_group();
-	}
-
-	fn reset_token_group(&mut self) {
-		self.token_group = self.position.as_ref().map(|position| {
-			TokenGroup {
-				tokens: vec![],
-				position: *position,
-			}
-		});
-
-		self.stack = vec![LexerContext::Outside];
-	}
-
-	fn reset_current_node(&mut self) {
-		self.node = remove_first(&mut self.nodes);
-		// self.node = node.clone();
-		self.position = self
-			.node
-			.as_ref()
-			.and_then(|node| node.position.clone())
-			.map(Into::into);
-		self.content = self.node.as_ref().map(|node| node.value.clone());
-		self.reset_token_group();
-	}
-
-	/// Call this when there is no longer any chance of the tokens being valid.
-	fn exit_comment_block(&mut self) {
-		self.reset_token_group();
-
-		let Some(content) = self.content.as_ref() else {
-			return;
-		};
-
-		let token = Token::HtmlCommentClose;
-
-		let steps = if let Some(steps) = memstr(content.as_bytes(), token.to_string().as_bytes()) {
-			steps + token.increment()
-		} else {
-			content.len()
-		};
-
-		self.advance(steps);
-	}
-}
-
-#[allow(clippy::unnecessary_wraps)]
-pub fn tokenize(nodes: Vec<Html>) -> MdtResult<Vec<TokenGroup>> {
-	let mut state = TokenizerState {
-		nodes,
-		groups: vec![],
-		position: None,
-		node: None,
-		content: None,
-		token_group: None,
-		stack: vec![LexerContext::Outside],
-	};
-
-	loop {
-		state.reset_current_node();
-
-		if state.node.is_none() {
-			break;
-		}
-
-		tokenize_node(&mut state);
-	}
-
-	Ok(state.groups)
-}
-
-fn tokenize_node(state: &mut TokenizerState) {
-	loop {
-		let (Some(_position), Some(content)) = (state.position.as_ref(), state.content.as_ref())
-		else {
-			break;
-		};
-
-		match state.stack.last() {
-			Some(LexerContext::Outside) => {
-				if let Some("<!--") = content.get(0..4) {
-					let token = Token::HtmlCommentOpen;
-					// Entering an html comment
-					state.stack.push(LexerContext::HtmlComment);
-					state.update_token_group(token, true);
-					state.advance(4);
-				} else {
-					state.advance(1);
-				}
-			}
-			Some(LexerContext::HtmlComment) => {
-				if let Some("-->") = content.get(0..3) {
-					let token = Token::HtmlCommentClose;
-					state.stack.pop();
-					state.update_token_group(token, false);
-					state.advance(3);
-					state.push_token_group();
-				} else {
-					match content.get(0..2) {
-						Some("{=") => {
-							let token = Token::ConsumerTag;
-							state.stack.push(LexerContext::Tag);
-							state.update_token_group(token, false);
-							state.advance(2);
-						}
-						Some("{@") => {
-							let token = Token::ProviderTag;
-							state.stack.push(LexerContext::Tag);
-							state.update_token_group(token, false);
-							state.advance(2);
-						}
-						Some("{/") => {
-							let token = Token::CloseTag;
-							state.stack.push(LexerContext::Tag);
-							state.update_token_group(token, false);
-							state.advance(2);
-						}
-						_ => {
-							match content.bytes().next() {
-								Some(b'\n') => {
-									state.newline();
-								}
-								Some(byte) if byte.is_ascii_whitespace() => {
-									state.whitespace(byte);
-								}
-								_ => {
-									state.exit_comment_block();
-								}
-							}
-						}
-					}
-				}
-			}
-			Some(LexerContext::Tag) => {
-				match content.bytes().next() {
-					Some(b'\n') => {
-						state.newline();
-					}
-					Some(byte) if byte.is_ascii_whitespace() => {
-						state.whitespace(byte);
-					}
-					Some(b'}') => {
-						let token = Token::BraceClose;
-						state.update_token_group(token, false);
-						state.advance(1);
-						state.stack.pop();
-					}
-					Some(b'|') => {
-						let token = Token::Pipe;
-						state.update_token_group(token, false);
-						state.stack.push(LexerContext::Filter);
-						state.advance(1);
-					}
-					Some(ch) if ch.is_ascii_alphabetic() => {
-						let collected = state.collect_identifier();
-
-						if !collected {
-							state.exit_comment_block();
-						}
-					}
-					_ => {
-						state.exit_comment_block();
-						state.push_token_group();
-						break;
-					}
-				}
-			}
-			Some(LexerContext::Filter) => {
-				match content.bytes().next() {
-					Some(b'\n') => {
-						state.newline();
-					}
-					Some(byte) if byte.is_ascii_whitespace() => {
-						state.whitespace(byte);
-					}
-					Some(b':') => {
-						let token = Token::ArgumentDelimiter;
-						state.update_token_group(token, false);
-						state.advance(1);
-					}
-					Some(b'|') => {
-						let token = Token::Pipe;
-						state.update_token_group(token, false);
-						state.advance(1);
-					}
-					Some(b'}') => {
-						let token = Token::BraceClose;
-						state.update_token_group(token, false);
-						state.advance(1);
-						state.stack.pop();
-						state.stack.pop();
-					}
-					Some(symbol @ (b'\'' | b'"')) => {
-						let collected = state.collect_string(symbol);
-
-						if !collected {
-							state.exit_comment_block();
-						}
-					}
-					Some(ch) if ch.is_ascii_digit() => {
-						let collected = state.collect_number();
-
-						if !collected {
-							state.exit_comment_block();
-						}
-					}
-					Some(ch) if ch.is_ascii_alphabetic() => {
-						let collected = state.collect_identifier();
-
-						if !collected {
-							state.exit_comment_block();
-						}
-					}
-					_ => {
-						state.exit_comment_block();
-					}
-				}
-			}
-			None => break,
-		}
-	}
-}
-
-fn remove_first<T>(list: &mut Vec<T>) -> Option<T> {
-	if list.is_empty() {
-		None
-	} else {
-		Some(list.remove(0))
-	}
-}
-
-pub fn memstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-	haystack
-		.windows(needle.len())
-		.position(|window| window == needle)
-}
-
-fn lex_identifier(content: impl AsRef<str>) -> usize {
-	content
-		.as_ref()
-		.as_bytes()
-		.iter()
-		.enumerate()
-		.take_while(|&(idx, &c)| {
-			if c == b'_' {
-				true
-			} else if idx == 0 {
-				c.is_ascii_alphabetic()
-			} else {
-				c.is_ascii_alphanumeric()
-			}
-		})
-		.count()
-}
-
+/// Context states for the simplified state machine that drives
+/// context-dependent token processing.
 enum LexerContext {
 	/// The lexer is currently outside of any tags.
 	Outside,
@@ -468,6 +50,312 @@ enum LexerContext {
 	HtmlComment,
 	/// The lexer is currently inside a consumer, provider or closing tag.
 	Tag,
-	/// The lexer is currently inside a filters.
+	/// The lexer is currently inside a filter.
 	Filter,
+}
+
+/// Walks the logos token stream with context-dependent rules, building
+/// `TokenGroup` objects.
+struct TokenWalker<'a> {
+	/// The source text of the current HTML node.
+	source: &'a str,
+	/// The collected raw tokens and their byte spans.
+	raw_tokens: Vec<(Result<RawToken, ()>, std::ops::Range<usize>)>,
+	/// Current index into `raw_tokens`.
+	cursor: usize,
+	/// The current position tracker (line/column/offset).
+	position: Position,
+	/// The current token group being built.
+	token_group: TokenGroup,
+	/// The context stack for the state machine.
+	stack: Vec<LexerContext>,
+	/// Collected valid groups.
+	groups: Vec<TokenGroup>,
+}
+
+impl<'a> TokenWalker<'a> {
+	fn new(source: &'a str, start_position: Position) -> Self {
+		let raw_tokens: Vec<_> = RawToken::lexer(source).spanned().collect();
+
+		Self {
+			source,
+			raw_tokens,
+			cursor: 0,
+			position: start_position,
+			token_group: TokenGroup {
+				tokens: vec![],
+				position: start_position,
+			},
+			stack: vec![LexerContext::Outside],
+			groups: vec![],
+		}
+	}
+
+	/// Get the text slice for the current raw token.
+	fn current_slice(&self) -> &'a str {
+		let (_, span) = &self.raw_tokens[self.cursor];
+		&self.source[span.clone()]
+	}
+
+	/// Advance the position tracker through a given text slice and move cursor
+	/// forward.
+	fn advance_cursor(&mut self) {
+		let slice = self.current_slice();
+		self.position.start.advance_str(slice);
+		self.cursor += 1;
+	}
+
+	/// Add a token to the current token group, then advance the cursor.
+	fn push_token(&mut self, token: Token, update_start: bool) {
+		if update_start {
+			self.token_group.position.start = self.position.start;
+			self.token_group.position.end = self.position.start;
+		}
+
+		self.token_group.position.advance_end(&token);
+		self.token_group.tokens.push(token);
+		self.advance_cursor();
+	}
+
+	/// Finalize the current token group: if valid, push to groups. Then reset.
+	fn push_token_group(&mut self) {
+		let group = std::mem::replace(
+			&mut self.token_group,
+			TokenGroup {
+				tokens: vec![],
+				position: self.position,
+			},
+		);
+
+		if group.is_valid() {
+			self.groups.push(group);
+		}
+
+		self.stack = vec![LexerContext::Outside];
+	}
+
+	/// Reset the current token group without pushing, and reset context.
+	fn reset_token_group(&mut self) {
+		self.token_group = TokenGroup {
+			tokens: vec![],
+			position: self.position,
+		};
+		self.stack = vec![LexerContext::Outside];
+	}
+
+	/// When invalid content is encountered inside an HTML comment, scan forward
+	/// to find `HtmlCommentClose` (`-->`), skipping everything up to and
+	/// including it.
+	fn exit_comment_block(&mut self) {
+		self.reset_token_group();
+
+		while self.cursor < self.raw_tokens.len() {
+			let (result, _) = &self.raw_tokens[self.cursor];
+			if matches!(result, Ok(RawToken::HtmlCommentClose)) {
+				self.advance_cursor();
+				return;
+			}
+			self.advance_cursor();
+		}
+	}
+
+	/// Process a string token (double or single quoted). Strips quotes and
+	/// unescapes if needed.
+	fn process_string(&mut self, delimiter: u8) {
+		let slice = self.current_slice();
+		// Strip surrounding quotes
+		let inner = &slice[1..slice.len() - 1];
+
+		let has_escapes = inner.contains('\\');
+		let value = if has_escapes {
+			if let Ok(unescaped) = unescape(inner) {
+				unescaped
+			} else {
+				self.exit_comment_block();
+				return;
+			}
+		} else {
+			inner.to_string()
+		};
+
+		let token = Token::String(value, delimiter);
+		self.push_token(token, false);
+	}
+
+	/// Process a number token. Determines if it's a float or int.
+	fn process_number(&mut self) {
+		let slice = self.current_slice();
+		let is_float = slice.contains('.') || slice.contains('e') || slice.contains('E');
+
+		if is_float {
+			match slice.parse::<f64>() {
+				Ok(v) => self.push_token(Token::Float(v), false),
+				Err(_) => self.exit_comment_block(),
+			}
+		} else {
+			match slice.parse::<i64>() {
+				Ok(v) => self.push_token(Token::Int(v), false),
+				Err(_) => self.exit_comment_block(),
+			}
+		}
+	}
+
+	/// Main processing loop: walk the raw token stream with context-dependent
+	/// rules.
+	fn process(&mut self) {
+		while self.cursor < self.raw_tokens.len() {
+			let (result, _) = &self.raw_tokens[self.cursor];
+
+			// Handle logos errors (unrecognized bytes): advance past them.
+			let Ok(raw) = result else {
+				match self.stack.last() {
+					Some(LexerContext::Outside) => {
+						self.advance_cursor();
+					}
+					Some(LexerContext::HtmlComment | LexerContext::Tag | LexerContext::Filter) => {
+						self.exit_comment_block();
+					}
+					None => break,
+				}
+				continue;
+			};
+
+			match self.stack.last() {
+				Some(LexerContext::Outside) => {
+					match raw {
+						RawToken::HtmlCommentOpen => {
+							self.stack.push(LexerContext::HtmlComment);
+							self.push_token(Token::HtmlCommentOpen, true);
+						}
+						_ => {
+							// Outside context: skip everything that isn't a comment open
+							self.advance_cursor();
+						}
+					}
+				}
+				Some(LexerContext::HtmlComment) => {
+					match raw {
+						RawToken::HtmlCommentClose => {
+							self.stack.pop();
+							self.push_token(Token::HtmlCommentClose, false);
+							self.push_token_group();
+						}
+						RawToken::ConsumerTag => {
+							self.stack.push(LexerContext::Tag);
+							self.push_token(Token::ConsumerTag, false);
+						}
+						RawToken::ProviderTag => {
+							self.stack.push(LexerContext::Tag);
+							self.push_token(Token::ProviderTag, false);
+						}
+						RawToken::CloseTag => {
+							self.stack.push(LexerContext::Tag);
+							self.push_token(Token::CloseTag, false);
+						}
+						RawToken::Newline => {
+							self.push_token(Token::Newline, false);
+						}
+						RawToken::Whitespace => {
+							let byte = self.current_slice().as_bytes()[0];
+							self.push_token(Token::Whitespace(byte), false);
+						}
+						_ => {
+							self.exit_comment_block();
+						}
+					}
+				}
+				Some(LexerContext::Tag) => {
+					match raw {
+						RawToken::BraceClose => {
+							self.push_token(Token::BraceClose, false);
+							self.stack.pop();
+						}
+						RawToken::Pipe => {
+							self.stack.push(LexerContext::Filter);
+							self.push_token(Token::Pipe, false);
+						}
+						RawToken::Ident => {
+							let ident = self.current_slice().to_string();
+							self.push_token(Token::Ident(ident), false);
+						}
+						RawToken::Newline => {
+							self.push_token(Token::Newline, false);
+						}
+						RawToken::Whitespace => {
+							let byte = self.current_slice().as_bytes()[0];
+							self.push_token(Token::Whitespace(byte), false);
+						}
+						_ => {
+							self.exit_comment_block();
+						}
+					}
+				}
+				Some(LexerContext::Filter) => {
+					match raw {
+						RawToken::BraceClose => {
+							self.push_token(Token::BraceClose, false);
+							// Pop Filter, then pop Tag
+							self.stack.pop();
+							self.stack.pop();
+						}
+						RawToken::Pipe => {
+							self.push_token(Token::Pipe, false);
+						}
+						RawToken::ArgumentDelimiter => {
+							self.push_token(Token::ArgumentDelimiter, false);
+						}
+						RawToken::DoubleQuotedString => {
+							self.process_string(b'"');
+						}
+						RawToken::SingleQuotedString => {
+							self.process_string(b'\'');
+						}
+						RawToken::Number => {
+							self.process_number();
+						}
+						RawToken::Ident => {
+							let ident = self.current_slice().to_string();
+							self.push_token(Token::Ident(ident), false);
+						}
+						RawToken::Newline => {
+							self.push_token(Token::Newline, false);
+						}
+						RawToken::Whitespace => {
+							let byte = self.current_slice().as_bytes()[0];
+							self.push_token(Token::Whitespace(byte), false);
+						}
+						_ => {
+							self.exit_comment_block();
+						}
+					}
+				}
+				None => break,
+			}
+		}
+	}
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn tokenize(nodes: Vec<Html>) -> MdtResult<Vec<TokenGroup>> {
+	let mut groups = Vec::new();
+
+	for node in nodes {
+		let Some(position) = node.position.map(Into::into) else {
+			continue;
+		};
+
+		let position: Position = position;
+
+		let mut walker = TokenWalker::new(&node.value, position);
+		walker.process();
+		groups.extend(walker.groups);
+	}
+
+	Ok(groups)
+}
+
+pub fn memstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+	haystack
+		.windows(needle.len())
+		.position(|window| window == needle)
 }

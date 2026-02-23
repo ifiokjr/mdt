@@ -12,6 +12,7 @@ float-cmp = { default-features = false, version = "^0.10" }
 globset = { default-features = false, version = "^0.4" }
 insta = { default-features = false, version = "^1" }
 kdl = { default-features = false, version = "^6" }
+logos = { default-features = false, version = "^0.14" }
 markdown = { default-features = false, version = "^1" }
 miette = { default-features = false, version = "^7" }
 minijinja = { default-features = false, version = "^2" }

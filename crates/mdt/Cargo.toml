@@ -17,6 +17,7 @@ derive_more = { workspace = true, default-features = true }
 float-cmp = { workspace = true, default-features = true }
 globset = { workspace = true, default-features = true }
 kdl = { workspace = true, default-features = true }
+logos = { workspace = true, default-features = true }
 markdown = { workspace = true, default-features = true }
 miette = { workspace = true, features = ["fancy"], default-features = true }
 minijinja = { workspace = true, default-features = true }
