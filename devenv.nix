@@ -117,9 +117,7 @@
     "coverage:all" = {
       exec = ''
         set -e
-        cargo llvm-cov nextest --no-report
-        cargo llvm-cov --doc --no-report
-        cargo llvm-cov report --lcov --output-path lcov.info
+        cargo llvm-cov nextest --lcov --output-path lcov.info
       '';
       description = "Run coverage across the crates.";
       binary = "bash";
