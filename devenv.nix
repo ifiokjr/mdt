@@ -146,11 +146,20 @@
       description = "Fix clippy lints for rust.";
       binary = "bash";
     };
+    "deny:check" = {
+      exec = ''
+        set -e
+        cargo deny check
+      '';
+      description = "Run cargo-deny checks for security advisories and license compliance.";
+      binary = "bash";
+    };
     "lint:all" = {
       exec = ''
         set -e
         lint:clippy
         lint:format
+        deny:check
       '';
       description = "Run all checks.";
       binary = "bash";
