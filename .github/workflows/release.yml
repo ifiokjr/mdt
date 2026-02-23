@@ -43,6 +43,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -51,6 +53,19 @@ jobs:
       - name: extract version from tag
         id: version
         run: echo "version=${TAG#*/}" >> "${GITHUB_OUTPUT}"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+
+      - name: verify tag version matches code
+        run: |
+          TAG_VERSION="${TAG#*/v}"
+          CARGO_VERSION=$(cargo metadata --no-deps --format-version=1 \
+            | jq -r '.packages[] | select(.name=="mdt_cli") | .version')
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Version mismatch: tag=$TAG_VERSION cargo=$CARGO_VERSION"
+            exit 1
+          fi
         env:
           TAG: ${{ github.event.release.tag_name }}
         shell: bash
