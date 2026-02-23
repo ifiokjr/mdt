@@ -7,11 +7,11 @@ use mdt::project::ConsumerEntry;
 use mdt::project::ProviderEntry;
 use mdt::project::extract_content_between_tags;
 #[allow(unused_imports)]
-use tower_lsp::lsp_types::*;
+use tower_lsp_server::ls_types::*;
 
 use super::*;
 
-fn make_test_state(provider_content: &str, consumer_content: &str) -> (WorkspaceState, Url) {
+fn make_test_state(provider_content: &str, consumer_content: &str) -> (WorkspaceState, Uri) {
 	let provider_template =
 		format!("<!-- {{@greeting}} -->\n\n{provider_content}\n\n<!-- {{/greeting}} -->\n");
 	let consumer_doc = format!(
@@ -33,8 +33,9 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 		content: extract_content_between_tags(&provider_template, &provider_blocks[0]),
 	};
 
-	let consumer_uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut providers = HashMap::new();
 	providers.insert("greeting".to_string(), provider_entry.clone());
@@ -114,8 +115,9 @@ fn diagnostics_up_to_date_consumer() {
 fn diagnostics_missing_provider() {
 	let consumer_doc = "<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n";
 	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
-	let consumer_uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -145,8 +147,9 @@ fn diagnostics_provider_in_non_template_file() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
 	let blocks = parse(content).unwrap_or_default();
 	// Use a non-template URI (readme.md, not *.t.md)
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -201,8 +204,9 @@ fn hover_on_consumer_shows_provider_content() {
 fn hover_on_provider_shows_consumer_count() {
 	let provider_template = "<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n";
 	let provider_blocks = parse(provider_template).unwrap_or_default();
-	let provider_uri =
-		Url::parse("file:///tmp/test/template.t.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let provider_uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let provider_block = provider_blocks
 		.iter()
@@ -277,8 +281,9 @@ fn hover_outside_block_returns_none() {
 #[test]
 fn completion_inside_consumer_tag() {
 	let consumer_doc = "<!-- {=gre";
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -327,8 +332,9 @@ fn completion_inside_consumer_tag() {
 #[test]
 fn completion_after_pipe_suggests_transformers() {
 	let consumer_doc = "<!-- {=greeting|";
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -364,8 +370,9 @@ fn completion_after_pipe_suggests_transformers() {
 #[test]
 fn completion_outside_tag_returns_empty() {
 	let consumer_doc = "# Normal markdown";
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -411,12 +418,12 @@ fn goto_definition_consumer_to_provider() {
 	match result.unwrap() {
 		GotoDefinitionResponse::Scalar(loc) => {
 			assert!(
-				loc.uri.path().contains("template.t.md"),
+				loc.uri.path().as_str().contains("template.t.md"),
 				"expected target to be the template file"
 			);
 		}
 		GotoDefinitionResponse::Array(locs) => {
-			assert!(locs[0].uri.path().contains("template.t.md"));
+			assert!(locs[0].uri.path().as_str().contains("template.t.md"));
 		}
 		GotoDefinitionResponse::Link(_) => panic!("unexpected Link goto definition response"),
 	}
@@ -426,8 +433,9 @@ fn goto_definition_consumer_to_provider() {
 fn goto_definition_without_matching_provider_returns_none() {
 	let consumer_doc = "<!-- {=missing} -->\n\nstuff\n\n<!-- {/missing} -->\n";
 	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -462,8 +470,9 @@ fn document_symbols_lists_blocks() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n\n<!-- {=other} \
 	               -->\n\nstuff\n\n<!-- {/other} -->\n";
 	let blocks = parse(content).unwrap_or_default();
-	let uri =
-		Url::parse("file:///tmp/test/template.t.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -494,8 +503,9 @@ fn document_symbols_lists_blocks() {
 fn document_symbols_empty_for_no_blocks() {
 	let content = "# Just a heading\n\nNo blocks here.\n";
 	let blocks = parse(content).unwrap_or_default();
-	let uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -571,8 +581,9 @@ fn code_action_not_offered_when_up_to_date() {
 	let mut providers = HashMap::new();
 	providers.insert("greeting".to_string(), provider_entry);
 
-	let consumer_uri =
-		Url::parse("file:///tmp/test/readme.md").unwrap_or_else(|_| panic!("invalid test URI"));
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
 
 	let mut documents = HashMap::new();
 	documents.insert(
@@ -698,7 +709,9 @@ fn to_lsp_position_converts_correctly() {
 
 #[test]
 fn parse_document_content_markdown() {
-	let uri = Url::parse("file:///test/readme.md").unwrap_or_else(|_| panic!("invalid URI"));
+	let uri = "file:///test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
 	let blocks = parse_document_content(&uri, content);
 	assert_eq!(blocks.len(), 1);
@@ -707,7 +720,9 @@ fn parse_document_content_markdown() {
 
 #[test]
 fn parse_document_content_source_file() {
-	let uri = Url::parse("file:///test/main.rs").unwrap_or_else(|_| panic!("invalid URI"));
+	let uri = "file:///test/main.rs"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
 	let blocks = parse_document_content(&uri, content);
 	assert_eq!(blocks.len(), 1);

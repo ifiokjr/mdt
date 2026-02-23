@@ -144,7 +144,7 @@ fn parse_data_file(
 			toml_to_json(toml_value, path_display)
 		}
 		"yaml" | "yml" => {
-			serde_yml::from_str(content).map_err(|e| {
+			serde_yaml_ng::from_str(content).map_err(|e| {
 				MdtError::DataFile {
 					path: path_display.to_string(),
 					reason: e.to_string(),

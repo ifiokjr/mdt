@@ -23,7 +23,7 @@ rstest = { default-features = false, version = "^0.26" }
 schemars = { default-features = false, version = "^0.8" }
 serde = { default-features = false, version = "^1" }
 serde_json = { default-features = false, version = "^1" }
-serde_yml = { default-features = false, version = "^0.0.12" }
+serde_yaml_ng = { default-features = false, version = "^0.10" }
 similar = { default-features = false, version = "^2" }
 similar-asserts = { default-features = false, version = "^1" }
 snailquote = { default-features = false, version = "^0.3" }
@@ -31,7 +31,7 @@ tempfile = { default-features = false, version = "^3" }
 thiserror = { default-features = false, version = "^2" }
 tokio = { default-features = false, version = "^1" }
 toml = { default-features = false, version = "^1" }
-tower-lsp = { default-features = false, version = "^0.20" }
+tower-lsp-server = { default-features = false, version = "^0.23" }
 
 # Internal crates
 mdt = { path = "./crates/mdt", version = "0.0.1" }
@@ -54,7 +54,7 @@ rust-version = "1.86.0"
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }
 cargo-llvm-cov = { version = "0.8.4" }
-cargo-nextest = { version = "0.9.127" }
+cargo-nextest = { version = "0.9.129" }
 cargo-semver-checks = { version = "0.46.0" }
 cargo-workspaces = { version = "0.4.2" }
 knope = { version = "0.22.3", bins = ["knope"] }
