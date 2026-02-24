@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpa0JwX5
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpQByGB1
     - update
   env:
     NO_COLOR: "1"
@@ -14,5 +14,10 @@ exit_code: 2
 ----- stdout -----
 
 ----- stderr -----
-error: template.t.md:1:1: provider block `other_block` has no consumers
+mdt::unused_provider
+
+  x [template.t.md:1:1] provider block `other_block` has no consumers
+  help: add a consumer block `<!-- {=other_block} -->...<!-- {/other_block}
+        -->` or remove the unused provider
+
 error: validation errors found

@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpddzV90
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpoeiVZF
     - "--verbose"
     - check
   env:
@@ -18,5 +18,10 @@ Scanned project: 1 provider(s), 1 consumer(s)
     @docs ([TEMP_DIR]/template.t.md)
 
 ----- stderr -----
-error: readme.md:3:1: unknown transformer `foobar`
+mdt::unknown_transformer
+
+  x [readme.md:3:1] unknown transformer `foobar`
+  help: available transformers: trim, trimStart, trimEnd, indent, prefix,
+        suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace
+
 error: validation errors found

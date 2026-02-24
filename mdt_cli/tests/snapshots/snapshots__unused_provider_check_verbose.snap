@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpxFyFJf
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp8LgFiG
     - "--verbose"
     - check
   env:
@@ -19,5 +19,10 @@ Scanned project: 2 provider(s), 1 consumer(s)
     @used_block ([TEMP_DIR]/template.t.md)
 
 ----- stderr -----
-error: template.t.md:7:1: provider block `orphan_block` has no consumers
+mdt::unused_provider
+
+  x [template.t.md:7:1] provider block `orphan_block` has no consumers
+  help: add a consumer block `<!-- {=orphan_block} -->...<!-- {/orphan_block}
+        -->` or remove the unused provider
+
 error: validation errors found

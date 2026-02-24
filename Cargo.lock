@@ -895,6 +895,7 @@ dependencies = [
  "mdt_core",
  "mdt_lsp",
  "mdt_mcp",
+ "miette",
  "notify",
  "owo-colors",
  "predicates",
