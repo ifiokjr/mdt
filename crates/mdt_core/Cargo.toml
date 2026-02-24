@@ -16,6 +16,7 @@ description = "update markdown content anywhere using comments as template tags"
 derive_more = { workspace = true, default-features = true }
 float-cmp = { workspace = true, default-features = true }
 globset = { workspace = true, default-features = true }
+ignore = { workspace = true, default-features = true }
 kdl = { workspace = true, default-features = true }
 logos = { workspace = true, default-features = true }
 markdown = { workspace = true, default-features = true }
