@@ -224,13 +224,35 @@ fn run_check(
 					})
 				})
 				.collect();
+			let error_entries: Vec<serde_json::Value> = result
+				.render_errors
+				.iter()
+				.map(|err| {
+					let rel = make_relative(&err.file, &root);
+					serde_json::json!({
+						"file": rel,
+						"block": err.block_name,
+						"line": err.line,
+						"column": err.column,
+						"message": err.message,
+					})
+				})
+				.collect();
 			let output = serde_json::json!({
 				"ok": false,
 				"stale": stale_entries,
+				"errors": error_entries,
 			});
 			println!("{output}");
 		}
 		OutputFormat::Github => {
+			for err in &result.render_errors {
+				let rel = make_relative(&err.file, &root);
+				println!(
+					"::error file={rel},line={},col={}::Template render failed for block `{}`: {}",
+					err.line, err.column, err.block_name, err.message
+				);
+			}
 			for entry in &result.stale {
 				let rel = make_relative(&entry.file, &root);
 				println!(
@@ -238,12 +260,20 @@ fn run_check(
 					entry.line, entry.column, entry.block_name
 				);
 			}
-			eprintln!(
-				"\n{} consumer block(s) are out of date. Run `mdt update` to fix.",
-				result.stale.len()
-			);
+			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
+			for err in &result.render_errors {
+				let rel = make_relative(&err.file, &root);
+				eprintln!(
+					"{} block `{}` in {rel}:{}:{}: {}",
+					colored!("error:", red),
+					err.block_name,
+					err.line,
+					err.column,
+					err.message
+				);
+			}
 			for entry in &result.stale {
 				let rel = make_relative(&entry.file, &root);
 				eprintln!(
@@ -255,14 +285,25 @@ fn run_check(
 					print_diff(&entry.current_content, &entry.expected_content);
 				}
 			}
-			eprintln!(
-				"\n{} consumer block(s) are out of date. Run `mdt update` to fix.",
-				result.stale.len()
-			);
+			eprintln!("{}", check_summary(&result));
 		}
 	}
 
 	process::exit(1);
+}
+
+fn check_summary(result: &mdt_core::CheckResult) -> String {
+	let mut parts = Vec::new();
+	if !result.render_errors.is_empty() {
+		parts.push(format!("{} render error(s)", result.render_errors.len()));
+	}
+	if !result.stale.is_empty() {
+		parts.push(format!(
+			"{} consumer block(s) are out of date",
+			result.stale.len()
+		));
+	}
+	format!("\n{}. Run `mdt update` to fix.", parts.join(" and "))
 }
 
 fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn std::error::Error>> {

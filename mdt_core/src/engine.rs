@@ -14,13 +14,36 @@ use crate::project::ProjectContext;
 pub struct CheckResult {
 	/// Consumer entries that are out of date.
 	pub stale: Vec<StaleEntry>,
+	/// Errors encountered while rendering templates. These are collected
+	/// instead of aborting so that the check reports all problems at once.
+	pub render_errors: Vec<RenderError>,
 }
 
 impl CheckResult {
-	/// Returns true if all consumers are up to date.
+	/// Returns true if all consumers are up to date and no errors occurred.
 	pub fn is_ok(&self) -> bool {
-		self.stale.is_empty()
+		self.stale.is_empty() && self.render_errors.is_empty()
 	}
+
+	/// Returns true if there are template render errors.
+	pub fn has_errors(&self) -> bool {
+		!self.render_errors.is_empty()
+	}
+}
+
+/// A template render error associated with a specific consumer block.
+#[derive(Debug)]
+pub struct RenderError {
+	/// Path to the file containing the consumer block.
+	pub file: PathBuf,
+	/// Name of the block whose template failed to render.
+	pub block_name: String,
+	/// The error message from the template engine.
+	pub message: String,
+	/// 1-indexed line number of the consumer's opening tag.
+	pub line: usize,
+	/// 1-indexed column number of the consumer's opening tag.
+	pub column: usize,
 }
 
 /// A consumer entry that is out of date.
@@ -83,15 +106,30 @@ fn has_template_syntax(content: &str) -> bool {
 
 /// Check whether all consumer blocks in the project are up to date.
 /// Consumer blocks that reference non-existent providers are silently skipped.
+/// Template render errors are collected rather than aborting, so the check
+/// reports all problems in a single pass.
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
+	let mut render_errors = Vec::new();
 
 	for consumer in &ctx.project.consumers {
 		let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
 			continue;
 		};
 
-		let rendered = render_template(&provider.content, &ctx.data)?;
+		let rendered = match render_template(&provider.content, &ctx.data) {
+			Ok(r) => r,
+			Err(e) => {
+				render_errors.push(RenderError {
+					file: consumer.file.clone(),
+					block_name: consumer.block.name.clone(),
+					message: e.to_string(),
+					line: consumer.block.opening.start.line,
+					column: consumer.block.opening.start.column,
+				});
+				continue;
+			}
+		};
 		let mut expected = apply_transformers(&rendered, &consumer.block.transformers);
 		if ctx.pad_blocks {
 			expected = pad_content_preserving_suffix(&expected, &consumer.content);
@@ -109,7 +147,10 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		}
 	}
 
-	Ok(CheckResult { stale })
+	Ok(CheckResult {
+		stale,
+		render_errors,
+	})
 }
 
 /// Compute the updated file contents for all consumer blocks.

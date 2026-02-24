@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpVdLKST
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpRDuiO3
     - check
     - "--format"
     - json
@@ -14,6 +14,6 @@ info:
 success: false
 exit_code: 1
 ----- stdout -----
-{"ok":false,"stale":[{"block":"intro","column":1,"file":"readme.md","line":3},{"block":"version","column":10,"file":"readme.md","line":9}]}
+{"errors":[],"ok":false,"stale":[{"block":"intro","column":1,"file":"readme.md","line":3},{"block":"version","column":10,"file":"readme.md","line":9}]}
 
 ----- stderr -----
