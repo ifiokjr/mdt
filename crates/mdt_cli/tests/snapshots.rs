@@ -758,6 +758,205 @@ fn include_empty_check_after_update() -> AnyEmptyResult {
 }
 
 // ---------------------------------------------------------------------------
+// orphan_consumer: consumer references non-existent provider + transformers
+// ---------------------------------------------------------------------------
+
+#[test]
+fn list_orphan_consumer() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("orphan_consumer", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!("list_orphan_consumer", mdt_cmd(tmp.path()).arg("list"));
+	});
+
+	Ok(())
+}
+
+#[test]
+fn list_orphan_consumer_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("orphan_consumer", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"list_orphan_consumer_verbose",
+			mdt_cmd(tmp.path()).arg("--verbose").arg("list")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn orphan_consumer_check() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("orphan_consumer", tmp.path());
+
+	assert_cmd_snapshot!("orphan_consumer_check", mdt_cmd(tmp.path()).arg("check"));
+
+	Ok(())
+}
+
+#[test]
+fn orphan_consumer_update() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("orphan_consumer", tmp.path());
+
+	assert_cmd_snapshot!("orphan_consumer_update", mdt_cmd(tmp.path()).arg("update"));
+
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	insta::assert_snapshot!("orphan_consumer_update_readme_md", readme);
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// verbose check/update with stale content
+// ---------------------------------------------------------------------------
+
+#[test]
+fn check_verbose_stale() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("check_formats", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"check_verbose_stale",
+			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn check_diff_text_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("check_formats", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"check_diff_text_verbose",
+			mdt_cmd(tmp.path())
+				.arg("--verbose")
+				.arg("check")
+				.arg("--diff")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn update_dry_run_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("multiple_providers", tmp.path());
+
+	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_dry_run_verbose",
+			mdt_cmd(tmp.path())
+				.arg("--verbose")
+				.arg("update")
+				.arg("--dry-run")
+		);
+	});
+
+	let readme_after = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	similar_asserts::assert_eq!(readme_before, readme_after);
+
+	Ok(())
+}
+
+#[test]
+fn update_verbose_multiple_providers() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("multiple_providers", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_verbose_multiple_providers",
+			mdt_cmd(tmp.path()).arg("--verbose").arg("update")
+		);
+	});
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// verbose diagnostics: warning display with ignore flags
+// ---------------------------------------------------------------------------
+
+#[test]
+fn validation_errors_check_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("validation_errors", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"validation_errors_check_verbose",
+			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn validation_errors_ignore_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("validation_errors", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"validation_errors_ignore_verbose",
+			mdt_cmd(tmp.path())
+				.arg("--ignore-unclosed-blocks")
+				.arg("--verbose")
+				.arg("check")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn unknown_transformer_check_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("unknown_transformer", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"unknown_transformer_check_verbose",
+			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn unknown_transformer_ignore_verbose() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("unknown_transformer", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"unknown_transformer_ignore_verbose",
+			mdt_cmd(tmp.path())
+				.arg("--ignore-invalid-transformers")
+				.arg("--verbose")
+				.arg("check")
+		);
+	});
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // typescript_workspace: data interpolation from package.json
 // ---------------------------------------------------------------------------
 

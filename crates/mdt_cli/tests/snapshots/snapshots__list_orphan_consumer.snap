@@ -1,0 +1,25 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmppHGQWm
+    - list
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Providers:
+  @greeting template.t.md (1 consumer(s))
+
+Consumers:
+  =greeting readme.md |trim [linked]
+  =nonexistent readme.md |indent [orphan]
+
+1 provider(s), 2 consumer(s)
+
+----- stderr -----
+warning: consumer block `nonexistent` has no matching provider
