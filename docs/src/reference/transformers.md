@@ -9,11 +9,11 @@ Quick reference for all available transformers.
 | `trim`       | none                                    | Remove whitespace from both ends       |
 | `trimStart`  | none                                    | Remove whitespace from the start       |
 | `trimEnd`    | none                                    | Remove whitespace from the end         |
-| `indent`     | `string` (optional)                     | Prepend string to each non-empty line  |
+| `indent`     | `string` (optional), `bool` (optional)  | Prepend string to each line            |
 | `prefix`     | `string` (optional)                     | Prepend string to entire content       |
 | `suffix`     | `string` (optional)                     | Append string to entire content        |
-| `linePrefix` | `string` (optional)                     | Prepend string to each non-empty line  |
-| `lineSuffix` | `string` (optional)                     | Append string to each non-empty line   |
+| `linePrefix` | `string` (optional), `bool` (optional)  | Prepend string to each line            |
+| `lineSuffix` | `string` (optional), `bool` (optional)  | Append string to each line             |
 | `wrap`       | `string` (optional)                     | Wrap content with string on both sides |
 | `code`       | none                                    | Wrap in inline code backticks          |
 | `codeBlock`  | `language` (optional)                   | Wrap in fenced code block              |
@@ -77,12 +77,16 @@ Removes trailing whitespace only.
 
 ```
 |indent:"  "
+|indent:"  ":true
 |indent
 ```
 
-Prepends the given string to each non-empty line. Empty lines are left empty.
+Prepends the given string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also indent empty lines.
 
-**Arguments:** 0-1 string (defaults to empty string)
+**Arguments:** 0-2 (string, optional boolean)
+
+- First argument: the indent string (defaults to empty string)
+- Second argument: `true` to include empty lines, `false` or omitted to skip them
 
 **Example:**
 
@@ -94,13 +98,15 @@ line 1
 line 3
 ```
 
-With `|indent:"  "`:
+With `|indent:"  "` (default — skips empty lines):
 
 ```
   line 1
 
   line 3
 ```
+
+With `|indent:"  ":true`, every line gets the indent — including empty lines (which become lines containing only the indent string).
 
 ---
 
@@ -134,12 +140,36 @@ Appends the string to the entire content.
 
 ```
 |linePrefix:"// "
+|linePrefix:"//! ":true
 |line_prefix:"// "
 ```
 
-Prepends the string to each non-empty line. Functionally identical to `indent`.
+Prepends the string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also prefix empty lines — essential for code comment blocks.
 
-**Arguments:** 0-1 string
+**Arguments:** 0-2 (string, optional boolean)
+
+- First argument: the prefix string (defaults to empty string)
+- Second argument: `true` to include empty lines, `false` or omitted to skip them
+
+**Example:**
+
+Input:
+
+```
+A fast HTTP client.
+
+Supports async and blocking modes.
+```
+
+With `|linePrefix:"/// ":true`:
+
+```
+/// A fast HTTP client.
+///
+/// Supports async and blocking modes.
+```
+
+Without `true`, the empty line would be left blank (breaking Rust doc comments).
 
 ---
 
@@ -147,12 +177,16 @@ Prepends the string to each non-empty line. Functionally identical to `indent`.
 
 ```
 |lineSuffix:" \\"
+|lineSuffix:";":true
 |line_suffix:" \\"
 ```
 
-Appends the string to each non-empty line. Empty lines are left empty.
+Appends the string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also suffix empty lines.
 
-**Arguments:** 0-1 string
+**Arguments:** 0-2 (string, optional boolean)
+
+- First argument: the suffix string (defaults to empty string)
+- Second argument: `true` to include empty lines, `false` or omitted to skip them
 
 ---
 
@@ -244,11 +278,12 @@ To delete occurrences, use an empty replacement:
 
 mdt validates transformer arguments at runtime:
 
-| Transformer                                                                   | Expected args |
-| ----------------------------------------------------------------------------- | ------------- |
-| `trim`, `trimStart`, `trimEnd`, `code`                                        | 0             |
-| `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock` | 0-1           |
-| `replace`                                                                     | exactly 2     |
+| Transformer                             | Expected args |
+| --------------------------------------- | ------------- |
+| `trim`, `trimStart`, `trimEnd`, `code`  | 0             |
+| `prefix`, `suffix`, `wrap`, `codeBlock` | 0-1           |
+| `indent`, `linePrefix`, `lineSuffix`    | 0-2           |
+| `replace`                               | exactly 2     |
 
 Passing the wrong number of arguments produces an error:
 

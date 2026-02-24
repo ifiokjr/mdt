@@ -211,6 +211,18 @@ fn transformer_indent_preserves_empty_lines() {
 }
 
 #[test]
+fn transformer_indent_includes_empty_lines() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![Argument::String("  ".to_string()), Argument::Boolean(true)],
+		}],
+	);
+	assert_eq!(result, "  line1\n  \n  line3");
+}
+
+#[test]
 fn transformer_prefix() {
 	let result = apply_transformers(
 		"content",
@@ -1534,6 +1546,21 @@ fn transformer_line_prefix_preserves_empty_lines() {
 }
 
 #[test]
+fn transformer_line_prefix_includes_empty_lines() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LinePrefix,
+			args: vec![
+				Argument::String("//! ".to_string()),
+				Argument::Boolean(true),
+			],
+		}],
+	);
+	assert_eq!(result, "//! line1\n//! \n//! line3");
+}
+
+#[test]
 fn transformer_line_suffix() {
 	let result = apply_transformers(
 		"line1\nline2\nline3",
@@ -1555,6 +1582,18 @@ fn transformer_line_suffix_preserves_empty_lines() {
 		}],
 	);
 	assert_eq!(result, "line1;\n\nline3;");
+}
+
+#[test]
+fn transformer_line_suffix_includes_empty_lines() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LineSuffix,
+			args: vec![Argument::String(";".to_string()), Argument::Boolean(true)],
+		}],
+	);
+	assert_eq!(result, "line1;\n;\nline3;");
 }
 
 #[test]

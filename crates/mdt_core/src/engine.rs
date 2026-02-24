@@ -194,10 +194,11 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 		TransformerType::TrimEnd => content.trim_end().to_string(),
 		TransformerType::Indent => {
 			let indent_str = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			let include_empty = get_bool_arg(&transformer.args, 1).unwrap_or(false);
 			content
 				.lines()
 				.map(|line| {
-					if line.is_empty() {
+					if line.is_empty() && !include_empty {
 						String::new()
 					} else {
 						format!("{indent_str}{line}")
@@ -232,10 +233,11 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 		}
 		TransformerType::LinePrefix => {
 			let prefix = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			let include_empty = get_bool_arg(&transformer.args, 1).unwrap_or(false);
 			content
 				.lines()
 				.map(|line| {
-					if line.is_empty() {
+					if line.is_empty() && !include_empty {
 						String::new()
 					} else {
 						format!("{prefix}{line}")
@@ -246,10 +248,11 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 		}
 		TransformerType::LineSuffix => {
 			let suffix = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			let include_empty = get_bool_arg(&transformer.args, 1).unwrap_or(false);
 			content
 				.lines()
 				.map(|line| {
-					if line.is_empty() {
+					if line.is_empty() && !include_empty {
 						String::new()
 					} else {
 						format!("{line}{suffix}")
@@ -270,13 +273,13 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 			| TransformerType::TrimStart
 			| TransformerType::TrimEnd
 			| TransformerType::Code => (0, 0),
-			TransformerType::Indent
-			| TransformerType::Prefix
+			TransformerType::Prefix
 			| TransformerType::Suffix
-			| TransformerType::LinePrefix
-			| TransformerType::LineSuffix
 			| TransformerType::Wrap
 			| TransformerType::CodeBlock => (0, 1),
+			TransformerType::Indent | TransformerType::LinePrefix | TransformerType::LineSuffix => {
+				(0, 2)
+			}
 			TransformerType::Replace => (2, 2),
 		};
 
@@ -302,6 +305,16 @@ fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {
 			Argument::String(s) => s.clone(),
 			Argument::Number(n) => n.to_string(),
 			Argument::Boolean(b) => b.to_string(),
+		}
+	})
+}
+
+fn get_bool_arg(args: &[Argument], index: usize) -> Option<bool> {
+	args.get(index).map(|arg| {
+		match arg {
+			Argument::Boolean(b) => *b,
+			Argument::String(s) => s == "true",
+			Argument::Number(n) => n.0 != 0.0,
 		}
 	})
 }
