@@ -682,6 +682,75 @@ fn pad_blocks_multi_lang_dry_run() -> AnyEmptyResult {
 }
 
 // ---------------------------------------------------------------------------
+// padding_zero_rust: Rust doc comments with before=0, after=0
+// ---------------------------------------------------------------------------
+
+#[test]
+fn padding_zero_rust_check_stale() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("padding_zero_rust", tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_zero_rust_check_stale",
+		mdt_cmd(tmp.path()).arg("check")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn padding_zero_rust_update() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("padding_zero_rust", tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_zero_rust_update",
+		mdt_cmd(tmp.path()).arg("update")
+	);
+
+	let lib_rs = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+	insta::assert_snapshot!("padding_zero_rust_update_lib_rs", lib_rs);
+
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	insta::assert_snapshot!("padding_zero_rust_update_readme_md", readme);
+
+	Ok(())
+}
+
+#[test]
+fn padding_zero_rust_check_after_update() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("padding_zero_rust", tmp.path());
+	run_update(tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_zero_rust_check_after_update",
+		mdt_cmd(tmp.path()).arg("check")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn padding_zero_rust_update_idempotent() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("padding_zero_rust", tmp.path());
+	run_update(tmp.path());
+
+	let lib_after_first = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+
+	assert_cmd_snapshot!(
+		"padding_zero_rust_update_idempotent",
+		mdt_cmd(tmp.path()).arg("update")
+	);
+
+	let lib_after_second = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+	similar_asserts::assert_eq!(lib_after_first, lib_after_second);
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // validation_errors: unclosed blocks produce error diagnostics
 // ---------------------------------------------------------------------------
 

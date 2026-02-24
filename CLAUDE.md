@@ -156,13 +156,15 @@ Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`.
 
 ### Block Padding
 
-When using consumer blocks in source files (`.rs`, `.ts`, etc.), enable `pad_blocks` in `mdt.toml` to prevent content from running directly into the tags:
+When using consumer blocks in source files (`.rs`, `.ts`, etc.), add a `[padding]` section in `mdt.toml` to control blank lines between tags and content:
 
 ```toml
-pad_blocks = true
+[padding]
+before = 0 # content on next line (recommended for projects with formatters)
+after = 0
 ```
 
-This ensures a newline always separates the opening/closing tags from the content after transformers are applied. Without it, `trim|linePrefix:"//! ":true` could produce mangled output where content merges with the surrounding tags.
+Values: `false` (inline), `0` (next line), `1` (one blank line), `2`, etc. When `[padding]` is present but values omitted, `before` and `after` default to `1`. Without padding, `trim|linePrefix:"//! ":true` could produce mangled output where content merges with the surrounding tags.
 
 ## Toolchain
 

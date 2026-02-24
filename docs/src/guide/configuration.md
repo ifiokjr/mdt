@@ -105,17 +105,21 @@ paths = ["templates", "shared/docs"]
 
 When set, only `*.t.md` files within these directories are recognized as template files.
 
-### `pad_blocks` — Block content padding
+### `[padding]` — Block content padding
 
-When enabled, mdt ensures a blank line separates the opening tag from the content and the content from the closing tag. In source code files, the extra blank lines use the same comment prefix as the surrounding lines (e.g., `//!`, `///`, `*`). This is recommended when using consumer blocks in source code files.
+Controls blank lines between block tags and their content. This is recommended when using consumer blocks in source code files.
 
 ```toml
-pad_blocks = true
+[padding]
+before = 0
+after = 0
 ```
+
+`before` and `after` accept `false` (inline), `0` (next line), `1` (one blank line), `2`, etc. When `[padding]` is present but values are omitted, they default to `1`. In source code files, blank lines use the same comment prefix as surrounding lines (e.g., `//!`, `///`, `*`).
 
 Without this setting, transformers like `trim` can cause content to merge directly into the surrounding tags, breaking the structure of code comments.
 
-If omitted, defaults to `false`.
+**Recommended for projects with formatters:** Use `before = 0, after = 0` to minimize whitespace that formatters might alter.
 
 ### `max_file_size` — Safety limit for scanned files
 
@@ -151,8 +155,12 @@ Running `mdt update` from the root updates only the root project's consumers. Ea
 ```toml
 # mdt.toml
 
-# Ensure proper padding between tags and content in source files
-pad_blocks = true
+max_file_size = 10485760
+
+# Ensure content is properly separated from tags in source files
+[padding]
+before = 0
+after = 0
 
 [data]
 package = "package.json"
@@ -168,6 +176,4 @@ patterns = ["src/**"]
 
 [templates]
 paths = ["templates"]
-
-max_file_size = 10485760
 ```

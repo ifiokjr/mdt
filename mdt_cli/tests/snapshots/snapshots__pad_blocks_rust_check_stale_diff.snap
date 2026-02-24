@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpwU1yjw
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpFrjn3K
     - check
     - "--diff"
   env:
@@ -46,6 +46,7 @@ Stale: block `crate_docs` in readme.md:3:1
    
    
   -Old readme content.
+   
   +# My Crate
   +
   +A powerful library for doing things.
@@ -54,6 +55,7 @@ Stale: block `crate_docs` in readme.md:3:1
   +
   +- Fast and efficient
   +- Easy to use
-   
+  +
+  +
 
 3 consumer block(s) are out of date. Run `mdt update` to fix.
