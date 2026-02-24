@@ -13,4 +13,4 @@ Consolidate `[ignore]` into `[exclude]` and add new exclusion options.
 
 - `blocks`: An array of block names to exclude from processing. Any provider or consumer block whose name appears in this list is completely ignored during scanning — it won't be matched, checked, or updated.
 
-**DevEnv integration:** Added `mdt check --ignore-unused-blocks` to the `lint:all` command and `mdt update --ignore-unused-blocks` to the `fix:all` command in `devenv.nix`.
+**DevEnv integration:** Added `mdt update --ignore-unused-blocks` to the `fix:all` command in `devenv.nix` (runs before `dprint fmt` to ensure content is updated then formatted).

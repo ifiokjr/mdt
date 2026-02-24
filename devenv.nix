@@ -134,8 +134,8 @@
       exec = ''
         set -e
         fix:clippy
-        fix:format
         cargo run --bin mdt -- update --ignore-unused-blocks
+        fix:format
       '';
       description = "Fix all autofixable problems.";
       binary = "bash";
@@ -170,7 +170,6 @@
         lint:clippy
         lint:format
         deny:check
-        mdt check --ignore-unused-blocks
       '';
       description = "Run all checks.";
       binary = "bash";

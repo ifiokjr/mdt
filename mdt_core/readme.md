@@ -22,6 +22,7 @@
 [dependencies]
 mdt_core = "0.3.0"
 ```
+
 <!-- {/mdtCoreInstall} -->
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg

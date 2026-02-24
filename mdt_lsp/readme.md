@@ -138,6 +138,7 @@ The template values can be defined in the following ways.
 [dependencies]
 mdt_lsp = "0.3.0"
 ```
+
 <!-- {/mdtLspInstall} -->
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg

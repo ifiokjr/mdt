@@ -52,6 +52,7 @@ Add the following to your MCP client configuration:
 [dependencies]
 mdt_mcp = "0.3.0"
 ```
+
 <!-- {/mdtMcpInstall} -->
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
