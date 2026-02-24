@@ -1,0 +1,20 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpUWh3wG
+    - "--ignore-invalid-transformers"
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+
+----- stderr -----
+Stale: block `docs` in readme.md:3:1
+
+1 consumer block(s) are out of date. Run `mdt update` to fix.

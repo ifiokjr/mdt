@@ -29,7 +29,7 @@ tokio = { workspace = true, features = ["full"], default-features = true }
 
 [dev-dependencies]
 assert_cmd = { workspace = true, default-features = true }
-insta = { workspace = true, default-features = true }
+insta = { workspace = true, features = ["filters"], default-features = true }
 insta-cmd = { workspace = true, default-features = true }
 predicates = { workspace = true, default-features = true }
 rstest = { workspace = true, default-features = true }

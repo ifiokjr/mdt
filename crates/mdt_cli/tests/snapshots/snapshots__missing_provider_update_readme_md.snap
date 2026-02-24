@@ -1,0 +1,11 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: readme
+---
+# Missing Provider Test
+
+<!-- {=nonexistent_block} -->
+
+Content referencing a missing provider.
+
+<!-- {/nonexistent_block} -->

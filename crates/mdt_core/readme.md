@@ -4,7 +4,7 @@
 
 <br />
 
-[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link] [![Status][ci-status-image]][ci-status-link] [![Unlicense][unlicense-image]][unlicense-link]
+[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link] [![Status][ci-status-image]][ci-status-link] [![Coverage][coverage-image]][coverage-link] [![Unlicense][unlicense-image]][unlicense-link]
 
 <br />
 
@@ -25,6 +25,8 @@ mdt_core = "0.2.0"
 
 <!-- {/mdtCoreInstall} -->
 
+[coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
+[coverage-link]: https://codecov.io/gh/ifiokjr/mdt
 [crate-image]: https://img.shields.io/crates/v/mdt.svg
 [crate-link]: https://crates.io/crates/mdt
 [docs-image]: https://docs.rs/mdt/badge.svg

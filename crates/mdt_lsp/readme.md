@@ -1,10 +1,10 @@
-# mdt
+# mdt_lsp
 
-> update markdown content anywhere using comments as template tags
+> language server for mdt (manage markdown templates)
 
 <br />
 
-[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link] [![Status][ci-status-image]][ci-status-link] [![Unlicense][unlicense-image]][unlicense-link]
+[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link] [![Status][ci-status-image]][ci-status-link] [![Coverage][coverage-image]][coverage-link] [![Unlicense][unlicense-image]][unlicense-link]
 
 <br />
 
@@ -141,10 +141,12 @@ mdt_lsp = "0.2.0"
 
 <!-- {/mdtLspInstall} -->
 
-[crate-image]: https://img.shields.io/crates/v/mdt.svg
-[crate-link]: https://crates.io/crates/mdt
-[docs-image]: https://docs.rs/mdt/badge.svg
-[docs-link]: https://docs.rs/mdt/
+[coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
+[coverage-link]: https://codecov.io/gh/ifiokjr/mdt
+[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg
+[crate-link]: https://crates.io/crates/mdt_lsp
+[docs-image]: https://docs.rs/mdt_lsp/badge.svg
+[docs-link]: https://docs.rs/mdt_lsp/
 [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg

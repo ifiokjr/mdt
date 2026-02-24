@@ -1,0 +1,9 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: template
+---
+<!-- {@greeting} -->
+
+Hello from mdt! This is a provider block.
+
+<!-- {/greeting} -->

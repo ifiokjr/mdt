@@ -140,7 +140,10 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 
 		if !ctx.project.providers.is_empty() {
 			println!("  Providers:");
-			for (name, entry) in &ctx.project.providers {
+			let mut names: Vec<_> = ctx.project.providers.keys().collect();
+			names.sort();
+			for name in names {
+				let entry = &ctx.project.providers[name];
 				println!("    @{name} ({})", entry.file.display());
 			}
 		}
