@@ -46,10 +46,14 @@ Add the following to your MCP client configuration:
 
 ## Installation
 
+<!-- {=mdtMcpInstall} -->
+
 ```toml
 [dependencies]
-mdt_mcp = "0.0.1"
+mdt_mcp = "0.2.0"
 ```
+
+<!-- {/mdtMcpInstall} -->
 
 [crate-image]: https://img.shields.io/crates/v/mdt_mcp.svg
 [crate-link]: https://crates.io/crates/mdt_mcp

@@ -132,10 +132,14 @@ The template values can be defined in the following ways.
 
 ## Installation
 
+<!-- {=mdtLspInstall} -->
+
 ```toml
 [dependencies]
-mdt = "0.0.0"
+mdt_lsp = "0.2.0"
 ```
+
+<!-- {/mdtLspInstall} -->
 
 [crate-image]: https://img.shields.io/crates/v/mdt.svg
 [crate-link]: https://crates.io/crates/mdt

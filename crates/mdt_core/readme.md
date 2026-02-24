@@ -16,10 +16,14 @@
 
 ## Installation
 
+<!-- {=mdtCoreInstall} -->
+
 ```toml
 [dependencies]
-mdt = "0.0.0"
+mdt_core = "0.2.0"
 ```
+
+<!-- {/mdtCoreInstall} -->
 
 [crate-image]: https://img.shields.io/crates/v/mdt.svg
 [crate-link]: https://crates.io/crates/mdt

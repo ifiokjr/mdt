@@ -22,11 +22,11 @@ cargo install --path crates/mdt_cli
 
 ## As a library
 
-To use mdt as a Rust library in your own project:
+To use the mdt core library in your own Rust project:
 
 ```toml
 [dependencies]
-mdt = "0.0.0"
+mdt_core = "0.2.0"
 ```
 
 ## Verify installation

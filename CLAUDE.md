@@ -16,7 +16,7 @@ mdt (manage **m**ark**d**own **t**emplates) is a data-driven template engine for
 
 4. **Transformers**: Pipe-delimited filters modify content during injection — `trim`, `indent`, `prefix`, `wrap`, `codeBlock`, `code`, `replace`. Example: `<!-- {=docs|prefix:"\n"|indent:"//! "} -->` turns content into Rust doc comments.
 
-**Status:** Early development (v0.0.0)
+**Status:** Early development
 
 ## Build & Development
 
@@ -71,9 +71,10 @@ Key style rules: hard tabs, max width 100, one import per line (`imports_granula
 
 ### Workspace Crates
 
-- **`crates/mdt`** — Core library. Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
-- **`crates/mdt_cli`** — CLI tool. Provides `init`, `check`, and `update` commands for managing markdown templates via the command line. Uses `clap` for argument parsing.
-- **`crates/mdt_lsp`** — LSP server (planned, `publish = false`). Will provide language server protocol support for editor integration using `tower-lsp`. Not published until real features are implemented.
+- **`crates/mdt_core`** — Core library (`mdt_core` on crates.io). Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
+- **`crates/mdt_cli`** — CLI tool. Provides `init`, `check`, `update`, `list`, `lsp`, and `mcp` commands for managing markdown templates via the command line. Uses `clap` for argument parsing. The binary is named `mdt`.
+- **`crates/mdt_lsp`** — LSP server. Provides language server protocol support for editor integration with diagnostics, completions, hover, go-to-definition, and code actions using `tower-lsp`.
+- **`crates/mdt_mcp`** — MCP server. Exposes mdt functionality to AI assistants via the Model Context Protocol using `rmcp`.
 - **`docs/`** — mdbook documentation.
 
 ### Internal Pipeline
@@ -163,11 +164,11 @@ Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`.
 - **Snapshot testing:** cargo-insta
 - **Semver:** cargo-semver-checks
 - **Release management:** knope (bot workflow)
-- **Publishing:** cargo-workspaces (`cargo workspaces publish --from-git`)
+- **Publishing:** `knope publish` (publishes crates individually in dependency order)
 
 ## Release & Changelog Workflow
 
-Uses [knope bot workflow](https://knope.tech/tutorials/bot-workflow/). Each publishable crate has its own changelog and version. `mdt_lsp` is excluded from releases until it has real functionality.
+Uses [knope bot workflow](https://knope.tech/tutorials/bot-workflow/). Each publishable crate has its own changelog and version. All crates share `workspace.package.version`.
 
 ```sh
 # Document a change (creates a changeset file in .changeset/):
@@ -180,7 +181,7 @@ knope release
 knope publish
 ```
 
-Changesets should be highly detailed. Conventional commit scopes map to packages: `mdt`, `mdt_cli`. Extra changelog sections: `Notes` (type: `note`) and `Documentation` (type: `docs`).
+Changesets should be highly detailed. Conventional commit scopes map to packages: `mdt_core`, `mdt_cli`, `mdt_lsp`, `mdt_mcp`. Extra changelog sections: `Notes` (type: `note`) and `Documentation` (type: `docs`).
 
 ### Changeset Requirement
 
@@ -210,7 +211,7 @@ Detailed description of the change.
 - `docs` — documentation-only changes
 - `note` — general notes
 
-**Package names:** `mdt`, `mdt_cli` (not `mdt_lsp` — it's excluded from releases)
+**Package names:** `mdt_core`, `mdt_cli`, `mdt_lsp`, `mdt_mcp`
 
 A single changeset file can reference multiple packages. Always run `dprint fmt .changeset/* --allow-no-files` after creating changeset files.
 
