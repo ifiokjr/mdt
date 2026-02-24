@@ -482,6 +482,9 @@ impl Default for MdtMcpServer {
 	}
 }
 
+#[cfg(test)]
+mod __tests;
+
 /// Start the MCP server on stdin/stdout.
 pub async fn run_server() {
 	let server = MdtMcpServer::new();

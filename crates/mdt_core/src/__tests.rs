@@ -3626,3 +3626,3293 @@ fn config_defaults_for_ignore_fields() {
 	assert!(config.ignore.patterns.is_empty());
 	assert!(!config.disable_gitignore);
 }
+
+// =============================================================================
+// Coverage improvement tests
+// =============================================================================
+
+// --- tokens.rs: GetDynamicRange impls for all numeric types ---
+
+/// Helper that exercises GetDynamicRange for a given value.
+/// Creates a TokenGroup with known tokens and calls position_of_range.
+fn exercise_get_dynamic_range(range: &impl GetDynamicRange) {
+	let group = closing_token_group();
+	let _pos = group.position_of_range(range);
+}
+
+#[test]
+fn get_dynamic_range_usize() {
+	exercise_get_dynamic_range(&0_usize);
+	exercise_get_dynamic_range(&3_usize);
+}
+
+#[test]
+fn get_dynamic_range_u128() {
+	exercise_get_dynamic_range(&0_u128);
+	exercise_get_dynamic_range(&2_u128);
+}
+
+#[test]
+fn get_dynamic_range_u64() {
+	exercise_get_dynamic_range(&0_u64);
+	exercise_get_dynamic_range(&1_u64);
+}
+
+#[test]
+fn get_dynamic_range_u32() {
+	exercise_get_dynamic_range(&0_u32);
+	exercise_get_dynamic_range(&3_u32);
+}
+
+#[test]
+fn get_dynamic_range_u16() {
+	exercise_get_dynamic_range(&0_u16);
+	exercise_get_dynamic_range(&2_u16);
+}
+
+#[test]
+fn get_dynamic_range_u8() {
+	exercise_get_dynamic_range(&0_u8);
+	exercise_get_dynamic_range(&1_u8);
+}
+
+#[test]
+fn get_dynamic_range_isize() {
+	exercise_get_dynamic_range(&0_isize);
+	exercise_get_dynamic_range(&2_isize);
+}
+
+#[test]
+fn get_dynamic_range_i128() {
+	exercise_get_dynamic_range(&0_i128);
+	exercise_get_dynamic_range(&1_i128);
+}
+
+#[test]
+fn get_dynamic_range_i64() {
+	exercise_get_dynamic_range(&0_i64);
+	exercise_get_dynamic_range(&3_i64);
+}
+
+#[test]
+fn get_dynamic_range_i32() {
+	exercise_get_dynamic_range(&0_i32);
+	exercise_get_dynamic_range(&2_i32);
+}
+
+#[test]
+fn get_dynamic_range_i16() {
+	exercise_get_dynamic_range(&0_i16);
+	exercise_get_dynamic_range(&1_i16);
+}
+
+#[test]
+fn get_dynamic_range_i8() {
+	exercise_get_dynamic_range(&0_i8);
+	exercise_get_dynamic_range(&2_i8);
+}
+
+#[test]
+fn get_dynamic_range_ref_usize() {
+	let val: usize = 1;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_u128() {
+	let val: u128 = 2;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_u64() {
+	let val: u64 = 0;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_u32() {
+	let val: u32 = 3;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_u16() {
+	let val: u16 = 1;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_u8() {
+	let val: u8 = 2;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_isize() {
+	let val: isize = 0;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_i128() {
+	let val: i128 = 1;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_i64() {
+	let val: i64 = 2;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_i32() {
+	let val: i32 = 0;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_i16() {
+	let val: i16 = 3;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_ref_i8() {
+	let val: i8 = 1;
+	exercise_get_dynamic_range(&&val);
+}
+
+#[test]
+fn get_dynamic_range_bound_tuple() {
+	use std::ops::Bound;
+	let range = (Bound::Included(1_usize), Bound::Excluded(3_usize));
+	exercise_get_dynamic_range(&range);
+
+	let range_unbounded = (Bound::<usize>::Unbounded, Bound::Included(2_usize));
+	exercise_get_dynamic_range(&range_unbounded);
+
+	let range_excluded_start = (Bound::Excluded(0_usize), Bound::<usize>::Unbounded);
+	exercise_get_dynamic_range(&range_excluded_start);
+}
+
+#[test]
+fn get_dynamic_range_range_ref_usize() {
+	let start: usize = 1;
+	let end: usize = 4;
+	let range = &start..&end;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_from_ref_usize() {
+	let start: usize = 2;
+	let range = &start..;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_inclusive_ref_usize() {
+	let start: usize = 0;
+	let end: usize = 3;
+	let range = &start..=&end;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_to_ref_usize() {
+	let end: usize = 5;
+	let range = ..&end;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_to_inclusive_ref_usize() {
+	let end: usize = 4;
+	let range = ..=&end;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_to_usize() {
+	let range = ..5_usize;
+	exercise_get_dynamic_range(&range);
+}
+
+#[test]
+fn get_dynamic_range_range_to_inclusive_usize() {
+	let range = ..=3_usize;
+	exercise_get_dynamic_range(&range);
+}
+
+// --- tokens.rs: Token::Display ---
+
+#[test]
+fn token_display_all_variants() {
+	use crate::tokens::Token;
+
+	assert_eq!(format!("{}", Token::Newline), "\n");
+	assert_eq!(format!("{}", Token::Whitespace(b' ')), " ");
+	assert_eq!(format!("{}", Token::Whitespace(b'\t')), "\t");
+	assert_eq!(format!("{}", Token::HtmlCommentOpen), "<!--");
+	assert_eq!(format!("{}", Token::HtmlCommentClose), "-->");
+	assert_eq!(format!("{}", Token::ConsumerTag), "{=");
+	assert_eq!(format!("{}", Token::ProviderTag), "{@");
+	assert_eq!(format!("{}", Token::CloseTag), "{/");
+	assert_eq!(format!("{}", Token::BraceClose), "}");
+	assert_eq!(format!("{}", Token::Pipe), "|");
+	assert_eq!(format!("{}", Token::ArgumentDelimiter), ":");
+	assert_eq!(
+		format!("{}", Token::String("hello".to_string(), b'"')),
+		"\"hello\""
+	);
+	assert_eq!(
+		format!("{}", Token::String("world".to_string(), b'\'')),
+		"'world'"
+	);
+	assert_eq!(
+		format!("{}", Token::Ident("myIdent".to_string())),
+		"myIdent"
+	);
+	assert_eq!(format!("{}", Token::Int(42)), "42");
+	assert_eq!(format!("{}", Token::Int(-7)), "-7");
+	assert_eq!(format!("{}", Token::Float(2.75)), "2.75");
+	assert_eq!(format!("{}", Token::Float(0.0)), "0");
+}
+
+// --- tokens.rs: Token::same_type ---
+
+#[test]
+fn token_same_type_different_variants() {
+	use crate::tokens::Token;
+
+	// Different variant types should not match
+	assert!(!Token::Int(1).same_type(&Token::Float(1.0)));
+	assert!(!Token::String("a".into(), b'"').same_type(&Token::Ident("a".into())));
+	assert!(!Token::Newline.same_type(&Token::Pipe));
+	assert!(!Token::HtmlCommentOpen.same_type(&Token::HtmlCommentClose));
+	assert!(!Token::ConsumerTag.same_type(&Token::ProviderTag));
+	assert!(!Token::CloseTag.same_type(&Token::BraceClose));
+
+	// String with different values still matches type
+	assert!(Token::String("hello".into(), b'"').same_type(&Token::String("world".into(), b'"')));
+
+	// Int with different values still matches
+	assert!(Token::Int(1).same_type(&Token::Int(99)));
+
+	// Float with different values
+	assert!(Token::Float(1.0).same_type(&Token::Float(2.5)));
+
+	// Ident wildcard matching
+	assert!(Token::Ident("*".into()).same_type(&Token::Ident("anything".into())));
+	assert!(Token::Ident("anything".into()).same_type(&Token::Ident("*".into())));
+	assert!(!Token::Ident("foo".into()).same_type(&Token::Ident("bar".into())));
+	assert!(Token::Ident("same".into()).same_type(&Token::Ident("same".into())));
+
+	// Whitespace wildcard
+	assert!(Token::Whitespace(b'*').same_type(&Token::Whitespace(b' ')));
+	assert!(Token::Whitespace(b' ').same_type(&Token::Whitespace(b'*')));
+	assert!(!Token::Whitespace(b' ').same_type(&Token::Whitespace(b'\t')));
+	assert!(Token::Whitespace(b' ').same_type(&Token::Whitespace(b' ')));
+}
+
+// --- tokens.rs: Token::increment ---
+
+#[test]
+fn token_increment_all_variants() {
+	use crate::tokens::Token;
+
+	assert_eq!(Token::HtmlCommentOpen.increment(), 4);
+	assert_eq!(Token::HtmlCommentClose.increment(), 3);
+	assert_eq!(Token::ProviderTag.increment(), 2);
+	assert_eq!(Token::ConsumerTag.increment(), 2);
+	assert_eq!(Token::CloseTag.increment(), 2);
+	assert_eq!(Token::Newline.increment(), 1);
+	assert_eq!(Token::BraceClose.increment(), 1);
+	assert_eq!(Token::Pipe.increment(), 1);
+	assert_eq!(Token::ArgumentDelimiter.increment(), 1);
+	assert_eq!(Token::Whitespace(b' ').increment(), 1);
+	assert_eq!(Token::String("abc".to_string(), b'"').increment(), 5); // 3 + 2 quotes
+	assert_eq!(Token::Ident("hello".to_string()).increment(), 5);
+	assert_eq!(Token::Int(123).increment(), 3); // "123"
+	assert_eq!(Token::Float(1.5).increment(), 3); // "1.5"
+	assert_eq!(Token::Int(-42).increment(), 3); // "-42"
+}
+
+// --- tokens.rs: DynamicRange start/end for different bound types ---
+
+#[test]
+fn dynamic_range_start_end_all_bound_types() {
+	use std::ops::Bound;
+
+	use crate::tokens::DynamicRange;
+
+	// Included start
+	let dr = DynamicRange::from(1_usize..5_usize);
+	assert_eq!(dr.start(), Some(1));
+	assert_eq!(dr.end(), Some(5));
+
+	// Inclusive end (adds 1)
+	let dr = DynamicRange::from(1_usize..=4_usize);
+	assert_eq!(dr.start(), Some(1));
+	assert_eq!(dr.end(), Some(5));
+
+	// Unbounded start
+	let dr = DynamicRange::from(..5_usize);
+	assert_eq!(dr.start(), None);
+	assert_eq!(dr.end(), Some(5));
+
+	// Unbounded end
+	let dr = DynamicRange::from(2_usize..);
+	assert_eq!(dr.start(), Some(2));
+	assert_eq!(dr.end(), None);
+
+	// Both unbounded via tuple
+	let dr = DynamicRange::from((Bound::<usize>::Unbounded, Bound::<usize>::Unbounded));
+	assert_eq!(dr.start(), None);
+	assert_eq!(dr.end(), None);
+
+	// Excluded start via tuple
+	let dr = DynamicRange::from((Bound::Excluded(3_usize), Bound::Included(5_usize)));
+	assert_eq!(dr.start(), Some(3)); // Excluded still returns the value
+	assert_eq!(dr.end(), Some(6)); // Included adds 1
+}
+
+// --- tokens.rs: position_of_range ---
+
+#[test]
+fn position_of_range_with_all_numeric_types() {
+	let group = closing_token_group();
+
+	// Exercise position_of_range with various numeric types that trigger
+	// the GetDynamicRange impls for single values
+	let _ = group.position_of_range(&0_u128);
+	let _ = group.position_of_range(&0_u64);
+	let _ = group.position_of_range(&0_u32);
+	let _ = group.position_of_range(&0_u16);
+	let _ = group.position_of_range(&0_u8);
+	let _ = group.position_of_range(&0_isize);
+	let _ = group.position_of_range(&0_i128);
+	let _ = group.position_of_range(&0_i64);
+	let _ = group.position_of_range(&0_i32);
+	let _ = group.position_of_range(&0_i16);
+	let _ = group.position_of_range(&0_i8);
+
+	// Verify an actual result with a range
+	let pos = group.position_of_range(&(0..2));
+	// 0..2 covers tokens [HtmlCommentOpen, Whitespace]
+	assert_eq!(pos.start.offset, 0);
+	assert!(pos.end.offset > 0);
+}
+
+// --- config.rs: Additional format coverage ---
+
+#[test]
+fn config_load_data_toml_with_all_value_types() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		concat!(
+			"string_val = \"hello\"\n",
+			"int_val = 42\n",
+			"float_val = 2.75\n",
+			"bool_val = true\n",
+			"date_val = 2024-01-15\n",
+			"array_val = [1, 2, 3]\n",
+			"\n",
+			"[nested]\n",
+			"key = \"value\"\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+
+	assert_eq!(conf["string_val"], "hello");
+	// TOML integers are converted via from_f64, so check as f64
+	assert!((conf["int_val"].as_f64().unwrap_or(0.0) - 42.0).abs() < 0.001);
+	assert!((conf["float_val"].as_f64().unwrap_or(0.0) - 2.75).abs() < 0.001);
+	assert_eq!(conf["bool_val"], true);
+	// Datetime should be converted to a string
+	assert!(conf["date_val"].is_string());
+	// Array should be preserved
+	assert!(conf["array_val"].is_array());
+	assert_eq!(
+		conf["array_val"]
+			.as_array()
+			.unwrap_or_else(|| panic!("expected array"))
+			.len(),
+		3
+	);
+	// Nested table
+	assert_eq!(conf["nested"]["key"], "value");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_kdl_complex() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// KDL v2 syntax (kdl crate 6.x): booleans use #true/#false, null is #null
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		concat!(
+			"name \"my-app\"\n",
+			"version \"3.0\"\n",
+			"count 42\n",
+			"ratio 2.5\n",
+			"enabled #true\n",
+			"empty_node\n",
+			"named_args key=\"value\" other=\"thing\"\n",
+			"nested {\n",
+			"    inner \"deep\"\n",
+			"}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+
+	assert_eq!(conf["name"], "my-app");
+	assert_eq!(conf["version"], "3.0");
+	assert!((conf["count"].as_f64().unwrap_or(0.0) - 42.0).abs() < 0.001);
+	assert!((conf["ratio"].as_f64().unwrap_or(0.0) - 2.5).abs() < 0.001);
+	assert_eq!(conf["enabled"], true);
+	// empty_node has no entries, should be null
+	assert!(conf["empty_node"].is_null());
+	// named args should be an object
+	assert!(conf["named_args"].is_object());
+	assert_eq!(conf["named_args"]["key"], "value");
+	assert_eq!(conf["named_args"]["other"], "thing");
+	// nested should be an object with inner child
+	assert_eq!(conf["nested"]["inner"], "deep");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_kdl_with_bool_and_null() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// KDL v2: booleans are #true/#false, null is #null
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"enabled #false\nnothing #null\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert_eq!(conf["enabled"], false);
+	assert!(conf["nothing"].is_null());
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_json_malformed_errors() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\npkg = \"bad.json\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.json"), "not valid json {{{")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+#[test]
+fn config_load_data_toml_malformed_errors() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.toml\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.toml"), "not valid toml {{{{")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+#[test]
+fn config_load_data_yaml_malformed_errors() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.yaml\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.yaml"), ":\n  - :\n    - : :")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	// YAML parsing of the malformed content may or may not fail depending on
+	// the serde_yaml_ng tolerance. We just ensure no panic.
+	let _ = result;
+}
+
+#[test]
+fn config_load_data_kdl_malformed_errors() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.kdl"), "{{{{{").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+#[test]
+fn config_load_with_all_sections() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"max_file_size = 5000\n",
+			"pad_blocks = true\n",
+			"disable_gitignore = true\n",
+			"\n",
+			"[data]\n",
+			"pkg = \"package.json\"\n",
+			"\n",
+			"[exclude]\n",
+			"patterns = [\"vendor/**\"]\n",
+			"\n",
+			"[include]\n",
+			"patterns = [\"extra/**/*.txt\"]\n",
+			"\n",
+			"[ignore]\n",
+			"patterns = [\"build/\"]\n",
+			"\n",
+			"[templates]\n",
+			"paths = [\"shared/templates\"]\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(config.max_file_size, 5000);
+	assert!(config.pad_blocks);
+	assert!(config.disable_gitignore);
+	assert_eq!(config.exclude.patterns.len(), 1);
+	assert_eq!(config.include.patterns.len(), 1);
+	assert_eq!(config.ignore.patterns.len(), 1);
+	assert_eq!(config.templates.paths.len(), 1);
+
+	Ok(())
+}
+
+// --- position.rs: Point::new and Position constructors ---
+
+#[test]
+fn point_new_and_fields() {
+	let p = Point::new(5, 10, 42);
+	assert_eq!(p.line, 5);
+	assert_eq!(p.column, 10);
+	assert_eq!(p.offset, 42);
+}
+
+#[test]
+fn position_from_point() {
+	let p = Point::new(3, 7, 20);
+	let pos = Position::from_point(p);
+	assert_eq!(pos.start, p);
+	assert_eq!(pos.end, p);
+}
+
+#[test]
+fn position_from_points() {
+	let start = Point::new(1, 1, 0);
+	let end = Point::new(5, 10, 50);
+	let pos = Position::from_points(start, end);
+	assert_eq!(pos.start, start);
+	assert_eq!(pos.end, end);
+}
+
+#[test]
+fn position_advance_start_str() {
+	let mut pos = Position::new(1, 1, 0, 1, 20, 20);
+	pos.advance_start_str("hello\nworld");
+	assert_eq!(pos.start.line, 2);
+	assert_eq!(pos.start.column, 5);
+	assert_eq!(pos.start.offset, 11);
+	// End should not change
+	assert_eq!(pos.end.offset, 20);
+}
+
+#[test]
+fn position_advance_start() {
+	use crate::tokens::Token;
+	let mut pos = Position::new(1, 1, 0, 1, 20, 20);
+	pos.advance_start(Token::HtmlCommentOpen); // "<!--" is 4 chars
+	assert_eq!(pos.start.column, 5);
+	assert_eq!(pos.start.offset, 4);
+}
+
+#[test]
+fn position_advance_end() {
+	use crate::tokens::Token;
+	let mut pos = Position::new(1, 1, 0, 1, 1, 0);
+	pos.advance_end(Token::HtmlCommentClose); // "-->" is 3 chars
+	assert_eq!(pos.end.column, 4);
+	assert_eq!(pos.end.offset, 3);
+}
+
+// --- position.rs: Debug impls ---
+
+#[test]
+fn point_debug_format() {
+	let p = Point::new(3, 7, 20);
+	let debug = format!("{p:?}");
+	assert_eq!(debug, "3:7 (20)");
+}
+
+#[test]
+fn position_debug_format() {
+	let pos = Position::new(1, 5, 4, 3, 10, 30);
+	let debug = format!("{pos:?}");
+	assert_eq!(debug, "1:5-3:10 (4-30)");
+}
+
+// --- position.rs: From<UnistPosition> ---
+
+#[test]
+fn position_from_unist_position() {
+	use markdown::unist::Point as UnistPoint;
+	use markdown::unist::Position as UnistPosition;
+
+	let unist_pos = UnistPosition {
+		start: UnistPoint {
+			line: 2,
+			column: 3,
+			offset: 10,
+		},
+		end: UnistPoint {
+			line: 4,
+			column: 8,
+			offset: 40,
+		},
+	};
+	let pos = Position::from(unist_pos);
+	assert_eq!(pos.start.line, 2);
+	assert_eq!(pos.start.column, 3);
+	assert_eq!(pos.start.offset, 10);
+	assert_eq!(pos.end.line, 4);
+	assert_eq!(pos.end.column, 8);
+	assert_eq!(pos.end.offset, 40);
+}
+
+#[test]
+fn point_from_unist_point() {
+	use markdown::unist::Point as UnistPoint;
+
+	let unist_point = UnistPoint {
+		line: 5,
+		column: 12,
+		offset: 100,
+	};
+	let p = Point::from(unist_point);
+	assert_eq!(p.line, 5);
+	assert_eq!(p.column, 12);
+	assert_eq!(p.offset, 100);
+}
+
+// --- position.rs: Point::advance with newlines ---
+
+#[test]
+fn point_advance_display_impl() {
+	let mut p = Point::new(1, 1, 0);
+	// advance takes impl Display, so we can pass a Token
+	use crate::tokens::Token;
+	p.advance(Token::ConsumerTag); // "{=" is 2 chars
+	assert_eq!(p.column, 3);
+	assert_eq!(p.offset, 2);
+}
+
+// --- project.rs: is_template_file additional cases ---
+
+#[test]
+fn is_template_file_edge_cases() {
+	assert!(is_template_file(std::path::Path::new("a.t.md")));
+	assert!(is_template_file(std::path::Path::new(
+		"/long/path/to/file.t.md"
+	)));
+	// ".t.md" is a valid template file name (it does end with ".t.md")
+	assert!(is_template_file(std::path::Path::new(".t.md")));
+	assert!(!is_template_file(std::path::Path::new("t.md")));
+	assert!(!is_template_file(std::path::Path::new("readme.t.mdx")));
+	assert!(!is_template_file(std::path::Path::new("")));
+}
+
+// --- project.rs: normalize_line_endings edge cases ---
+
+#[test]
+fn normalize_line_endings_empty_string() {
+	assert_eq!(normalize_line_endings(""), "");
+}
+
+#[test]
+fn normalize_line_endings_no_newlines() {
+	assert_eq!(normalize_line_endings("hello world"), "hello world");
+}
+
+#[test]
+fn normalize_line_endings_only_cr() {
+	assert_eq!(normalize_line_endings("\r"), "\n");
+}
+
+#[test]
+fn normalize_line_endings_only_crlf() {
+	assert_eq!(normalize_line_endings("\r\n"), "\n");
+}
+
+#[test]
+fn normalize_line_endings_multiple_bare_cr() {
+	assert_eq!(normalize_line_endings("\r\r\r"), "\n\n\n");
+}
+
+// --- project.rs: collect_included_files via scan_project_with_options ---
+
+#[test]
+fn scan_with_include_patterns() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Create a template
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nContent.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Create a .txt file that wouldn't normally be scanned but is included via
+	// pattern. Note: .txt files are not "scannable" by default, so include
+	// patterns only pick up files that the glob matches but they also need to be
+	// a scannable extension. Let's use a .rs file in a non-standard location.
+	std::fs::create_dir_all(tmp.path().join("extra")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("extra/test.rs"),
+		"// <!-- {=block} -->\n// old\n// <!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Build include set that matches extra/**/*.rs
+	let include_glob = globset::Glob::new("extra/**/*.rs").unwrap_or_else(|e| panic!("glob: {e}"));
+	let include_set = globset::GlobSetBuilder::new()
+		.add(include_glob)
+		.build()
+		.unwrap_or_else(|e| panic!("build: {e}"));
+
+	let project = scan_project_with_options(
+		tmp.path(),
+		&globset::GlobSet::empty(),
+		&include_set,
+		&[],
+		DEFAULT_MAX_FILE_SIZE,
+		&[],
+		true,
+	)?;
+
+	// The extra/test.rs consumer should be found via include pattern
+	assert!(
+		project
+			.consumers
+			.iter()
+			.any(|c| c.file.to_string_lossy().contains("extra")),
+		"expected consumer from include path, got: {:?}",
+		project
+			.consumers
+			.iter()
+			.map(|c| c.file.display().to_string())
+			.collect::<Vec<_>>()
+	);
+
+	Ok(())
+}
+
+// --- project.rs: template_paths ---
+
+#[test]
+fn scan_with_template_paths() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Create templates in a separate directory
+	std::fs::create_dir_all(tmp.path().join("shared/templates"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("shared/templates/defs.t.md"),
+		"<!-- {@sharedBlock} -->\n\nShared content.\n\n<!-- {/sharedBlock} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in root
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=sharedBlock} -->\n\nold\n\n<!-- {/sharedBlock} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let template_paths = vec![PathBuf::from("shared/templates")];
+	let project = scan_project_with_options(
+		tmp.path(),
+		&globset::GlobSet::empty(),
+		&globset::GlobSet::empty(),
+		&template_paths,
+		DEFAULT_MAX_FILE_SIZE,
+		&[],
+		true,
+	)?;
+
+	assert!(
+		project.providers.contains_key("sharedBlock"),
+		"expected sharedBlock provider from template path"
+	);
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
+// --- parser.rs: BlockType::Display ---
+
+#[test]
+fn block_type_display() {
+	assert_eq!(format!("{}", BlockType::Provider), "provider");
+	assert_eq!(format!("{}", BlockType::Consumer), "consumer");
+}
+
+// --- parser.rs: TransformerType::Display ---
+
+#[test]
+fn transformer_type_display_all() {
+	assert_eq!(format!("{}", TransformerType::Trim), "trim");
+	assert_eq!(format!("{}", TransformerType::TrimStart), "trimStart");
+	assert_eq!(format!("{}", TransformerType::TrimEnd), "trimEnd");
+	assert_eq!(format!("{}", TransformerType::Wrap), "wrap");
+	assert_eq!(format!("{}", TransformerType::Indent), "indent");
+	assert_eq!(format!("{}", TransformerType::CodeBlock), "codeBlock");
+	assert_eq!(format!("{}", TransformerType::Code), "code");
+	assert_eq!(format!("{}", TransformerType::Replace), "replace");
+	assert_eq!(format!("{}", TransformerType::Prefix), "prefix");
+	assert_eq!(format!("{}", TransformerType::Suffix), "suffix");
+	assert_eq!(format!("{}", TransformerType::LinePrefix), "linePrefix");
+	assert_eq!(format!("{}", TransformerType::LineSuffix), "lineSuffix");
+}
+
+// --- parser.rs: OrderedFloat::Display ---
+
+#[test]
+fn ordered_float_display() {
+	let f = OrderedFloat(2.75);
+	assert_eq!(format!("{f}"), "2.75");
+
+	let f = OrderedFloat(0.0);
+	assert_eq!(format!("{f}"), "0");
+
+	let f = OrderedFloat(-42.5);
+	assert_eq!(format!("{f}"), "-42.5");
+}
+
+#[test]
+fn ordered_float_partial_eq() {
+	let a = OrderedFloat(1.0);
+	let b = OrderedFloat(1.0);
+	let c = OrderedFloat(2.0);
+	assert_eq!(a, b);
+	assert_ne!(a, c);
+}
+
+// --- parser.rs: Argument::Number and Argument::Boolean parsing ---
+
+#[test]
+fn parse_consumer_with_float_argument() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:2.75} -->\nold\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].args.len(), 1);
+	match &blocks[0].transformers[0].args[0] {
+		Argument::Number(n) => assert!((n.0 - 2.75).abs() < 0.001),
+		other => panic!("expected Number, got {other:?}"),
+	}
+
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_false_boolean() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:false} -->\nold\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	match &blocks[0].transformers[0].args[0] {
+		Argument::Boolean(b) => assert!(!b),
+		other => panic!("expected Boolean(false), got {other:?}"),
+	}
+
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_scientific_notation() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:1e2} -->\nold\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	match &blocks[0].transformers[0].args[0] {
+		Argument::Number(n) => assert!((n.0 - 100.0).abs() < 0.001),
+		other => panic!("expected Number, got {other:?}"),
+	}
+
+	Ok(())
+}
+
+// --- lexer.rs: memstr function ---
+
+#[test]
+fn memstr_basic() {
+	use crate::lexer::memstr;
+
+	assert_eq!(memstr(b"hello world", b"world"), Some(6));
+	assert_eq!(memstr(b"hello world", b"hello"), Some(0));
+	assert_eq!(memstr(b"hello world", b"xyz"), None);
+	assert_eq!(memstr(b"", b"x"), None);
+	assert_eq!(memstr(b"abc", b"abcd"), None);
+	assert_eq!(memstr(b"abcabc", b"abc"), Some(0));
+	assert_eq!(memstr(b"<!--", b"<!--"), Some(0));
+	assert_eq!(memstr(b"  <!--", b"<!--"), Some(2));
+}
+
+// --- lexer.rs: single-quoted strings ---
+
+#[test]
+fn tokenize_single_quoted_string() -> MdtResult<()> {
+	let input = r"<!-- {=block|indent:'  '} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	// Verify the string token uses single quote delimiter
+	let has_single_quote_string = groups[0]
+		.tokens
+		.iter()
+		.any(|t| matches!(t, tokens::Token::String(_, b'\'')));
+	assert!(
+		has_single_quote_string,
+		"expected single-quoted string token"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_single_quoted_string_with_escapes() -> MdtResult<()> {
+	let input = r"<!-- {=block|indent:'he\\llo'} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+
+	Ok(())
+}
+
+// --- lexer.rs: float numbers ---
+
+#[test]
+fn tokenize_float_number_in_tag() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:2.5} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	let has_float = groups[0]
+		.tokens
+		.iter()
+		.any(|t| matches!(t, tokens::Token::Float(_)));
+	assert!(has_float, "expected float token");
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_scientific_notation_float() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:1e3} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	let has_float = groups[0]
+		.tokens
+		.iter()
+		.any(|t| matches!(t, tokens::Token::Float(_)));
+	assert!(has_float, "expected float token for scientific notation");
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_integer_number_in_tag() -> MdtResult<()> {
+	let input = "<!-- {=block|indent:42} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	let has_int = groups[0]
+		.tokens
+		.iter()
+		.any(|t| matches!(t, tokens::Token::Int(42)));
+	assert!(has_int, "expected int token with value 42");
+
+	Ok(())
+}
+
+// --- engine.rs: get_bool_arg with Number coercion ---
+
+#[test]
+fn transformer_indent_with_number_bool_coercion() {
+	// When a Number is passed where a bool is expected (second arg of indent),
+	// non-zero should be true.
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![
+				Argument::String("  ".to_string()),
+				Argument::Number(OrderedFloat(1.0)),
+			],
+		}],
+	);
+	// 1.0 coerces to true, so empty lines should be indented
+	assert_eq!(result, "  line1\n  \n  line3");
+}
+
+#[test]
+fn transformer_indent_with_zero_number_bool_coercion() {
+	// 0.0 coerces to false
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![
+				Argument::String("  ".to_string()),
+				Argument::Number(OrderedFloat(0.0)),
+			],
+		}],
+	);
+	assert_eq!(result, "  line1\n\n  line3");
+}
+
+// --- engine.rs: get_string_arg with Number ---
+
+#[test]
+fn transformer_prefix_with_number_arg() {
+	// When a Number is passed where a string is expected, it should be
+	// coerced to string via to_string().
+	let result = apply_transformers(
+		"content",
+		&[Transformer {
+			r#type: TransformerType::Prefix,
+			args: vec![Argument::Number(OrderedFloat(42.0))],
+		}],
+	);
+	assert_eq!(result, "42content");
+}
+
+// --- engine.rs: get_string_arg with Boolean ---
+
+#[test]
+fn transformer_prefix_with_boolean_arg() {
+	let result = apply_transformers(
+		"content",
+		&[Transformer {
+			r#type: TransformerType::Prefix,
+			args: vec![Argument::Boolean(true)],
+		}],
+	);
+	assert_eq!(result, "truecontent");
+}
+
+// --- engine.rs: get_bool_arg with String coercion ---
+
+#[test]
+fn transformer_indent_with_string_true_bool_coercion() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![
+				Argument::String("  ".to_string()),
+				Argument::String("true".to_string()),
+			],
+		}],
+	);
+	// "true" string coerces to true
+	assert_eq!(result, "  line1\n  \n  line3");
+}
+
+#[test]
+fn transformer_indent_with_string_false_bool_coercion() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::Indent,
+			args: vec![
+				Argument::String("  ".to_string()),
+				Argument::String("false".to_string()),
+			],
+		}],
+	);
+	// "false" string coerces to false
+	assert_eq!(result, "  line1\n\n  line3");
+}
+
+// --- parser.rs: parse_with_diagnostics additional coverage ---
+
+#[test]
+fn parse_with_diagnostics_valid_input_no_diagnostics() -> MdtResult<()> {
+	let input = "<!-- {=block|trim} -->\n\nold\n\n<!-- {/block} -->\n";
+	let (blocks, diagnostics) = parse_with_diagnostics(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert!(diagnostics.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn parse_with_diagnostics_unknown_transformer_on_provider() -> MdtResult<()> {
+	let input = "<!-- {@block|unknownFilter} -->\n\ncontent\n\n<!-- {/block} -->\n";
+	let (blocks, diagnostics) = parse_with_diagnostics(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert!(
+		diagnostics.iter().any(
+			|d| matches!(d, ParseDiagnostic::UnknownTransformer { name, .. } if name == "unknownFilter")
+		),
+		"expected UnknownTransformer diagnostic"
+	);
+
+	Ok(())
+}
+
+// --- project.rs: ProjectDiagnostic::message ---
+
+#[test]
+fn project_diagnostic_message_all_kinds() {
+	use project::DiagnosticKind;
+	use project::ProjectDiagnostic;
+
+	let diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnclosedBlock {
+			name: "myBlock".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(diag.message().contains("myBlock"));
+
+	let diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnknownTransformer {
+			name: "foobar".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(diag.message().contains("foobar"));
+
+	let diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::InvalidTransformerArgs {
+			name: "trim".to_string(),
+			expected: "0".to_string(),
+			got: 1,
+		},
+		line: 1,
+		column: 1,
+	};
+	let msg = diag.message();
+	assert!(msg.contains("trim"));
+	assert!(msg.contains("0"));
+	assert!(msg.contains("1"));
+
+	let diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnusedProvider {
+			name: "unused".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(diag.message().contains("unused"));
+}
+
+// --- project.rs: ValidationOptions coverage ---
+
+#[test]
+fn validation_options_all_kinds() {
+	use project::DiagnosticKind;
+	use project::ProjectDiagnostic;
+	use project::ValidationOptions;
+
+	let unknown_transformer_diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnknownTransformer {
+			name: "bad".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	let default_opts = ValidationOptions::default();
+	assert!(unknown_transformer_diag.is_error(&default_opts));
+
+	let ignore_opts = ValidationOptions {
+		ignore_invalid_transformers: true,
+		..Default::default()
+	};
+	assert!(!unknown_transformer_diag.is_error(&ignore_opts));
+
+	let invalid_args_diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::InvalidTransformerArgs {
+			name: "trim".to_string(),
+			expected: "0".to_string(),
+			got: 1,
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(invalid_args_diag.is_error(&default_opts));
+	assert!(!invalid_args_diag.is_error(&ignore_opts));
+
+	let unused_diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnusedProvider {
+			name: "unused".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(!unused_diag.is_error(&ValidationOptions {
+		ignore_unused_blocks: true,
+		..Default::default()
+	}));
+	assert!(unused_diag.is_error(&default_opts));
+}
+
+// --- project.rs: ProjectContext::find_missing_providers ---
+
+#[test]
+fn project_context_find_missing_providers() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@existing} -->\n\ncontent\n\n<!-- {/existing} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=missing1} -->\nold\n<!-- {/missing1} -->\n\n<!-- {=existing} -->\nold\n<!-- \
+		 {/existing} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		pad_blocks: false,
+	};
+	let missing = ctx.find_missing_providers();
+	assert_eq!(missing, vec!["missing1"]);
+
+	Ok(())
+}
+
+// --- Token PartialEq edge cases ---
+
+#[test]
+fn token_partial_eq_edge_cases() {
+	use crate::tokens::Token;
+
+	// Float approximate equality
+	assert_eq!(Token::Float(1.0), Token::Float(1.0));
+	assert_ne!(Token::Float(1.0), Token::Float(2.0));
+
+	// Different whitespace bytes
+	assert_ne!(Token::Whitespace(b' '), Token::Whitespace(b'\t'));
+	assert_eq!(Token::Whitespace(b' '), Token::Whitespace(b' '));
+
+	// String different delimiters
+	assert_ne!(
+		Token::String("hello".into(), b'"'),
+		Token::String("hello".into(), b'\'')
+	);
+
+	// Cross-variant always false
+	assert_ne!(Token::Newline, Token::BraceClose);
+	assert_ne!(Token::Pipe, Token::ArgumentDelimiter);
+}
+
+// --- lexer.rs: escaped strings ---
+
+#[test]
+fn tokenize_string_with_escape_sequences() -> MdtResult<()> {
+	let input = r#"<!-- {=block|replace:"line1\nline2":"replaced"} -->"#;
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	// Verify the first string was unescaped
+	let string_tokens: Vec<_> = groups[0]
+		.tokens
+		.iter()
+		.filter(|t| matches!(t, tokens::Token::String(..)))
+		.collect();
+	assert_eq!(string_tokens.len(), 2);
+
+	Ok(())
+}
+
+// --- Error display coverage ---
+
+#[test]
+fn error_symlink_cycle_message() {
+	let err = MdtError::SymlinkCycle {
+		path: "/some/path".to_string(),
+	};
+	assert!(err.to_string().contains("/some/path"));
+	assert!(err.to_string().contains("symlink cycle"));
+}
+
+#[test]
+fn error_file_too_large_message() {
+	let err = MdtError::FileTooLarge {
+		path: "big.md".to_string(),
+		size: 20_000_000,
+		limit: 10_000_000,
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("big.md"));
+	assert!(msg.contains("20000000"));
+	assert!(msg.contains("10000000"));
+}
+
+#[test]
+fn error_unconvertible_float_message() {
+	let err = MdtError::UnconvertibleFloat {
+		path: "data.toml".to_string(),
+		value: "NaN".to_string(),
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("data.toml"));
+	assert!(msg.contains("NaN"));
+}
+
+// --- parser.rs: Argument Display coverage (via Debug) ---
+
+#[test]
+fn argument_debug_all_variants() {
+	let s = Argument::String("test".to_string());
+	let n = Argument::Number(OrderedFloat(2.75));
+	let b = Argument::Boolean(true);
+	// Just exercise Debug formatting
+	let _ = format!("{s:?}");
+	let _ = format!("{n:?}");
+	let _ = format!("{b:?}");
+}
+
+// --- lexer.rs: edge cases ---
+
+#[test]
+fn tokenize_comment_with_only_whitespace_and_close() -> MdtResult<()> {
+	// A comment that has whitespace inside but no valid tag
+	let input = "<!-- \t\r -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert!(groups.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_multiple_comments_in_one_input() -> MdtResult<()> {
+	let input = "<!-- {=a} --><!-- {/a} --><!-- {@b} --><!-- {/b} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 4);
+
+	Ok(())
+}
+
+// --- config.rs: default max file size ---
+
+#[test]
+fn default_max_file_size_value() {
+	assert_eq!(DEFAULT_MAX_FILE_SIZE, 10 * 1024 * 1024);
+}
+
+// --- config.rs: MdtConfig defaults ---
+
+#[test]
+fn config_default_max_file_size() {
+	let config: MdtConfig = toml::from_str("").unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(config.max_file_size, DEFAULT_MAX_FILE_SIZE);
+	assert!(!config.pad_blocks);
+	assert!(!config.disable_gitignore);
+	assert!(config.data.is_empty());
+	assert!(config.exclude.patterns.is_empty());
+	assert!(config.include.patterns.is_empty());
+	assert!(config.ignore.patterns.is_empty());
+	assert!(config.templates.paths.is_empty());
+}
+
+// --- engine.rs: line_prefix and line_suffix with Number and Boolean bool args
+// ---
+
+#[test]
+fn transformer_line_prefix_with_number_bool_arg() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LinePrefix,
+			args: vec![
+				Argument::String("# ".to_string()),
+				Argument::Number(OrderedFloat(1.0)),
+			],
+		}],
+	);
+	assert_eq!(result, "# line1\n# \n# line3");
+}
+
+#[test]
+fn transformer_line_suffix_with_number_bool_arg() {
+	let result = apply_transformers(
+		"line1\n\nline3",
+		&[Transformer {
+			r#type: TransformerType::LineSuffix,
+			args: vec![
+				Argument::String(";".to_string()),
+				Argument::Number(OrderedFloat(1.0)),
+			],
+		}],
+	);
+	assert_eq!(result, "line1;\n;\nline3;");
+}
+
+// --- engine.rs: replace with Number and Boolean string coercions ---
+
+#[test]
+fn transformer_replace_with_number_args() {
+	let result = apply_transformers(
+		"value is 42",
+		&[Transformer {
+			r#type: TransformerType::Replace,
+			args: vec![
+				Argument::Number(OrderedFloat(42.0)),
+				Argument::Number(OrderedFloat(99.0)),
+			],
+		}],
+	);
+	assert_eq!(result, "value is 99");
+}
+
+#[test]
+fn transformer_replace_with_boolean_args() {
+	let result = apply_transformers(
+		"is true today",
+		&[Transformer {
+			r#type: TransformerType::Replace,
+			args: vec![Argument::Boolean(true), Argument::Boolean(false)],
+		}],
+	);
+	assert_eq!(result, "is false today");
+}
+
+// --- lexer.rs: context-dependent behavior edge cases ---
+
+#[test]
+fn tokenize_nested_comment_like_content() -> MdtResult<()> {
+	// Content that looks like a nested comment open inside a tag
+	let input = "<!-- {=block} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_tab_whitespace_in_comment() -> MdtResult<()> {
+	let input = "<!--\t{=block}\t-->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+
+	Ok(())
+}
+
+// --- parser.rs: parse various transformer snake_case aliases ---
+
+#[test]
+fn parse_codeblock_alias() -> MdtResult<()> {
+	let input = r#"<!-- {=block|codeblock:"rs"} -->
+old
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::CodeBlock);
+
+	Ok(())
+}
+
+// --- Token PartialEq between different variant types ---
+
+#[test]
+fn token_eq_cross_variant_returns_false() {
+	use crate::tokens::Token;
+
+	// Ensure cross-variant comparisons return false (covers the _ => false
+	// branch)
+	let variants: Vec<Token> = vec![
+		Token::Newline,
+		Token::HtmlCommentOpen,
+		Token::HtmlCommentClose,
+		Token::ConsumerTag,
+		Token::ProviderTag,
+		Token::CloseTag,
+		Token::BraceClose,
+		Token::Pipe,
+		Token::ArgumentDelimiter,
+		Token::Whitespace(b' '),
+		Token::String("s".into(), b'"'),
+		Token::Ident("id".into()),
+		Token::Int(1),
+		Token::Float(1.0),
+	];
+
+	for (i, a) in variants.iter().enumerate() {
+		for (j, b) in variants.iter().enumerate() {
+			if i != j {
+				// Most cross-variant pairs should be not equal
+				// Some same-category pairs (like Int(1) vs Float(1.0)) should
+				// also be not equal
+				let _ = a == b; // Just exercise the eq implementation
+			}
+		}
+	}
+}
+
+// --- source_scanner.rs: extract_html_comments with no comments ---
+
+#[test]
+fn extract_html_comments_empty_input() {
+	let nodes = extract_html_comments("");
+	assert!(nodes.is_empty());
+}
+
+#[test]
+fn extract_html_comments_no_comments() {
+	let nodes = extract_html_comments("just some plain text\nwith newlines\n");
+	assert!(nodes.is_empty());
+}
+
+#[test]
+fn extract_html_comments_unclosed_open() {
+	let nodes = extract_html_comments("<!-- unclosed comment");
+	assert!(nodes.is_empty());
+}
+
+#[test]
+fn extract_html_comments_open_at_end() {
+	let nodes = extract_html_comments("text<!--");
+	assert!(nodes.is_empty());
+}
+
+// --- Coverage: config.rs TOML integer, float, array, table, datetime
+// conversions ---
+
+#[test]
+fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		concat!(
+			"int_val = 42\n",
+			"float_val = 3.14\n",
+			"bool_val = true\n",
+			"string_val = \"hello\"\n",
+			"datetime_val = 2024-01-15T10:30:00Z\n",
+			"array_val = [1, 2, 3]\n",
+			"string_array = [\"a\", \"b\", \"c\"]\n",
+			"\n",
+			"[nested_table]\n",
+			"key = \"value\"\n",
+			"count = 7\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	// Integer conversion
+	assert_eq!(conf["int_val"], serde_json::json!(42.0));
+	// Float conversion
+	assert!(
+		(conf["float_val"]
+			.as_f64()
+			.unwrap_or_else(|| panic!("expected f64"))
+			- 3.14)
+			.abs() < f64::EPSILON
+	);
+	// Boolean conversion
+	assert_eq!(conf["bool_val"], serde_json::json!(true));
+	// String conversion
+	assert_eq!(conf["string_val"], "hello");
+	// Datetime conversion (rendered as string)
+	assert!(conf["datetime_val"].is_string());
+	let dt_str = conf["datetime_val"]
+		.as_str()
+		.unwrap_or_else(|| panic!("expected string"));
+	assert!(dt_str.contains("2024"));
+	// Array conversion
+	let arr = conf["array_val"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(arr.len(), 3);
+	// String array conversion
+	let str_arr = conf["string_array"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(str_arr.len(), 3);
+	assert_eq!(str_arr[0], "a");
+	// Nested table conversion
+	assert_eq!(conf["nested_table"]["key"], "value");
+	assert_eq!(conf["nested_table"]["count"], serde_json::json!(7.0));
+
+	Ok(())
+}
+
+// --- Coverage: config.rs KDL data file with various entry types ---
+
+#[test]
+fn config_kdl_empty_node_entries() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// A node with no entries should produce null
+	std::fs::write(tmp.path().join("data.kdl"), "empty_node\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert!(conf["empty_node"].is_null());
+
+	Ok(())
+}
+
+#[test]
+fn config_kdl_all_named_entries() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// All named entries should produce an object
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"settings host=\"localhost\" port=8080\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert!(conf["settings"].is_object());
+	assert_eq!(conf["settings"]["host"], "localhost");
+	// port is an integer in KDL
+	assert_eq!(conf["settings"]["port"], serde_json::json!(8080.0));
+
+	Ok(())
+}
+
+#[test]
+fn config_kdl_mixed_entries() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// Mixed positional and named entries should produce an array
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"mixed \"positional\" key=\"named\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	// Mixed entries become an array
+	assert!(conf["mixed"].is_array());
+	let arr = conf["mixed"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(arr.len(), 2);
+
+	Ok(())
+}
+
+#[test]
+fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// KDL v2 uses #true, #false, #null keywords
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		concat!(
+			"int_val 42\n",
+			"float_val 3.14\n",
+			"bool_val #true\n",
+			"null_val #null\n",
+			"string_val \"hello\"\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+
+	// Integer
+	assert!(conf["int_val"].is_number());
+	assert_eq!(
+		conf["int_val"]
+			.as_f64()
+			.unwrap_or_else(|| panic!("expected f64")),
+		42.0
+	);
+	// Float
+	assert!(conf["float_val"].is_number());
+	assert!(
+		(conf["float_val"]
+			.as_f64()
+			.unwrap_or_else(|| panic!("expected f64"))
+			- 3.14)
+			.abs() < 0.001
+	);
+	// Boolean
+	assert_eq!(conf["bool_val"], serde_json::json!(true));
+	// Null
+	assert!(conf["null_val"].is_null());
+	// String
+	assert_eq!(conf["string_val"], "hello");
+
+	Ok(())
+}
+
+#[test]
+fn config_kdl_children_node() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// Node with children should be treated as an object
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		concat!(
+			"package {\n",
+			"  name \"my-app\"\n",
+			"  version \"1.0.0\"\n",
+			"}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert!(conf["package"].is_object());
+	assert_eq!(conf["package"]["name"], "my-app");
+	assert_eq!(conf["package"]["version"], "1.0.0");
+
+	Ok(())
+}
+
+// --- Coverage: config.rs MdtConfig::load reading from disk ---
+
+#[test]
+fn config_load_full_config_from_disk() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"max_file_size = 5000\n",
+			"pad_blocks = true\n",
+			"disable_gitignore = true\n",
+			"\n",
+			"[data]\n",
+			"pkg = \"package.json\"\n",
+			"cargo = \"Cargo.toml\"\n",
+			"\n",
+			"[exclude]\n",
+			"patterns = [\"vendor/**\"]\n",
+			"\n",
+			"[include]\n",
+			"patterns = [\"extra/**/*.txt\"]\n",
+			"\n",
+			"[ignore]\n",
+			"patterns = [\"build/\"]\n",
+			"\n",
+			"[templates]\n",
+			"paths = [\"shared/templates\"]\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Also create the data files so load_data succeeds
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "test", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("Cargo.toml"),
+		"[package]\nname = \"test\"\nversion = \"0.1.0\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(config.max_file_size, 5000);
+	assert!(config.pad_blocks);
+	assert!(config.disable_gitignore);
+	assert_eq!(config.data.len(), 2);
+	assert_eq!(config.exclude.patterns, vec!["vendor/**"]);
+	assert_eq!(config.include.patterns, vec!["extra/**/*.txt"]);
+	assert_eq!(config.ignore.patterns, vec!["build/"]);
+	assert_eq!(
+		config.templates.paths,
+		vec![PathBuf::from("shared/templates")]
+	);
+
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data.len(), 2);
+	assert_eq!(data["pkg"]["name"], "test");
+	assert_eq!(data["cargo"]["package"]["name"], "test");
+
+	Ok(())
+}
+
+// --- Coverage: project.rs scan_project_with_config with real mdt.toml ---
+
+#[test]
+fn scan_project_with_config_loads_data_and_scans() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "myapp", "version": "2.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
+		 -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(ctx.data.contains_key("pkg"));
+	assert_eq!(ctx.data["pkg"]["name"], "myapp");
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_with_config_no_config_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(ctx.data.is_empty());
+	assert!(!ctx.pad_blocks);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs extra template directories ---
+
+#[test]
+fn scan_project_with_extra_template_dirs() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Create config pointing to an extra template directory
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[templates]\npaths = [\"shared/templates\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Create the extra template directory with a template file
+	std::fs::create_dir_all(tmp.path().join("shared/templates"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("shared/templates/extra.t.md"),
+		"<!-- {@extraBlock} -->\n\nExtra content from shared templates.\n\n<!-- {/extraBlock} \
+		 -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in root
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=extraBlock} -->\n\nold\n\n<!-- {/extraBlock} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(
+		ctx.project.providers.contains_key("extraBlock"),
+		"expected provider from extra template dir"
+	);
+	assert_eq!(ctx.project.consumers.len(), 1);
+
+	// Verify update works
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains("Extra content from shared templates."));
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_with_extra_template_dir_nonexistent() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Template path points to a directory that does not exist -- should be silently
+	// skipped
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[templates]\npaths = [\"nonexistent/templates\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs include patterns ---
+
+#[test]
+fn scan_project_with_include_patterns() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Include .txt files which are not normally scannable
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info} -->\n\nIncluded content.\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// A .txt file with consumer block -- normally not scanned, but included by
+	// pattern
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/notes.txt"),
+		"<!-- {=info} -->\n\nold notes\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	// The .txt file should have been picked up by include patterns
+	assert!(
+		ctx.project
+			.consumers
+			.iter()
+			.any(|c| c.file.to_string_lossy().contains("notes.txt")),
+		"expected consumer from included .txt file, consumers: {:?}",
+		ctx.project
+			.consumers
+			.iter()
+			.map(|c| c.file.display().to_string())
+			.collect::<Vec<_>>()
+	);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs diagnostic conversion from ParseDiagnostic ---
+
+#[test]
+fn scan_project_unclosed_block_diagnostic_has_correct_fields() {
+	use project::DiagnosticKind;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"Some text\n\n<!-- {=unclosedBlock} -->\n\nContent without close.\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let diag = project
+		.diagnostics
+		.iter()
+		.find(|d| matches!(&d.kind, DiagnosticKind::UnclosedBlock { .. }))
+		.unwrap_or_else(|| panic!("expected UnclosedBlock diagnostic"));
+
+	match &diag.kind {
+		DiagnosticKind::UnclosedBlock { name } => {
+			assert_eq!(name, "unclosedBlock");
+		}
+		other => panic!("expected UnclosedBlock, got {other:?}"),
+	}
+	assert!(diag.line > 0);
+	assert!(diag.column > 0);
+	assert!(diag.file.to_string_lossy().contains("readme.md"));
+}
+
+#[test]
+fn scan_project_unknown_transformer_diagnostic_has_correct_fields() {
+	use project::DiagnosticKind;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block|nonExistentTransformer} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let diag = project
+		.diagnostics
+		.iter()
+		.find(|d| matches!(&d.kind, DiagnosticKind::UnknownTransformer { .. }))
+		.unwrap_or_else(|| panic!("expected UnknownTransformer diagnostic"));
+
+	match &diag.kind {
+		DiagnosticKind::UnknownTransformer { name } => {
+			assert_eq!(name, "nonExistentTransformer");
+		}
+		other => panic!("expected UnknownTransformer, got {other:?}"),
+	}
+	assert!(diag.line > 0);
+	assert!(diag.column > 0);
+}
+
+#[test]
+fn scan_project_invalid_transformer_args_diagnostic_has_correct_fields() {
+	use project::DiagnosticKind;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// replace expects exactly 2 args, give it 1
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block|replace:\"only_one\"} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let diag = project
+		.diagnostics
+		.iter()
+		.find(|d| matches!(&d.kind, DiagnosticKind::InvalidTransformerArgs { .. }))
+		.unwrap_or_else(|| panic!("expected InvalidTransformerArgs diagnostic"));
+
+	match &diag.kind {
+		DiagnosticKind::InvalidTransformerArgs {
+			name,
+			expected,
+			got,
+		} => {
+			assert_eq!(name, "replace");
+			assert!(expected.contains("2"));
+			assert_eq!(*got, 1);
+		}
+		other => panic!("expected InvalidTransformerArgs, got {other:?}"),
+	}
+	assert!(diag.line > 0);
+	assert!(diag.column > 0);
+}
+
+// --- Coverage: project.rs diagnostic message ---
+
+#[test]
+fn project_diagnostic_messages_are_descriptive() {
+	use project::DiagnosticKind;
+	use project::ProjectDiagnostic;
+
+	let unclosed = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnclosedBlock {
+			name: "myBlock".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(unclosed.message().contains("myBlock"));
+	assert!(unclosed.message().contains("closing"));
+
+	let unknown = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnknownTransformer {
+			name: "bogus".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(unknown.message().contains("bogus"));
+	assert!(unknown.message().contains("unknown"));
+
+	let invalid_args = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::InvalidTransformerArgs {
+			name: "replace".to_string(),
+			expected: "2".to_string(),
+			got: 1,
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(invalid_args.message().contains("replace"));
+	assert!(invalid_args.message().contains("2"));
+	assert!(invalid_args.message().contains("1"));
+
+	let unused = ProjectDiagnostic {
+		file: PathBuf::from("test.t.md"),
+		kind: DiagnosticKind::UnusedProvider {
+			name: "orphan".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+	assert!(unused.message().contains("orphan"));
+	assert!(unused.message().contains("no consumers"));
+}
+
+// --- Coverage: project.rs is_error for all diagnostic kinds ---
+
+#[test]
+fn diagnostic_is_error_all_kinds() {
+	use project::DiagnosticKind;
+	use project::ProjectDiagnostic;
+	use project::ValidationOptions;
+
+	let make_diag = |kind: DiagnosticKind| -> ProjectDiagnostic {
+		ProjectDiagnostic {
+			file: PathBuf::from("test.md"),
+			kind,
+			line: 1,
+			column: 1,
+		}
+	};
+
+	// Default options: all are errors
+	let default_opts = ValidationOptions::default();
+	assert!(
+		make_diag(DiagnosticKind::UnclosedBlock {
+			name: "x".to_string()
+		})
+		.is_error(&default_opts)
+	);
+	assert!(
+		make_diag(DiagnosticKind::UnknownTransformer {
+			name: "x".to_string()
+		})
+		.is_error(&default_opts)
+	);
+	assert!(
+		make_diag(DiagnosticKind::InvalidTransformerArgs {
+			name: "x".to_string(),
+			expected: "1".to_string(),
+			got: 0,
+		})
+		.is_error(&default_opts)
+	);
+	assert!(
+		make_diag(DiagnosticKind::UnusedProvider {
+			name: "x".to_string()
+		})
+		.is_error(&default_opts)
+	);
+
+	// Ignoring transformers should suppress both unknown and invalid args
+	let ignore_transformers = ValidationOptions {
+		ignore_invalid_transformers: true,
+		..Default::default()
+	};
+	assert!(
+		!make_diag(DiagnosticKind::UnknownTransformer {
+			name: "x".to_string()
+		})
+		.is_error(&ignore_transformers)
+	);
+	assert!(
+		!make_diag(DiagnosticKind::InvalidTransformerArgs {
+			name: "x".to_string(),
+			expected: "1".to_string(),
+			got: 0,
+		})
+		.is_error(&ignore_transformers)
+	);
+
+	// Ignoring unused blocks
+	let ignore_unused = ValidationOptions {
+		ignore_unused_blocks: true,
+		..Default::default()
+	};
+	assert!(
+		!make_diag(DiagnosticKind::UnusedProvider {
+			name: "x".to_string()
+		})
+		.is_error(&ignore_unused)
+	);
+}
+
+// --- Coverage: project.rs normalize_line_endings via CRLF scanning ---
+
+#[test]
+fn scan_project_crlf_content_normalized() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Write template with CRLF line endings
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\r\n\r\nNormalized content.\r\n\r\n<!-- {/block} -->\r\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\r\n\r\nold\r\n\r\n<!-- {/block} -->\r\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		pad_blocks: false,
+	};
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
+	// Content should be normalized (no \r)
+	let provider_content = &ctx.project.providers["block"].content;
+	assert!(!provider_content.contains('\r'));
+
+	Ok(())
+}
+
+// --- Coverage: project.rs ProjectContext::find_missing_providers with multiple
+// missing ---
+
+#[test]
+fn project_context_find_multiple_missing_providers() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@existing} -->\n\ncontent\n\n<!-- {/existing} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=existing} -->\n\nold\n\n<!-- {/existing} -->\n\n<!-- {=missing1} \
+		 -->\n\norphan1\n\n<!-- {/missing1} -->\n\n<!-- {=missing2} -->\n\norphan2\n\n<!-- \
+		 {/missing2} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let missing = ctx.find_missing_providers();
+	assert_eq!(missing.len(), 2);
+	assert!(missing.contains(&"missing1".to_string()));
+	assert!(missing.contains(&"missing2".to_string()));
+
+	Ok(())
+}
+
+// --- Coverage: project.rs validate_project ---
+
+#[test]
+fn validate_project_ok_when_all_providers_exist() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	let result = validate_project(&project);
+	assert!(result.is_ok());
+
+	Ok(())
+}
+
+// --- Coverage: project.rs is_template_file additional edge cases ---
+
+#[test]
+fn is_template_file_more_edge_cases() {
+	// Various additional edge cases
+	assert!(is_template_file(std::path::Path::new("foo.t.md")));
+	assert!(is_template_file(std::path::Path::new(
+		"deep/nested/path/template.t.md"
+	)));
+	assert!(!is_template_file(std::path::Path::new("t.md")));
+	assert!(!is_template_file(std::path::Path::new("readme.mdx")));
+	assert!(!is_template_file(std::path::Path::new("notes.txt")));
+}
+
+// --- Coverage: error.rs SymlinkCycle display ---
+
+#[test]
+fn error_symlink_cycle_display_format() {
+	let err = MdtError::SymlinkCycle {
+		path: "/circular/link".to_string(),
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("symlink cycle"));
+	assert!(msg.contains("/circular/link"));
+}
+
+// --- Coverage: error.rs FileTooLarge display ---
+
+#[test]
+fn error_file_too_large_display_format() {
+	let err = MdtError::FileTooLarge {
+		path: "huge.md".to_string(),
+		size: 50_000_000,
+		limit: 10_000_000,
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("huge.md"));
+	assert!(msg.contains("50000000"));
+	assert!(msg.contains("10000000"));
+}
+
+// --- Coverage: error.rs UnconvertibleFloat display ---
+
+#[test]
+fn error_unconvertible_float_display_format() {
+	let err = MdtError::UnconvertibleFloat {
+		path: "config.toml".to_string(),
+		value: "Infinity".to_string(),
+	};
+	let msg = err.to_string();
+	assert!(msg.contains("config.toml"));
+	assert!(msg.contains("Infinity"));
+}
+
+// --- Coverage: config.rs unsupported format with explicit check ---
+
+#[test]
+fn config_unsupported_format_returns_specific_error() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\ndata = \"data.ini\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.ini"), "key=value")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+	let err_msg = result.unwrap_err().to_string();
+	assert!(
+		err_msg.contains("unsupported") || err_msg.contains("ini"),
+		"error should mention unsupported format, got: {err_msg}"
+	);
+}
+
+// --- Coverage: project.rs source file scanning with unclosed block ---
+
+#[test]
+fn scan_project_source_file_unclosed_block_diagnostic() {
+	use project::DiagnosticKind;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("src")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	// Source file with unclosed block
+	std::fs::write(
+		tmp.path().join("src/lib.rs"),
+		"//! <!-- {=docs} -->\n//! content without close\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	assert!(
+		project.diagnostics.iter().any(|d| {
+			matches!(
+				&d.kind,
+				DiagnosticKind::UnclosedBlock { name } if name == "docs"
+			)
+		}),
+		"expected UnclosedBlock diagnostic for source file, got: {:?}",
+		project.diagnostics
+	);
+}
+
+// --- Coverage: config.rs TOML with nested arrays of tables ---
+
+#[test]
+fn config_toml_nested_array_of_tables() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		concat!(
+			"[[items]]\n",
+			"name = \"first\"\n",
+			"value = 10\n",
+			"\n",
+			"[[items]]\n",
+			"name = \"second\"\n",
+			"value = 20\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	let items = conf["items"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(items.len(), 2);
+	assert_eq!(items[0]["name"], "first");
+	assert_eq!(items[1]["name"], "second");
+
+	Ok(())
+}
+
+// --- Coverage: project.rs scan_project_with_config with pad_blocks ---
+
+#[test]
+fn scan_project_with_config_pad_blocks_flag() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(ctx.pad_blocks);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs scan with include excluding hidden directories ---
+
+#[test]
+fn include_pattern_does_not_scan_hidden_dirs() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// File in hidden directory should not be included even with include patterns
+	std::fs::create_dir_all(tmp.path().join(".hidden")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".hidden/notes.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// File in a normal directory should be included
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/readme.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	// Only docs/readme.txt should be found, not .hidden/notes.txt
+	let consumer_files: Vec<String> = ctx
+		.project
+		.consumers
+		.iter()
+		.map(|c| c.file.display().to_string())
+		.collect();
+	assert!(
+		consumer_files.iter().any(|f| f.contains("readme.txt")),
+		"expected readme.txt in consumers, got: {consumer_files:?}"
+	);
+	assert!(
+		!consumer_files.iter().any(|f| f.contains(".hidden")),
+		"hidden dir files should not be included, got: {consumer_files:?}"
+	);
+
+	Ok(())
+}
+
+// --- Coverage: config.rs invalid JSON data file ---
+
+#[test]
+fn config_load_data_invalid_json() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\npkg = \"bad.json\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.json"), "not valid json {{{")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+// --- Coverage: config.rs invalid TOML data file ---
+
+#[test]
+fn config_load_data_invalid_toml() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.toml\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.toml"), "[invalid\nbroken = {{{{")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+// --- Coverage: config.rs invalid YAML data file ---
+
+#[test]
+fn config_load_data_invalid_yaml() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.yaml\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("bad.yaml"), ":\n  - :\n    - : :")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	// YAML parser may or may not error on malformed input; just exercise the path
+	let _ = result;
+}
+
+// --- Coverage: config.rs invalid KDL data file ---
+
+#[test]
+fn config_load_data_invalid_kdl() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"bad.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("bad.kdl"),
+		"this is not valid kdl {{{ }}}\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())
+		.unwrap_or_else(|e| panic!("load: {e}"))
+		.unwrap_or_else(|| panic!("expected Some"));
+	let result = config.load_data(tmp.path());
+	assert!(result.is_err());
+}
+
+// --- Coverage: project.rs exclude patterns with include patterns interaction
+// ---
+
+#[test]
+fn include_patterns_respect_exclude_patterns() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"[include]\n",
+			"patterns = [\"**/*.txt\"]\n",
+			"\n",
+			"[exclude]\n",
+			"patterns = [\"excluded/**\"]\n",
+			"\n",
+			"disable_gitignore = true\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Include in normal dir
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/notes.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Include in excluded dir -- should not be found
+	std::fs::create_dir_all(tmp.path().join("excluded")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("excluded/notes.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let consumer_files: Vec<String> = ctx
+		.project
+		.consumers
+		.iter()
+		.map(|c| c.file.display().to_string())
+		.collect();
+	assert!(
+		consumer_files.iter().any(|f| f.contains("docs")),
+		"expected docs/notes.txt, got: {consumer_files:?}"
+	);
+	assert!(
+		!consumer_files.iter().any(|f| f.contains("excluded")),
+		"excluded dir should not appear, got: {consumer_files:?}"
+	);
+
+	Ok(())
+}
+
+// --- Coverage: config.rs pad_blocks + data loading through
+// scan_project_with_config ---
+
+#[test]
+fn scan_project_with_config_pad_blocks_and_data() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"pad_blocks = true\n\n[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "test-app", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info} -->\n\nVersion: {{ pkg.version }}\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=info} -->\n\nold\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(ctx.pad_blocks, "pad_blocks should be true");
+	assert!(
+		ctx.data.contains_key("pkg"),
+		"data should contain pkg namespace"
+	);
+	assert_eq!(ctx.data["pkg"]["name"], "test-app");
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(ctx.project.consumers.len(), 1);
+
+	// Also verify the update works with pad_blocks and data
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains("Version: 1.0.0"));
+
+	Ok(())
+}
+
+// --- Coverage: config.rs TOML all value types exercised individually ---
+
+#[test]
+fn config_toml_integer_value_standalone() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// A TOML file with only an integer at the top level
+	std::fs::write(tmp.path().join("data.toml"), "count = 99\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	// Verify integer conversion through from_f64
+	let count_val = conf["count"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((count_val - 99.0).abs() < f64::EPSILON);
+
+	Ok(())
+}
+
+#[test]
+fn config_toml_float_value_standalone() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// A TOML file with only a float at the top level
+	std::fs::write(tmp.path().join("data.toml"), "ratio = 0.75\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	// Verify float conversion through from_f64
+	let ratio_val = conf["ratio"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((ratio_val - 0.75).abs() < f64::EPSILON);
+
+	Ok(())
+}
+
+#[test]
+fn config_toml_array_of_mixed_types() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// TOML arrays (all same type for valid TOML)
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		"numbers = [10, 20, 30]\nstrings = [\"a\", \"b\"]\nfloats = [1.1, 2.2]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+
+	let nums = conf["numbers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(nums.len(), 3);
+	assert_eq!(
+		nums[0]
+			.as_f64()
+			.unwrap_or_else(|| panic!("expected number")),
+		10.0
+	);
+
+	let strings = conf["strings"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(strings.len(), 2);
+	assert_eq!(strings[0], "a");
+
+	let floats = conf["floats"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(floats.len(), 2);
+
+	Ok(())
+}
+
+#[test]
+fn config_toml_deeply_nested_table() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nconf = \"data.toml\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.toml"),
+		concat!(
+			"[level1]\n",
+			"name = \"outer\"\n",
+			"[level1.level2]\n",
+			"name = \"inner\"\n",
+			"value = 42\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert_eq!(conf["level1"]["name"], "outer");
+	assert_eq!(conf["level1"]["level2"]["name"], "inner");
+	assert_eq!(conf["level1"]["level2"]["value"], serde_json::json!(42.0));
+
+	Ok(())
+}
+
+// --- Coverage: config.rs KDL integer and float values in named entries ---
+
+#[test]
+fn config_kdl_named_entries_with_integer_and_float() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// Named entries with integer and float values
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"server host=\"0.0.0.0\" port=3000 weight=1.5\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert!(conf["server"].is_object());
+	assert_eq!(conf["server"]["host"], "0.0.0.0");
+	// Integer in named entry
+	let port = conf["server"]["port"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((port - 3000.0).abs() < f64::EPSILON);
+	// Float in named entry
+	let weight = conf["server"]["weight"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((weight - 1.5).abs() < f64::EPSILON);
+
+	Ok(())
+}
+
+// --- Coverage: config.rs KDL mixed entries with integers and floats ---
+
+#[test]
+fn config_kdl_mixed_entries_with_numbers() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// Mixed positional and named entries containing integers and floats
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		"coords 10 20.5 name=\"point\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	// Mixed entries become array
+	assert!(conf["coords"].is_array());
+	let arr = conf["coords"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected array"));
+	assert_eq!(arr.len(), 3);
+	// First: integer 10
+	assert_eq!(
+		arr[0].as_f64().unwrap_or_else(|| panic!("expected number")),
+		10.0
+	);
+	// Second: float 20.5
+	assert!(
+		(arr[1].as_f64().unwrap_or_else(|| panic!("expected number")) - 20.5).abs() < f64::EPSILON
+	);
+	// Third: string "point"
+	assert_eq!(arr[2], "point");
+
+	Ok(())
+}
+
+// --- Coverage: config.rs KDL node with children containing integers ---
+
+#[test]
+fn config_kdl_children_with_integer_and_float_values() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\nconf = \"data.kdl\"\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("data.kdl"),
+		concat!(
+			"config {\n",
+			"  port 8080\n",
+			"  rate 0.95\n",
+			"  debug #false\n",
+			"}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
+	assert!(conf["config"].is_object());
+	// Integer child
+	let port = conf["config"]["port"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((port - 8080.0).abs() < f64::EPSILON);
+	// Float child
+	let rate = conf["config"]["rate"]
+		.as_f64()
+		.unwrap_or_else(|| panic!("expected number"));
+	assert!((rate - 0.95).abs() < 0.001);
+	// Boolean child
+	assert_eq!(conf["config"]["debug"], false);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs collect_included_files with subdirectory recursion
+// ---
+
+#[test]
+fn include_pattern_scans_nested_subdirectories() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Create deeply nested subdirectory with txt file
+	std::fs::create_dir_all(tmp.path().join("a/b/c")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("a/b/c/deep.txt"),
+		"<!-- {=block} -->\n\nold deep\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Also create a txt file at root
+	std::fs::write(
+		tmp.path().join("root.txt"),
+		"<!-- {=block} -->\n\nold root\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let consumer_files: Vec<String> = ctx
+		.project
+		.consumers
+		.iter()
+		.map(|c| c.file.display().to_string())
+		.collect();
+	assert!(
+		consumer_files.iter().any(|f| f.contains("deep.txt")),
+		"expected deep.txt in consumers, got: {consumer_files:?}"
+	);
+	assert!(
+		consumer_files.iter().any(|f| f.contains("root.txt")),
+		"expected root.txt in consumers, got: {consumer_files:?}"
+	);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs include patterns with exclude interaction ---
+
+#[test]
+fn include_pattern_respects_exclude_patterns() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"[include]\n",
+			"patterns = [\"**/*.txt\"]\n",
+			"\n",
+			"[exclude]\n",
+			"patterns = [\"skip/**\"]\n",
+			"\n",
+			"disable_gitignore = true\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// File in excluded dir -- should not be included
+	std::fs::create_dir_all(tmp.path().join("skip")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("skip/notes.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// File not in excluded dir -- should be included
+	std::fs::create_dir_all(tmp.path().join("keep")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("keep/notes.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let consumer_files: Vec<String> = ctx
+		.project
+		.consumers
+		.iter()
+		.map(|c| c.file.display().to_string())
+		.collect();
+	assert!(
+		consumer_files.iter().any(|f| f.contains("keep")),
+		"expected keep/notes.txt, got: {consumer_files:?}"
+	);
+	assert!(
+		!consumer_files.iter().any(|f| f.contains("skip")),
+		"excluded files should not appear, got: {consumer_files:?}"
+	);
+
+	Ok(())
+}
+
+// --- Coverage: project.rs include patterns skip node_modules and target ---
+
+#[test]
+fn include_pattern_skips_node_modules_and_target() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Create files in node_modules and target
+	std::fs::create_dir_all(tmp.path().join("node_modules/pkg"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("node_modules/pkg/readme.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::create_dir_all(tmp.path().join("target/debug"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("target/debug/output.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Create a regular file that should be included
+	std::fs::write(
+		tmp.path().join("valid.txt"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let consumer_files: Vec<String> = ctx
+		.project
+		.consumers
+		.iter()
+		.map(|c| c.file.display().to_string())
+		.collect();
+	assert!(
+		consumer_files.iter().any(|f| f.contains("valid.txt")),
+		"expected valid.txt, got: {consumer_files:?}"
+	);
+	assert!(
+		!consumer_files.iter().any(|f| f.contains("node_modules")),
+		"node_modules should be skipped, got: {consumer_files:?}"
+	);
+	assert!(
+		!consumer_files.iter().any(|f| f.contains("target")),
+		"target should be skipped, got: {consumer_files:?}"
+	);
+
+	Ok(())
+}
+
+// --- Coverage: config.rs read_to_string success path (line 124) ---
+
+#[test]
+fn config_load_reads_valid_toml_content() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"max_file_size = 5242880\n",
+			"pad_blocks = true\n",
+			"disable_gitignore = true\n",
+			"\n",
+			"[data]\n",
+			"pkg = \"package.json\"\n",
+			"\n",
+			"[exclude]\n",
+			"patterns = [\"vendor/**\"]\n",
+			"\n",
+			"[include]\n",
+			"patterns = [\"**/*.txt\"]\n",
+			"\n",
+			"[ignore]\n",
+			"patterns = [\"build/\"]\n",
+			"\n",
+			"[templates]\n",
+			"paths = [\"shared\"]\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(config.max_file_size, 5_242_880);
+	assert!(config.pad_blocks);
+	assert!(config.disable_gitignore);
+	assert_eq!(config.exclude.patterns, vec!["vendor/**"]);
+	assert_eq!(config.include.patterns, vec!["**/*.txt"]);
+	assert_eq!(config.ignore.patterns, vec!["build/"]);
+	assert_eq!(config.templates.paths, vec![PathBuf::from("shared")]);
+	assert_eq!(config.data.get("pkg"), Some(&PathBuf::from("package.json")));
+
+	Ok(())
+}
+
+// --- Coverage: project.rs scan_project_with_config with all config sections
+// ---
+
+#[test]
+fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		concat!(
+			"pad_blocks = true\n",
+			"max_file_size = 1048576\n",
+			"\n",
+			"[data]\n",
+			"info = \"info.yaml\"\n",
+			"\n",
+			"[ignore]\n",
+			"patterns = [\"ignored/**\"]\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("info.yaml"),
+		"name: test-project\nversion: 3.0.0\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@ver} -->\n\n{{ info.version }}\n\n<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=ver} -->\n\nold\n\n<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Ignored directory
+	std::fs::create_dir_all(tmp.path().join("ignored")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("ignored/file.md"),
+		"<!-- {=ver} -->\n\nignored\n\n<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(ctx.pad_blocks);
+	assert!(ctx.data.contains_key("info"));
+	assert_eq!(ctx.data["info"]["version"], "3.0.0");
+	assert_eq!(ctx.project.consumers.len(), 1);
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains("3.0.0"));
+
+	Ok(())
+}

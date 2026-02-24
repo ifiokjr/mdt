@@ -1,0 +1,15 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: readme
+---
+# Orphan Consumer Test
+
+<!-- {=greeting|trim} -->Hello from the template!<!-- {/greeting} -->
+
+## Missing Section
+
+<!-- {=nonexistent|indent:"  "} -->
+
+This references a provider that does not exist.
+
+<!-- {/nonexistent} -->
