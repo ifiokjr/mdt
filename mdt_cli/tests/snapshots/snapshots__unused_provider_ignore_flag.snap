@@ -1,0 +1,26 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpV7eJqC
+    - "--ignore-unused-blocks"
+    - "--verbose"
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+Scanned project: 2 provider(s), 1 consumer(s)
+  Providers:
+    @orphan_block ([TEMP_DIR]/template.t.md)
+    @used_block ([TEMP_DIR]/template.t.md)
+
+----- stderr -----
+warning: template.t.md:7:1: provider block `orphan_block` has no consumers
+Stale: block `used_block` in readme.md:3:1
+
+1 consumer block(s) are out of date. Run `mdt update` to fix.

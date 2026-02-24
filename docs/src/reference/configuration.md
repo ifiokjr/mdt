@@ -146,7 +146,7 @@ pad_blocks = true
 # Map data files to namespaces for template variables
 [data]
 package = "package.json"
-cargo = "crates/my-lib/Cargo.toml"
+cargo = "my-lib/Cargo.toml"
 config = "config.yaml"
 
 # Skip these paths during scanning

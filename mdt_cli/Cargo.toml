@@ -1,0 +1,40 @@
+[package]
+name = "mdt_cli"
+version = "0.3.0"
+categories = { workspace = true }
+documentation = "https://docs.rs/mdt_cli"
+edition = { workspace = true }
+include = { workspace = true }
+keywords = ["markdown", "templates", "cli"]
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "the cli which updates markdown content anywhere using comments as template tags"
+
+[[bin]]
+name = "mdt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"], default-features = true }
+mdt_core = { workspace = true }
+mdt_lsp = { workspace = true }
+mdt_mcp = { workspace = true }
+notify = { workspace = true, features = ["macos_fsevent"], default-features = true }
+owo-colors = { workspace = true, features = ["supports-colors"], default-features = true }
+serde_json = { workspace = true, default-features = true }
+similar = { workspace = true, default-features = true }
+tokio = { workspace = true, features = ["full"], default-features = true }
+
+[dev-dependencies]
+assert_cmd = { workspace = true, default-features = true }
+insta = { workspace = true, features = ["filters"], default-features = true }
+insta-cmd = { workspace = true, default-features = true }
+predicates = { workspace = true, default-features = true }
+rstest = { workspace = true, default-features = true }
+similar-asserts = { workspace = true, default-features = true }
+tempfile = { workspace = true, default-features = true }
+
+[lints]
+workspace = true

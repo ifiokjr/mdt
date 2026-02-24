@@ -1,7 +1,17 @@
 [workspace]
-members = ["crates/*", "docs"]
-default-members = ["crates/mdt_core", "crates/mdt_cli", "crates/mdt_lsp", "docs"]
+members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp"]
 resolver = "2"
+
+[workspace.package]
+authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
+categories = ["development-tools"]
+edition = "2024"
+homepage = "https://github.com/ifiokjr/mdt"
+include = ["src/**/*.rs", "Cargo.toml", "readme.md"]
+license = "Unlicense"
+readme = "readme.md"
+repository = "https://github.com/ifiokjr/mdt"
+rust-version = "1.86.0"
 
 [workspace.dependencies]
 assert_cmd = { default-features = false, version = "^2" }
@@ -37,21 +47,9 @@ toml = { default-features = false, version = "^1" }
 tower-lsp-server = { default-features = false, version = "^0.23" }
 
 # Internal crates
-mdt_core = { path = "./crates/mdt_core", version = "0.2.1" }
-mdt_lsp = { path = "./crates/mdt_lsp", version = "0.2.1" }
-mdt_mcp = { path = "./crates/mdt_mcp", version = "0.2.1" }
-
-[workspace.package]
-version = "0.2.1"
-authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
-categories = ["development-tools"]
-edition = "2024"
-homepage = "https://github.com/ifiokjr/mdt"
-include = ["src/**/*.rs", "Cargo.toml", "readme.md"]
-license = "Unlicense"
-readme = "readme.md"
-repository = "https://github.com/ifiokjr/mdt"
-rust-version = "1.86.0"
+mdt_core = { path = "./mdt_core", version = "0.3.0" }
+mdt_lsp = { path = "./mdt_lsp", version = "0.3.0" }
+mdt_mcp = { path = "./mdt_mcp", version = "0.3.0" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }

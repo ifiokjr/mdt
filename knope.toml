@@ -3,97 +3,65 @@ ignore_conventional_commits = true
 
 [packages.mdt_core]
 versioned_files = [
-	"Cargo.toml",
+	"Cargo.lock",
+	"mdt_core/Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt_core" },
-	{ path = "Cargo.toml", dependency = "mdt_cli" },
-	{ path = "Cargo.toml", dependency = "mdt_lsp" },
-	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-	{ path = "Cargo.lock", dependency = "mdt_core" },
 ]
-changelog = "crates/mdt_core/changelog.md"
+changelog = "mdt_core/changelog.md"
 scopes = ["mdt_core"]
-
-[[packages.mdt_core.extra_changelog_sections]]
-name = "Notes"
-footers = []
-types = ["note"]
-
-[[packages.mdt_core.extra_changelog_sections]]
-name = "Documentation"
-footers = []
-types = ["docs"]
+extra_changelog_sections = [
+	{ name = "Notes", footers = [], types = ["note"] },
+	{ name = "Documentation", footers = [], types = ["docs"] },
+]
 
 [packages.mdt_cli]
 versioned_files = [
-	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_core" },
+	"Cargo.lock",
+	"mdt_cli/Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
-	{ path = "Cargo.toml", dependency = "mdt_lsp" },
-	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-	{ path = "Cargo.lock", dependency = "mdt_cli" },
 ]
-changelog = "crates/mdt_cli/changelog.md"
+changelog = "mdt_cli/changelog.md"
 scopes = ["mdt_cli"]
-
-[[packages.mdt_cli.extra_changelog_sections]]
-name = "Notes"
-footers = []
-types = ["note"]
-
-[[packages.mdt_cli.extra_changelog_sections]]
-name = "Documentation"
-footers = []
-types = ["docs"]
+extra_changelog_sections = [
+	{ name = "Notes", footers = [], types = ["note"] },
+	{ name = "Documentation", footers = [], types = ["docs"] },
+]
 
 [packages.mdt_lsp]
 versioned_files = [
-	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_core" },
-	{ path = "Cargo.toml", dependency = "mdt_cli" },
+	"Cargo.lock",
+	"mdt_lsp/Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
-	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-	{ path = "Cargo.lock", dependency = "mdt_lsp" },
 ]
-changelog = "crates/mdt_lsp/changelog.md"
+changelog = "mdt_lsp/changelog.md"
 scopes = ["mdt_lsp"]
-
-[[packages.mdt_lsp.extra_changelog_sections]]
-name = "Notes"
-footers = []
-types = ["note"]
-
-[[packages.mdt_lsp.extra_changelog_sections]]
-name = "Documentation"
-footers = []
-types = ["docs"]
+extra_changelog_sections = [
+	{ name = "Notes", footers = [], types = ["note"] },
+	{ name = "Documentation", footers = [], types = ["docs"] },
+]
 
 [packages.mdt_mcp]
 versioned_files = [
-	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_core" },
-	{ path = "Cargo.toml", dependency = "mdt_cli" },
-	{ path = "Cargo.toml", dependency = "mdt_lsp" },
+	"Cargo.lock",
+	"mdt_mcp/Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-	{ path = "Cargo.lock", dependency = "mdt_mcp" },
 ]
-changelog = "crates/mdt_mcp/changelog.md"
+changelog = "mdt_mcp/changelog.md"
 scopes = ["mdt_mcp"]
-
-[[packages.mdt_mcp.extra_changelog_sections]]
-name = "Notes"
-footers = []
-types = ["note"]
-
-[[packages.mdt_mcp.extra_changelog_sections]]
-name = "Documentation"
-footers = []
-types = ["docs"]
+extra_changelog_sections = [
+	{ name = "Notes", footers = [], types = ["note"] },
+	{ name = "Documentation", footers = [], types = ["docs"] },
+]
 
 [[workflows]]
 name = "release"
 
 [[workflows.steps]]
 type = "PrepareRelease"
+
+[[workflows.steps]]
+type = "Command"
+command = "mdt update"
 
 [[workflows.steps]]
 type = "Command"
@@ -139,19 +107,7 @@ name = "publish"
 
 [[workflows.steps]]
 type = "Command"
-command = "cargo publish -p mdt_core"
-
-[[workflows.steps]]
-type = "Command"
-command = "cargo publish -p mdt_lsp"
-
-[[workflows.steps]]
-type = "Command"
-command = "cargo publish -p mdt_mcp"
-
-[[workflows.steps]]
-type = "Command"
-command = "cargo publish -p mdt_cli"
+command = "cargo publish --workspace"
 
 [github]
 owner = "ifiokjr"

@@ -54,7 +54,7 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wra
 
 ```toml
 [dependencies]
-mdt_core = "{{ cargo.workspace.package.version }}"
+mdt_core = "{{ cargo_mdt_core.package.version }}"
 ```
 
 <!-- {/mdtCoreInstall} -->
@@ -63,7 +63,7 @@ mdt_core = "{{ cargo.workspace.package.version }}"
 
 ```toml
 [dependencies]
-mdt_lsp = "{{ cargo.workspace.package.version }}"
+mdt_lsp = "{{ cargo_mdt_cli.package.version }}"
 ```
 
 <!-- {/mdtLspInstall} -->
@@ -72,7 +72,7 @@ mdt_lsp = "{{ cargo.workspace.package.version }}"
 
 ```toml
 [dependencies]
-mdt_mcp = "{{ cargo.workspace.package.version }}"
+mdt_mcp = "{{ cargo_mdt_mcp.package.version }}"
 ```
 
 <!-- {/mdtMcpInstall} -->

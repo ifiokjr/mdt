@@ -17,7 +17,7 @@ Clone the repository and build:
 ```sh
 git clone https://github.com/ifiokjr/mdt.git
 cd mdt
-cargo install --path crates/mdt_cli
+cargo install --path mdt_cli
 ```
 
 ## As a library

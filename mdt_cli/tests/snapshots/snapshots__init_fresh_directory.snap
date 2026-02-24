@@ -1,0 +1,24 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpVWmBWD
+    - init
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Created template file: [TEMP_DIR]/template.t.md
+
+Next steps:
+  1. Edit [TEMP_DIR]/template.t.md to define your template blocks
+  2. Add consumer tags in your markdown files:
+     <!-- {=greeting} -->
+     <!-- {/greeting} -->
+  3. Run `mdt update` to sync content
+
+----- stderr -----

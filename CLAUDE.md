@@ -71,10 +71,10 @@ Key style rules: hard tabs, max width 100, one import per line (`imports_granula
 
 ### Workspace Crates
 
-- **`crates/mdt_core`** — Core library (`mdt_core` on crates.io). Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
-- **`crates/mdt_cli`** — CLI tool (`mdt_cli` on crates.io). Provides `init`, `check`, `update`, `list`, `lsp`, and `mcp` commands for managing markdown templates via the command line. Uses `clap` for argument parsing. The binary is named `mdt`.
-- **`crates/mdt_lsp`** — LSP server (`mdt_lsp` on crates.io). Provides language server protocol support for editor integration with diagnostics, completions, hover, go-to-definition, and code actions using `tower-lsp`.
-- **`crates/mdt_mcp`** — MCP server (`mdt_mcp` on crates.io). Exposes mdt functionality to AI assistants via the Model Context Protocol using `rmcp`.
+- **`mdt_core`** — Core library (`mdt_core` on crates.io). Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
+- **`mdt_cli`** — CLI tool (`mdt_cli` on crates.io). Provides `init`, `check`, `update`, `list`, `lsp`, and `mcp` commands for managing markdown templates via the command line. Uses `clap` for argument parsing. The binary is named `mdt`.
+- **`mdt_lsp`** — LSP server (`mdt_lsp` on crates.io). Provides language server protocol support for editor integration with diagnostics, completions, hover, go-to-definition, and code actions using `tower-lsp`.
+- **`mdt_mcp`** — MCP server (`mdt_mcp` on crates.io). Exposes mdt functionality to AI assistants via the Model Context Protocol using `rmcp`.
 - **`docs/`** — mdbook documentation.
 
 ### Internal Pipeline
@@ -195,7 +195,7 @@ Changesets should be highly detailed. Conventional commit scopes map to packages
 
 ### Changeset Requirement
 
-**Every pull request that modifies code in any crate (`crates/`) MUST include at least one changeset file in `.changeset/`.** This ensures all changes are tracked in changelogs and version bumps are applied correctly.
+**Every pull request that modifies code in any crate (``) MUST include at least one changeset file in `.changeset/`.** This ensures all changes are tracked in changelogs and version bumps are applied correctly.
 
 To create a changeset interactively:
 

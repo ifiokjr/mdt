@@ -1,0 +1,22 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpA17H6o
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+
+----- stderr -----
+Stale: block `api_docs` in src/index.ts:2:4
+Stale: block `api_docs` in src/lib.rs:1:5
+Stale: block `api_docs` in src/main.go:3:4
+Stale: block `api_docs` in src/main.py:1:3
+
+4 consumer block(s) are out of date. Run `mdt update` to fix.

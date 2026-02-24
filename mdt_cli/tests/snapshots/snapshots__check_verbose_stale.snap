@@ -1,0 +1,25 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpZdLQNM
+    - "--verbose"
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+Scanned project: 2 provider(s), 2 consumer(s)
+  Providers:
+    @intro ([TEMP_DIR]/template.t.md)
+    @version ([TEMP_DIR]/template.t.md)
+
+----- stderr -----
+Stale: block `intro` in readme.md:3:1
+Stale: block `version` in readme.md:9:10
+
+2 consumer block(s) are out of date. Run `mdt update` to fix.

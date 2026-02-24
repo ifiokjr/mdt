@@ -105,7 +105,7 @@ A fast, type-safe HTTP client for Rust.
 <!-- {/usage} -->
 ```
 
-**`crates/my-http-client/src/lib.rs`** — even works in source comments:
+**`my-http-client/src/lib.rs`** — even works in source comments:
 
 ```rust
 //! <!-- {=projectDescription|trim} -->

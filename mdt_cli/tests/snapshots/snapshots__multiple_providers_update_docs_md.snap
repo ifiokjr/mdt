@@ -1,0 +1,32 @@
+---
+source: mdt_cli/tests/snapshots.rs
+expression: docs
+---
+# Documentation
+
+<!-- {=header} -->
+
+# Project Title
+
+A great project.
+
+<!-- {/header} -->
+
+## Getting Started
+
+<!-- {=install} -->
+
+```sh
+npm install my-lib
+```
+
+<!-- {/install} -->
+
+<!-- {=usage} -->
+
+```ts
+import { greet } from "my-lib";
+greet("world");
+```
+
+<!-- {/usage} -->
