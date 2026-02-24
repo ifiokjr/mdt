@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "docs"]
-default-members = ["crates/mdt", "crates/mdt_cli", "crates/mdt_lsp", "docs"]
+default-members = ["crates/mdt_core", "crates/mdt_cli", "crates/mdt_lsp", "docs"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -35,7 +35,7 @@ toml = { default-features = false, version = "^1" }
 tower-lsp-server = { default-features = false, version = "^0.23" }
 
 # Internal crates
-mdt = { path = "./crates/mdt", version = "0.1.0" }
+mdt_core = { path = "./crates/mdt_core", version = "0.1.0" }
 mdt_lsp = { path = "./crates/mdt_lsp", version = "0.1.0" }
 mdt_mcp = { path = "./crates/mdt_mcp", version = "0.1.0" }
 

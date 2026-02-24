@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use mdt::Block;
-use mdt::BlockType;
-use mdt::apply_transformers;
-use mdt::parse;
-use mdt::parse_source;
-use mdt::project::ConsumerEntry;
-use mdt::project::ProviderEntry;
-use mdt::project::extract_content_between_tags;
-use mdt::project::scan_project_with_config;
-use mdt::render_template;
+use mdt_core::Block;
+use mdt_core::BlockType;
+use mdt_core::apply_transformers;
+use mdt_core::parse;
+use mdt_core::parse_source;
+use mdt_core::project::ConsumerEntry;
+use mdt_core::project::ProviderEntry;
+use mdt_core::project::extract_content_between_tags;
+use mdt_core::project::scan_project_with_config;
+use mdt_core::render_template;
 use tokio::sync::RwLock;
 use tower_lsp_server::Client;
 use tower_lsp_server::LanguageServer;
@@ -139,7 +139,7 @@ fn parse_document_content(uri: &Uri, content: &str) -> Vec<Block> {
 
 /// Convert an mdt `Point` (1-indexed line, 1-indexed column) to an LSP
 /// `Position` (0-indexed).
-fn to_lsp_position(point: &mdt::Point) -> Position {
+fn to_lsp_position(point: &mdt_core::Point) -> Position {
 	Position {
 		line: point.line.saturating_sub(1) as u32,
 		character: point.column.saturating_sub(1) as u32,
@@ -147,7 +147,7 @@ fn to_lsp_position(point: &mdt::Point) -> Position {
 }
 
 /// Convert an mdt `Position` to an LSP `Range`.
-fn to_lsp_range(pos: &mdt::Position) -> Range {
+fn to_lsp_range(pos: &mdt_core::Position) -> Range {
 	Range {
 		start: to_lsp_position(&pos.start),
 		end: to_lsp_position(&pos.end),

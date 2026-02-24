@@ -838,7 +838,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "mdt"
+name = "mdt_cli"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "clap",
+ "insta",
+ "mdt_core",
+ "mdt_lsp",
+ "mdt_mcp",
+ "notify",
+ "owo-colors",
+ "predicates",
+ "rstest",
+ "serde_json",
+ "similar",
+ "similar-asserts",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "mdt_core"
 version = "0.1.0"
 dependencies = [
  "derive_more",
@@ -863,32 +884,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "mdt_cli"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "clap",
- "insta",
- "mdt",
- "mdt_lsp",
- "mdt_mcp",
- "notify",
- "owo-colors",
- "predicates",
- "rstest",
- "serde_json",
- "similar",
- "similar-asserts",
- "tempfile",
- "tokio",
-]
-
-[[package]]
 name = "mdt_lsp"
 version = "0.1.0"
 dependencies = [
  "insta",
- "mdt",
+ "mdt_core",
  "rstest",
  "serde_json",
  "similar-asserts",
@@ -901,7 +901,7 @@ dependencies = [
 name = "mdt_mcp"
 version = "0.1.0"
 dependencies = [
- "mdt",
+ "mdt_core",
  "rmcp",
  "serde",
  "serde_json",
@@ -979,7 +979,7 @@ dependencies = [
 name = "monochange_book"
 version = "0.1.0"
 dependencies = [
- "mdt",
+ "mdt_core",
 ]
 
 [[package]]

@@ -1,13 +1,13 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use mdt::apply_transformers;
-use mdt::check_project;
-use mdt::compute_updates;
-use mdt::project::ProjectContext;
-use mdt::project::scan_project_with_config;
-use mdt::render_template;
-use mdt::write_updates;
+use mdt_core::apply_transformers;
+use mdt_core::check_project;
+use mdt_core::compute_updates;
+use mdt_core::project::ProjectContext;
+use mdt_core::project::scan_project_with_config;
+use mdt_core::render_template;
+use mdt_core::write_updates;
 use rmcp::ErrorData as McpError;
 use rmcp::ServerHandler;
 use rmcp::ServiceExt;
@@ -341,7 +341,7 @@ impl MdtMcpServer {
 			)]));
 		}
 
-		let consumer_entries: Vec<&mdt::project::ConsumerEntry> = ctx
+		let consumer_entries: Vec<&mdt_core::project::ConsumerEntry> = ctx
 			.project
 			.consumers
 			.iter()

@@ -1,8 +1,8 @@
 [package]
-name = "mdt"
+name = "mdt_core"
 version = { workspace = true }
 categories = { workspace = true }
-documentation = "https://docs.rs/mdt"
+documentation = "https://docs.rs/mdt_core"
 edition = { workspace = true }
 include = { workspace = true }
 keywords = ["markdown", "templates"]

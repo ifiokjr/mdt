@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use mdt::TransformerType;
-use mdt::parse;
-use mdt::project::ConsumerEntry;
-use mdt::project::ProviderEntry;
-use mdt::project::extract_content_between_tags;
+use mdt_core::TransformerType;
+use mdt_core::parse;
+use mdt_core::project::ConsumerEntry;
+use mdt_core::project::ProviderEntry;
+use mdt_core::project::extract_content_between_tags;
 #[allow(unused_imports)]
 use tower_lsp_server::ls_types::*;
 
@@ -227,8 +227,8 @@ fn hover_on_provider_shows_consumer_count() {
 		block: Block {
 			name: "greeting".to_string(),
 			r#type: BlockType::Consumer,
-			opening: mdt::Position::new(1, 1, 0, 1, 20, 19),
-			closing: mdt::Position::new(3, 1, 30, 3, 20, 49),
+			opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+			closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
 			transformers: Vec::new(),
 		},
 		file: PathBuf::from("/tmp/test/readme.md"),
@@ -298,8 +298,8 @@ fn completion_inside_consumer_tag() {
 		block: Block {
 			name: "greeting".to_string(),
 			r#type: BlockType::Provider,
-			opening: mdt::Position::new(1, 1, 0, 1, 20, 19),
-			closing: mdt::Position::new(3, 1, 30, 3, 20, 49),
+			opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+			closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
 			transformers: Vec::new(),
 		},
 		file: PathBuf::from("/tmp/test/template.t.md"),
@@ -696,12 +696,12 @@ fn ranges_overlap_basic() {
 
 #[test]
 fn to_lsp_position_converts_correctly() {
-	let point = mdt::Point::new(1, 1, 0);
+	let point = mdt_core::Point::new(1, 1, 0);
 	let lsp_pos = to_lsp_position(&point);
 	assert_eq!(lsp_pos.line, 0);
 	assert_eq!(lsp_pos.character, 0);
 
-	let point2 = mdt::Point::new(5, 10, 42);
+	let point2 = mdt_core::Point::new(5, 10, 42);
 	let lsp_pos2 = to_lsp_position(&point2);
 	assert_eq!(lsp_pos2.line, 4);
 	assert_eq!(lsp_pos2.character, 9);
