@@ -123,7 +123,7 @@ This content gets replaced
 <!-- {=block|prefix:"\n"|indent:"  "} -->
 ```
 
-**Available transformers:** `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wrap`, `codeBlock`, `code`, `replace`.
+**Available transformers:** `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`. The line-based transformers (`indent`, `linePrefix`, `lineSuffix`) accept an optional second boolean argument (`true`) to include empty lines.
 
 ### File Conventions
 

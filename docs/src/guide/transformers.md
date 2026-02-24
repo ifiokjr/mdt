@@ -63,7 +63,7 @@ Aliases: `trim_end`
 
 ### `indent`
 
-Prepends a string to each non-empty line. Empty lines are preserved as-is.
+Prepends a string to each non-empty line. Empty lines are preserved as-is by default.
 
 ```markdown
 <!-- {=block|indent:"  "} -->
@@ -86,6 +86,14 @@ After:
 
   line four
 ```
+
+To include empty lines (indent them too), pass `true` as a second argument:
+
+```markdown
+<!-- {=block|indent:"  ":true} -->
+```
+
+With `true`, every line gets the indent — including empty lines. Without it (default), empty lines stay completely empty.
 
 ### `prefix`
 
@@ -129,11 +137,35 @@ After:
 // line two
 ```
 
+To also prefix empty lines, pass `true` as a second argument. This is essential for code comment blocks where every line needs a comment marker:
+
+```markdown
+<!-- {=block|linePrefix:"//! ":true} -->
+```
+
+Before:
+
+```
+A fast HTTP client.
+
+Supports async and blocking modes.
+```
+
+After:
+
+```
+//! A fast HTTP client.
+//!
+//! Supports async and blocking modes.
+```
+
+Note: when `true` is set, the prefix is applied to empty lines too, so `"//! "` on an empty line produces `//!` (with trailing space). If you need a shorter prefix on empty lines (e.g., `//!` without the space), use `linePrefix:"//! "` (without `true`) and then handle the empty lines separately, or use `replace` to clean up trailing spaces.
+
 Aliases: `line_prefix`
 
 ### `lineSuffix`
 
-Appends a string to each non-empty line.
+Appends a string to each non-empty line. Empty lines are left empty by default.
 
 ```markdown
 <!-- {=block|lineSuffix:" \\"} -->
@@ -151,6 +183,12 @@ After:
 ```
 line one \
 line two \
+```
+
+To also suffix empty lines, pass `true` as a second argument:
+
+```markdown
+<!-- {=block|lineSuffix:";":true} -->
 ```
 
 Aliases: `line_suffix`
@@ -213,10 +251,10 @@ Transformers compose left to right. This is powerful for adapting content to dif
 
 ### Example: Rust doc comments
 
-Provider content as plain text, transformed into `///` doc comments:
+Provider content as plain text, transformed into `///` doc comments. Use `true` to ensure empty lines also get the comment prefix:
 
 ```markdown
-<!-- {=docs|trim|linePrefix:"/// "} -->
+<!-- {=docs|trim|linePrefix:"/// ":true} -->
 <!-- {/docs} -->
 ```
 
@@ -236,20 +274,16 @@ The consumer receives:
 /// Supports async and blocking modes.
 ```
 
+Without `true`, the empty line would be left completely blank, which breaks the doc comment block in Rust.
+
 ### Example: JSDoc comments
 
 ```markdown
-<!-- {=docs|trim|indent:" * "} -->
+<!-- {=docs|trim|linePrefix:" * ":true} -->
 <!-- {/docs} -->
 ```
 
-Produces:
-
-```
-* A fast HTTP client.
-*
-* Supports async and blocking modes.
-```
+Each line (including empty lines) gets the `*` prefix, producing valid JSDoc content.
 
 ### Example: Code block with trimming
 
