@@ -302,26 +302,82 @@ impl BlockCreator {
 	}
 }
 
+/// A parsed template block representing either a provider or consumer.
+///
+/// Provider blocks are defined in `*.t.md` template files using
+/// `<!-- {@name} -->...<!-- {/name} -->` syntax. They supply content that gets
+/// distributed to matching consumers.
+///
+/// Consumer blocks appear in any scanned file using
+/// `<!-- {=name} -->...<!-- {/name} -->` syntax. Their content is replaced with
+/// the matching provider's content (after applying any transformers) when
+/// `mdt update` is run.
+///
+/// Each block tracks its [`name`](Block::name) for provider-consumer matching,
+/// its [`BlockType`], the [`Position`] of its opening and closing tags, and any
+/// [`Transformer`]s to apply during content injection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
 	/// The name of the block used for matching providers to consumers.
 	pub name: String,
+	/// Whether this is a provider or consumer block.
 	pub r#type: BlockType,
+	/// Position of the opening tag (e.g., `<!-- {@name} -->` or `<!-- {=name}
+	/// -->`).
 	pub opening: Position,
+	/// Position of the closing tag (`<!-- {/name} -->`).
 	pub closing: Position,
+	/// Transformers to apply when injecting provider content into this
+	/// consumer.
 	pub transformers: Vec<Transformer>,
 }
 
+/// A content transformer applied to provider content during injection into a
+/// consumer block.
+///
+/// Transformers are specified using pipe-delimited syntax after the block name
+/// in a consumer tag:
+///
+/// ```markdown
+/// <!-- {=blockName|trim|indent:"  "|linePrefix:"/// "} -->
+/// ```
+///
+/// Transformers are applied in left-to-right order. Each transformer has a
+/// [`TransformerType`] and zero or more [`Argument`]s passed via
+/// colon-delimited syntax (e.g., `indent:"  "`).
+///
+/// Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`,
+/// `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`,
+/// `replace`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transformer {
+	/// The kind of transformation to apply (e.g., `Trim`, `Indent`,
+	/// `LinePrefix`).
 	pub r#type: TransformerType,
+	/// Arguments passed to the transformer via colon-delimited syntax.
 	pub args: Vec<Argument>,
 }
 
+/// An argument value passed to a [`Transformer`].
+///
+/// Arguments are specified after the transformer name using colon-delimited
+/// syntax:
+///
+/// ```markdown
+/// <!-- {=block|replace:"old":"new"|indent:"  "} -->
+/// ```
+///
+/// Three types are supported:
+/// - **String** — Quoted text, e.g. `"hello"` or `'hello'`
+/// - **Number** — Integer or floating-point, e.g. `42` or `3.14`
+/// - **Boolean** — `true` or `false`
 #[derive(Debug, Clone, PartialEq)]
 pub enum Argument {
+	/// A quoted string value, e.g. `"hello"` or `'world'`.
 	String(String),
+	/// A numeric value (integer or float), e.g. `42` or `3.14`.
 	Number(OrderedFloat),
+	/// A boolean value: `true` or `false`.
 	Boolean(bool),
 }
 
