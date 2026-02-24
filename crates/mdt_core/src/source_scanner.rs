@@ -6,7 +6,9 @@ use crate::MdtResult;
 use crate::lexer::memstr;
 use crate::lexer::tokenize;
 use crate::parser::Block;
+use crate::parser::ParseDiagnostic;
 use crate::parser::build_blocks_from_groups_lenient;
+use crate::parser::build_blocks_from_groups_with_diagnostics;
 
 /// Parse source code content (non-markdown) for mdt blocks by extracting HTML
 /// comments directly from the raw text.
@@ -14,6 +16,15 @@ pub fn parse_source(content: &str) -> MdtResult<Vec<Block>> {
 	let html_nodes = extract_html_comments(content);
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups_lenient(&token_groups)
+}
+
+/// Parse source code content and return blocks together with diagnostics.
+pub fn parse_source_with_diagnostics(
+	content: &str,
+) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	let html_nodes = extract_html_comments(content);
+	let token_groups = tokenize(html_nodes)?;
+	build_blocks_from_groups_with_diagnostics(&token_groups)
 }
 
 /// Pre-computed table of line-start byte offsets for efficient offset-to-point

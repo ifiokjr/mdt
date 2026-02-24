@@ -11,6 +11,7 @@ use mdt_cli::OutputFormat;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::project::ProjectContext;
+use mdt_core::project::ValidationOptions;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::write_updates;
 use owo_colors::OwoColorize;
@@ -116,9 +117,19 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
+fn validation_options(args: &MdtCli) -> ValidationOptions {
+	ValidationOptions {
+		ignore_unclosed_blocks: args.ignore_unclosed_blocks,
+		ignore_unused_blocks: args.ignore_unused_blocks,
+		ignore_invalid_names: args.ignore_invalid_names,
+		ignore_invalid_transformers: args.ignore_invalid_transformers,
+	}
+}
+
 fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
 	let ctx = scan_project_with_config(&root)?;
+	let options = validation_options(args);
 
 	if args.verbose {
 		println!(
@@ -133,6 +144,34 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 				println!("    @{name} ({})", entry.file.display());
 			}
 		}
+	}
+
+	// Report diagnostics
+	let mut has_errors = false;
+	for diag in &ctx.project.diagnostics {
+		let rel = make_relative(&diag.file, &root);
+		if diag.is_error(&options) {
+			eprintln!(
+				"{} {rel}:{}:{}: {}",
+				colored!("error:", red),
+				diag.line,
+				diag.column,
+				diag.message()
+			);
+			has_errors = true;
+		} else if args.verbose {
+			eprintln!(
+				"{} {rel}:{}:{}: {}",
+				colored!("warning:", yellow),
+				diag.line,
+				diag.column,
+				diag.message()
+			);
+		}
+	}
+
+	if has_errors {
+		return Err("validation errors found".into());
 	}
 
 	// Warn about consumers referencing non-existent providers
@@ -177,6 +216,8 @@ fn run_check(
 					serde_json::json!({
 						"file": rel,
 						"block": entry.block_name,
+						"line": entry.line,
+						"column": entry.column,
 					})
 				})
 				.collect();
@@ -190,8 +231,8 @@ fn run_check(
 			for entry in &result.stale {
 				let rel = make_relative(&entry.file, &root);
 				println!(
-					"::warning file={rel}::Consumer block `{}` is out of date",
-					entry.block_name
+					"::warning file={rel},line={},col={}::Consumer block `{}` is out of date",
+					entry.line, entry.column, entry.block_name
 				);
 			}
 			eprintln!(
@@ -202,7 +243,10 @@ fn run_check(
 		OutputFormat::Text => {
 			for entry in &result.stale {
 				let rel = make_relative(&entry.file, &root);
-				eprintln!("Stale: block `{}` in {rel}", entry.block_name);
+				eprintln!(
+					"Stale: block `{}` in {rel}:{}:{}",
+					entry.block_name, entry.line, entry.column
+				);
 
 				if show_diff {
 					print_diff(&entry.current_content, &entry.expected_content);
