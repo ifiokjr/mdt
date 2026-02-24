@@ -81,6 +81,31 @@ def main():
 package mylib
 ```
 
+## Recommended: Enable `pad_blocks`
+
+When using consumer blocks in source files, add `pad_blocks = true` to your `mdt.toml`:
+
+```toml
+pad_blocks = true
+```
+
+This ensures a newline always separates the opening/closing tags from the content, preventing transformers like `trim` from causing the content to merge directly with the tags.
+
+Without `pad_blocks`, a consumer with `trim|linePrefix:"//! ":true` could produce:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->//! Content here.<!-- {/docs}
+//! -->
+```
+
+With `pad_blocks = true`, the output is properly structured:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//! Content here.
+//! <!-- {/docs} -->
+```
+
 ## Key differences from markdown
 
 ### Lenient parsing

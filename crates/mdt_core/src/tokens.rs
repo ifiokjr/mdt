@@ -121,7 +121,10 @@ impl Display for Token {
 			Token::BraceClose => write!(f, "}}"),
 			Token::Pipe => write!(f, "|"),
 			Token::ArgumentDelimiter => write!(f, ":"),
-			Token::String(string, ch) => write!(f, "{ch}{string}{ch}"),
+			Token::String(string, ch) => {
+				let ch = *ch as char;
+				write!(f, "{ch}{string}{ch}")
+			}
 			Token::Ident(ident) => write!(f, "{ident}"),
 			Token::Int(number) => write!(f, "{number}"),
 			Token::Float(number) => write!(f, "{number}"),

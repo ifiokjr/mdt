@@ -154,6 +154,16 @@ Then in provider blocks: `Version: {{ pkg.version }}` or `Edition: {{ cargo.pack
 
 Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`.
 
+### Block Padding
+
+When using consumer blocks in source files (`.rs`, `.ts`, etc.), enable `pad_blocks` in `mdt.toml` to prevent content from running directly into the tags:
+
+```toml
+pad_blocks = true
+```
+
+This ensures a newline always separates the opening/closing tags from the content after transformers are applied. Without it, `trim|linePrefix:"//! ":true` could produce mangled output where content merges with the surrounding tags.
+
 ## Toolchain
 
 - **Rust:** 1.87.0 (stable), edition 2024, MSRV 1.86.0

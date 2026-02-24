@@ -92,7 +92,10 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		};
 
 		let rendered = render_template(&provider.content, &ctx.data)?;
-		let expected = apply_transformers(&rendered, &consumer.block.transformers);
+		let mut expected = apply_transformers(&rendered, &consumer.block.transformers);
+		if ctx.pad_blocks {
+			expected = pad_content_preserving_suffix(&expected, &consumer.content);
+		}
 
 		if consumer.content != expected {
 			stale.push(StaleEntry {
@@ -144,7 +147,10 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 			};
 
 			let rendered = render_template(&provider.content, &ctx.data)?;
-			let new_content = apply_transformers(&rendered, &consumer.block.transformers);
+			let mut new_content = apply_transformers(&rendered, &consumer.block.transformers);
+			if ctx.pad_blocks {
+				new_content = pad_content_preserving_suffix(&new_content, &consumer.content);
+			}
 
 			if consumer.content != new_content {
 				let start = consumer.block.opening.end.offset;
@@ -303,6 +309,45 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 		}
 	}
 	Ok(())
+}
+
+/// Ensure content has a leading newline and a trailing newline so it never runs
+/// directly into the opening or closing tag.
+pub fn pad_content(content: &str) -> String {
+	let mut result = String::with_capacity(content.len() + 2);
+	if !content.starts_with('\n') {
+		result.push('\n');
+	}
+	result.push_str(content);
+	if !content.ends_with('\n') {
+		result.push('\n');
+	}
+	result
+}
+
+/// Pad content while preserving the trailing line prefix from the original
+/// consumer content. When the closing tag is preceded by a comment prefix
+/// (e.g., `//! ` or `/// `) that prefix is part of the content range and must
+/// be preserved after replacement.
+fn pad_content_preserving_suffix(new_content: &str, original_content: &str) -> String {
+	// Extract the trailing prefix from the original content — everything after
+	// the last newline. For example, in "\n//! old\n//! " the trailing prefix
+	// is "//! ".
+	let trailing_prefix = original_content
+		.rfind('\n')
+		.map(|idx| &original_content[idx + 1..])
+		.unwrap_or("");
+
+	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() + 2);
+	if !new_content.starts_with('\n') {
+		result.push('\n');
+	}
+	result.push_str(new_content);
+	if !new_content.ends_with('\n') {
+		result.push('\n');
+	}
+	result.push_str(trailing_prefix);
+	result
 }
 
 fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {

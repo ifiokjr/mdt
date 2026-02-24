@@ -44,6 +44,12 @@ pub struct MdtConfig {
 	/// Defaults to 10 MB.
 	#[serde(default = "default_max_file_size")]
 	pub max_file_size: u64,
+	/// When true, ensure a newline always separates the opening tag from the
+	/// content and the content from the closing tag. This prevents content
+	/// from running into tags when transformers produce output without
+	/// leading/trailing newlines. Defaults to `false`.
+	#[serde(default)]
+	pub pad_blocks: bool,
 }
 
 fn default_max_file_size() -> u64 {

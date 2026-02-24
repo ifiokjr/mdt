@@ -6,7 +6,7 @@ expression: blocks
     Block {
         name: "block",
         type: Consumer,
-        opening: 1:1-1:123 (0-122),
+        opening: 1:1-1:111 (0-110),
         closing: 3:1-3:18 (115-132),
         transformers: [
             Transformer {

@@ -118,6 +118,9 @@ pub struct ProjectContext {
 	pub project: Project,
 	/// Template data loaded from files referenced in `mdt.toml`.
 	pub data: HashMap<String, serde_json::Value>,
+	/// When true, ensure a newline always separates the opening tag from the
+	/// content and the content from the closing tag.
+	pub pad_blocks: bool,
 }
 
 impl ProjectContext {
@@ -184,12 +187,17 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		template_paths,
 		max_file_size,
 	)?;
+	let pad_blocks = config.as_ref().is_some_and(|c| c.pad_blocks);
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
 	};
 
-	Ok(ProjectContext { project, data })
+	Ok(ProjectContext {
+		project,
+		data,
+		pad_blocks,
+	})
 }
 
 /// Build a `GlobSet` from a list of glob pattern strings.
