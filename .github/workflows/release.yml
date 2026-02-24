@@ -3,9 +3,15 @@ name: "release"
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. mdt_cli/v0.3.0). Must start with mdt_cli/ and have a matching GitHub release."
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
+  group: ${{ github.workflow }}-${{ inputs.tag || github.event.release.tag_name }}
   cancel-in-progress: true
 
 jobs:
@@ -14,10 +20,14 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: true
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 1
       CARGO_PROFILE_RELEASE_STRIP: symbols
+      # Resolve the tag from either the release event or the workflow_dispatch input.
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
     permissions:
       contents: write
     # Only build binaries for mdt_cli releases (not the mdt library releases).
-    if: github.repository_owner == 'ifiokjr' && startsWith(github.event.release.tag_name, 'mdt_cli')
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      startsWith(inputs.tag || github.event.release.tag_name, 'mdt_cli/')
     strategy:
       fail-fast: false
       matrix:
@@ -44,7 +54,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -54,20 +64,7 @@ jobs:
         id: version
         run: echo "version=${TAG#*/}" >> "${GITHUB_OUTPUT}"
         env:
-          TAG: ${{ github.event.release.tag_name }}
-        shell: bash
-
-      - name: verify tag version matches code
-        run: |
-          TAG_VERSION="${TAG#*/v}"
-          CARGO_VERSION=$(cargo metadata --no-deps --format-version=1 \
-            | jq -r '.packages[] | select(.name=="mdt_cli") | .version')
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "::error::Version mismatch: tag=$TAG_VERSION cargo=$CARGO_VERSION"
-            exit 1
-          fi
-        env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ env.RELEASE_TAG }}
         shell: bash
 
       - name: setup cross toolchain
@@ -91,6 +88,7 @@ jobs:
         with:
           bin: mdt
           manifest-path: crates/mdt_cli/Cargo.toml
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           archive: mdt-$target-${{ steps.version.outputs.version }}
           target: ${{ matrix.target }}
           tar: all
