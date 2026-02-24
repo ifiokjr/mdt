@@ -129,9 +129,16 @@ impl Display for Token {
 	}
 }
 
+/// A group of tokens extracted from a single HTML comment node.
+///
+/// Each HTML comment in the source (e.g., `<!-- {=name|trim} -->`) is
+/// tokenized into a `TokenGroup` containing its individual tokens and the
+/// position of the comment in the original file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenGroup {
+	/// The sequence of tokens parsed from the HTML comment.
 	pub tokens: Vec<Token>,
+	/// The position of the HTML comment in the source file.
 	pub position: Position,
 }
 
@@ -164,6 +171,8 @@ impl TokenGroup {
 	}
 }
 
+/// A wrapper around a `RangeBounds<usize>` that provides uniform access to
+/// start and end bounds, normalizing inclusive/exclusive/unbounded variants.
 #[derive(Deref, DerefMut)]
 pub struct DynamicRange<B>(
 	#[deref]
@@ -202,6 +211,7 @@ where
 	}
 }
 
+/// Trait for converting various range types into a [`DynamicRange`].
 pub trait GetDynamicRange {
 	type Range: RangeBounds<usize>;
 	fn get_dynamic_range(&self) -> DynamicRange<Self::Range>;

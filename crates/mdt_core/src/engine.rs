@@ -26,9 +26,13 @@ impl CheckResult {
 /// A consumer entry that is out of date.
 #[derive(Debug)]
 pub struct StaleEntry {
+	/// Path to the file containing the stale consumer.
 	pub file: PathBuf,
+	/// Name of the block that is out of date.
 	pub block_name: String,
+	/// The current content between the consumer's tags.
 	pub current_content: String,
+	/// The expected content after applying provider content and transformers.
 	pub expected_content: String,
 }
 
