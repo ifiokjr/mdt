@@ -34,6 +34,14 @@
   dotenv.disableHint = true;
 
   scripts = {
+    "mdt" = {
+      exec = ''
+        set -e
+        cargo run --bin mdt -- $@
+      '';
+      description = "The `mdt` executable";
+      binary = "bash";
+    };
     "knope" = {
       exec = ''
         set -e
