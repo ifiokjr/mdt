@@ -145,6 +145,20 @@ impl MdtMcpServer {
 
 		let mut parts = Vec::new();
 
+		if !result.render_errors.is_empty() {
+			parts.push(format!(
+				"{} template render error(s):",
+				result.render_errors.len()
+			));
+			for err in &result.render_errors {
+				let rel = make_relative(&err.file, &root);
+				parts.push(format!(
+					"  - `{}` in {rel}: {}",
+					err.block_name, err.message
+				));
+			}
+		}
+
 		if !result.stale.is_empty() {
 			parts.push(format!(
 				"{} consumer block(s) are stale:",
