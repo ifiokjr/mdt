@@ -23,8 +23,13 @@ pub const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 /// [include]
 /// patterns = ["docs/**/*.rs"]
 ///
+/// [ignore]
+/// patterns = ["build/**", "dist/**"]
+///
 /// [templates]
 /// paths = ["shared/templates"]
+///
+/// disable_gitignore = false
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct MdtConfig {
@@ -37,6 +42,9 @@ pub struct MdtConfig {
 	/// Inclusion configuration — additional glob patterns to scan.
 	#[serde(default)]
 	pub include: IncludeConfig,
+	/// Ignore configuration — gitignore-style patterns for files to skip.
+	#[serde(default)]
+	pub ignore: IgnoreConfig,
 	/// Template paths — additional directories to search for `*.t.md` files.
 	#[serde(default)]
 	pub templates: TemplatesConfig,
@@ -50,6 +58,13 @@ pub struct MdtConfig {
 	/// leading/trailing newlines. Defaults to `false`.
 	#[serde(default)]
 	pub pad_blocks: bool,
+	/// When true, `.gitignore` files are not used for filtering. By default
+	/// (`false`), mdt respects `.gitignore` patterns and skips files that
+	/// would be ignored by git. Set to `true` when working outside a git
+	/// repository or when you want full control over which files are
+	/// scanned — in that case, use `[ignore]` patterns instead.
+	#[serde(default)]
+	pub disable_gitignore: bool,
 }
 
 fn default_max_file_size() -> u64 {
@@ -70,6 +85,19 @@ pub struct ExcludeConfig {
 pub struct IncludeConfig {
 	/// Additional glob patterns for files to scan.
 	/// These are relative to the project root.
+	#[serde(default)]
+	pub patterns: Vec<String>,
+}
+
+/// Configuration for ignoring files using gitignore-style patterns.
+///
+/// These patterns follow the same syntax as `.gitignore` files and are applied
+/// on top of any `.gitignore` rules (unless `disable_gitignore` is set).
+#[derive(Debug, Default, Deserialize)]
+pub struct IgnoreConfig {
+	/// Gitignore-style patterns for files and directories to skip.
+	/// These are relative to the project root and follow `.gitignore` syntax
+	/// (e.g., `build/`, `*.generated.md`, `!important.md`).
 	#[serde(default)]
 	pub patterns: Vec<String>,
 }

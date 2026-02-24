@@ -10,6 +10,7 @@ derive_more = { version = "2", features = ["deref", "deref_mut"], default-featur
 doc-comment = { default-features = false, version = "^0.3" }
 float-cmp = { default-features = false, version = "^0.10" }
 globset = { default-features = false, version = "^0.4" }
+ignore = { default-features = false, version = "^0.4" }
 insta = { default-features = false, version = "^1" }
 insta-cmd = { default-features = false, version = "^0.6" }
 kdl = { default-features = false, version = "^6" }

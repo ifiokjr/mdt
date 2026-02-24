@@ -1912,6 +1912,8 @@ fn file_too_large_error() {
 		&globset::GlobSet::empty(),
 		&[],
 		100, // 100-byte limit
+		&[],
+		true,
 	);
 
 	assert!(result.is_err());
@@ -1935,6 +1937,8 @@ fn file_within_size_limit_succeeds() {
 		&globset::GlobSet::empty(),
 		&[],
 		10_000, // 10KB limit
+		&[],
+		true,
 	);
 
 	assert!(result.is_ok());
@@ -3271,4 +3275,354 @@ fn pad_blocks_csharp_comments() -> MdtResult<()> {
 	);
 
 	Ok(())
+}
+
+// --- Ignore configuration tests ---
+
+#[test]
+fn custom_ignore_patterns_skip_matching_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Config with an ignore pattern that skips all files in "generated/".
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[ignore]\npatterns = [\"generated/\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Template file at the root — should be scanned.
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@hello} -->\n\nHello world.\n\n<!-- {/hello} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in a normal directory — should be scanned.
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/readme.md"),
+		"<!-- {=hello} -->\nold\n<!-- {/hello} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in a generated directory — should be ignored.
+	std::fs::create_dir_all(tmp.path().join("generated")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("generated/output.md"),
+		"<!-- {=hello} -->\nstale\n<!-- {/hello} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	// Only the consumer in docs/ should be found, not the one in generated/.
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(
+		ctx.project.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("docs")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn custom_ignore_glob_pattern_skips_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Ignore all files matching *.generated.md
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[ignore]\npatterns = [\"*.generated.md\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info} -->\n\nInfo content.\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Should be scanned.
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=info} -->\nold\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Should be ignored because of the *.generated.md pattern.
+	std::fs::write(
+		tmp.path().join("api.generated.md"),
+		"<!-- {=info} -->\nstale\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(
+		ctx.project.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("readme.md")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn gitignore_respected_by_default() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// No explicit mdt.toml — default behavior respects .gitignore.
+	// Create a .gitignore that ignores the "build/" directory.
+	std::fs::write(tmp.path().join(".gitignore"), "build/\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHi there.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in root — should be scanned.
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\nold\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in build/ — should be skipped via .gitignore.
+	std::fs::create_dir_all(tmp.path().join("build")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("build/output.md"),
+		"<!-- {=greeting} -->\nstale\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(
+		ctx.project.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("readme.md")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn disable_gitignore_scans_all_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Explicitly disable gitignore.
+	std::fs::write(tmp.path().join("mdt.toml"), "disable_gitignore = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// .gitignore ignores "build/", but disable_gitignore overrides that.
+	std::fs::write(tmp.path().join(".gitignore"), "build/\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHi there.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\nold\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::create_dir_all(tmp.path().join("build")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("build/output.md"),
+		"<!-- {=greeting} -->\nstale\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	// Both consumers should be found since gitignore is disabled.
+	assert_eq!(ctx.project.consumers.len(), 2);
+
+	Ok(())
+}
+
+#[test]
+fn ignore_and_gitignore_combined() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// .gitignore ignores "build/", custom ignore patterns ignore "generated/".
+	std::fs::write(tmp.path().join(".gitignore"), "build/\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[ignore]\npatterns = [\"generated/\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@msg} -->\n\nMessage.\n\n<!-- {/msg} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in root — should be scanned.
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=msg} -->\nold\n<!-- {/msg} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in build/ — skipped by .gitignore.
+	std::fs::create_dir_all(tmp.path().join("build")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("build/output.md"),
+		"<!-- {=msg} -->\nstale\n<!-- {/msg} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Consumer in generated/ — skipped by custom ignore.
+	std::fs::create_dir_all(tmp.path().join("generated")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("generated/api.md"),
+		"<!-- {=msg} -->\nstale\n<!-- {/msg} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	// Only readme.md consumer should be found.
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(
+		ctx.project.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("readme.md")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn ignore_negation_pattern_re_includes_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Ignore all files in output/ via a wildcard, but re-include important.md.
+	// Note: using "output/*" rather than "output/" — the latter blocks directory
+	// traversal entirely, which prevents the negation from ever being evaluated
+	// (matching real gitignore semantics).
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"disable_gitignore = true\n\n[ignore]\npatterns = [\"output/*\", \
+		 \"!output/important.md\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@note} -->\n\nImportant note.\n\n<!-- {/note} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::create_dir_all(tmp.path().join("output")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+
+	// Should be ignored.
+	std::fs::write(
+		tmp.path().join("output/normal.md"),
+		"<!-- {=note} -->\nold\n<!-- {/note} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// Should be re-included via negation pattern.
+	std::fs::write(
+		tmp.path().join("output/important.md"),
+		"<!-- {=note} -->\nold\n<!-- {/note} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(ctx.project.consumers.len(), 1);
+	assert!(
+		ctx.project.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("important.md")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_with_options_ignore_patterns_parameter() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nContent.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\nold\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::create_dir_all(tmp.path().join("dist")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("dist/output.md"),
+		"<!-- {=block} -->\nstale\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ignore_pats = vec!["dist/".to_string()];
+	let result = scan_project_with_options(
+		tmp.path(),
+		&globset::GlobSet::empty(),
+		&globset::GlobSet::empty(),
+		&[],
+		crate::config::DEFAULT_MAX_FILE_SIZE,
+		&ignore_pats,
+		true, // disable gitignore so we're only testing custom patterns
+	)?;
+
+	assert_eq!(result.consumers.len(), 1);
+	assert!(
+		result.consumers[0]
+			.file
+			.to_str()
+			.unwrap_or_default()
+			.contains("readme.md")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_parses_ignore_section() {
+	let toml_content = r#"
+disable_gitignore = true
+
+[ignore]
+patterns = ["build/", "*.bak"]
+"#;
+	let config: crate::config::MdtConfig =
+		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(config.ignore.patterns, vec!["build/", "*.bak"]);
+	assert!(config.disable_gitignore);
+}
+
+#[test]
+fn config_defaults_for_ignore_fields() {
+	let toml_content = "";
+	let config: crate::config::MdtConfig =
+		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(config.ignore.patterns.is_empty());
+	assert!(!config.disable_gitignore);
 }
