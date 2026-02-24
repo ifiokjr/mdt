@@ -13,6 +13,32 @@ use crate::patterns::provider_pattern;
 use crate::tokens::Token;
 use crate::tokens::TokenGroup;
 
+/// A diagnostic produced during parsing. These are issues that don't prevent
+/// parsing from completing but indicate problems in the source content.
+#[derive(Debug, Clone)]
+pub enum ParseDiagnostic {
+	/// A block was opened but never closed.
+	UnclosedBlock {
+		name: String,
+		line: usize,
+		column: usize,
+	},
+	/// An unknown transformer name was encountered.
+	UnknownTransformer {
+		name: String,
+		line: usize,
+		column: usize,
+	},
+	/// A transformer received the wrong number of arguments.
+	InvalidTransformerArgs {
+		name: String,
+		expected: String,
+		got: usize,
+		line: usize,
+		column: usize,
+	},
+}
+
 /// Parse markdown content and return all blocks (provider and consumer) found
 /// within it.
 pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
@@ -20,6 +46,18 @@ pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
 	let html_nodes = get_html_nodes(content)?;
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups(&token_groups)
+}
+
+/// Parse markdown content and return blocks together with diagnostics.
+/// Unlike `parse()`, this does not error on unclosed blocks — instead they
+/// are collected as diagnostics.
+pub fn parse_with_diagnostics(
+	content: impl AsRef<str>,
+) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	let content = content.as_ref();
+	let html_nodes = get_html_nodes(content)?;
+	let token_groups = tokenize(html_nodes)?;
+	build_blocks_from_groups_with_diagnostics(&token_groups)
 }
 
 /// Build blocks from already-tokenized groups. This is the shared logic used
@@ -33,6 +71,60 @@ pub fn build_blocks_from_groups(token_groups: &[TokenGroup]) -> MdtResult<Vec<Bl
 /// may appear in string literals without matching close tags.
 pub fn build_blocks_from_groups_lenient(token_groups: &[TokenGroup]) -> MdtResult<Vec<Block>> {
 	build_blocks_inner(token_groups, true)
+}
+
+/// Build blocks from token groups, collecting diagnostics instead of
+/// hard-erroring. Unknown transformers and unclosed blocks are reported
+/// as diagnostics rather than causing parse failure.
+pub fn build_blocks_from_groups_with_diagnostics(
+	token_groups: &[TokenGroup],
+) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	let mut pending: Vec<BlockCreator> = vec![];
+	let mut blocks: Vec<Block> = vec![];
+	let mut diagnostics: Vec<ParseDiagnostic> = vec![];
+
+	for group in token_groups {
+		match classify_group_with_diagnostics(group, &mut diagnostics) {
+			GroupKind::Provider { name, transformers } => {
+				pending.push(BlockCreator {
+					name,
+					r#type: BlockType::Provider,
+					opening: group.position,
+					closing: None,
+					transformers,
+				});
+			}
+			GroupKind::Consumer { name, transformers } => {
+				pending.push(BlockCreator {
+					name,
+					r#type: BlockType::Consumer,
+					opening: group.position,
+					closing: None,
+					transformers,
+				});
+			}
+			GroupKind::Close { name } => {
+				let pos = pending.iter().rposition(|bc| bc.name == name);
+				if let Some(idx) = pos {
+					let mut creator = pending.remove(idx);
+					creator.closing = Some(group.position);
+					blocks.push(creator.into_block()?);
+				}
+			}
+			GroupKind::Unknown => {}
+		}
+	}
+
+	// Unclosed blocks become diagnostics instead of errors.
+	for creator in pending {
+		diagnostics.push(ParseDiagnostic::UnclosedBlock {
+			name: creator.name,
+			line: creator.opening.start.line,
+			column: creator.opening.start.column,
+		});
+	}
+
+	Ok((blocks, diagnostics))
 }
 
 fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<Vec<Block>> {
@@ -143,6 +235,46 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 	GroupKind::Unknown
 }
 
+/// Like `classify_group` but also collects diagnostics for unknown
+/// transformers.
+fn classify_group_with_diagnostics(
+	group: &TokenGroup,
+	diagnostics: &mut Vec<ParseDiagnostic>,
+) -> GroupKind {
+	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
+		let (name, transformers, unknown) =
+			extract_name_and_transformers_with_diagnostics(group, &Token::ProviderTag);
+		for unknown_name in unknown {
+			diagnostics.push(ParseDiagnostic::UnknownTransformer {
+				name: unknown_name,
+				line: group.position.start.line,
+				column: group.position.start.column,
+			});
+		}
+		return GroupKind::Provider { name, transformers };
+	}
+
+	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
+		let (name, transformers, unknown) =
+			extract_name_and_transformers_with_diagnostics(group, &Token::ConsumerTag);
+		for unknown_name in unknown {
+			diagnostics.push(ParseDiagnostic::UnknownTransformer {
+				name: unknown_name,
+				line: group.position.start.line,
+				column: group.position.start.column,
+			});
+		}
+		return GroupKind::Consumer { name, transformers };
+	}
+
+	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
+		let name = extract_close_name(group);
+		return GroupKind::Close { name };
+	}
+
+	GroupKind::Unknown
+}
+
 /// Extract the block name and transformers from a provider or consumer token
 /// group.
 fn extract_name_and_transformers(
@@ -183,19 +315,72 @@ fn extract_name_and_transformers(
 	(name, transformers)
 }
 
-/// Parse a single transformer from the token stream (after the pipe).
-fn parse_transformer(
+/// Like `extract_name_and_transformers` but also collects unknown transformer
+/// names for diagnostics.
+fn extract_name_and_transformers_with_diagnostics(
+	group: &TokenGroup,
+	tag_token: &Token,
+) -> (String, Vec<Transformer>, Vec<String>) {
+	let mut name = String::new();
+	let mut transformers = Vec::new();
+	let mut unknown_transformers = Vec::new();
+	let mut found_tag = false;
+	let mut found_name = false;
+
+	let mut iter = group.tokens.iter().peekable();
+
+	while let Some(token) = iter.next() {
+		if !found_tag {
+			if token.same_type(tag_token) {
+				found_tag = true;
+			}
+			continue;
+		}
+
+		if !found_name {
+			if let Token::Ident(ident) = token {
+				name.clone_from(ident);
+				found_name = true;
+			}
+			continue;
+		}
+
+		if matches!(token, Token::Pipe) {
+			match parse_transformer_with_unknown(&mut iter) {
+				TransformerParseResult::Ok(transformer) => transformers.push(transformer),
+				TransformerParseResult::Unknown(unknown_name) => {
+					unknown_transformers.push(unknown_name);
+				}
+				TransformerParseResult::NoIdent => {}
+			}
+		}
+	}
+
+	(name, transformers, unknown_transformers)
+}
+
+/// Result of attempting to parse a transformer from the token stream.
+enum TransformerParseResult {
+	/// Successfully parsed a known transformer.
+	Ok(Transformer),
+	/// Found an identifier but it wasn't a known transformer name.
+	Unknown(String),
+	/// No identifier found after pipe.
+	NoIdent,
+}
+
+/// Parse a transformer, returning information about unknown transformer names.
+fn parse_transformer_with_unknown(
 	iter: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
-) -> Option<Transformer> {
+) -> TransformerParseResult {
 	// Skip whitespace
 	while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
 		iter.next();
 	}
 
-	// Next should be an identifier (the transformer name)
 	let transformer_name = match iter.next() {
 		Some(Token::Ident(name)) => name.clone(),
-		_ => return None,
+		_ => return TransformerParseResult::NoIdent,
 	};
 
 	let transformer_type = match transformer_name.as_str() {
@@ -211,12 +396,33 @@ fn parse_transformer(
 		"suffix" => TransformerType::Suffix,
 		"linePrefix" | "line_prefix" => TransformerType::LinePrefix,
 		"lineSuffix" | "line_suffix" => TransformerType::LineSuffix,
-		_ => return None,
+		_ => return TransformerParseResult::Unknown(transformer_name),
 	};
 
+	let args = parse_transformer_args(iter);
+
+	TransformerParseResult::Ok(Transformer {
+		r#type: transformer_type,
+		args,
+	})
+}
+
+/// Parse a single transformer from the token stream (after the pipe).
+fn parse_transformer(
+	iter: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Option<Transformer> {
+	match parse_transformer_with_unknown(iter) {
+		TransformerParseResult::Ok(transformer) => Some(transformer),
+		TransformerParseResult::Unknown(_) | TransformerParseResult::NoIdent => None,
+	}
+}
+
+/// Parse transformer arguments (`:value` pairs) from the token stream.
+fn parse_transformer_args(
+	iter: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Vec<Argument> {
 	let mut args = Vec::new();
 
-	// Collect arguments: `:value` pairs
 	loop {
 		// Skip whitespace
 		while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
@@ -249,10 +455,7 @@ fn parse_transformer(
 		}
 	}
 
-	Some(Transformer {
-		r#type: transformer_type,
-		args,
-	})
+	args
 }
 
 /// Extract the block name from a close tag token group.

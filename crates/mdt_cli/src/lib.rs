@@ -31,6 +31,23 @@ pub struct MdtCli {
 	/// Disable colored output.
 	#[arg(long, global = true, default_value_t = false)]
 	pub no_color: bool,
+
+	/// Ignore unclosed block errors during validation.
+	#[arg(long, global = true, default_value_t = false)]
+	pub ignore_unclosed_blocks: bool,
+
+	/// Ignore unused provider blocks (providers with no consumers).
+	#[arg(long, global = true, default_value_t = false)]
+	pub ignore_unused_blocks: bool,
+
+	/// Ignore invalid block name errors.
+	#[arg(long, global = true, default_value_t = false)]
+	pub ignore_invalid_names: bool,
+
+	/// Ignore unknown transformer names and invalid transformer argument
+	/// errors.
+	#[arg(long, global = true, default_value_t = false)]
+	pub ignore_invalid_transformers: bool,
 }
 
 #[derive(Subcommand)]

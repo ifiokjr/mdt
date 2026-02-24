@@ -7,8 +7,11 @@ use similar_asserts::assert_eq;
 use super::__fixtures::*;
 use super::*;
 use crate::lexer::tokenize;
+use crate::parser::ParseDiagnostic;
+use crate::parser::parse_with_diagnostics;
 use crate::patterns;
 use crate::patterns::PatternMatcher;
+use crate::project;
 use crate::project::ProjectContext;
 use crate::project::scan_project_with_options;
 use crate::tokens::GetDynamicRange;
@@ -2272,4 +2275,202 @@ fn fuzz_source_scanner_no_panic() {
 	for input in &inputs {
 		let _ = parse_source(input);
 	}
+}
+
+// --- Diagnostic tests ---
+
+#[test]
+fn parse_with_diagnostics_reports_unclosed_block() {
+	let input = "<!-- {=block} -->\n\nold content\n";
+	let (blocks, diagnostics) =
+		parse_with_diagnostics(input).unwrap_or_else(|e| panic!("parse_with_diagnostics: {e}"));
+	assert!(
+		blocks.is_empty(),
+		"unclosed block should not produce a Block"
+	);
+	assert_eq!(diagnostics.len(), 1);
+	match &diagnostics[0] {
+		ParseDiagnostic::UnclosedBlock { name, line, .. } => {
+			assert_eq!(name, "block");
+			assert_eq!(*line, 1);
+		}
+		other => panic!("expected UnclosedBlock, got {other:?}"),
+	}
+}
+
+#[test]
+fn parse_with_diagnostics_reports_unknown_transformer() {
+	let input = "<!-- {=block|foobar} -->\n\nold\n\n<!-- {/block} -->\n";
+	let (blocks, diagnostics) =
+		parse_with_diagnostics(input).unwrap_or_else(|e| panic!("parse_with_diagnostics: {e}"));
+	assert_eq!(
+		blocks.len(),
+		1,
+		"block with unknown transformer should still parse"
+	);
+	assert_eq!(
+		blocks[0].transformers.len(),
+		0,
+		"unknown transformer should not be in list"
+	);
+	assert_eq!(diagnostics.len(), 1);
+	match &diagnostics[0] {
+		ParseDiagnostic::UnknownTransformer { name, .. } => {
+			assert_eq!(name, "foobar");
+		}
+		other => panic!("expected UnknownTransformer, got {other:?}"),
+	}
+}
+
+#[test]
+fn scan_project_collects_unclosed_block_diagnostic() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold content\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	assert!(
+		project.diagnostics.iter().any(|d| {
+			matches!(
+				&d.kind,
+				project::DiagnosticKind::UnclosedBlock { name } if name == "block"
+			)
+		}),
+		"expected UnclosedBlock diagnostic, got: {:?}",
+		project.diagnostics
+	);
+}
+
+#[test]
+fn scan_project_collects_unknown_transformer_diagnostic() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block|foobar} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	assert!(
+		project.diagnostics.iter().any(|d| {
+			matches!(
+				&d.kind,
+				project::DiagnosticKind::UnknownTransformer { name } if name == "foobar"
+			)
+		}),
+		"expected UnknownTransformer diagnostic, got: {:?}",
+		project.diagnostics
+	);
+}
+
+#[test]
+fn scan_project_collects_invalid_transformer_args_diagnostic() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// trim takes 0 args but we give it one
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block|trim:\"extra\"} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	assert!(
+		project.diagnostics.iter().any(|d| {
+			matches!(
+				&d.kind,
+				project::DiagnosticKind::InvalidTransformerArgs { name, .. } if name == "trim"
+			)
+		}),
+		"expected InvalidTransformerArgs diagnostic, got: {:?}",
+		project.diagnostics
+	);
+}
+
+#[test]
+fn scan_project_collects_unused_provider_diagnostic() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@unused_block} -->\n\ncontent\n\n<!-- {/unused_block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	assert!(
+		project.diagnostics.iter().any(|d| {
+			matches!(
+				&d.kind,
+				project::DiagnosticKind::UnusedProvider { name } if name == "unused_block"
+			)
+		}),
+		"expected UnusedProvider diagnostic, got: {:?}",
+		project.diagnostics
+	);
+}
+
+#[test]
+fn diagnostic_is_error_respects_validation_options() {
+	use project::DiagnosticKind;
+	use project::ProjectDiagnostic;
+	use project::ValidationOptions;
+
+	let diag = ProjectDiagnostic {
+		file: PathBuf::from("test.md"),
+		kind: DiagnosticKind::UnclosedBlock {
+			name: "test".to_string(),
+		},
+		line: 1,
+		column: 1,
+	};
+
+	let default_options = ValidationOptions::default();
+	assert!(
+		diag.is_error(&default_options),
+		"unclosed block should be error by default"
+	);
+
+	let ignore_options = ValidationOptions {
+		ignore_unclosed_blocks: true,
+		..Default::default()
+	};
+	assert!(
+		!diag.is_error(&ignore_options),
+		"unclosed block should not be error when ignored"
+	);
+}
+
+#[test]
+fn stale_entry_includes_line_and_column() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nnew content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"Some preamble\n\n<!-- {=block} -->\n\nold content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project =
+		project::scan_project_with_config(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let result = check_project(&project).unwrap_or_else(|e| panic!("check: {e}"));
+	assert_eq!(result.stale.len(), 1);
+	// The consumer opening tag is on line 3 (after "Some preamble\n\n")
+	assert_eq!(result.stale[0].line, 3);
+	assert!(result.stale[0].column > 0);
 }

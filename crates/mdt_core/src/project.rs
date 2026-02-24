@@ -13,8 +13,87 @@ use crate::MdtError;
 use crate::MdtResult;
 use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
-use crate::parser::parse;
-use crate::source_scanner::parse_source;
+use crate::engine::validate_transformers;
+use crate::parser::parse_with_diagnostics;
+use crate::source_scanner::parse_source_with_diagnostics;
+
+/// Options controlling which validations are performed during check/update.
+#[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct ValidationOptions {
+	/// If true, unclosed blocks are ignored (not reported as diagnostics).
+	pub ignore_unclosed_blocks: bool,
+	/// If true, unused provider blocks (with no consumers) are ignored.
+	pub ignore_unused_blocks: bool,
+	/// If true, invalid block names are ignored.
+	pub ignore_invalid_names: bool,
+	/// If true, unknown transformer names and invalid transformer arguments
+	/// are ignored.
+	pub ignore_invalid_transformers: bool,
+}
+
+/// The kind of diagnostic produced during project scanning and validation.
+#[derive(Debug, Clone)]
+pub enum DiagnosticKind {
+	/// A block was opened but never closed.
+	UnclosedBlock { name: String },
+	/// An unknown transformer name was used.
+	UnknownTransformer { name: String },
+	/// A transformer received the wrong number of arguments.
+	InvalidTransformerArgs {
+		name: String,
+		expected: String,
+		got: usize,
+	},
+	/// A provider block has no matching consumers.
+	UnusedProvider { name: String },
+}
+
+/// A diagnostic produced during project scanning and validation.
+#[derive(Debug, Clone)]
+pub struct ProjectDiagnostic {
+	/// The file where the diagnostic was found.
+	pub file: PathBuf,
+	/// The kind of diagnostic.
+	pub kind: DiagnosticKind,
+	/// 1-indexed line number.
+	pub line: usize,
+	/// 1-indexed column number.
+	pub column: usize,
+}
+
+impl ProjectDiagnostic {
+	/// Check whether this diagnostic should be treated as an error given the
+	/// supplied options.
+	pub fn is_error(&self, options: &ValidationOptions) -> bool {
+		match &self.kind {
+			DiagnosticKind::UnclosedBlock { .. } => !options.ignore_unclosed_blocks,
+			DiagnosticKind::UnknownTransformer { .. }
+			| DiagnosticKind::InvalidTransformerArgs { .. } => !options.ignore_invalid_transformers,
+			DiagnosticKind::UnusedProvider { .. } => !options.ignore_unused_blocks,
+		}
+	}
+
+	/// Human-readable message for this diagnostic.
+	pub fn message(&self) -> String {
+		match &self.kind {
+			DiagnosticKind::UnclosedBlock { name } => {
+				format!("missing closing tag for block `{name}`")
+			}
+			DiagnosticKind::UnknownTransformer { name } => {
+				format!("unknown transformer `{name}`")
+			}
+			DiagnosticKind::InvalidTransformerArgs {
+				name,
+				expected,
+				got,
+			} => format!("transformer `{name}` expects {expected} argument(s), got {got}"),
+			DiagnosticKind::UnusedProvider { name } => {
+				format!("provider block `{name}` has no consumers")
+			}
+		}
+	}
+}
 
 /// A scanned project containing all discovered blocks.
 #[derive(Debug)]
@@ -24,6 +103,8 @@ pub struct Project {
 	pub providers: HashMap<String, ProviderEntry>,
 	/// Consumer blocks grouped by file path.
 	pub consumers: Vec<ConsumerEntry>,
+	/// Diagnostics collected during scanning and validation.
+	pub diagnostics: Vec<ProjectDiagnostic>,
 }
 
 /// A scanned project together with its loaded template data context.
@@ -162,6 +243,8 @@ pub(crate) fn scan_project_with_options(
 		collect_included_files(root, root, include_set, exclude_set, &mut files)?;
 	}
 
+	let mut diagnostics: Vec<ProjectDiagnostic> = Vec::new();
+
 	for file in &files {
 		// Check file size before reading.
 		let metadata = std::fs::metadata(file)?;
@@ -175,15 +258,78 @@ pub(crate) fn scan_project_with_options(
 
 		let raw_content = std::fs::read_to_string(file)?;
 		let content = normalize_line_endings(&raw_content);
-		let blocks = if is_markdown_file(file) {
-			parse(&content)?
+		let (blocks, parse_diagnostics) = if is_markdown_file(file) {
+			parse_with_diagnostics(&content)?
 		} else {
-			parse_source(&content)?
+			parse_source_with_diagnostics(&content)?
 		};
+
+		// Convert parse diagnostics to project diagnostics.
+		for diag in parse_diagnostics {
+			let project_diag = match diag {
+				crate::parser::ParseDiagnostic::UnclosedBlock { name, line, column } => {
+					ProjectDiagnostic {
+						file: file.clone(),
+						kind: DiagnosticKind::UnclosedBlock { name },
+						line,
+						column,
+					}
+				}
+				crate::parser::ParseDiagnostic::UnknownTransformer { name, line, column } => {
+					ProjectDiagnostic {
+						file: file.clone(),
+						kind: DiagnosticKind::UnknownTransformer { name },
+						line,
+						column,
+					}
+				}
+				crate::parser::ParseDiagnostic::InvalidTransformerArgs {
+					name,
+					expected,
+					got,
+					line,
+					column,
+				} => {
+					ProjectDiagnostic {
+						file: file.clone(),
+						kind: DiagnosticKind::InvalidTransformerArgs {
+							name,
+							expected,
+							got,
+						},
+						line,
+						column,
+					}
+				}
+			};
+			diagnostics.push(project_diag);
+		}
+
 		let is_template = file
 			.file_name()
 			.and_then(|name| name.to_str())
 			.is_some_and(|name| name.ends_with(".t.md"));
+
+		for block in &blocks {
+			// Validate transformer arguments.
+			if let Err(MdtError::InvalidTransformerArgs {
+				name,
+				expected,
+				got,
+			}) = validate_transformers(&block.transformers)
+			{
+				diagnostics.push(ProjectDiagnostic {
+					file: file.clone(),
+					kind: DiagnosticKind::InvalidTransformerArgs {
+						name,
+						expected,
+						got,
+					},
+					line: block.opening.start.line,
+					column: block.opening.start.column,
+				});
+			}
+		}
 
 		for block in blocks {
 			let block_content = extract_content_between_tags(&content, &block);
@@ -220,9 +366,23 @@ pub(crate) fn scan_project_with_options(
 		}
 	}
 
+	// Check for unused providers.
+	let referenced_names: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
+	for (name, entry) in &providers {
+		if !referenced_names.contains(name.as_str()) {
+			diagnostics.push(ProjectDiagnostic {
+				file: entry.file.clone(),
+				kind: DiagnosticKind::UnusedProvider { name: name.clone() },
+				line: entry.block.opening.start.line,
+				column: entry.block.opening.start.column,
+			});
+		}
+	}
+
 	Ok(Project {
 		providers,
 		consumers,
+		diagnostics,
 	})
 }
 

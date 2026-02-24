@@ -34,6 +34,10 @@ pub struct StaleEntry {
 	pub current_content: String,
 	/// The expected content after applying provider content and transformers.
 	pub expected_content: String,
+	/// 1-indexed line number of the consumer's opening tag.
+	pub line: usize,
+	/// 1-indexed column number of the consumer's opening tag.
+	pub column: usize,
 }
 
 /// Result of updating a project.
@@ -96,6 +100,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 				block_name: consumer.block.name.clone(),
 				current_content: consumer.content.clone(),
 				expected_content: expected,
+				line: consumer.block.opening.start.line,
+				column: consumer.block.opening.start.column,
 			});
 		}
 	}
