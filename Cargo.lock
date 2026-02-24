@@ -839,7 +839,7 @@ dependencies = [
 
 [[package]]
 name = "mdt"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "derive_more",
  "float-cmp",
@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -885,7 +885,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_lsp"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "insta",
  "mdt",
@@ -899,7 +899,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_mcp"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "mdt",
  "rmcp",
@@ -977,7 +977,7 @@ dependencies = [
 
 [[package]]
 name = "monochange_book"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "mdt",
 ]

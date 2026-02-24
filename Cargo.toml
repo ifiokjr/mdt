@@ -35,13 +35,12 @@ toml = { default-features = false, version = "^1" }
 tower-lsp-server = { default-features = false, version = "^0.23" }
 
 # Internal crates
-mdt = { path = "./crates/mdt", version = "0.0.1" }
-mdt_cli = { path = "./crates/mdt_cli", version = "0.0.1" }
-mdt_lsp = { path = "./crates/mdt_lsp", version = "0.0.1" }
-mdt_mcp = { path = "./crates/mdt_mcp", version = "0.0.1" }
+mdt = { path = "./crates/mdt", version = "0.0.2" }
+mdt_lsp = { path = "./crates/mdt_lsp", version = "0.0.2" }
+mdt_mcp = { path = "./crates/mdt_mcp", version = "0.0.2" }
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["development-tools"]
 edition = "2024"

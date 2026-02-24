@@ -23,7 +23,6 @@ types = ["docs"]
 [packages.mdt_cli]
 versioned_files = [
 	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.lock", dependency = "mdt_cli" },
 ]
 changelog = "crates/mdt_cli/changelog.md"

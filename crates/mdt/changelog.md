@@ -2,6 +2,18 @@
 
 This file is maintained by `knope`.
 
+## 0.0.2 (2026-02-24)
+
+### Features
+
+- Refactored the internal lexer to use the `logos` crate for tokenization. This is an internal implementation change with no public API changes. The lexer now uses logos for efficient flat tokenization of HTML nodes, with a simplified state machine for context-dependent token processing.
+
+### Fixes
+
+- Add `cargo-deny` for automated security auditing, license compliance checking, and dependency ban enforcement. Integrates with CI via `EmbarkStudios/cargo-deny-action` and adds `deny:check` to the local `lint:all` workflow.
+- Add comprehensive test coverage including insta snapshot tests for tokenizer and parser output, edge case tests for empty providers, long block names, multiple consumers, boolean arguments, mixed comment styles, and fuzz-style no-panic tests for robustness.
+- Update workspace dependencies: replace archived `serde_yml` with maintained `serde_yaml_ng` fork, replace unmaintained `tower-lsp` with community fork `tower-lsp-server`, and update `cargo-nextest` to 0.9.129. Run `cargo update` for latest compatible versions of all dependencies.
+
 ## 0.0.1 (2026-02-20)
 
 ### Features

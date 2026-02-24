@@ -2,6 +2,15 @@
 
 This file is maintained by `knope`.
 
+## 0.0.2 (2026-02-24)
+
+### Fixes
+
+- Add `cargo-deny` for automated security auditing, license compliance checking, and dependency ban enforcement. Integrates with CI via `EmbarkStudios/cargo-deny-action` and adds `deny:check` to the local `lint:all` workflow.
+- Fix docs-pages workflow by enabling automatic GitHub Pages configuration. The `enablement: true` flag on `actions/configure-pages@v5` auto-enables Pages via the GitHub API, resolving the "Get Pages site failed" error.
+- Fix release workflow to checkout `main` branch instead of tag ref, and add version verification step to prevent publishing mismatches. Also add `cargo check --workspace` to the knope release workflow to catch build errors before creating tags.
+- Update workspace dependencies: replace archived `serde_yml` with maintained `serde_yaml_ng` fork, replace unmaintained `tower-lsp` with community fork `tower-lsp-server`, and update `cargo-nextest` to 0.9.129. Run `cargo update` for latest compatible versions of all dependencies.
+
 ## 0.0.1 (2026-02-20)
 
 ### Features
