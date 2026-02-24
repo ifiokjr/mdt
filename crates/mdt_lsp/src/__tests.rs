@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use mdt_core::TransformerType;
 use mdt_core::parse;
+use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
@@ -19,7 +20,8 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 	);
 
 	let provider_blocks = parse(&provider_template).unwrap_or_default();
-	let consumer_blocks = parse(&consumer_doc).unwrap_or_default();
+	let (consumer_blocks, consumer_parse_diagnostics) =
+		parse_with_diagnostics(&consumer_doc).unwrap_or_default();
 
 	let provider_block = provider_blocks
 		.iter()
@@ -57,6 +59,7 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 		DocumentState {
 			content: consumer_doc,
 			blocks: consumer_blocks,
+			parse_diagnostics: consumer_parse_diagnostics,
 		},
 	);
 
@@ -125,6 +128,7 @@ fn diagnostics_missing_provider() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: consumer_blocks,
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -157,6 +161,7 @@ fn diagnostics_provider_in_non_template_file() {
 		DocumentState {
 			content: content.to_string(),
 			blocks,
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -241,6 +246,7 @@ fn hover_on_provider_shows_consumer_count() {
 		DocumentState {
 			content: provider_template.to_string(),
 			blocks: provider_blocks,
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -291,6 +297,7 @@ fn completion_inside_consumer_tag() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: Vec::new(),
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -342,6 +349,7 @@ fn completion_after_pipe_suggests_transformers() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: Vec::new(),
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -380,6 +388,7 @@ fn completion_outside_tag_returns_empty() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: Vec::new(),
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -443,6 +452,7 @@ fn goto_definition_without_matching_provider_returns_none() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: consumer_blocks.clone(),
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -480,6 +490,7 @@ fn document_symbols_lists_blocks() {
 		DocumentState {
 			content: content.to_string(),
 			blocks,
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -513,6 +524,7 @@ fn document_symbols_empty_for_no_blocks() {
 		DocumentState {
 			content: content.to_string(),
 			blocks,
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -591,6 +603,7 @@ fn code_action_not_offered_when_up_to_date() {
 		DocumentState {
 			content: consumer_doc.to_string(),
 			blocks: consumer_blocks.clone(),
+			parse_diagnostics: Vec::new(),
 		},
 	);
 
@@ -713,9 +726,10 @@ fn parse_document_content_markdown() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
-	let blocks = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content);
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "greeting");
+	assert!(diagnostics.is_empty());
 }
 
 #[test]
@@ -724,9 +738,10 @@ fn parse_document_content_source_file() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
-	let blocks = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content);
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "block");
+	assert!(diagnostics.is_empty());
 }
 
 #[test]
@@ -740,4 +755,361 @@ fn transformer_type_display_all() {
 	assert_eq!(TransformerType::CodeBlock.to_string(), "codeBlock");
 	assert_eq!(TransformerType::Code.to_string(), "code");
 	assert_eq!(TransformerType::Replace.to_string(), "replace");
+}
+
+// ---- New diagnostic tests ----
+
+#[test]
+fn diagnostics_unclosed_block() {
+	let content = "<!-- {=greeting} -->\n\nHello\n";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(content).unwrap_or_default();
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics,
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.message.contains("Missing closing tag") && d.message.contains("greeting")),
+		"expected unclosed block diagnostic, got: {diagnostics:?}"
+	);
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.severity == Some(DiagnosticSeverity::ERROR)),
+		"unclosed block should be an error"
+	);
+}
+
+#[test]
+fn diagnostics_unknown_transformer() {
+	let content = "<!-- {=greeting|foobar} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(content).unwrap_or_default();
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics,
+		},
+	);
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\nHello!\n\n".to_string(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.message.contains("Unknown transformer") && d.message.contains("foobar")),
+		"expected unknown transformer diagnostic, got: {diagnostics:?}"
+	);
+}
+
+#[test]
+fn diagnostics_unused_provider() {
+	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let blocks = parse(content).unwrap_or_default();
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(5, 1, 28, 5, 22, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\nHello\n\n".to_string(),
+		},
+	);
+
+	// No consumers — the provider is unused.
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.message.contains("has no consumers") && d.message.contains("greeting")),
+		"expected unused provider diagnostic, got: {diagnostics:?}"
+	);
+}
+
+#[test]
+fn diagnostics_missing_provider_with_suggestion() {
+	let content = "<!-- {=greetng} -->\n\nstuff\n\n<!-- {/greetng} -->\n";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(content).unwrap_or_default();
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics,
+		},
+	);
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\nHello!\n\n".to_string(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.message.contains("Did you mean") && d.message.contains("`greeting`")),
+		"expected suggestion for similar name, got: {diagnostics:?}"
+	);
+}
+
+#[test]
+fn diagnostics_missing_provider_no_suggestion_when_too_different() {
+	let content = "<!-- {=xyz} -->\n\nstuff\n\n<!-- {/xyz} -->\n";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(content).unwrap_or_default();
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics,
+		},
+	);
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\nHello!\n\n".to_string(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	let missing_diag = diagnostics
+		.iter()
+		.find(|d| d.message.contains("No provider found"))
+		.unwrap_or_else(|| panic!("expected missing provider diagnostic, got: {diagnostics:?}"));
+	assert!(
+		!missing_diag.message.contains("Did you mean"),
+		"should not suggest when names are too different"
+	);
+}
+
+// ---- Levenshtein distance tests ----
+
+#[test]
+fn levenshtein_identical() {
+	assert_eq!(levenshtein_distance("hello", "hello"), 0);
+}
+
+#[test]
+fn levenshtein_empty() {
+	assert_eq!(levenshtein_distance("", "hello"), 5);
+	assert_eq!(levenshtein_distance("hello", ""), 5);
+	assert_eq!(levenshtein_distance("", ""), 0);
+}
+
+#[test]
+fn levenshtein_one_edit() {
+	assert_eq!(levenshtein_distance("greeting", "greetng"), 1);
+	assert_eq!(levenshtein_distance("hello", "helo"), 1);
+	assert_eq!(levenshtein_distance("cat", "hat"), 1);
+}
+
+#[test]
+fn levenshtein_multiple_edits() {
+	assert_eq!(levenshtein_distance("kitten", "sitting"), 3);
+}
+
+#[test]
+fn suggest_similar_names_finds_close_match() {
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: String::new(),
+		},
+	);
+	providers.insert(
+		"installation".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "installation".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: String::new(),
+		},
+	);
+
+	let suggestions = suggest_similar_names("greetng", &providers);
+	assert!(
+		suggestions.contains(&"greeting"),
+		"expected 'greeting' suggestion"
+	);
+	assert!(
+		!suggestions.contains(&"installation"),
+		"should not suggest distant name"
+	);
+}
+
+#[test]
+fn parse_document_content_with_unclosed_block() {
+	let uri = "file:///test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
+	let content = "<!-- {=greeting} -->\n\nHello\n";
+	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	assert!(
+		blocks.is_empty(),
+		"unclosed block should not produce a block"
+	);
+	assert_eq!(diagnostics.len(), 1);
+	assert!(matches!(
+		diagnostics[0],
+		ParseDiagnostic::UnclosedBlock { .. }
+	));
+}
+
+#[test]
+fn parse_document_content_with_unknown_transformer() {
+	let uri = "file:///test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
+	let content = "<!-- {=greeting|unknownFilter} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(diagnostics.len(), 1);
+	assert!(matches!(
+		diagnostics[0],
+		ParseDiagnostic::UnknownTransformer { .. }
+	));
 }
