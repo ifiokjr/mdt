@@ -2,6 +2,108 @@
 
 This file is maintained by `knope`.
 
+## 0.3.0 (2026-02-24)
+
+### Breaking Changes
+
+#### Add comprehensive validation diagnostics with file location reporting.
+
+**`mdt_core` changes:**
+
+- Add `ProjectDiagnostic` and `DiagnosticKind` types for reporting validation issues during project scanning, including unclosed blocks, unknown transformers, invalid transformer arguments, and unused providers.
+- Add `ValidationOptions` struct to control which diagnostics are treated as errors vs warnings.
+- Add `parse_with_diagnostics()` function that collects parse issues as diagnostics instead of hard-erroring, enabling lenient parsing for editor tooling and better error reporting.
+- Add `parse_source_with_diagnostics()` for source file scanning with diagnostic collection.
+- Add `line` and `column` fields to `StaleEntry` for precise location reporting in check results.
+- Project scanning now collects diagnostics for all validation issues and attaches file/line/column context.
+
+**`mdt_cli` changes:**
+
+- Add `--ignore-unclosed-blocks` flag to suppress unclosed block errors during validation.
+- Add `--ignore-unused-blocks` flag to suppress warnings about providers with no consumers.
+- Add `--ignore-invalid-names` flag to suppress invalid block name errors.
+- Add `--ignore-invalid-transformers` flag to suppress unknown transformer and invalid argument errors.
+- Error and check output now includes `file:line:column` location information.
+- JSON check output now includes `line` and `column` fields in stale entries.
+- GitHub Actions annotation format now includes `line` and `col` parameters.
+
+### Features
+
+#### Add comprehensive CLI integration tests using `insta-cmd` snapshot testing.
+
+19 new integration tests covering `mdt check`, `mdt update`, and `mdt update --dry-run` across multiple scenarios:
+
+- **pad_blocks with Rust doc comments**: Verifies `//!` and `///` doc comments are not mangled after update, with check/update/idempotency/diff snapshots.
+- **pad_blocks with multiple languages**: Tests Rust, TypeScript (JSDoc), Python, and Go source files with data interpolation from `package.json`, ensuring all comment styles are preserved correctly.
+- **Validation diagnostics**: Snapshots error output for unclosed blocks and verifies `--ignore-unclosed-blocks` bypasses the error.
+- **includeEmpty on linePrefix**: Verifies the difference between `linePrefix` with and without `includeEmpty:true` — blank lines get the prefix when enabled.
+- **TypeScript workspace**: Adds snapshot coverage for the existing fixture, including file content verification after update.
+
+Also adds extra blank line padding in `pad_blocks` mode: when a comment prefix is present (e.g., `//!`, `///`, `*`), an additional blank line using that prefix is inserted between the opening tag and the content, and between the content and the closing tag.
+
+Sorts file paths in `mdt update --dry-run` and `--verbose` output for deterministic ordering.
+
+### Fixes
+
+#### Add comprehensive CLI integration tests covering all commands and features.
+
+**New tests (28 added, 47 total):**
+
+- `mdt init` — fresh directory creation and existing template detection
+- `mdt list` — block listing with provider/consumer counts, empty project, verbose output
+- `mdt check --format json` — JSON output for stale and up-to-date states
+- `mdt check --format github` — GitHub Actions annotation format
+- `mdt check --diff` — unified diff output for stale blocks
+- `mdt update --verbose` — verbose output with provider listing and updated file paths
+- `--ignore-unused-blocks` — suppresses unused provider diagnostics
+- `--ignore-invalid-transformers` — suppresses unknown transformer errors
+- `--ignore-unclosed-blocks` — suppresses unclosed block errors
+- Missing provider warnings — consumers referencing non-existent providers
+- Multiple providers — multiple blocks consumed across multiple files
+- Empty project — no providers or consumers
+- No subcommand — error message when running `mdt` without a command
+
+**Bug fixes:**
+
+- Sort provider names in verbose output for deterministic ordering
+
+**Snapshot stability:**
+
+- Add path redaction (`[TEMP_DIR]`) to all snapshots containing absolute paths, ensuring reproducibility across machines
+- Enable `insta` `filters` feature for regex-based path filtering
+
+#### Increase test coverage across all crates.
+
+**`mdt_core`:** Added 47 new tests covering config file parsing (TOML integers, floats, arrays, tables, datetime; KDL empty nodes, named entries, mixed entries, children, integer/float/bool/null values), project scanning (`scan_project_with_config` with data and pad_blocks, template directories, include patterns, CRLF normalization), diagnostic conversion (unclosed blocks, unknown transformers, invalid transformer args), validation options, error display formatting, and edge cases for `is_template_file`, `find_missing_providers`, and `validate_project`.
+
+**`mdt_lsp`:** Added 28 new tests covering `WorkspaceState::rescan_project` (valid project, invalid config, data loading), `update_document_in_project` (non-file URI, non-template providers), template rendering failure paths for diagnostics/hover/code actions, stale consumers with transformers, provider hover with zero consumers, document symbols for both provider and consumer blocks, completion with multiple providers, `suggest_similar_names` edge cases, and `levenshtein_distance` edge cases.
+
+**`mdt_mcp`:** Added 44 new tests (from 0) covering all MCP server tool methods (`check`, `update`, `list`, `get_block`, `preview`, `init`), helper functions (`resolve_root`, `make_relative`, `scan_ctx`), `get_info` server handler, `Default` trait, and various scenarios including stale consumers, dry-run mode, missing providers, data interpolation, and template file existence checks.
+
+**`mdt_cli`:** Added 13 new snapshot tests covering orphan consumer display in `list` and `check`, verbose output for stale checks with diffs, verbose dry-run updates, verbose update with file listing, and verbose diagnostic warnings with ignore flags for both unclosed blocks and unknown transformers.
+
+### Documentation
+
+#### Add comprehensive doc comments to `mdt_core` public API types and enrich CLI help text for all `mdt_cli` commands.
+
+**mdt_core:**
+
+- Expand crate-level documentation with processing pipeline diagram, module overview, key types reference, data interpolation guide, and quick start code example.
+- Add struct/enum-level doc comments for `Block`, `Transformer`, and `Argument` explaining their role in the template system.
+- Add field-level doc comments for `Block`, `Transformer`, `Argument`, and `StaleEntry` fields.
+- Add doc comments for internal types `TokenGroup`, `DynamicRange`, and `GetDynamicRange` in the tokens module.
+- Add provider blocks to `template.t.md` for `mdtCoreOverview`, `mdtBlockDocs`, `mdtTransformerDocs`, and `mdtArgumentDocs` for potential use by markdown consumers.
+
+**mdt_cli:**
+
+- Expand `Init` help with details about what file is created and no-op behavior.
+- Expand `Check` help with CI usage guidance, `--diff` and `--format` tips.
+- Expand `Update` help with template rendering flow, `--dry-run` and `--watch` details.
+- Expand `List` help with output format description.
+- Expand `Lsp` help with diagnostics and auto-completion features.
+- Expand `Mcp` help with available tools description.
+- Enrich `OutputFormat` variant docs and field-level docs for `Check` and `Update` args.
+
 ## 0.2.0 (2026-02-24)
 
 ### Breaking Changes

@@ -2,6 +2,117 @@
 
 This file is maintained by `knope`.
 
+## 0.3.0 (2026-02-24)
+
+### Breaking Changes
+
+#### Add file ignore support with `.gitignore` integration.
+
+**New `[ignore]` config section:** The `mdt.toml` configuration file now supports an `[ignore]` section with gitignore-style patterns for skipping files and directories during scanning. These patterns follow `.gitignore` syntax and are applied on top of any `.gitignore` rules.
+
+```toml
+[ignore]
+patterns = ["build/", "dist/", "*.generated.md"]
+```
+
+**`.gitignore` integration:** By default, mdt now respects `.gitignore` files in the project root. Files that would be ignored by git are automatically skipped during scanning. This eliminates the need to manually exclude common build artifacts, dependencies, and other generated files.
+
+**`disable_gitignore` setting:** A new top-level `disable_gitignore` boolean setting disables `.gitignore` integration when set to `true`. This is useful when working outside a git repository or when full control over file filtering is needed.
+
+```toml
+disable_gitignore = true
+
+[ignore]
+patterns = ["build/", "dist/"]
+```
+
+**Breaking change:** The `scan_project_with_options()` function signature now requires two additional parameters: `ignore_patterns: &[String]` and `disable_gitignore: bool`. The `MdtConfig` struct has two new fields: `ignore: IgnoreConfig` and `disable_gitignore: bool`.
+
+#### Add `pad_blocks` configuration setting to prevent content mangling in source code comments.
+
+When `pad_blocks = true` is set in `mdt.toml`, mdt ensures a newline always separates the opening tag from the content and the content from the closing tag. This prevents transformers like `trim` from causing content to merge directly into surrounding comment tags, which would break code structure in languages like Rust (`//!`, `///`), TypeScript (JSDoc), Python, Go, Java, C/C++, C#, Kotlin, and Swift.
+
+The `pad_content_preserving_suffix` function preserves the trailing comment prefix from the original consumer content (e.g., `//!` before a closing tag) so that closing tags remain properly formatted after updates.
+
+Also fixes a bug in the `Token::String` Display implementation where the `u8` delimiter byte was formatted as its numeric value (e.g., `34`) instead of the corresponding character (`"`), causing incorrect position offsets for blocks with string arguments.
+
+#### Add comprehensive validation diagnostics with file location reporting.
+
+**`mdt_core` changes:**
+
+- Add `ProjectDiagnostic` and `DiagnosticKind` types for reporting validation issues during project scanning, including unclosed blocks, unknown transformers, invalid transformer arguments, and unused providers.
+- Add `ValidationOptions` struct to control which diagnostics are treated as errors vs warnings.
+- Add `parse_with_diagnostics()` function that collects parse issues as diagnostics instead of hard-erroring, enabling lenient parsing for editor tooling and better error reporting.
+- Add `parse_source_with_diagnostics()` for source file scanning with diagnostic collection.
+- Add `line` and `column` fields to `StaleEntry` for precise location reporting in check results.
+- Project scanning now collects diagnostics for all validation issues and attaches file/line/column context.
+
+**`mdt_cli` changes:**
+
+- Add `--ignore-unclosed-blocks` flag to suppress unclosed block errors during validation.
+- Add `--ignore-unused-blocks` flag to suppress warnings about providers with no consumers.
+- Add `--ignore-invalid-names` flag to suppress invalid block name errors.
+- Add `--ignore-invalid-transformers` flag to suppress unknown transformer and invalid argument errors.
+- Error and check output now includes `file:line:column` location information.
+- JSON check output now includes `line` and `column` fields in stale entries.
+- GitHub Actions annotation format now includes `line` and `col` parameters.
+
+### Features
+
+#### Add comprehensive CLI integration tests using `insta-cmd` snapshot testing.
+
+19 new integration tests covering `mdt check`, `mdt update`, and `mdt update --dry-run` across multiple scenarios:
+
+- **pad_blocks with Rust doc comments**: Verifies `//!` and `///` doc comments are not mangled after update, with check/update/idempotency/diff snapshots.
+- **pad_blocks with multiple languages**: Tests Rust, TypeScript (JSDoc), Python, and Go source files with data interpolation from `package.json`, ensuring all comment styles are preserved correctly.
+- **Validation diagnostics**: Snapshots error output for unclosed blocks and verifies `--ignore-unclosed-blocks` bypasses the error.
+- **includeEmpty on linePrefix**: Verifies the difference between `linePrefix` with and without `includeEmpty:true` — blank lines get the prefix when enabled.
+- **TypeScript workspace**: Adds snapshot coverage for the existing fixture, including file content verification after update.
+
+Also adds extra blank line padding in `pad_blocks` mode: when a comment prefix is present (e.g., `//!`, `///`, `*`), an additional blank line using that prefix is inserted between the opening tag and the content, and between the content and the closing tag.
+
+Sorts file paths in `mdt update --dry-run` and `--verbose` output for deterministic ordering.
+
+#### Add optional `includeEmpty` boolean argument to `indent`, `linePrefix`, and `lineSuffix` transformers.
+
+Previously, these line-based transformers always skipped empty lines, leaving them completely blank. This caused problems in contexts like Rust doc comments (`//!`, `///`) where every line — including blank separator lines — must carry the comment prefix.
+
+Now you can pass `true` as a second argument to include empty lines:
+
+```markdown
+<!-- {=docs|linePrefix:"/// ":true} -->
+```
+
+This produces correct Rust doc comments where empty lines get `///` instead of being left blank. The default behavior (skipping empty lines) is unchanged.
+
+All three line-based transformers support this:
+
+- `indent:"  ":true`
+- `linePrefix:"// ":true`
+- `lineSuffix:";":true`
+
+### Documentation
+
+#### Add comprehensive doc comments to `mdt_core` public API types and enrich CLI help text for all `mdt_cli` commands.
+
+**mdt_core:**
+
+- Expand crate-level documentation with processing pipeline diagram, module overview, key types reference, data interpolation guide, and quick start code example.
+- Add struct/enum-level doc comments for `Block`, `Transformer`, and `Argument` explaining their role in the template system.
+- Add field-level doc comments for `Block`, `Transformer`, `Argument`, and `StaleEntry` fields.
+- Add doc comments for internal types `TokenGroup`, `DynamicRange`, and `GetDynamicRange` in the tokens module.
+- Add provider blocks to `template.t.md` for `mdtCoreOverview`, `mdtBlockDocs`, `mdtTransformerDocs`, and `mdtArgumentDocs` for potential use by markdown consumers.
+
+**mdt_cli:**
+
+- Expand `Init` help with details about what file is created and no-op behavior.
+- Expand `Check` help with CI usage guidance, `--diff` and `--format` tips.
+- Expand `Update` help with template rendering flow, `--dry-run` and `--watch` details.
+- Expand `List` help with output format description.
+- Expand `Lsp` help with diagnostics and auto-completion features.
+- Expand `Mcp` help with available tools description.
+- Enrich `OutputFormat` variant docs and field-level docs for `Check` and `Update` args.
+
 ## 0.2.0 (2026-02-24)
 
 ### Breaking Changes
