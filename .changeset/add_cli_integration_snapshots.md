@@ -1,5 +1,5 @@
 ---
-mdt: minor
+mdt_core: minor
 mdt_cli: minor
 ---
 

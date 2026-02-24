@@ -541,17 +541,13 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 				if is_template {
 					// Check for unused providers (no consumers reference this
 					// block).
-					let has_consumers =
-						state.consumers.iter().any(|c| c.block.name == block.name);
+					let has_consumers = state.consumers.iter().any(|c| c.block.name == block.name);
 					if !has_consumers {
 						diagnostics.push(Diagnostic {
 							range: to_lsp_range(&block.opening),
 							severity: Some(DiagnosticSeverity::WARNING),
 							source: Some("mdt".to_string()),
-							message: format!(
-								"Provider block `{}` has no consumers",
-								block.name
-							),
+							message: format!("Provider block `{}` has no consumers", block.name),
 							..Default::default()
 						});
 					}

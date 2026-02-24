@@ -117,9 +117,11 @@ jobs:
 
       # Run cargo-semver-checks for each published crate. Capture the output
       # and exit code so we can report failures with context.
+      # We write results to temp files because $GITHUB_OUTPUT may not be
+      # available inside the devenv shell.
       - name: run cargo-semver-checks
         id: semver
-        shell: devenv shell -c -- bash -e {0}
+        shell: devenv shell -c -- bash {0}
         run: |
           set +e
           FAILED_PACKAGES=""
@@ -148,13 +150,22 @@ jobs:
             fi
           done
 
-          # Write outputs for subsequent steps.
+          # Write results to temp files for the next step to pick up.
+          echo "$FAILED_PACKAGES" > /tmp/semver_failed_packages.txt
+          echo "$FULL_OUTPUT" > /tmp/semver_output.txt
+
+      # Set outputs from the semver-checks results (outside devenv shell so
+      # $GITHUB_OUTPUT is available).
+      - name: set semver-checks outputs
+        id: semver-output
+        shell: bash
+        run: |
+          FAILED_PACKAGES=$(cat /tmp/semver_failed_packages.txt 2>/dev/null | xargs || echo "")
           echo "failed_packages=$FAILED_PACKAGES" >> "$GITHUB_OUTPUT"
 
-          # Use a heredoc delimiter for multi-line output.
           {
             echo "output<<SEMVER_EOF"
-            echo "$FULL_OUTPUT"
+            cat /tmp/semver_output.txt 2>/dev/null || echo ""
             echo "SEMVER_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -168,10 +179,10 @@ jobs:
       # `major` type exists for each affected package.
       - name: verify changeset for breaking changes
         id: verify
-        if: steps.semver.outputs.has_breaking == 'true'
+        if: steps.semver-output.outputs.has_breaking == 'true'
         shell: bash
         run: |
-          FAILED="${{ steps.semver.outputs.failed_packages }}"
+          FAILED="${{ steps.semver-output.outputs.failed_packages }}"
           MISSING_CHANGESETS=""
 
           for pkg in $FAILED; do
@@ -261,7 +272,7 @@ jobs:
               });
             }
         env:
-          SEMVER_OUTPUT: ${{ steps.semver.outputs.output }}
+          SEMVER_OUTPUT: ${{ steps.semver-output.outputs.output }}
 
       # Fail the job if breaking changes exist without proper changesets.
       - name: fail if missing changeset for breaking changes
