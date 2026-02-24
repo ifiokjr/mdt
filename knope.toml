@@ -1,24 +1,24 @@
 [changes]
 ignore_conventional_commits = true
 
-[packages.mdt]
+[packages.mdt_core]
 versioned_files = [
 	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_core" },
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-	{ path = "Cargo.lock", dependency = "mdt" },
+	{ path = "Cargo.lock", dependency = "mdt_core" },
 ]
-changelog = "crates/mdt/changelog.md"
-scopes = ["mdt"]
+changelog = "crates/mdt_core/changelog.md"
+scopes = ["mdt_core"]
 
-[[packages.mdt.extra_changelog_sections]]
+[[packages.mdt_core.extra_changelog_sections]]
 name = "Notes"
 footers = []
 types = ["note"]
 
-[[packages.mdt.extra_changelog_sections]]
+[[packages.mdt_core.extra_changelog_sections]]
 name = "Documentation"
 footers = []
 types = ["docs"]
@@ -26,7 +26,7 @@ types = ["docs"]
 [packages.mdt_cli]
 versioned_files = [
 	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_core" },
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
@@ -48,7 +48,7 @@ types = ["docs"]
 [packages.mdt_lsp]
 versioned_files = [
 	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_core" },
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
@@ -70,7 +70,7 @@ types = ["docs"]
 [packages.mdt_mcp]
 versioned_files = [
 	"Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_core" },
 	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
@@ -139,7 +139,19 @@ name = "publish"
 
 [[workflows.steps]]
 type = "Command"
-command = "cargo workspaces publish --publish-as-is --no-verify --yes"
+command = "cargo publish -p mdt_core"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo publish -p mdt_lsp"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo publish -p mdt_mcp"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo publish -p mdt_cli"
 
 [github]
 owner = "ifiokjr"

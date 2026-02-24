@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use mdt::AnyEmptyResult;
+use mdt_core::AnyEmptyResult;
 
 #[test]
 fn can_init() -> AnyEmptyResult {
@@ -57,9 +57,9 @@ fn init_creates_valid_template() -> AnyEmptyResult {
 
 	// The generated template should be parseable by mdt
 	let template_content = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
-	let blocks = mdt::parse(&template_content)?;
+	let blocks = mdt_core::parse(&template_content)?;
 	assert!(!blocks.is_empty(), "init should create at least one block");
-	assert_eq!(blocks[0].r#type, mdt::BlockType::Provider);
+	assert_eq!(blocks[0].r#type, mdt_core::BlockType::Provider);
 
 	Ok(())
 }

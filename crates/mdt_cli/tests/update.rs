@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use mdt::AnyEmptyResult;
+use mdt_core::AnyEmptyResult;
 
 #[test]
 fn update_replaces_stale_content() -> AnyEmptyResult {

@@ -2,8 +2,6 @@
 
 > manage **m**ark**d**own **t**emplates across your project
 
-**Status:** Early development (v0.0.0)
-
 <!-- {=mdtPackageDocumentation} -->
 
 `mdt` is a data-driven template engine for keeping documentation synchronized across your project. It uses comment-based template tags to define content once and distribute it to multiple locations — markdown files, code documentation comments (in any language), READMEs, mdbook docs, and more.

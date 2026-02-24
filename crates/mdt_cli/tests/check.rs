@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use mdt::AnyEmptyResult;
+use mdt_core::AnyEmptyResult;
 
 #[test]
 fn check_passes_when_up_to_date() -> AnyEmptyResult {

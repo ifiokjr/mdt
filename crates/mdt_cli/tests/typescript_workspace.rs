@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use assert_cmd::Command;
-use mdt::AnyEmptyResult;
+use mdt_core::AnyEmptyResult;
 
 fn copy_fixture(dest: &Path) {
 	let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript_workspace");

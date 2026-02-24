@@ -18,7 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { workspace = true, features = ["derive"], default-features = true }
-mdt = { workspace = true }
+mdt_core = { workspace = true }
 mdt_lsp = { workspace = true }
 mdt_mcp = { workspace = true }
 notify = { workspace = true, features = ["macos_fsevent"], default-features = true }

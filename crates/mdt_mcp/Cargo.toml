@@ -13,7 +13,7 @@ rust-version = { workspace = true }
 description = "MCP server for mdt (manage markdown templates)"
 
 [dependencies]
-mdt = { workspace = true }
+mdt_core = { workspace = true }
 rmcp = { workspace = true, features = ["server", "transport-io", "macros"] }
 serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
