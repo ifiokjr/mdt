@@ -20,7 +20,7 @@ expression: blocks
     Block {
         name: "docs",
         type: Consumer,
-        opening: 17:1-17:36 (143-178),
+        opening: 17:1-17:34 (143-176),
         closing: 21:1-21:17 (188-204),
         transformers: [
             Transformer {

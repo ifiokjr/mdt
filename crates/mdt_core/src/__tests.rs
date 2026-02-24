@@ -386,6 +386,7 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let result = check_project(&ctx)?;
 	assert!(result.is_ok());
@@ -410,6 +411,7 @@ fn check_project_detects_stale() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let result = check_project(&ctx)?;
 	assert!(!result.is_ok());
@@ -436,6 +438,7 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 1);
@@ -468,6 +471,7 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
@@ -501,6 +505,7 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	// Only the existing consumer should be updated
@@ -526,6 +531,7 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
@@ -552,6 +558,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	write_updates(&updates)?;
@@ -561,6 +568,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
@@ -2102,6 +2110,7 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 	let ctx = ProjectContext {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
+		pad_blocks: false,
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
@@ -2473,4 +2482,766 @@ fn stale_entry_includes_line_and_column() {
 	// The consumer opening tag is on line 3 (after "Some preamble\n\n")
 	assert_eq!(result.stale[0].line, 3);
 	assert!(result.stale[0].column > 0);
+}
+
+// --- pad_blocks tests ---
+
+#[test]
+fn pad_content_adds_newlines() {
+	use crate::engine::pad_content;
+	assert_eq!(pad_content("hello"), "\nhello\n");
+	assert_eq!(pad_content("\nhello"), "\nhello\n");
+	assert_eq!(pad_content("hello\n"), "\nhello\n");
+	assert_eq!(pad_content("\nhello\n"), "\nhello\n");
+	assert_eq!(pad_content(""), "\n\n");
+	assert_eq!(pad_content("\n"), "\n");
+	assert_eq!(pad_content("\n\n"), "\n\n");
+}
+
+#[test]
+fn pad_blocks_markdown_update() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Title\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(ctx.pad_blocks);
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// Content should have padding newlines around "Hello world."
+	assert_eq!(
+		content.as_str(),
+		"# Title\n\n<!-- {=greeting} -->\n\nHello world.\n\n<!-- {/greeting} -->\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_prevents_squashed_content() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	// Provider whose content has no surrounding newlines after trim
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info} -->\n\nSome info.\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Consumer with trim transformer — would produce "Some info." with no newlines
+	std::fs::write(
+		tmp.path().join("doc.md"),
+		"<!-- {=info|trim} -->\n\nold\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// pad_blocks ensures \n before and after "Some info."
+	assert_eq!(
+		content.as_str(),
+		"<!-- {=info|trim} -->\nSome info.\n<!-- {/info} -->\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@docs} -->\n\nHello from mdt.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! old content\n",
+			"//! <!-- {/docs} -->\n",
+			"\n",
+			"pub fn main() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// After trim: "Hello from mdt."
+	// After linePrefix "//! " with includeEmpty: "//! Hello from mdt."
+	// After pad_blocks: "\n//! Hello from mdt.\n"
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! Hello from mdt.\n",
+			"//! <!-- {/docs} -->\n",
+			"\n",
+			"pub fn main() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		concat!(
+			"<!-- {@docs} -->\n",
+			"\n",
+			"# My Library\n",
+			"\n",
+			"This is a great library.\n",
+			"\n",
+			"## Usage\n",
+			"\n",
+			"Just use it.\n",
+			"\n",
+			"<!-- {/docs} -->\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! old\n",
+			"//! <!-- {/docs} -->\n",
+			"\n",
+			"pub fn main() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// After trim: "# My Library\n\nThis is a great library.\n\n## Usage\n\nJust use
+	// it." After linePrefix "//! " with includeEmpty=true on each line
+	// After pad_blocks: \n prepended, \n appended
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! # My Library\n",
+			"//! \n",
+			"//! This is a great library.\n",
+			"//! \n",
+			"//! ## Usage\n",
+			"//! \n",
+			"//! Just use it.\n",
+			"//! <!-- {/docs} -->\n",
+			"\n",
+			"pub fn main() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_rust_triple_slash_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@fn_docs} -->\n\nDoes something useful.\n\n<!-- {/fn_docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"/// <!-- {=fn_docs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// old docs\n",
+			"/// <!-- {/fn_docs} -->\n",
+			"pub fn do_something() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/// <!-- {=fn_docs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// Does something useful.\n",
+			"/// <!-- {/fn_docs} -->\n",
+			"pub fn do_something() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_typescript_jsdoc() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@jsdocs} -->\n\nGreets the user.\n\n<!-- {/jsdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("index.ts"),
+		concat!(
+			"/**\n",
+			" * <!-- {=jsdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * old docs\n",
+			" * <!-- {/jsdocs} -->\n",
+			" */\n",
+			"export function greet() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/**\n",
+			" * <!-- {=jsdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * Greets the user.\n",
+			" * <!-- {/jsdocs} -->\n",
+			" */\n",
+			"export function greet() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_python_hash_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@pydocs} -->\n\nPython docs here.\n\n<!-- {/pydocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.py"),
+		concat!(
+			"# <!-- {=pydocs|trim|linePrefix:\"# \":true} -->\n",
+			"# old docs\n",
+			"# <!-- {/pydocs} -->\n",
+			"def main():\n",
+			"    pass\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"# <!-- {=pydocs|trim|linePrefix:\"# \":true} -->\n",
+			"# Python docs here.\n",
+			"# <!-- {/pydocs} -->\n",
+			"def main():\n",
+			"    pass\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_go_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@godocs} -->\n\nGo function docs.\n\n<!-- {/godocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.go"),
+		concat!(
+			"// <!-- {=godocs|trim|linePrefix:\"// \":true} -->\n",
+			"// old docs\n",
+			"// <!-- {/godocs} -->\n",
+			"func main() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"// <!-- {=godocs|trim|linePrefix:\"// \":true} -->\n",
+			"// Go function docs.\n",
+			"// <!-- {/godocs} -->\n",
+			"func main() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_java_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@javadocs} -->\n\nJava method docs.\n\n<!-- {/javadocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("Main.java"),
+		concat!(
+			"/**\n",
+			" * <!-- {=javadocs|trim|linePrefix:\" * \":true} -->\n",
+			" * old docs\n",
+			" * <!-- {/javadocs} -->\n",
+			" */\n",
+			"public class Main {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/**\n",
+			" * <!-- {=javadocs|trim|linePrefix:\" * \":true} -->\n",
+			" * Java method docs.\n",
+			" * <!-- {/javadocs} -->\n",
+			" */\n",
+			"public class Main {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_c_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@cdocs} -->\n\nC function docs.\n\n<!-- {/cdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.c"),
+		concat!(
+			"// <!-- {=cdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// old docs\n",
+			"// <!-- {/cdocs} -->\n",
+			"int main() { return 0; }\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"// <!-- {=cdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// C function docs.\n",
+			"// <!-- {/cdocs} -->\n",
+			"int main() { return 0; }\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_idempotent() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@docs} -->\n\nContent here.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! old\n",
+			"//! <!-- {/docs} -->\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// First update
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	write_updates(&updates)?;
+
+	// Second update should be noop
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_check_detects_stale() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@docs} -->\n\nNew content.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! old content\n",
+			"//! <!-- {/docs} -->\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(!result.is_ok());
+	assert_eq!(result.stale.len(), 1);
+	assert_eq!(result.stale[0].block_name, "docs");
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_disabled_does_not_pad() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// No mdt.toml → pad_blocks defaults to false
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info} -->\n\nHello.\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("doc.md"),
+		"<!-- {=info|trim} -->old<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		pad_blocks: false,
+	};
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// Without pad_blocks, "Hello." goes directly between tags with no padding
+	assert_eq!(
+		content.as_str(),
+		"<!-- {=info|trim} -->Hello.<!-- {/info} -->\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		concat!(
+			"<!-- {@api} -->\n",
+			"\n",
+			"# API\n",
+			"\n",
+			"Create a new instance:\n",
+			"\n",
+			"```rust\n",
+			"let x = Foo::new();\n",
+			"```\n",
+			"\n",
+			"Then call methods on it.\n",
+			"\n",
+			"<!-- {/api} -->\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"//! <!-- {=api|trim|linePrefix:\"//! \":true} -->\n",
+			"//! old\n",
+			"//! <!-- {/api} -->\n",
+			"\n",
+			"pub struct Foo;\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"//! <!-- {=api|trim|linePrefix:\"//! \":true} -->\n",
+			"//! # API\n",
+			"//! \n",
+			"//! Create a new instance:\n",
+			"//! \n",
+			"//! ```rust\n",
+			"//! let x = Foo::new();\n",
+			"//! ```\n",
+			"//! \n",
+			"//! Then call methods on it.\n",
+			"//! <!-- {/api} -->\n",
+			"\n",
+			"pub struct Foo;\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_kotlin_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@ktdocs} -->\n\nKotlin function docs.\n\n<!-- {/ktdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.kt"),
+		concat!(
+			"/**\n",
+			" * <!-- {=ktdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * old docs\n",
+			" * <!-- {/ktdocs} -->\n",
+			" */\n",
+			"fun main() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/**\n",
+			" * <!-- {=ktdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * Kotlin function docs.\n",
+			" * <!-- {/ktdocs} -->\n",
+			" */\n",
+			"fun main() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_swift_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@swiftdocs} -->\n\nSwift function docs.\n\n<!-- {/swiftdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.swift"),
+		concat!(
+			"/// <!-- {=swiftdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// old docs\n",
+			"/// <!-- {/swiftdocs} -->\n",
+			"func greet() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/// <!-- {=swiftdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// Swift function docs.\n",
+			"/// <!-- {/swiftdocs} -->\n",
+			"func greet() {}\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_cpp_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@cppdocs} -->\n\nC++ function docs.\n\n<!-- {/cppdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("main.cpp"),
+		concat!(
+			"// <!-- {=cppdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// old docs\n",
+			"// <!-- {/cppdocs} -->\n",
+			"int main() { return 0; }\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"// <!-- {=cppdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// C++ function docs.\n",
+			"// <!-- {/cppdocs} -->\n",
+			"int main() { return 0; }\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_csharp_comments() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "pad_blocks = true\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@csdocs} -->\n\nC# method docs.\n\n<!-- {/csdocs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("Program.cs"),
+		concat!(
+			"/// <!-- {=csdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// old docs\n",
+			"/// <!-- {/csdocs} -->\n",
+			"public static void Main() {}\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/// <!-- {=csdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// C# method docs.\n",
+			"/// <!-- {/csdocs} -->\n",
+			"public static void Main() {}\n",
+		)
+	);
+
+	Ok(())
 }

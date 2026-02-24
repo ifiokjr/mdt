@@ -77,6 +77,18 @@ paths = ["templates", "shared/docs"]
 
 When set, only `*.t.md` files within these directories are recognized as template files.
 
+### `pad_blocks` — Block content padding
+
+When enabled, mdt ensures a newline always separates the opening tag from the content and the content from the closing tag. This is recommended when using consumer blocks in source code files.
+
+```toml
+pad_blocks = true
+```
+
+Without this setting, transformers like `trim` can cause content to merge directly into the surrounding tags, breaking the structure of code comments.
+
+If omitted, defaults to `false`.
+
 ### `max_file_size` — Safety limit for scanned files
 
 Set the maximum file size (in bytes) that mdt will scan. Files larger than this limit return an error.
@@ -110,6 +122,9 @@ Running `mdt update` from the root updates only the root project's consumers. Ea
 
 ```toml
 # mdt.toml
+
+# Ensure proper padding between tags and content in source files
+pad_blocks = true
 
 [data]
 package = "package.json"
