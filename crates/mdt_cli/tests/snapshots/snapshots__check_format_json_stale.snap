@@ -1,0 +1,19 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpVdLKST
+    - check
+    - "--format"
+    - json
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+{"ok":false,"stale":[{"block":"intro","column":1,"file":"readme.md","line":3},{"block":"version","column":10,"file":"readme.md","line":9}]}
+
+----- stderr -----

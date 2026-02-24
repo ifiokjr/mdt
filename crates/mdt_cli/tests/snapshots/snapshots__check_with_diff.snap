@@ -1,0 +1,28 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp3kxx7c
+    - check
+    - "--diff"
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+
+----- stderr -----
+Stale: block `intro` in readme.md:3:1
+   
+   
+  -Old intro.
+  +Welcome to the project.
+   
+Stale: block `version` in readme.md:9:10
+  -v0.9.0
+  +v1.0.0
+
+2 consumer block(s) are out of date. Run `mdt update` to fix.

@@ -1,0 +1,26 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpwOtTpp
+    - list
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Providers:
+  @apiDocs template.t.md (1 consumer(s))
+  @greeting template.t.md (2 consumer(s))
+
+Consumers:
+  =greeting lib.rs |trim|linePrefix [linked]
+  =greeting readme.md [linked]
+  =apiDocs readme.md |trim [linked]
+
+2 provider(s), 3 consumer(s)
+
+----- stderr -----

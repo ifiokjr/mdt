@@ -2,6 +2,12 @@
 
 > manage **m**ark**d**own **t**emplates across your project
 
+<br />
+
+[![Status][ci-status-image]][ci-status-link] [![Coverage][coverage-image]][coverage-link] [![Unlicense][unlicense-image]][unlicense-link]
+
+<br />
+
 <!-- {=mdtPackageDocumentation} -->
 
 `mdt` is a data-driven template engine for keeping documentation synchronized across your project. It uses comment-based template tags to define content once and distribute it to multiple locations — markdown files, code documentation comments (in any language), READMEs, mdbook docs, and more.
@@ -94,3 +100,10 @@ nix profile list # find the index of the nix package
 nix profile remove <index>
 nix profile install --accept-flake-config github:cachix/devenv/<version>
 ```
+
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
+[coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
+[coverage-link]: https://codecov.io/gh/ifiokjr/mdt
+[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
+[unlicense-link]: https://opensource.org/license/unlicense
