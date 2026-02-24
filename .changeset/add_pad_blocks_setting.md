@@ -1,5 +1,5 @@
 ---
-mdt: minor
+mdt_core: major
 ---
 
 Add `pad_blocks` configuration setting to prevent content mangling in source code comments.

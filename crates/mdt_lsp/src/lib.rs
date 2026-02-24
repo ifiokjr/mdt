@@ -3,9 +3,10 @@ use std::path::PathBuf;
 
 use mdt_core::Block;
 use mdt_core::BlockType;
+use mdt_core::ParseDiagnostic;
 use mdt_core::apply_transformers;
-use mdt_core::parse;
-use mdt_core::parse_source;
+use mdt_core::parse_source_with_diagnostics;
+use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
@@ -24,6 +25,8 @@ struct DocumentState {
 	content: String,
 	/// Parsed mdt blocks in this document.
 	blocks: Vec<Block>,
+	/// Parse diagnostics (unclosed blocks, unknown transformers, etc.).
+	parse_diagnostics: Vec<ParseDiagnostic>,
 }
 
 /// Workspace-level state shared across all LSP requests.
@@ -107,12 +110,13 @@ impl WorkspaceState {
 	/// Parse a single document and update its cached state. Returns the
 	/// parsed blocks.
 	fn parse_document(&mut self, uri: &Uri, content: String) -> Vec<Block> {
-		let blocks = parse_document_content(uri, &content);
+		let (blocks, parse_diagnostics) = parse_document_content(uri, &content);
 		self.documents.insert(
 			uri.clone(),
 			DocumentState {
 				content,
 				blocks: blocks.clone(),
+				parse_diagnostics,
 			},
 		);
 		blocks
@@ -120,7 +124,9 @@ impl WorkspaceState {
 }
 
 /// Parse document content, choosing the right parser based on file extension.
-fn parse_document_content(uri: &Uri, content: &str) -> Vec<Block> {
+/// Returns both parsed blocks and any parse diagnostics (unclosed blocks,
+/// unknown transformers, etc.).
+fn parse_document_content(uri: &Uri, content: &str) -> (Vec<Block>, Vec<ParseDiagnostic>) {
 	let is_markdown = uri
 		.path()
 		.as_str()
@@ -129,12 +135,60 @@ fn parse_document_content(uri: &Uri, content: &str) -> Vec<Block> {
 		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"));
 
 	let result = if is_markdown {
-		parse(content)
+		parse_with_diagnostics(content)
 	} else {
-		parse_source(content)
+		parse_source_with_diagnostics(content)
 	};
 
 	result.unwrap_or_default()
+}
+
+/// Compute the Levenshtein edit distance between two strings.
+/// Used for suggesting similar block names when a provider is missing.
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+	let a_len = a.len();
+	let b_len = b.len();
+
+	if a_len == 0 {
+		return b_len;
+	}
+	if b_len == 0 {
+		return a_len;
+	}
+
+	let mut prev_row: Vec<usize> = (0..=b_len).collect();
+	let mut curr_row = vec![0; b_len + 1];
+
+	for (i, a_char) in a.chars().enumerate() {
+		curr_row[0] = i + 1;
+		for (j, b_char) in b.chars().enumerate() {
+			let cost = usize::from(a_char != b_char);
+			curr_row[j + 1] = (prev_row[j + 1] + 1)
+				.min(curr_row[j] + 1)
+				.min(prev_row[j] + cost);
+		}
+		std::mem::swap(&mut prev_row, &mut curr_row);
+	}
+
+	prev_row[b_len]
+}
+
+/// Find the most similar provider names for a given consumer name.
+/// Returns up to 3 suggestions with a maximum edit distance threshold.
+fn suggest_similar_names<'a>(
+	name: &str,
+	providers: &'a HashMap<String, ProviderEntry>,
+) -> Vec<&'a str> {
+	// Use a threshold based on name length: allow roughly 40% character changes.
+	let max_distance = (name.len() / 2).max(2);
+	let mut candidates: Vec<(&str, usize)> = providers
+		.keys()
+		.map(|p| (p.as_str(), levenshtein_distance(name, p)))
+		.filter(|(_, d)| *d <= max_distance && *d > 0)
+		.collect();
+	candidates.sort_by_key(|(_, d)| *d);
+	candidates.truncate(3);
+	candidates.into_iter().map(|(name, _)| name).collect()
 }
 
 /// Convert an mdt `Point` (1-indexed line, 1-indexed column) to an LSP
@@ -353,13 +407,84 @@ impl LanguageServer for MdtLanguageServer {
 // Diagnostics
 // ---------------------------------------------------------------------------
 
-/// Compute diagnostics for a single document.
+/// Compute diagnostics for a single document. This includes:
+/// - Stale consumer blocks (content doesn't match provider)
+/// - Missing providers (consumer references a non-existent provider)
+/// - Name suggestions for missing providers (Levenshtein distance)
+/// - Provider blocks in non-template files
+/// - Unused provider blocks (no consumers reference them)
+/// - Unclosed blocks (opening tag without matching close)
+/// - Unknown transformer names
+/// - Invalid transformer arguments
 fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 	let Some(doc) = state.documents.get(uri) else {
 		return Vec::new();
 	};
 
 	let mut diagnostics = Vec::new();
+	let is_template = uri.path().as_str().ends_with(".t.md");
+
+	// Surface parse diagnostics (unclosed blocks, unknown transformers).
+	for parse_diag in &doc.parse_diagnostics {
+		match parse_diag {
+			ParseDiagnostic::UnclosedBlock { name, line, column } => {
+				let position = Position {
+					line: line.saturating_sub(1) as u32,
+					character: column.saturating_sub(1) as u32,
+				};
+				diagnostics.push(Diagnostic {
+					range: Range {
+						start: position,
+						end: position,
+					},
+					severity: Some(DiagnosticSeverity::ERROR),
+					source: Some("mdt".to_string()),
+					message: format!("Missing closing tag for block `{name}`"),
+					..Default::default()
+				});
+			}
+			ParseDiagnostic::UnknownTransformer { name, line, column } => {
+				let position = Position {
+					line: line.saturating_sub(1) as u32,
+					character: column.saturating_sub(1) as u32,
+				};
+				diagnostics.push(Diagnostic {
+					range: Range {
+						start: position,
+						end: position,
+					},
+					severity: Some(DiagnosticSeverity::ERROR),
+					source: Some("mdt".to_string()),
+					message: format!("Unknown transformer `{name}`"),
+					..Default::default()
+				});
+			}
+			ParseDiagnostic::InvalidTransformerArgs {
+				name,
+				expected,
+				got,
+				line,
+				column,
+			} => {
+				let position = Position {
+					line: line.saturating_sub(1) as u32,
+					character: column.saturating_sub(1) as u32,
+				};
+				diagnostics.push(Diagnostic {
+					range: Range {
+						start: position,
+						end: position,
+					},
+					severity: Some(DiagnosticSeverity::ERROR),
+					source: Some("mdt".to_string()),
+					message: format!(
+						"Transformer `{name}` expects {expected} argument(s), got {got}"
+					),
+					..Default::default()
+				});
+			}
+		}
+	}
 
 	for block in &doc.blocks {
 		match block.r#type {
@@ -387,20 +512,46 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 						});
 					}
 				} else {
-					// Missing provider
+					// Missing provider — suggest similar names.
+					let suggestions = suggest_similar_names(&block.name, &state.providers);
+					let message = if suggestions.is_empty() {
+						format!("No provider found for consumer block `{}`", block.name)
+					} else {
+						format!(
+							"No provider found for consumer block `{}`. Did you mean: {}?",
+							block.name,
+							suggestions
+								.iter()
+								.map(|s| format!("`{s}`"))
+								.collect::<Vec<_>>()
+								.join(", ")
+						)
+					};
+
 					diagnostics.push(Diagnostic {
 						range: to_lsp_range(&block.opening),
 						severity: Some(DiagnosticSeverity::WARNING),
 						source: Some("mdt".to_string()),
-						message: format!("No provider found for consumer block `{}`", block.name),
+						message,
 						..Default::default()
 					});
 				}
 			}
 			BlockType::Provider => {
-				// Check if this provider is in a template file.
-				let is_template = uri.path().as_str().ends_with(".t.md");
-				if !is_template {
+				if is_template {
+					// Check for unused providers (no consumers reference this
+					// block).
+					let has_consumers = state.consumers.iter().any(|c| c.block.name == block.name);
+					if !has_consumers {
+						diagnostics.push(Diagnostic {
+							range: to_lsp_range(&block.opening),
+							severity: Some(DiagnosticSeverity::WARNING),
+							source: Some("mdt".to_string()),
+							message: format!("Provider block `{}` has no consumers", block.name),
+							..Default::default()
+						});
+					}
+				} else {
 					diagnostics.push(Diagnostic {
 						range: to_lsp_range(&block.opening),
 						severity: Some(DiagnosticSeverity::INFORMATION),

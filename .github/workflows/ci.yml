@@ -80,3 +80,204 @@ jobs:
 
       - name: run cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
+
+  # ---------------------------------------------------------------------------
+  # Semver compatibility check
+  #
+  # Runs cargo-semver-checks on pull requests to detect breaking API changes
+  # in published crates. If breaking changes are detected, the job verifies
+  # that a changeset file in .changeset/ includes a `major` change type for
+  # the affected package. If the changeset is missing, the job fails and
+  # posts a comment with the semver-checks output explaining the breakage.
+  #
+  # To reuse this job in another project:
+  #   1. Update the `packages` list to match your published crates.
+  #   2. Ensure your changeset files use TOML frontmatter with `package: type`
+  #      format (e.g., `mdt_core: major`).
+  #   3. The job requires `pull-requests: write` permission (already set above).
+  # ---------------------------------------------------------------------------
+  semver-checks:
+    # Only run on pull requests — pushes to main don't need semver checks
+    # since the code is already merged.
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so cargo-semver-checks can compare against
+          # the baseline (last published version on crates.io).
+          fetch-depth: 0
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Run cargo-semver-checks for each published crate. Capture the output
+      # and exit code so we can report failures with context.
+      # We write results to temp files because $GITHUB_OUTPUT may not be
+      # available inside the devenv shell.
+      - name: run cargo-semver-checks
+        id: semver
+        shell: devenv shell -c -- bash {0}
+        run: |
+          set +e
+          FAILED_PACKAGES=""
+          FULL_OUTPUT=""
+
+          # List of published crates to check for semver violations.
+          # Add new published crates here as they are created.
+          PACKAGES=("mdt_core" "mdt_cli" "mdt_lsp" "mdt_mcp")
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "::group::Checking $pkg"
+            OUTPUT=$(cargo semver-checks --package "$pkg" 2>&1)
+            EXIT_CODE=$?
+            echo "$OUTPUT"
+            echo "::endgroup::"
+
+            if [ $EXIT_CODE -ne 0 ]; then
+              FAILED_PACKAGES="$FAILED_PACKAGES $pkg"
+              FULL_OUTPUT="$FULL_OUTPUT
+          ### \`$pkg\`
+
+          \`\`\`
+          $OUTPUT
+          \`\`\`
+          "
+            fi
+          done
+
+          # Write results to temp files for the next step to pick up.
+          echo "$FAILED_PACKAGES" > /tmp/semver_failed_packages.txt
+          echo "$FULL_OUTPUT" > /tmp/semver_output.txt
+
+      # Set outputs from the semver-checks results (outside devenv shell so
+      # $GITHUB_OUTPUT is available).
+      - name: set semver-checks outputs
+        id: semver-output
+        shell: bash
+        run: |
+          FAILED_PACKAGES=$(cat /tmp/semver_failed_packages.txt 2>/dev/null | xargs || echo "")
+          echo "failed_packages=$FAILED_PACKAGES" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "output<<SEMVER_EOF"
+            cat /tmp/semver_output.txt 2>/dev/null || echo ""
+            echo "SEMVER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$FAILED_PACKAGES" ]; then
+            echo "has_breaking=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_breaking=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # If breaking changes were detected, check that a changeset with
+      # `major` type exists for each affected package.
+      - name: verify changeset for breaking changes
+        id: verify
+        if: steps.semver-output.outputs.has_breaking == 'true'
+        shell: bash
+        run: |
+          FAILED="${{ steps.semver-output.outputs.failed_packages }}"
+          MISSING_CHANGESETS=""
+
+          for pkg in $FAILED; do
+            # Check all changeset files for a `major` entry for this package.
+            # Changeset frontmatter format: `package_name: change_type`
+            FOUND=false
+            for f in .changeset/*.md; do
+              [ -f "$f" ] || continue
+              # Look for the package name followed by `: major` in the
+              # TOML frontmatter (between --- delimiters).
+              if grep -qP "^${pkg}:\s*major\s*$" "$f"; then
+                FOUND=true
+                break
+              fi
+            done
+
+            if [ "$FOUND" = false ]; then
+              MISSING_CHANGESETS="$MISSING_CHANGESETS $pkg"
+            fi
+          done
+
+          echo "missing=$MISSING_CHANGESETS" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$MISSING_CHANGESETS" ]; then
+            echo "has_missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Post a PR comment explaining which packages have breaking changes
+      # and are missing a `major` changeset.
+      - name: comment on PR with semver-checks output
+        if: steps.verify.outputs.has_missing == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const missing = '${{ steps.verify.outputs.missing }}'.trim().split(/\s+/);
+            const body = [
+              '## :warning: Breaking API changes detected',
+              '',
+              `The following package(s) have breaking API changes but are missing a \`major\` changeset: ${missing.map(p => '`' + p + '`').join(', ')}`,
+              '',
+              'Please add a changeset file in `.changeset/` with the breaking change documented:',
+              '',
+              '```sh',
+              'knope document-change',
+              '```',
+              '',
+              'Or create one manually:',
+              '',
+              '```markdown',
+              '---',
+              ...missing.map(p => `${p}: major`),
+              '---',
+              '',
+              'Description of the breaking change.',
+              '```',
+              '',
+              '### cargo-semver-checks output',
+              '',
+              process.env.SEMVER_OUTPUT,
+            ].join('\n');
+
+            // Find and update existing comment, or create a new one.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '## :warning: Breaking API changes detected';
+            const existing = comments.find(c => c.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+        env:
+          SEMVER_OUTPUT: ${{ steps.semver-output.outputs.output }}
+
+      # Fail the job if breaking changes exist without proper changesets.
+      - name: fail if missing changeset for breaking changes
+        if: steps.verify.outputs.has_missing == 'true'
+        run: |
+          echo "::error::Breaking API changes detected in:${{ steps.verify.outputs.missing }}"
+          echo "Please add a changeset with 'major' change type for each affected package."
+          exit 1

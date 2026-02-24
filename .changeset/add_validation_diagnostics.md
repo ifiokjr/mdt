@@ -1,6 +1,6 @@
 ---
-mdt_core: minor
-mdt_cli: minor
+mdt_core: major
+mdt_cli: major
 ---
 
 Add comprehensive validation diagnostics with file location reporting.
