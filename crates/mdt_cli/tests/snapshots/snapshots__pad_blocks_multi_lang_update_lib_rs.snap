@@ -1,0 +1,17 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: lib_rs
+---
+//! <!-- {=api_docs|trim|linePrefix:"//! ":true} -->
+//! 
+//! my-tool v2.0.0
+//! 
+//! A multi-language tool.
+//! 
+//! ## Getting Started
+//! 
+//! Use the default configuration to get started quickly.
+//! 
+//! <!-- {/api_docs} -->
+
+pub struct Config;

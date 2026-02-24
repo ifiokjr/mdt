@@ -96,7 +96,7 @@ By default (when this section is absent), mdt finds `*.t.md` files anywhere in t
 
 ### `pad_blocks`
 
-When set to `true`, mdt ensures a newline always separates the opening tag from the content and the content from the closing tag. This prevents content from running directly into tags when transformers produce output without leading or trailing newlines.
+When set to `true`, mdt ensures a blank line separates the opening tag from the content and the content from the closing tag. In source code files, the extra blank lines use the same comment prefix as the surrounding lines (e.g., `//!`, `///`, `*`). This prevents content from running directly into tags when transformers produce output without leading or trailing newlines.
 
 ```toml
 pad_blocks = true
@@ -108,7 +108,9 @@ This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.g
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//!
 //! This content stays properly formatted.
+//!
 //! <!-- {/docs} -->
 ```
 

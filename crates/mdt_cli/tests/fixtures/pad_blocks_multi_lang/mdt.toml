@@ -1,0 +1,4 @@
+pad_blocks = true
+
+[data]
+package = "package.json"

@@ -1,0 +1,18 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: readme
+---
+# My Crate
+
+<!-- {=crate_docs} -->
+
+# My Crate
+
+A powerful library for doing things.
+
+## Features
+
+- Fast and efficient
+- Easy to use
+
+<!-- {/crate_docs} -->

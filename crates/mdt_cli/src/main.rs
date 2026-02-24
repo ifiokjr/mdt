@@ -319,7 +319,9 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 			updates.updated_count,
 			updates.updated_files.len()
 		);
-		for path in updates.updated_files.keys() {
+		let mut paths: Vec<_> = updates.updated_files.keys().collect();
+		paths.sort();
+		for path in paths {
 			let rel = make_relative(path, &root);
 			println!("  {rel}");
 		}
@@ -332,7 +334,9 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 		);
 
 		if args.verbose {
-			for path in updates.updated_files.keys() {
+			let mut paths: Vec<_> = updates.updated_files.keys().collect();
+			paths.sort();
+			for path in paths {
 				let rel = make_relative(path, &root);
 				println!("  {rel}");
 			}

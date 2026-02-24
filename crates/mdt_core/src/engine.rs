@@ -329,6 +329,10 @@ pub fn pad_content(content: &str) -> String {
 /// consumer content. When the closing tag is preceded by a comment prefix
 /// (e.g., `//! ` or `/// `) that prefix is part of the content range and must
 /// be preserved after replacement.
+///
+/// Adds an extra blank line (using the trailing prefix) between the opening
+/// tag and the content and between the content and the closing tag. This
+/// ensures the content is visually separated from the surrounding tags.
 fn pad_content_preserving_suffix(new_content: &str, original_content: &str) -> String {
 	// Extract the trailing prefix from the original content — everything after
 	// the last newline. For example, in "\n//! old\n//! " the trailing prefix
@@ -338,12 +342,24 @@ fn pad_content_preserving_suffix(new_content: &str, original_content: &str) -> S
 		.map(|idx| &original_content[idx + 1..])
 		.unwrap_or("");
 
-	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() + 2);
+	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() * 3 + 4);
+	// Leading newline
 	if !new_content.starts_with('\n') {
 		result.push('\n');
 	}
+	// Extra blank line between opening tag and content, using the comment prefix
+	if !trailing_prefix.is_empty() {
+		result.push_str(trailing_prefix);
+		result.push('\n');
+	}
 	result.push_str(new_content);
+	// Trailing newline
 	if !new_content.ends_with('\n') {
+		result.push('\n');
+	}
+	// Extra blank line between content and closing tag, using the comment prefix
+	if !trailing_prefix.is_empty() {
+		result.push_str(trailing_prefix);
 		result.push('\n');
 	}
 	result.push_str(trailing_prefix);

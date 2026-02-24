@@ -1,0 +1,12 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+expression: no_include
+---
+/// <!-- {=docs|trim|linePrefix:"/// "} -->
+/// 
+/// First paragraph.
+
+/// Second paragraph.
+/// 
+/// <!-- {/docs} -->
+pub fn example() {}
