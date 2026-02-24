@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpes3wf3
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpnnPxzi
     - update
   env:
     NO_COLOR: "1"
@@ -14,5 +14,9 @@ exit_code: 2
 ----- stdout -----
 
 ----- stderr -----
-error: unclosed.md:3:1: missing closing tag for block `valid_block`
+mdt::unclosed_block
+
+  x [unclosed.md:3:1] missing closing tag for block `valid_block`
+  help: add `<!-- {/valid_block} -->` to close this block
+
 error: validation errors found

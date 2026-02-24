@@ -10,7 +10,9 @@ use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
+use mdt_core::project::DiagnosticKind;
 use mdt_core::project::ProjectContext;
+use mdt_core::project::ProjectDiagnostic;
 use mdt_core::project::ValidationOptions;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::write_updates;
@@ -60,9 +62,21 @@ fn main() {
 	let args = MdtCli::parse();
 
 	// Respect NO_COLOR env var and --no-color flag.
-	if args.no_color || std::env::var_os("NO_COLOR").is_some() {
+	let use_color = !args.no_color && std::env::var_os("NO_COLOR").is_none();
+	if !use_color {
 		USE_COLOR.store(false, std::sync::atomic::Ordering::Relaxed);
 	}
+
+	// Install miette's fancy handler for rich error diagnostics.
+	miette::set_hook(Box::new(move |_| {
+		Box::new(
+			miette::MietteHandlerOpts::new()
+				.color(use_color)
+				.unicode(use_color)
+				.build(),
+		)
+	}))
+	.ok();
 
 	let result = match args.command {
 		Some(Commands::Init) => run_init(&args),
@@ -78,7 +92,17 @@ fn main() {
 	};
 
 	if let Err(e) = result {
-		eprintln!("{} {e}", colored!("error:", red));
+		// Try to render through miette for rich diagnostics with help text
+		// and error codes.
+		match e.downcast::<mdt_core::MdtError>() {
+			Ok(mdt_err) => {
+				let report: miette::Report = (*mdt_err).into();
+				eprintln!("{report:?}");
+			}
+			Err(e) => {
+				eprintln!("{} {e}", colored!("error:", red));
+			}
+		}
 		process::exit(2);
 	}
 }
@@ -154,22 +178,12 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 	for diag in &ctx.project.diagnostics {
 		let rel = make_relative(&diag.file, &root);
 		if diag.is_error(&options) {
-			eprintln!(
-				"{} {rel}:{}:{}: {}",
-				colored!("error:", red),
-				diag.line,
-				diag.column,
-				diag.message()
-			);
+			let report = diagnostic_to_report(diag, &rel, true);
+			eprintln!("{report:?}");
 			has_errors = true;
 		} else if args.verbose {
-			eprintln!(
-				"{} {rel}:{}:{}: {}",
-				colored!("warning:", yellow),
-				diag.line,
-				diag.column,
-				diag.message()
-			);
+			let report = diagnostic_to_report(diag, &rel, false);
+			eprintln!("{report:?}");
 		}
 	}
 
@@ -447,4 +461,52 @@ fn make_relative(path: &Path, root: &Path) -> String {
 		.unwrap_or(path)
 		.display()
 		.to_string()
+}
+
+/// Convert a `ProjectDiagnostic` into a `miette::Report` with appropriate
+/// severity, error code, and help text for rich terminal display.
+fn diagnostic_to_report(
+	diag: &ProjectDiagnostic,
+	rel_path: &str,
+	is_error: bool,
+) -> miette::Report {
+	let location = format!("{rel_path}:{}:{}", diag.line, diag.column);
+	let severity = if is_error {
+		miette::Severity::Error
+	} else {
+		miette::Severity::Warning
+	};
+
+	let message = format!("[{location}] {}", diag.message());
+	let help: String = match &diag.kind {
+		DiagnosticKind::UnclosedBlock { name } => {
+			format!("add `<!-- {{/{name}}} -->` to close this block")
+		}
+		DiagnosticKind::UnknownTransformer { .. } => {
+			"available transformers: trim, trimStart, trimEnd, indent, prefix, suffix, linePrefix, \
+			 lineSuffix, wrap, codeBlock, code, replace"
+				.to_string()
+		}
+		DiagnosticKind::InvalidTransformerArgs { .. } => {
+			"check the transformer documentation for the correct number of arguments".to_string()
+		}
+		DiagnosticKind::UnusedProvider { name } => {
+			format!(
+				"add a consumer block `<!-- {{={name}}} -->...<!-- {{/{name}}} -->` or remove the \
+				 unused provider"
+			)
+		}
+	};
+	let code = match &diag.kind {
+		DiagnosticKind::UnclosedBlock { .. } => "mdt::unclosed_block",
+		DiagnosticKind::UnknownTransformer { .. } => "mdt::unknown_transformer",
+		DiagnosticKind::InvalidTransformerArgs { .. } => "mdt::invalid_transformer_args",
+		DiagnosticKind::UnusedProvider { .. } => "mdt::unused_provider",
+	};
+
+	let diag_value = miette::MietteDiagnostic::new(message)
+		.with_code(code)
+		.with_help(help)
+		.with_severity(severity);
+	miette::Report::new(diag_value)
 }

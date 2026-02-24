@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpIim4Ws
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpWV5gRg
     - "--verbose"
     - check
   env:
@@ -18,5 +18,9 @@ Scanned project: 1 provider(s), 1 consumer(s)
     @valid_block ([TEMP_DIR]/template.t.md)
 
 ----- stderr -----
-error: unclosed.md:3:1: missing closing tag for block `valid_block`
+mdt::unclosed_block
+
+  x [unclosed.md:3:1] missing closing tag for block `valid_block`
+  help: add `<!-- {/valid_block} -->` to close this block
+
 error: validation errors found
