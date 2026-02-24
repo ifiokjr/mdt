@@ -124,13 +124,14 @@ If you prefer to auto-fix in CI rather than just check, run `mdt update` and com
 
 ## Publish mdBook on release
 
-This repository publishes the mdBook on every GitHub release (`release.published`) using GitHub Pages.
+This repository publishes the mdBook on `mdt_cli` releases using GitHub Pages. Only CLI releases trigger a docs deploy — library-only releases are skipped.
 
 The workflow lives at `.github/workflows/docs-pages.yml` and:
 
-1. Builds the book with `mdbook build docs`
-2. Uploads `docs/book` as a Pages artifact
-3. Deploys to GitHub Pages
+1. Checks the release tag starts with `mdt_cli`
+2. Builds the book with `mdbook build docs`
+3. Uploads `docs/book` as a Pages artifact
+4. Deploys to GitHub Pages
 
 Equivalent workflow structure:
 
@@ -149,6 +150,9 @@ permissions:
 
 jobs:
   build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.release.tag_name, 'mdt_cli')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

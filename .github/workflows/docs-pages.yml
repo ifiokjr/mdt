@@ -15,8 +15,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Docs deploy on any release tag since docs are project-wide
   build:
+    # Only deploy docs on mdt_cli releases (not library-only releases).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.release.tag_name, 'mdt_cli')
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -30,8 +33,6 @@ jobs:
 
       - name: setup pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: build mdbook
         run: mdbook build docs

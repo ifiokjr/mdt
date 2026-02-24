@@ -49,3 +49,30 @@ This content gets replaced
 Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wrap`, `codeBlock`, `code`, `replace`.
 
 <!-- {/mdtTemplateSyntax} -->
+
+<!-- {@mdtCoreInstall} -->
+
+```toml
+[dependencies]
+mdt_core = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtCoreInstall} -->
+
+<!-- {@mdtLspInstall} -->
+
+```toml
+[dependencies]
+mdt_lsp = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtLspInstall} -->
+
+<!-- {@mdtMcpInstall} -->
+
+```toml
+[dependencies]
+mdt_mcp = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtMcpInstall} -->
