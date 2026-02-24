@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build docs from (tag, branch, or commit SHA). Defaults to the default branch."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -12,19 +17,22 @@ permissions:
 
 concurrency:
   group: docs-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
-    # Only deploy docs on mdt_cli releases (not library-only releases).
+    # For release events, only deploy on mdt_cli releases (not library-only).
+    # For workflow_dispatch, always run.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      startsWith(github.event.release.tag_name, 'mdt_cli')
+      startsWith(github.event.release.tag_name, 'mdt_cli/')
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.event.release.tag_name || github.ref }}
 
       - name: install mdbook
         uses: taiki-e/install-action@v2
