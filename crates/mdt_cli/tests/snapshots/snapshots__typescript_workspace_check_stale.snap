@@ -1,0 +1,21 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpNCp5vO
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+
+----- stderr -----
+Stale: block `installGuide` in readme.md:7:1
+Stale: block `apiDocs` in readme.md:15:1
+Stale: block `apiDocs` in src/index.ts:2:4
+
+3 consumer block(s) are out of date. Run `mdt update` to fix.

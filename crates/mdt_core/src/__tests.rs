@@ -2593,12 +2593,14 @@ fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
 	});
 	// After trim: "Hello from mdt."
 	// After linePrefix "//! " with includeEmpty: "//! Hello from mdt."
-	// After pad_blocks: "\n//! Hello from mdt.\n"
+	// After pad_blocks: "\n//! \n//! Hello from mdt.\n//! \n//! "
 	assert_eq!(
 		content.as_str(),
 		concat!(
 			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! \n",
 			"//! Hello from mdt.\n",
+			"//! \n",
 			"//! <!-- {/docs} -->\n",
 			"\n",
 			"pub fn main() {}\n",
@@ -2650,11 +2652,13 @@ fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
 	});
 	// After trim: "# My Library\n\nThis is a great library.\n\n## Usage\n\nJust use
 	// it." After linePrefix "//! " with includeEmpty=true on each line
-	// After pad_blocks: \n prepended, \n appended
+	// After pad_blocks: extra blank prefix line before content and before closing
+	// tag
 	assert_eq!(
 		content.as_str(),
 		concat!(
 			"//! <!-- {=docs|trim|linePrefix:\"//! \":true} -->\n",
+			"//! \n",
 			"//! # My Library\n",
 			"//! \n",
 			"//! This is a great library.\n",
@@ -2662,6 +2666,7 @@ fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
 			"//! ## Usage\n",
 			"//! \n",
 			"//! Just use it.\n",
+			"//! \n",
 			"//! <!-- {/docs} -->\n",
 			"\n",
 			"pub fn main() {}\n",
@@ -2702,7 +2707,9 @@ fn pad_blocks_rust_triple_slash_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"/// <!-- {=fn_docs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// \n",
 			"/// Does something useful.\n",
+			"/// \n",
 			"/// <!-- {/fn_docs} -->\n",
 			"pub fn do_something() {}\n",
 		)
@@ -2745,7 +2752,9 @@ fn pad_blocks_typescript_jsdoc() -> MdtResult<()> {
 		concat!(
 			"/**\n",
 			" * <!-- {=jsdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * \n",
 			" * Greets the user.\n",
+			" * \n",
 			" * <!-- {/jsdocs} -->\n",
 			" */\n",
 			"export function greet() {}\n",
@@ -2787,7 +2796,9 @@ fn pad_blocks_python_hash_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"# <!-- {=pydocs|trim|linePrefix:\"# \":true} -->\n",
+			"# \n",
 			"# Python docs here.\n",
+			"# \n",
 			"# <!-- {/pydocs} -->\n",
 			"def main():\n",
 			"    pass\n",
@@ -2828,7 +2839,9 @@ fn pad_blocks_go_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"// <!-- {=godocs|trim|linePrefix:\"// \":true} -->\n",
+			"// \n",
 			"// Go function docs.\n",
+			"// \n",
 			"// <!-- {/godocs} -->\n",
 			"func main() {}\n",
 		)
@@ -2871,7 +2884,9 @@ fn pad_blocks_java_comments() -> MdtResult<()> {
 		concat!(
 			"/**\n",
 			" * <!-- {=javadocs|trim|linePrefix:\" * \":true} -->\n",
+			" * \n",
 			" * Java method docs.\n",
+			" * \n",
 			" * <!-- {/javadocs} -->\n",
 			" */\n",
 			"public class Main {}\n",
@@ -2912,7 +2927,9 @@ fn pad_blocks_c_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"// <!-- {=cdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// \n",
 			"// C function docs.\n",
+			"// \n",
 			"// <!-- {/cdocs} -->\n",
 			"int main() { return 0; }\n",
 		)
@@ -3064,6 +3081,7 @@ fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"//! <!-- {=api|trim|linePrefix:\"//! \":true} -->\n",
+			"//! \n",
 			"//! # API\n",
 			"//! \n",
 			"//! Create a new instance:\n",
@@ -3073,6 +3091,7 @@ fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
 			"//! ```\n",
 			"//! \n",
 			"//! Then call methods on it.\n",
+			"//! \n",
 			"//! <!-- {/api} -->\n",
 			"\n",
 			"pub struct Foo;\n",
@@ -3116,7 +3135,9 @@ fn pad_blocks_kotlin_comments() -> MdtResult<()> {
 		concat!(
 			"/**\n",
 			" * <!-- {=ktdocs|trim|linePrefix:\" * \":true} -->\n",
+			" * \n",
 			" * Kotlin function docs.\n",
+			" * \n",
 			" * <!-- {/ktdocs} -->\n",
 			" */\n",
 			"fun main() {}\n",
@@ -3157,7 +3178,9 @@ fn pad_blocks_swift_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"/// <!-- {=swiftdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// \n",
 			"/// Swift function docs.\n",
+			"/// \n",
 			"/// <!-- {/swiftdocs} -->\n",
 			"func greet() {}\n",
 		)
@@ -3197,7 +3220,9 @@ fn pad_blocks_cpp_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"// <!-- {=cppdocs|trim|linePrefix:\"// \":true} -->\n",
+			"// \n",
 			"// C++ function docs.\n",
+			"// \n",
 			"// <!-- {/cppdocs} -->\n",
 			"int main() { return 0; }\n",
 		)
@@ -3237,7 +3262,9 @@ fn pad_blocks_csharp_comments() -> MdtResult<()> {
 		content.as_str(),
 		concat!(
 			"/// <!-- {=csdocs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// \n",
 			"/// C# method docs.\n",
+			"/// \n",
 			"/// <!-- {/csdocs} -->\n",
 			"public static void Main() {}\n",
 		)

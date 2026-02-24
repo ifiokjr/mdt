@@ -89,7 +89,7 @@ When using consumer blocks in source files, add `pad_blocks = true` to your `mdt
 pad_blocks = true
 ```
 
-This ensures a newline always separates the opening/closing tags from the content, preventing transformers like `trim` from causing the content to merge directly with the tags.
+This ensures a blank line (using the same comment prefix) separates the opening/closing tags from the content, preventing transformers like `trim` from causing the content to merge directly with the tags.
 
 Without `pad_blocks`, a consumer with `trim|linePrefix:"//! ":true` could produce:
 
@@ -102,7 +102,9 @@ With `pad_blocks = true`, the output is properly structured:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//!
 //! Content here.
+//!
 //! <!-- {/docs} -->
 ```
 

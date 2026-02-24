@@ -1,0 +1,22 @@
+---
+source: crates/mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpYMaSBo
+    - update
+    - "--dry-run"
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Dry run: would update 4 block(s) in 4 file(s):
+  src/index.ts
+  src/lib.rs
+  src/main.go
+  src/main.py
+
+----- stderr -----

@@ -79,7 +79,7 @@ When set, only `*.t.md` files within these directories are recognized as templat
 
 ### `pad_blocks` — Block content padding
 
-When enabled, mdt ensures a newline always separates the opening tag from the content and the content from the closing tag. This is recommended when using consumer blocks in source code files.
+When enabled, mdt ensures a blank line separates the opening tag from the content and the content from the closing tag. In source code files, the extra blank lines use the same comment prefix as the surrounding lines (e.g., `//!`, `///`, `*`). This is recommended when using consumer blocks in source code files.
 
 ```toml
 pad_blocks = true
