@@ -2,6 +2,12 @@
 
 This file is maintained by `knope`.
 
+## 0.1.0 (2026-02-24)
+
+### Breaking Changes
+
+- Bump up version
+
 ## 0.0.2 (2026-02-24)
 
 ### Features
