@@ -5,6 +5,9 @@ ignore_conventional_commits = true
 versioned_files = [
 	"Cargo.toml",
 	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_cli" },
+	{ path = "Cargo.toml", dependency = "mdt_lsp" },
+	{ path = "Cargo.toml", dependency = "mdt_mcp" },
 	{ path = "Cargo.lock", dependency = "mdt" },
 ]
 changelog = "crates/mdt/changelog.md"
@@ -23,6 +26,10 @@ types = ["docs"]
 [packages.mdt_cli]
 versioned_files = [
 	"Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_cli" },
+	{ path = "Cargo.toml", dependency = "mdt_lsp" },
+	{ path = "Cargo.toml", dependency = "mdt_mcp" },
 	{ path = "Cargo.lock", dependency = "mdt_cli" },
 ]
 changelog = "crates/mdt_cli/changelog.md"
@@ -41,7 +48,10 @@ types = ["docs"]
 [packages.mdt_lsp]
 versioned_files = [
 	"Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_cli" },
 	{ path = "Cargo.toml", dependency = "mdt_lsp" },
+	{ path = "Cargo.toml", dependency = "mdt_mcp" },
 	{ path = "Cargo.lock", dependency = "mdt_lsp" },
 ]
 changelog = "crates/mdt_lsp/changelog.md"
@@ -60,6 +70,9 @@ types = ["docs"]
 [packages.mdt_mcp]
 versioned_files = [
 	"Cargo.toml",
+	{ path = "Cargo.toml", dependency = "mdt" },
+	{ path = "Cargo.toml", dependency = "mdt_cli" },
+	{ path = "Cargo.toml", dependency = "mdt_lsp" },
 	{ path = "Cargo.toml", dependency = "mdt_mcp" },
 	{ path = "Cargo.lock", dependency = "mdt_mcp" },
 ]
@@ -126,7 +139,7 @@ name = "publish"
 
 [[workflows.steps]]
 type = "Command"
-command = "cargo workspaces publish --from-git --yes"
+command = "cargo workspaces publish --publish-as-is --no-verify --yes"
 
 [github]
 owner = "ifiokjr"
