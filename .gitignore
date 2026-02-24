@@ -3,6 +3,7 @@
 /result
 /.direnv
 /.bin
+/docs/book
 
 # Devenv
 .devenv*

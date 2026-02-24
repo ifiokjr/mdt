@@ -136,7 +136,7 @@ The template values can be defined in the following ways.
 
 ```toml
 [dependencies]
-mdt_lsp = "0.2.0"
+mdt_lsp = "0.3.0"
 ```
 
 <!-- {/mdtLspInstall} -->

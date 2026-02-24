@@ -37,7 +37,7 @@
     "mdt" = {
       exec = ''
         set -e
-        cargo run --bin mdt -- $@
+        cargo run --bin --quiet mdt -- $@
       '';
       description = "The `mdt` executable";
       binary = "bash";
@@ -134,6 +134,7 @@
       exec = ''
         set -e
         fix:clippy
+        cargo run --bin mdt -- update --ignore-unused-blocks
         fix:format
       '';
       description = "Fix all autofixable problems.";

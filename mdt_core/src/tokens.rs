@@ -134,7 +134,7 @@ impl Display for Token {
 
 /// A group of tokens extracted from a single HTML comment node.
 ///
-/// Each HTML comment in the source (e.g., `<!-- {=name|trim} -->`) is
+/// Each HTML comment in the source (e.g., `\<!-- {=name|trim} --\>`) is
 /// tokenized into a `TokenGroup` containing its individual tokens and the
 /// position of the comment in the original file.
 #[derive(Debug, Clone, PartialEq, Eq)]

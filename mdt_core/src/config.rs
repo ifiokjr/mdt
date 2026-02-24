@@ -18,13 +18,12 @@ pub const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 /// cargo = "Cargo.toml"
 ///
 /// [exclude]
-/// patterns = ["vendor/**", "generated/**"]
+/// patterns = ["vendor/", "generated/", "*.generated.md"]
+/// markdown_codeblocks = true
+/// blocks = ["internalOnly"]
 ///
 /// [include]
 /// patterns = ["docs/**/*.rs"]
-///
-/// [ignore]
-/// patterns = ["build/**", "dist/**"]
 ///
 /// [templates]
 /// paths = ["shared/templates"]
@@ -36,15 +35,12 @@ pub struct MdtConfig {
 	/// Map of namespace name to relative file path for data sources.
 	#[serde(default)]
 	pub data: HashMap<String, PathBuf>,
-	/// Exclusion configuration.
+	/// Exclusion configuration using gitignore-style patterns.
 	#[serde(default)]
 	pub exclude: ExcludeConfig,
 	/// Inclusion configuration — additional glob patterns to scan.
 	#[serde(default)]
 	pub include: IncludeConfig,
-	/// Ignore configuration — gitignore-style patterns for files to skip.
-	#[serde(default)]
-	pub ignore: IgnoreConfig,
 	/// Template paths — additional directories to search for `*.t.md` files.
 	#[serde(default)]
 	pub templates: TemplatesConfig,
@@ -62,7 +58,7 @@ pub struct MdtConfig {
 	/// (`false`), mdt respects `.gitignore` patterns and skips files that
 	/// would be ignored by git. Set to `true` when working outside a git
 	/// repository or when you want full control over which files are
-	/// scanned — in that case, use `[ignore]` patterns instead.
+	/// scanned — in that case, use `[exclude]` patterns instead.
 	#[serde(default)]
 	pub disable_gitignore: bool,
 }
@@ -71,13 +67,81 @@ fn default_max_file_size() -> u64 {
 	DEFAULT_MAX_FILE_SIZE
 }
 
+/// Controls filtering of mdt tags inside fenced code blocks in source files.
+///
+/// Can be:
+/// - `false` (default): process tags in all code blocks normally.
+/// - `true`: skip mdt tags inside **all** fenced code blocks.
+/// - A string (e.g., `"ignore"`): skip tags in code blocks whose info string
+///   contains the given string (e.g., `` ```rust,ignore ``).
+/// - An array of strings: skip tags in code blocks whose info string contains
+///   **any** of the given strings.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum CodeBlockFilter {
+	/// `true` to skip all code blocks, `false` to process normally.
+	Bool(bool),
+	/// Skip code blocks whose info string contains any of these strings.
+	InfoStrings(Vec<String>),
+	/// Skip code blocks whose info string contains this string.
+	InfoString(String),
+}
+
+impl Default for CodeBlockFilter {
+	fn default() -> Self {
+		Self::Bool(false)
+	}
+}
+
+impl CodeBlockFilter {
+	/// Returns `true` if code block filtering is enabled in any form.
+	pub fn is_enabled(&self) -> bool {
+		match self {
+			Self::Bool(b) => *b,
+			Self::InfoString(_) => true,
+			Self::InfoStrings(v) => !v.is_empty(),
+		}
+	}
+
+	/// Returns `true` if a code block with the given info string should have
+	/// its mdt tags skipped.
+	pub fn should_skip(&self, info_string: &str) -> bool {
+		match self {
+			Self::Bool(b) => *b,
+			Self::InfoString(s) => info_string.contains(s.as_str()),
+			Self::InfoStrings(v) => v.iter().any(|s| info_string.contains(s.as_str())),
+		}
+	}
+}
+
 /// Configuration for excluding files and directories from scanning.
+///
+/// Patterns follow gitignore syntax and are applied on top of any `.gitignore`
+/// rules (unless `disable_gitignore` is set). Supports negation (`!pattern`),
+/// directory markers (trailing `/`), and all standard gitignore wildcards.
 #[derive(Debug, Default, Deserialize)]
 pub struct ExcludeConfig {
-	/// Glob patterns for directories or files to skip during scanning.
-	/// These are relative to the project root.
+	/// Gitignore-style patterns for files and directories to skip during
+	/// scanning. These are relative to the project root.
+	///
+	/// Examples: `"build/"`, `"*.generated.md"`, `"!important.md"`.
 	#[serde(default)]
 	pub patterns: Vec<String>,
+	/// Controls whether mdt tags inside fenced code blocks are processed.
+	///
+	/// - `false` (default): tags in code blocks are processed normally.
+	/// - `true`: tags inside **all** fenced code blocks are skipped.
+	/// - A string (e.g., `"ignore"`): tags in code blocks whose info string
+	///   contains the given string are skipped.
+	/// - An array of strings: tags in code blocks whose info string contains
+	///   **any** of the given strings are skipped.
+	#[serde(default)]
+	pub markdown_codeblocks: CodeBlockFilter,
+	/// Block names to exclude from processing. Any provider or consumer
+	/// block whose name appears in this list is completely ignored — it
+	/// won't be scanned, matched, or updated.
+	#[serde(default)]
+	pub blocks: Vec<String>,
 }
 
 /// Configuration for including additional files in scanning.
@@ -85,19 +149,6 @@ pub struct ExcludeConfig {
 pub struct IncludeConfig {
 	/// Additional glob patterns for files to scan.
 	/// These are relative to the project root.
-	#[serde(default)]
-	pub patterns: Vec<String>,
-}
-
-/// Configuration for ignoring files using gitignore-style patterns.
-///
-/// These patterns follow the same syntax as `.gitignore` files and are applied
-/// on top of any `.gitignore` rules (unless `disable_gitignore` is set).
-#[derive(Debug, Default, Deserialize)]
-pub struct IgnoreConfig {
-	/// Gitignore-style patterns for files and directories to skip.
-	/// These are relative to the project root and follow `.gitignore` syntax
-	/// (e.g., `build/`, `*.generated.md`, `!important.md`).
 	#[serde(default)]
 	pub patterns: Vec<String>,
 }

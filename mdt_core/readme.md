@@ -20,7 +20,7 @@
 
 ```toml
 [dependencies]
-mdt_core = "0.2.0"
+mdt_core = "0.3.0"
 ```
 
 <!-- {/mdtCoreInstall} -->

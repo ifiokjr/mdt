@@ -11,7 +11,7 @@ Create `mdt.toml` in your project root:
 package = "package.json"
 
 [exclude]
-patterns = ["vendor/**", "dist/**"]
+patterns = ["vendor/", "dist/"]
 ```
 
 ## Sections
@@ -41,19 +41,47 @@ See [Data Interpolation](./data-interpolation.md) for full details.
 
 ### `[exclude]` — Exclude patterns
 
-Glob patterns for files and directories to skip during scanning:
+Patterns for files and directories to skip during scanning. Uses **gitignore-style syntax** — the same pattern format as `.gitignore` files, including negation (`!`), directory markers (`/`), wildcards (`*`, `**`), and character classes.
 
 ```toml
 [exclude]
 patterns = [
-	"vendor/**",
-	"dist/**",
-	"generated/**",
+	"vendor/",
+	"dist/",
+	"generated/",
 	"**/*.generated.md",
+	"!generated/keep-this.md",
 ]
 ```
 
 These patterns are checked relative to the project root. In addition to your explicit patterns, mdt always skips hidden directories (`.git`, `.vscode`, etc.), `node_modules/`, and `target/`.
+
+#### `markdown_codeblocks` — Skip tags in code blocks
+
+Controls whether mdt tags inside fenced code blocks are processed. This is useful when your markdown files contain code examples that show mdt tag syntax but should not be treated as real tags.
+
+```toml
+[exclude]
+# Skip tags inside ALL fenced code blocks
+markdown_codeblocks = true
+
+# Skip only code blocks whose info string contains "ignore"
+markdown_codeblocks = "ignore"
+
+# Skip code blocks whose info string contains any of these
+markdown_codeblocks = ["ignore", "example"]
+```
+
+The default is `false`, meaning tags in code blocks are processed normally.
+
+#### `blocks` — Exclude specific block names
+
+Array of block names to exclude. Any block (provider or consumer) whose name appears in this list is completely ignored.
+
+```toml
+[exclude]
+blocks = ["draft-section", "deprecated-api"]
+```
 
 ### `[include]` — Include patterns
 
@@ -131,7 +159,9 @@ package = "package.json"
 cargo = "crates/my-lib/Cargo.toml"
 
 [exclude]
-patterns = ["vendor/**", "dist/**", "*.generated.md"]
+patterns = ["vendor/", "dist/", "*.generated.md"]
+blocks = ["draft-section"]
+markdown_codeblocks = true
 
 [include]
 patterns = ["src/**"]

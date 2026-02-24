@@ -48,18 +48,19 @@ error: failed to load data file `missing.json`: No such file or directory
 
 ### `[exclude]`
 
-Glob patterns for files and directories to skip during scanning.
+Patterns for files and directories to skip during scanning. Uses **gitignore-style syntax** — the same pattern format as `.gitignore` files, including negation (`!`), directory markers (`/`), wildcards (`*`, `**`), and character classes.
 
 ```toml
 [exclude]
 patterns = [
-	"vendor/**",
-	"dist/**",
+	"vendor/",
+	"dist/",
 	"**/*.generated.md",
+	"!dist/important.md",
 ]
 ```
 
-**`patterns`:** Array of glob strings. Matched against file paths relative to the project root.
+**`patterns`:** Array of gitignore-style pattern strings. Matched against file paths relative to the project root.
 
 These patterns are applied **in addition to** the built-in exclusions:
 
@@ -67,6 +68,34 @@ These patterns are applied **in addition to** the built-in exclusions:
 - `node_modules/`
 - `target/`
 - Directories containing their own `mdt.toml` (sub-project boundaries)
+
+**`markdown_codeblocks`:** Controls whether mdt tags inside fenced code blocks in source files are processed.
+
+| Value                      | Behavior                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `false` (default)          | Tags in code blocks are processed normally                                    |
+| `true`                     | Tags in ALL fenced code blocks are skipped                                    |
+| A string (e.g. `"ignore"`) | Tags in code blocks whose info string contains the string are skipped         |
+| An array of strings        | Tags in code blocks whose info string contains ANY of the strings are skipped |
+
+```toml
+[exclude]
+# Skip tags inside all fenced code blocks
+markdown_codeblocks = true
+
+# Or skip only code blocks with specific info strings
+markdown_codeblocks = "ignore"
+
+# Or skip code blocks matching any of several info strings
+markdown_codeblocks = ["ignore", "example", "no-sync"]
+```
+
+**`blocks`:** Array of block names to exclude. Any block (provider or consumer) whose name is in this list is completely ignored during scanning and updating.
+
+```toml
+[exclude]
+blocks = ["draft-section", "deprecated-api"]
+```
 
 ### `[include]`
 
@@ -149,13 +178,15 @@ package = "package.json"
 cargo = "my-lib/Cargo.toml"
 config = "config.yaml"
 
-# Skip these paths during scanning
+# Skip these paths during scanning (gitignore-style patterns)
 [exclude]
 patterns = [
-	"vendor/**",
-	"dist/**",
-	"coverage/**",
+	"vendor/",
+	"dist/",
+	"coverage/",
 ]
+blocks = ["draft-section"]
+markdown_codeblocks = true
 
 # Only scan source files matching these patterns
 [include]
@@ -183,7 +214,7 @@ package = "package.json"
 If `mdt.toml` doesn't exist, mdt uses defaults:
 
 - No data interpolation (template variables pass through unchanged)
-- No extra exclusions (only built-in exclusions apply)
+- No extra exclusions (only built-in exclusions apply, no block or code block filtering)
 - No include filtering (all scannable files are scanned)
 - Templates found anywhere in the project tree
 - `pad_blocks` defaults to `false`

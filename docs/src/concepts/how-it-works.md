@@ -54,7 +54,9 @@ The scanner automatically ignores:
 - `node_modules/`
 - `target/` (Rust build output)
 - Directories with their own `mdt.toml` (treated as separate projects)
-- Files matching patterns in the `[exclude]` config section
+- Files matching gitignore-style patterns in the `[exclude]` config section
+- Blocks whose names appear in `[exclude] blocks`
+- Tags inside fenced code blocks when `[exclude] markdown_codeblocks` is configured
 
 ## Matching rules
 
