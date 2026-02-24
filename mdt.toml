@@ -5,5 +5,10 @@ cargo_mdt_cli = "mdt_cli/Cargo.toml"
 cargo_mdt_lsp = "mdt_lsp/Cargo.toml"
 cargo_mdt_mcp = "mdt_mcp/Cargo.toml"
 
-[ignore]
-patterns = ["mdt_cli/tests/fixtures/**"]
+[exclude]
+patterns = [
+	"**/tests/",
+	"**/__tests.rs",
+	"**/snapshots/",
+]
+markdown_codeblocks = true

@@ -3,6 +3,7 @@ use markdown::unist::Point as UnistPoint;
 use markdown::unist::Position as UnistPosition;
 
 use crate::MdtResult;
+use crate::config::CodeBlockFilter;
 use crate::lexer::memstr;
 use crate::lexer::tokenize;
 use crate::parser::Block;
@@ -19,10 +20,27 @@ pub fn parse_source(content: &str) -> MdtResult<Vec<Block>> {
 }
 
 /// Parse source code content and return blocks together with diagnostics.
+/// When `filter` is enabled, HTML comments inside fenced code blocks
+/// (within doc comments) are excluded from scanning.
 pub fn parse_source_with_diagnostics(
 	content: &str,
+	filter: &CodeBlockFilter,
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
-	let html_nodes = extract_html_comments(content);
+	let mut html_nodes = extract_html_comments(content);
+
+	if filter.is_enabled() {
+		let code_block_ranges = find_fenced_code_block_ranges(content, filter);
+		html_nodes.retain(|node| {
+			let Some(pos) = &node.position else {
+				return true;
+			};
+			let offset = pos.start.offset;
+			!code_block_ranges
+				.iter()
+				.any(|range| offset >= range.start && offset < range.end)
+		});
+	}
+
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups_with_diagnostics(&token_groups)
 }
@@ -110,4 +128,91 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 	}
 
 	nodes
+}
+
+/// A byte range representing the content region of a fenced code block.
+struct CodeBlockRange {
+	start: usize,
+	end: usize,
+}
+
+/// Common comment prefixes stripped when detecting fenced code blocks in source
+/// files. Order matters — longer prefixes are checked first to avoid partial
+/// matches.
+const COMMENT_PREFIXES: &[&str] = &[
+	"///!", "//!", "///", "//", "##", "#", "* ", "**", "*", ";", "--",
+];
+
+/// Strip leading whitespace and a single comment prefix from a line,
+/// returning the remaining text after stripping.
+fn strip_comment_prefix(line: &str) -> &str {
+	let trimmed = line.trim_start();
+	for prefix in COMMENT_PREFIXES {
+		if let Some(rest) = trimmed.strip_prefix(prefix) {
+			// Strip one optional space after the prefix.
+			return rest.strip_prefix(' ').unwrap_or(rest);
+		}
+	}
+	trimmed
+}
+
+/// Find byte ranges of fenced code block content in raw source text.
+///
+/// This detects fenced code blocks that appear inside doc comments (for
+/// example, triple-backtick fences prefixed with `///`) and returns the byte
+/// ranges of their content so that HTML comments within can be filtered out.
+fn find_fenced_code_block_ranges(content: &str, filter: &CodeBlockFilter) -> Vec<CodeBlockRange> {
+	let mut ranges = Vec::new();
+	let mut in_code_block = false;
+	let mut block_start = 0;
+	let mut should_skip_current = false;
+	let mut fence_char = '`';
+	let mut fence_len = 0;
+
+	let mut offset = 0;
+
+	for line in content.split('\n') {
+		let line_end = offset + line.len();
+		let stripped = strip_comment_prefix(line);
+
+		if in_code_block {
+			// Check for closing fence: same char, at least same length, no
+			// info string.
+			let closing_fence_len = stripped.chars().take_while(|&c| c == fence_char).count();
+			let after_fence = &stripped[closing_fence_len..];
+			if closing_fence_len >= fence_len && after_fence.trim().is_empty() {
+				if should_skip_current {
+					ranges.push(CodeBlockRange {
+						start: block_start,
+						end: line_end,
+					});
+				}
+				in_code_block = false;
+			}
+		} else {
+			// Check for opening fence: 3+ backticks or tildes.
+			let backtick_len = stripped.chars().take_while(|&c| c == '`').count();
+			let tilde_len = stripped.chars().take_while(|&c| c == '~').count();
+
+			let (fc, fl) = if backtick_len >= 3 {
+				('`', backtick_len)
+			} else if tilde_len >= 3 {
+				('~', tilde_len)
+			} else {
+				offset = line_end + 1; // +1 for the \n
+				continue;
+			};
+
+			let info_string = stripped[fl..].trim();
+			fence_char = fc;
+			fence_len = fl;
+			in_code_block = true;
+			block_start = offset;
+			should_skip_current = filter.should_skip(info_string);
+		}
+
+		offset = line_end + 1; // +1 for the \n
+	}
+
+	ranges
 }

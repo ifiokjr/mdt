@@ -6,6 +6,7 @@ use similar_asserts::assert_eq;
 
 use super::__fixtures::*;
 use super::*;
+use crate::config::CodeBlockFilter;
 use crate::lexer::tokenize;
 use crate::parser::ParseDiagnostic;
 use crate::parser::parse_with_diagnostics;
@@ -1908,12 +1909,13 @@ fn file_too_large_error() {
 
 	let result = scan_project_with_options(
 		dir.path(),
-		&globset::GlobSet::empty(),
+		&[],
 		&globset::GlobSet::empty(),
 		&[],
 		100, // 100-byte limit
-		&[],
 		true,
+		&CodeBlockFilter::default(),
+		&[],
 	);
 
 	assert!(result.is_err());
@@ -1933,12 +1935,13 @@ fn file_within_size_limit_succeeds() {
 
 	let result = scan_project_with_options(
 		dir.path(),
-		&globset::GlobSet::empty(),
+		&[],
 		&globset::GlobSet::empty(),
 		&[],
 		10_000, // 10KB limit
-		&[],
 		true,
+		&CodeBlockFilter::default(),
+		&[],
 	);
 
 	assert!(result.is_ok());
@@ -3277,16 +3280,16 @@ fn pad_blocks_csharp_comments() -> MdtResult<()> {
 	Ok(())
 }
 
-// --- Ignore configuration tests ---
+// --- Exclude configuration tests ---
 
 #[test]
-fn custom_ignore_patterns_skip_matching_files() -> MdtResult<()> {
+fn custom_exclude_patterns_skip_matching_files() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	// Config with an ignore pattern that skips all files in "generated/".
+	// Config with an exclude pattern that skips all files in "generated/".
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[ignore]\npatterns = [\"generated/\"]\n\ndisable_gitignore = true\n",
+		"[exclude]\npatterns = [\"generated/\"]\n\ndisable_gitignore = true\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -3305,7 +3308,7 @@ fn custom_ignore_patterns_skip_matching_files() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	// Consumer in a generated directory — should be ignored.
+	// Consumer in a generated directory — should be excluded.
 	std::fs::create_dir_all(tmp.path().join("generated")).unwrap_or_else(|e| panic!("mkdir: {e}"));
 	std::fs::write(
 		tmp.path().join("generated/output.md"),
@@ -3328,13 +3331,13 @@ fn custom_ignore_patterns_skip_matching_files() -> MdtResult<()> {
 }
 
 #[test]
-fn custom_ignore_glob_pattern_skips_files() -> MdtResult<()> {
+fn custom_exclude_glob_pattern_skips_files() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	// Ignore all files matching *.generated.md
+	// Exclude all files matching *.generated.md
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[ignore]\npatterns = [\"*.generated.md\"]\n\ndisable_gitignore = true\n",
+		"[exclude]\npatterns = [\"*.generated.md\"]\n\ndisable_gitignore = true\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -3351,7 +3354,7 @@ fn custom_ignore_glob_pattern_skips_files() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	// Should be ignored because of the *.generated.md pattern.
+	// Should be excluded because of the *.generated.md pattern.
 	std::fs::write(
 		tmp.path().join("api.generated.md"),
 		"<!-- {=info} -->\nstale\n<!-- {/info} -->\n",
@@ -3453,15 +3456,15 @@ fn disable_gitignore_scans_all_files() -> MdtResult<()> {
 }
 
 #[test]
-fn ignore_and_gitignore_combined() -> MdtResult<()> {
+fn exclude_and_gitignore_combined() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	// .gitignore ignores "build/", custom ignore patterns ignore "generated/".
+	// .gitignore ignores "build/", custom exclude patterns exclude "generated/".
 	std::fs::write(tmp.path().join(".gitignore"), "build/\n")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[ignore]\npatterns = [\"generated/\"]\n",
+		"[exclude]\npatterns = [\"generated/\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -3486,7 +3489,7 @@ fn ignore_and_gitignore_combined() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	// Consumer in generated/ — skipped by custom ignore.
+	// Consumer in generated/ — skipped by custom exclude.
 	std::fs::create_dir_all(tmp.path().join("generated")).unwrap_or_else(|e| panic!("mkdir: {e}"));
 	std::fs::write(
 		tmp.path().join("generated/api.md"),
@@ -3509,16 +3512,16 @@ fn ignore_and_gitignore_combined() -> MdtResult<()> {
 }
 
 #[test]
-fn ignore_negation_pattern_re_includes_file() -> MdtResult<()> {
+fn exclude_negation_pattern_re_includes_file() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	// Ignore all files in output/ via a wildcard, but re-include important.md.
+	// Exclude all files in output/ via a wildcard, but re-include important.md.
 	// Note: using "output/*" rather than "output/" — the latter blocks directory
 	// traversal entirely, which prevents the negation from ever being evaluated
 	// (matching real gitignore semantics).
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"disable_gitignore = true\n\n[ignore]\npatterns = [\"output/*\", \
+		"disable_gitignore = true\n\n[exclude]\npatterns = [\"output/*\", \
 		 \"!output/important.md\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
@@ -3531,7 +3534,7 @@ fn ignore_negation_pattern_re_includes_file() -> MdtResult<()> {
 
 	std::fs::create_dir_all(tmp.path().join("output")).unwrap_or_else(|e| panic!("mkdir: {e}"));
 
-	// Should be ignored.
+	// Should be excluded.
 	std::fs::write(
 		tmp.path().join("output/normal.md"),
 		"<!-- {=note} -->\nold\n<!-- {/note} -->\n",
@@ -3559,7 +3562,7 @@ fn ignore_negation_pattern_re_includes_file() -> MdtResult<()> {
 }
 
 #[test]
-fn scan_project_with_options_ignore_patterns_parameter() -> MdtResult<()> {
+fn scan_project_with_options_exclude_patterns_parameter() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
 	std::fs::write(
@@ -3584,12 +3587,13 @@ fn scan_project_with_options_ignore_patterns_parameter() -> MdtResult<()> {
 	let ignore_pats = vec!["dist/".to_string()];
 	let result = scan_project_with_options(
 		tmp.path(),
-		&globset::GlobSet::empty(),
+		&ignore_pats,
 		&globset::GlobSet::empty(),
 		&[],
 		crate::config::DEFAULT_MAX_FILE_SIZE,
-		&ignore_pats,
 		true, // disable gitignore so we're only testing custom patterns
+		&CodeBlockFilter::default(),
+		&[],
 	)?;
 
 	assert_eq!(result.consumers.len(), 1);
@@ -3605,25 +3609,25 @@ fn scan_project_with_options_ignore_patterns_parameter() -> MdtResult<()> {
 }
 
 #[test]
-fn config_parses_ignore_section() {
+fn config_parses_exclude_section() {
 	let toml_content = r#"
 disable_gitignore = true
 
-[ignore]
+[exclude]
 patterns = ["build/", "*.bak"]
 "#;
 	let config: crate::config::MdtConfig =
 		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
-	assert_eq!(config.ignore.patterns, vec!["build/", "*.bak"]);
+	assert_eq!(config.exclude.patterns, vec!["build/", "*.bak"]);
 	assert!(config.disable_gitignore);
 }
 
 #[test]
-fn config_defaults_for_ignore_fields() {
+fn config_defaults_for_exclude_fields() {
 	let toml_content = "";
 	let config: crate::config::MdtConfig =
 		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
-	assert!(config.ignore.patterns.is_empty());
+	assert!(config.exclude.patterns.is_empty());
 	assert!(!config.disable_gitignore);
 }
 
@@ -4198,13 +4202,10 @@ fn config_load_with_all_sections() -> MdtResult<()> {
 			"pkg = \"package.json\"\n",
 			"\n",
 			"[exclude]\n",
-			"patterns = [\"vendor/**\"]\n",
+			"patterns = [\"vendor/**\", \"build/\"]\n",
 			"\n",
 			"[include]\n",
 			"patterns = [\"extra/**/*.txt\"]\n",
-			"\n",
-			"[ignore]\n",
-			"patterns = [\"build/\"]\n",
 			"\n",
 			"[templates]\n",
 			"paths = [\"shared/templates\"]\n",
@@ -4216,9 +4217,8 @@ fn config_load_with_all_sections() -> MdtResult<()> {
 	assert_eq!(config.max_file_size, 5000);
 	assert!(config.pad_blocks);
 	assert!(config.disable_gitignore);
-	assert_eq!(config.exclude.patterns.len(), 1);
+	assert_eq!(config.exclude.patterns.len(), 2);
 	assert_eq!(config.include.patterns.len(), 1);
-	assert_eq!(config.ignore.patterns.len(), 1);
 	assert_eq!(config.templates.paths.len(), 1);
 
 	Ok(())
@@ -4426,12 +4426,13 @@ fn scan_with_include_patterns() -> MdtResult<()> {
 
 	let project = scan_project_with_options(
 		tmp.path(),
-		&globset::GlobSet::empty(),
+		&[],
 		&include_set,
 		&[],
 		DEFAULT_MAX_FILE_SIZE,
-		&[],
 		true,
+		&CodeBlockFilter::default(),
+		&[],
 	)?;
 
 	// The extra/test.rs consumer should be found via include pattern
@@ -4476,12 +4477,13 @@ fn scan_with_template_paths() -> MdtResult<()> {
 	let template_paths = vec![PathBuf::from("shared/templates")];
 	let project = scan_project_with_options(
 		tmp.path(),
-		&globset::GlobSet::empty(),
+		&[],
 		&globset::GlobSet::empty(),
 		&template_paths,
 		DEFAULT_MAX_FILE_SIZE,
-		&[],
 		true,
+		&CodeBlockFilter::default(),
+		&[],
 	)?;
 
 	assert!(
@@ -5074,7 +5076,6 @@ fn config_default_max_file_size() {
 	assert!(config.data.is_empty());
 	assert!(config.exclude.patterns.is_empty());
 	assert!(config.include.patterns.is_empty());
-	assert!(config.ignore.patterns.is_empty());
 	assert!(config.templates.paths.is_empty());
 }
 
@@ -5472,13 +5473,10 @@ fn config_load_full_config_from_disk() -> MdtResult<()> {
 			"cargo = \"Cargo.toml\"\n",
 			"\n",
 			"[exclude]\n",
-			"patterns = [\"vendor/**\"]\n",
+			"patterns = [\"vendor/**\", \"build/\"]\n",
 			"\n",
 			"[include]\n",
 			"patterns = [\"extra/**/*.txt\"]\n",
-			"\n",
-			"[ignore]\n",
-			"patterns = [\"build/\"]\n",
 			"\n",
 			"[templates]\n",
 			"paths = [\"shared/templates\"]\n",
@@ -5502,9 +5500,8 @@ fn config_load_full_config_from_disk() -> MdtResult<()> {
 	assert!(config.pad_blocks);
 	assert!(config.disable_gitignore);
 	assert_eq!(config.data.len(), 2);
-	assert_eq!(config.exclude.patterns, vec!["vendor/**"]);
+	assert_eq!(config.exclude.patterns, vec!["vendor/**", "build/"]);
 	assert_eq!(config.include.patterns, vec!["extra/**/*.txt"]);
-	assert_eq!(config.ignore.patterns, vec!["build/"]);
 	assert_eq!(
 		config.templates.paths,
 		vec![PathBuf::from("shared/templates")]
@@ -6830,13 +6827,10 @@ fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 			"pkg = \"package.json\"\n",
 			"\n",
 			"[exclude]\n",
-			"patterns = [\"vendor/**\"]\n",
+			"patterns = [\"vendor/**\", \"build/\"]\n",
 			"\n",
 			"[include]\n",
 			"patterns = [\"**/*.txt\"]\n",
-			"\n",
-			"[ignore]\n",
-			"patterns = [\"build/\"]\n",
 			"\n",
 			"[templates]\n",
 			"paths = [\"shared\"]\n",
@@ -6848,9 +6842,8 @@ fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 	assert_eq!(config.max_file_size, 5_242_880);
 	assert!(config.pad_blocks);
 	assert!(config.disable_gitignore);
-	assert_eq!(config.exclude.patterns, vec!["vendor/**"]);
+	assert_eq!(config.exclude.patterns, vec!["vendor/**", "build/"]);
 	assert_eq!(config.include.patterns, vec!["**/*.txt"]);
-	assert_eq!(config.ignore.patterns, vec!["build/"]);
 	assert_eq!(config.templates.paths, vec![PathBuf::from("shared")]);
 	assert_eq!(config.data.get("pkg"), Some(&PathBuf::from("package.json")));
 
@@ -6872,7 +6865,7 @@ fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 			"[data]\n",
 			"info = \"info.yaml\"\n",
 			"\n",
-			"[ignore]\n",
+			"[exclude]\n",
 			"patterns = [\"ignored/**\"]\n",
 		),
 	)
@@ -6915,4 +6908,226 @@ fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 	assert!(content.contains("3.0.0"));
 
 	Ok(())
+}
+
+// =============================================================================
+// Feature 1: [exclude] markdown_codeblocks
+// =============================================================================
+
+#[test]
+fn config_parses_exclude_markdown_codeblocks_true() {
+	let toml_content = "[exclude]\nmarkdown_codeblocks = true\n";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(
+		matches!(
+			config.exclude.markdown_codeblocks,
+			CodeBlockFilter::Bool(true)
+		),
+		"expected CodeBlockFilter::Bool(true)"
+	);
+	assert!(config.exclude.markdown_codeblocks.is_enabled());
+	assert!(config.exclude.markdown_codeblocks.should_skip(""));
+}
+
+#[test]
+fn config_parses_exclude_markdown_codeblocks_string() {
+	let toml_content = "[exclude]\nmarkdown_codeblocks = \"ignore\"\n";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(
+		matches!(
+			config.exclude.markdown_codeblocks,
+			CodeBlockFilter::InfoString(ref s) if s == "ignore"
+		),
+		"expected CodeBlockFilter::InfoString(\"ignore\")"
+	);
+	assert!(config.exclude.markdown_codeblocks.is_enabled());
+	assert!(
+		config
+			.exclude
+			.markdown_codeblocks
+			.should_skip("rust,ignore")
+	);
+	assert!(!config.exclude.markdown_codeblocks.should_skip("rust"));
+}
+
+#[test]
+fn config_parses_exclude_markdown_codeblocks_array() {
+	let toml_content = "[exclude]\nmarkdown_codeblocks = [\"ignore\", \"skip\"]\n";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(
+		matches!(config.exclude.markdown_codeblocks, CodeBlockFilter::InfoStrings(ref v) if v.len() == 2),
+		"expected CodeBlockFilter::InfoStrings with 2 elements"
+	);
+	assert!(config.exclude.markdown_codeblocks.is_enabled());
+	assert!(
+		config
+			.exclude
+			.markdown_codeblocks
+			.should_skip("rust,ignore")
+	);
+	assert!(
+		config
+			.exclude
+			.markdown_codeblocks
+			.should_skip("python,skip")
+	);
+	assert!(!config.exclude.markdown_codeblocks.should_skip("rust"));
+}
+
+#[test]
+fn config_defaults_exclude_markdown_codeblocks_to_false() {
+	let toml_content = "";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(
+		matches!(
+			config.exclude.markdown_codeblocks,
+			CodeBlockFilter::Bool(false)
+		),
+		"expected CodeBlockFilter::Bool(false)"
+	);
+	assert!(!config.exclude.markdown_codeblocks.is_enabled());
+}
+
+#[test]
+fn source_scanner_filters_codeblock_html_comments() -> MdtResult<()> {
+	let content = "\
+/// ```markdown
+/// <!-- {=example} -->
+/// Some content
+/// <!-- {/example} -->
+/// ```
+";
+
+	// With filtering enabled (Bool(true)), the block inside the code fence should
+	// be skipped entirely.
+	let filter_on = CodeBlockFilter::Bool(true);
+	let (blocks, diagnostics) = parse_source_with_diagnostics(content, &filter_on)?;
+	assert!(
+		blocks.is_empty(),
+		"expected no blocks when codeblock filter is enabled, got {}",
+		blocks.len()
+	);
+	assert!(
+		diagnostics.is_empty(),
+		"expected no diagnostics when codeblock filter is enabled, got {}",
+		diagnostics.len()
+	);
+
+	// With filtering disabled (Bool(false)), the block should be found.
+	let filter_off = CodeBlockFilter::Bool(false);
+	let (blocks, _diagnostics) = parse_source_with_diagnostics(content, &filter_off)?;
+	assert_eq!(
+		blocks.len(),
+		1,
+		"expected 1 block when codeblock filter is disabled, got {}",
+		blocks.len()
+	);
+
+	Ok(())
+}
+
+#[test]
+fn source_scanner_filters_codeblock_with_info_string_match() -> MdtResult<()> {
+	let content = "\
+/// ```rust,ignore
+/// <!-- {=ignored} -->
+/// content
+/// <!-- {/ignored} -->
+/// ```
+/// ```rust
+/// <!-- {=kept} -->
+/// content
+/// <!-- {/kept} -->
+/// ```
+";
+
+	let filter = CodeBlockFilter::InfoString("ignore".to_string());
+	let (blocks, _diagnostics) = parse_source_with_diagnostics(content, &filter)?;
+	assert_eq!(
+		blocks.len(),
+		1,
+		"expected 1 block (only 'kept'), got {}",
+		blocks.len()
+	);
+	assert_eq!(blocks[0].name, "kept");
+
+	Ok(())
+}
+
+// =============================================================================
+// Feature 2: [exclude] blocks
+// =============================================================================
+
+#[test]
+fn config_parses_exclude_blocks() {
+	let toml_content = "[exclude]\nblocks = [\"internal\", \"debug\"]\n";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(
+		config.exclude.blocks,
+		vec!["internal".to_string(), "debug".to_string()]
+	);
+}
+
+#[test]
+fn excluded_blocks_are_skipped_during_scan() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[exclude]\nblocks = [\"internal\"]\n\ndisable_gitignore = true\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n\n<!-- {@internal} -->\n\nSecret \
+		 stuff.\n\n<!-- {/internal} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nold greeting\n\n<!-- {/greeting} -->\n\n<!-- {=internal} \
+		 -->\n\nold secret\n\n<!-- {/internal} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+
+	// Only "greeting" provider should be found, not "internal".
+	assert_eq!(
+		ctx.project.providers.len(),
+		1,
+		"expected 1 provider, got {}",
+		ctx.project.providers.len()
+	);
+	assert!(
+		ctx.project.providers.contains_key("greeting"),
+		"expected provider 'greeting' to be present"
+	);
+	assert!(
+		!ctx.project.providers.contains_key("internal"),
+		"expected provider 'internal' to be excluded"
+	);
+
+	// Only "greeting" consumer should be found, not "internal".
+	assert_eq!(
+		ctx.project.consumers.len(),
+		1,
+		"expected 1 consumer, got {}",
+		ctx.project.consumers.len()
+	);
+	assert_eq!(ctx.project.consumers[0].block.name, "greeting");
+
+	Ok(())
+}
+
+#[test]
+fn excluded_blocks_defaults_to_empty() {
+	let toml_content = "";
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert!(
+		config.exclude.blocks.is_empty(),
+		"expected exclude.blocks to default to empty"
+	);
 }

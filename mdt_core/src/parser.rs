@@ -508,13 +508,13 @@ impl BlockCreator {
 /// A parsed template block representing either a provider or consumer.
 ///
 /// Provider blocks are defined in `*.t.md` template files using
-/// `<!-- {@name} -->...<!-- {/name} -->` syntax. They supply content that gets
-/// distributed to matching consumers.
+/// `\<!-- {@name} --\>...\<!-- {/name} --\>` syntax. They supply content that
+/// gets distributed to matching consumers.
 ///
 /// Consumer blocks appear in any scanned file using
-/// `<!-- {=name} -->...<!-- {/name} -->` syntax. Their content is replaced with
-/// the matching provider's content (after applying any transformers) when
-/// `mdt update` is run.
+/// `\<!-- {=name} --\>...\<!-- {/name} --\>` syntax. Their content is replaced
+/// with the matching provider's content (after applying any transformers)
+/// when `mdt update` is run.
 ///
 /// Each block tracks its [`name`](Block::name) for provider-consumer matching,
 /// its [`BlockType`], the [`Position`] of its opening and closing tags, and any
@@ -525,10 +525,10 @@ pub struct Block {
 	pub name: String,
 	/// Whether this is a provider or consumer block.
 	pub r#type: BlockType,
-	/// Position of the opening tag (e.g., `<!-- {@name} -->` or `<!-- {=name}
-	/// -->`).
+	/// Position of the opening tag (e.g., `\<!-- {@name} --\>` or
+	/// `\<!-- {=name} --\>`).
 	pub opening: Position,
-	/// Position of the closing tag (`<!-- {/name} -->`).
+	/// Position of the closing tag (`\<!-- {/name} --\>`).
 	pub closing: Position,
 	/// Transformers to apply when injecting provider content into this
 	/// consumer.

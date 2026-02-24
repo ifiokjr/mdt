@@ -137,7 +137,7 @@ fn parse_document_content(uri: &Uri, content: &str) -> (Vec<Block>, Vec<ParseDia
 	let result = if is_markdown {
 		parse_with_diagnostics(content)
 	} else {
-		parse_source_with_diagnostics(content)
+		parse_source_with_diagnostics(content, &mdt_core::CodeBlockFilter::default())
 	};
 
 	result.unwrap_or_default()

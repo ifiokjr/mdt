@@ -13,6 +13,7 @@ use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
+use crate::config::CodeBlockFilter;
 use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
 use crate::engine::validate_transformers;
@@ -155,12 +156,13 @@ pub struct ConsumerEntry {
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	scan_project_with_options(
 		root,
-		&GlobSet::empty(),
+		&[],
 		&GlobSet::empty(),
 		&[],
 		DEFAULT_MAX_FILE_SIZE,
-		&[],
 		false,
+		&CodeBlockFilter::default(),
+		&[],
 	)
 }
 
@@ -175,10 +177,6 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		.as_ref()
 		.map(|c| &c.include.patterns[..])
 		.unwrap_or_default();
-	let ignore_patterns = config
-		.as_ref()
-		.map(|c| &c.ignore.patterns[..])
-		.unwrap_or_default();
 	let template_paths = config
 		.as_ref()
 		.map(|c| &c.templates.paths[..])
@@ -187,16 +185,25 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		.as_ref()
 		.map_or(DEFAULT_MAX_FILE_SIZE, |c| c.max_file_size);
 	let disable_gitignore = config.as_ref().is_some_and(|c| c.disable_gitignore);
-	let exclude_set = build_glob_set(exclude_patterns);
+	let markdown_codeblocks = config
+		.as_ref()
+		.map(|c| &c.exclude.markdown_codeblocks)
+		.cloned()
+		.unwrap_or_default();
+	let excluded_blocks = config
+		.as_ref()
+		.map(|c| &c.exclude.blocks[..])
+		.unwrap_or_default();
 	let include_set = build_glob_set(include_patterns);
 	let project = scan_project_with_options(
 		root,
-		&exclude_set,
+		exclude_patterns,
 		&include_set,
 		template_paths,
 		max_file_size,
-		ignore_patterns,
 		disable_gitignore,
+		&markdown_codeblocks,
+		excluded_blocks,
 	)?;
 	let pad_blocks = config.as_ref().is_some_and(|c| c.pad_blocks);
 	let data = match config {
@@ -234,24 +241,24 @@ pub fn normalize_line_endings(content: &str) -> String {
 /// Scan a directory with exclude/include patterns and extra template paths.
 pub(crate) fn scan_project_with_options(
 	root: &Path,
-	exclude_set: &GlobSet,
+	exclude_patterns: &[String],
 	include_set: &GlobSet,
 	template_paths: &[PathBuf],
 	max_file_size: u64,
-	ignore_patterns: &[String],
 	disable_gitignore: bool,
+	markdown_codeblocks: &CodeBlockFilter,
+	excluded_blocks: &[String],
 ) -> MdtResult<Project> {
 	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
 	let mut consumers = Vec::new();
 
-	let mut files = collect_files(root, exclude_set, ignore_patterns, disable_gitignore)?;
+	let mut files = collect_files(root, exclude_patterns, disable_gitignore)?;
 
 	// Collect files from additional template directories.
 	for template_dir in template_paths {
 		let abs_dir = root.join(template_dir);
 		if abs_dir.is_dir() {
-			let extra_files =
-				collect_files(&abs_dir, exclude_set, ignore_patterns, disable_gitignore)?;
+			let extra_files = collect_files(&abs_dir, exclude_patterns, disable_gitignore)?;
 			for f in extra_files {
 				if !files.contains(&f) {
 					files.push(f);
@@ -260,9 +267,12 @@ pub(crate) fn scan_project_with_options(
 		}
 	}
 
+	// Build exclude matcher for include filtering.
+	let custom_exclude = build_exclude_matcher(root, exclude_patterns)?;
+
 	// Collect files matching include patterns.
 	if !include_set.is_empty() {
-		collect_included_files(root, root, include_set, exclude_set, &mut files)?;
+		collect_included_files(root, root, include_set, &custom_exclude, &mut files)?;
 	}
 
 	let mut diagnostics: Vec<ProjectDiagnostic> = Vec::new();
@@ -283,7 +293,7 @@ pub(crate) fn scan_project_with_options(
 		let (blocks, parse_diagnostics) = if is_markdown_file(file) {
 			parse_with_diagnostics(&content)?
 		} else {
-			parse_source_with_diagnostics(&content)?
+			parse_source_with_diagnostics(&content, markdown_codeblocks)?
 		};
 
 		// Convert parse diagnostics to project diagnostics.
@@ -354,6 +364,11 @@ pub(crate) fn scan_project_with_options(
 		}
 
 		for block in blocks {
+			// Skip blocks whose names are in the excluded_blocks list.
+			if excluded_blocks.iter().any(|name| name == &block.name) {
+				continue;
+			}
+
 			let block_content = extract_content_between_tags(&content, &block);
 
 			match block.r#type {
@@ -422,19 +437,19 @@ pub fn extract_content_between_tags(source: &str, block: &Block) -> String {
 	source[start_offset..end_offset].to_string()
 }
 
-/// Build a `Gitignore` matcher from additional ignore patterns specified in
-/// `mdt.toml` `[ignore]`. These follow `.gitignore` syntax and are applied
+/// Build a `Gitignore` matcher from exclude patterns specified in
+/// `mdt.toml` `[exclude]`. These follow `.gitignore` syntax and are applied
 /// on top of any `.gitignore` rules.
-fn build_custom_ignore(root: &Path, patterns: &[String]) -> MdtResult<Gitignore> {
+fn build_exclude_matcher(root: &Path, patterns: &[String]) -> MdtResult<Gitignore> {
 	let mut builder = GitignoreBuilder::new(root);
 	for pattern in patterns {
 		builder.add_line(None, pattern).map_err(|e| {
-			MdtError::ConfigParse(format!("invalid ignore pattern `{pattern}`: {e}"))
+			MdtError::ConfigParse(format!("invalid exclude pattern `{pattern}`: {e}"))
 		})?;
 	}
 	builder
 		.build()
-		.map_err(|e| MdtError::ConfigParse(format!("failed to build ignore rules: {e}")))
+		.map_err(|e| MdtError::ConfigParse(format!("failed to build exclude rules: {e}")))
 }
 
 /// Build a `Gitignore` matcher from the project's `.gitignore` file (if any).
@@ -457,12 +472,11 @@ fn build_gitignore(root: &Path) -> Gitignore {
 /// Collect all markdown and relevant source files from a directory tree.
 ///
 /// When `disable_gitignore` is false (the default), files matched by the
-/// project's `.gitignore` are skipped. Additional `ignore_patterns` from
-/// `[ignore]` in `mdt.toml` are always applied on top.
+/// project's `.gitignore` are skipped. Exclude patterns from `[exclude]` in
+/// `mdt.toml` follow gitignore syntax and are always applied on top.
 fn collect_files(
 	root: &Path,
-	exclude_set: &GlobSet,
-	ignore_patterns: &[String],
+	exclude_patterns: &[String],
 	disable_gitignore: bool,
 ) -> MdtResult<Vec<PathBuf>> {
 	let mut files = Vec::new();
@@ -475,17 +489,16 @@ fn collect_files(
 		build_gitignore(root)
 	};
 
-	// Build custom ignore matcher from mdt.toml [ignore] patterns.
-	let custom_ignore = build_custom_ignore(root, ignore_patterns)?;
+	// Build exclude matcher from mdt.toml [exclude] patterns.
+	let custom_exclude = build_exclude_matcher(root, exclude_patterns)?;
 
 	walk_dir(
 		root,
 		root,
 		&mut files,
 		true,
-		exclude_set,
 		&gitignore,
-		&custom_ignore,
+		&custom_exclude,
 		&mut visited_dirs,
 	)?;
 	// Sort for deterministic ordering.
@@ -493,15 +506,13 @@ fn collect_files(
 	Ok(files)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn walk_dir(
 	root: &Path,
 	dir: &Path,
 	files: &mut Vec<PathBuf>,
 	is_root: bool,
-	exclude_set: &GlobSet,
 	gitignore: &Gitignore,
-	custom_ignore: &Gitignore,
+	custom_exclude: &Gitignore,
 	visited_dirs: &mut HashSet<PathBuf>,
 ) -> MdtResult<()> {
 	if !dir.is_dir() {
@@ -529,13 +540,6 @@ fn walk_dir(
 			}
 		}
 
-		// Check against exclude patterns using relative path.
-		if let Ok(rel_path) = path.strip_prefix(root) {
-			if !exclude_set.is_empty() && exclude_set.is_match(rel_path) {
-				continue;
-			}
-		}
-
 		let is_dir = path.is_dir();
 
 		// Check against gitignore patterns.
@@ -543,8 +547,8 @@ fn walk_dir(
 			continue;
 		}
 
-		// Check against custom ignore patterns from mdt.toml.
-		if custom_ignore.matched(&path, is_dir).is_ignore() {
+		// Check against exclude patterns from mdt.toml [exclude].
+		if custom_exclude.matched(&path, is_dir).is_ignore() {
 			continue;
 		}
 
@@ -559,9 +563,8 @@ fn walk_dir(
 				&path,
 				files,
 				false,
-				exclude_set,
 				gitignore,
-				custom_ignore,
+				custom_exclude,
 				visited_dirs,
 			)?;
 		} else if is_scannable_file(&path) {
@@ -577,7 +580,7 @@ fn collect_included_files(
 	root: &Path,
 	dir: &Path,
 	include_set: &GlobSet,
-	exclude_set: &GlobSet,
+	exclude_matcher: &Gitignore,
 	files: &mut Vec<PathBuf>,
 ) -> MdtResult<()> {
 	if !dir.is_dir() {
@@ -596,18 +599,21 @@ fn collect_included_files(
 			}
 		}
 
-		if let Ok(rel_path) = path.strip_prefix(root) {
-			if !exclude_set.is_empty() && exclude_set.is_match(rel_path) {
-				continue;
-			}
+		let is_dir = path.is_dir();
 
+		// Check against exclude patterns.
+		if exclude_matcher.matched(&path, is_dir).is_ignore() {
+			continue;
+		}
+
+		if let Ok(rel_path) = path.strip_prefix(root) {
 			if path.is_file() && include_set.is_match(rel_path) && !files.contains(&path) {
 				files.push(path.clone());
 			}
 		}
 
-		if path.is_dir() {
-			collect_included_files(root, &path, include_set, exclude_set, files)?;
+		if is_dir {
+			collect_included_files(root, &path, include_set, exclude_matcher, files)?;
 		}
 	}
 
