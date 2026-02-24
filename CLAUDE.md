@@ -72,9 +72,9 @@ Key style rules: hard tabs, max width 100, one import per line (`imports_granula
 ### Workspace Crates
 
 - **`crates/mdt_core`** — Core library (`mdt_core` on crates.io). Provides the lexer, parser, pattern matcher, project scanner, source file scanner, config loader, and template engine for processing markdown template tags. Uses `minijinja` for template rendering with data interpolation and `miette` for error reporting.
-- **`crates/mdt_cli`** — CLI tool. Provides `init`, `check`, `update`, `list`, `lsp`, and `mcp` commands for managing markdown templates via the command line. Uses `clap` for argument parsing. The binary is named `mdt`.
-- **`crates/mdt_lsp`** — LSP server. Provides language server protocol support for editor integration with diagnostics, completions, hover, go-to-definition, and code actions using `tower-lsp`.
-- **`crates/mdt_mcp`** — MCP server. Exposes mdt functionality to AI assistants via the Model Context Protocol using `rmcp`.
+- **`crates/mdt_cli`** — CLI tool (`mdt_cli` on crates.io). Provides `init`, `check`, `update`, `list`, `lsp`, and `mcp` commands for managing markdown templates via the command line. Uses `clap` for argument parsing. The binary is named `mdt`.
+- **`crates/mdt_lsp`** — LSP server (`mdt_lsp` on crates.io). Provides language server protocol support for editor integration with diagnostics, completions, hover, go-to-definition, and code actions using `tower-lsp`.
+- **`crates/mdt_mcp`** — MCP server (`mdt_mcp` on crates.io). Exposes mdt functionality to AI assistants via the Model Context Protocol using `rmcp`.
 - **`docs/`** — mdbook documentation.
 
 ### Internal Pipeline
