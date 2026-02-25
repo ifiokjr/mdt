@@ -28,6 +28,10 @@ pub const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 /// [templates]
 /// paths = ["shared/templates"]
 ///
+/// [padding]
+/// before = 1
+/// after = 1
+///
 /// disable_gitignore = false
 /// ```
 #[derive(Debug, Deserialize)]
@@ -48,12 +52,11 @@ pub struct MdtConfig {
 	/// Defaults to 10 MB.
 	#[serde(default = "default_max_file_size")]
 	pub max_file_size: u64,
-	/// When true, ensure a newline always separates the opening tag from the
-	/// content and the content from the closing tag. This prevents content
-	/// from running into tags when transformers produce output without
-	/// leading/trailing newlines. Defaults to `false`.
+	/// Padding configuration controlling blank lines between tags and content.
+	/// When absent, no padding is applied. When present, `before` and `after`
+	/// control how many blank lines separate tags from content.
 	#[serde(default)]
-	pub pad_blocks: bool,
+	pub padding: Option<PaddingConfig>,
 	/// When true, `.gitignore` files are not used for filtering. By default
 	/// (`false`), mdt respects `.gitignore` patterns and skips files that
 	/// would be ignored by git. Set to `true` when working outside a git
@@ -61,6 +64,63 @@ pub struct MdtConfig {
 	/// scanned — in that case, use `[exclude]` patterns instead.
 	#[serde(default)]
 	pub disable_gitignore: bool,
+}
+
+/// Controls the number of blank lines between a tag and its content.
+///
+/// - `false` — Content appears inline with the tag (no newline separator).
+/// - `0` — Content starts on the very next line (one newline, no blank lines).
+/// - `1` — One blank line between the tag and content.
+/// - `2` — Two blank lines, and so on.
+///
+/// When used in source code files with comment prefixes (e.g., `//!`, `///`),
+/// blank lines include the comment prefix to maintain valid syntax.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum PaddingValue {
+	/// `false` disables padding (inline). `true` is treated as 1 blank line.
+	Bool(bool),
+	/// Number of blank lines (0 = next line, 1 = one blank line, etc.).
+	Lines(u32),
+}
+
+impl PaddingValue {
+	/// Returns the number of blank lines to add, or `None` if padding is
+	/// disabled (`false`).
+	pub fn line_count(&self) -> Option<u32> {
+		match self {
+			Self::Bool(false) => None,
+			Self::Bool(true) => Some(1),
+			Self::Lines(n) => Some(*n),
+		}
+	}
+}
+
+impl Default for PaddingValue {
+	fn default() -> Self {
+		Self::Lines(1)
+	}
+}
+
+/// Configuration for padding between block tags and their content.
+///
+/// ```toml
+/// [padding]
+/// before = 1
+/// after = 1
+/// ```
+///
+/// When the `[padding]` section is present, `before` and `after` default to
+/// `1` (one blank line). Set values to `0` for content on the next line with
+/// no blank lines, or `false` for content inline with the tag.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PaddingConfig {
+	/// Blank lines between the opening tag and the content.
+	#[serde(default)]
+	pub before: PaddingValue,
+	/// Blank lines between the content and the closing tag.
+	#[serde(default)]
+	pub after: PaddingValue,
 }
 
 fn default_max_file_size() -> u64 {

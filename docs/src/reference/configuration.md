@@ -123,17 +123,44 @@ paths = ["templates", "shared/docs"]
 
 By default (when this section is absent), mdt finds `*.t.md` files anywhere in the project tree.
 
-### `pad_blocks`
+### `[padding]`
 
-When set to `true`, mdt ensures a blank line separates the opening tag from the content and the content from the closing tag. In source code files, the extra blank lines use the same comment prefix as the surrounding lines (e.g., `//!`, `///`, `*`). This prevents content from running directly into tags when transformers produce output without leading or trailing newlines.
+Controls blank lines between block tags and their content. When absent, no padding is applied. When present, `before` and `after` control how many blank lines separate tags from content.
 
 ```toml
-pad_blocks = true
+[padding]
+before = 0
+after = 0
 ```
+
+**`before`:** Controls blank lines between the opening tag and the content.
+
+**`after`:** Controls blank lines between the content and the closing tag.
+
+Both accept the same values:
+
+| Value   | Behavior                                                           |
+| ------- | ------------------------------------------------------------------ |
+| `false` | Content appears inline with the tag (no newline separator)         |
+| `0`     | Content starts on the very next line (one newline, no blank lines) |
+| `1`     | One blank line between the tag and content                         |
+| `2`     | Two blank lines, and so on                                         |
+
+When `[padding]` is present but `before`/`after` are omitted, they default to `1`.
+
+In source code files with comment prefixes (e.g., `//!`, `///`, `*`), blank lines include the comment prefix to maintain valid syntax.
 
 This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where consumer blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
 
-**Example:** A Rust file with `pad_blocks = true`:
+**Example:** `before = 0, after = 0` — content directly on the next line:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//! This content stays properly formatted.
+//! <!-- {/docs} -->
+```
+
+**Example:** `before = 1, after = 1` (default when `[padding]` is present) — one blank line:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->
@@ -143,14 +170,14 @@ This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.g
 //! <!-- {/docs} -->
 ```
 
-Without `pad_blocks`, the same setup might produce:
+Without `[padding]`, the same setup might produce:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->This content merges with the
 //! tag.<!-- {/docs} -->
 ```
 
-Default value: `false`.
+**Recommended setting for projects with formatters:** Use `before = 0, after = 0` to minimize whitespace that formatters might alter, ensuring `mdt check` stays clean after formatting.
 
 ### `max_file_size`
 
@@ -169,8 +196,13 @@ Default value: `10485760` (10 MB).
 ```toml
 # mdt.toml
 
-# Ensure newlines separate tags from content (recommended for source files)
-pad_blocks = true
+# Refuse to scan files larger than 10 MB
+max_file_size = 10485760
+
+# Ensure content is properly separated from tags (recommended for source files)
+[padding]
+before = 0
+after = 0
 
 # Map data files to namespaces for template variables
 [data]
@@ -195,9 +227,6 @@ patterns = ["src/**", "docs/**"]
 # Only look for templates in this directory
 [templates]
 paths = ["templates"]
-
-# Refuse to scan files larger than 10 MB
-max_file_size = 10485760
 ```
 
 ## Minimal example
@@ -217,5 +246,5 @@ If `mdt.toml` doesn't exist, mdt uses defaults:
 - No extra exclusions (only built-in exclusions apply, no block or code block filtering)
 - No include filtering (all scannable files are scanned)
 - Templates found anywhere in the project tree
-- `pad_blocks` defaults to `false`
+- No padding (content is not adjusted between tags)
 - `max_file_size` defaults to 10 MB

@@ -81,24 +81,39 @@ def main():
 package mylib
 ```
 
-## Recommended: Enable `pad_blocks`
+## Recommended: Enable `[padding]`
 
-When using consumer blocks in source files, add `pad_blocks = true` to your `mdt.toml`:
+When using consumer blocks in source files, add a `[padding]` section to your `mdt.toml`:
 
 ```toml
-pad_blocks = true
+[padding]
+before = 0
+after = 0
 ```
 
-This ensures a blank line (using the same comment prefix) separates the opening/closing tags from the content, preventing transformers like `trim` from causing the content to merge directly with the tags.
+This ensures content is properly separated from the surrounding tags. The `before` and `after` values control how many blank lines appear between tags and content:
 
-Without `pad_blocks`, a consumer with `trim|linePrefix:"//! ":true` could produce:
+- `false` — Content inline with tag (no newline)
+- `0` — Content on the very next line (recommended for projects using formatters)
+- `1` — One blank line between tag and content
+- `2` — Two blank lines, etc.
+
+Without `[padding]`, a consumer with `trim|linePrefix:"//! ":true` could produce:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->//! Content here.<!-- {/docs}
 //! -->
 ```
 
-With `pad_blocks = true`, the output is properly structured:
+With `before = 0, after = 0`, the output is properly structured:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//! Content here.
+//! <!-- {/docs} -->
+```
+
+With `before = 1, after = 1`, blank lines are added between tags and content:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->

@@ -6,6 +6,7 @@ use crate::MdtError;
 use crate::MdtResult;
 use crate::Transformer;
 use crate::TransformerType;
+use crate::config::PaddingConfig;
 use crate::project::ConsumerEntry;
 use crate::project::ProjectContext;
 
@@ -131,8 +132,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			}
 		};
 		let mut expected = apply_transformers(&rendered, &consumer.block.transformers);
-		if ctx.pad_blocks {
-			expected = pad_content_preserving_suffix(&expected, &consumer.content);
+		if let Some(padding) = &ctx.padding {
+			expected = pad_content_with_config(&expected, &consumer.content, padding);
 		}
 
 		if consumer.content != expected {
@@ -189,8 +190,8 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 
 			let rendered = render_template(&provider.content, &ctx.data)?;
 			let mut new_content = apply_transformers(&rendered, &consumer.block.transformers);
-			if ctx.pad_blocks {
-				new_content = pad_content_preserving_suffix(&new_content, &consumer.content);
+			if let Some(padding) = &ctx.padding {
+				new_content = pad_content_with_config(&new_content, &consumer.content, padding);
 			}
 
 			if consumer.content != new_content {
@@ -352,29 +353,24 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 	Ok(())
 }
 
-/// Ensure content has a leading newline and a trailing newline so it never runs
-/// directly into the opening or closing tag.
-pub fn pad_content(content: &str) -> String {
-	let mut result = String::with_capacity(content.len() + 2);
-	if !content.starts_with('\n') {
-		result.push('\n');
-	}
-	result.push_str(content);
-	if !content.ends_with('\n') {
-		result.push('\n');
-	}
-	result
-}
-
-/// Pad content while preserving the trailing line prefix from the original
-/// consumer content. When the closing tag is preceded by a comment prefix
-/// (e.g., `//! ` or `/// `) that prefix is part of the content range and must
-/// be preserved after replacement.
+/// Pad content according to the padding configuration while preserving the
+/// trailing line prefix from the original consumer content. When the closing
+/// tag is preceded by a comment prefix (e.g., `//! ` or `/// `) that prefix
+/// is part of the content range and must be preserved after replacement.
 ///
-/// Adds an extra blank line (using the trailing prefix) between the opening
-/// tag and the content and between the content and the closing tag. This
-/// ensures the content is visually separated from the surrounding tags.
-fn pad_content_preserving_suffix(new_content: &str, original_content: &str) -> String {
+/// The `before` value controls blank lines between the opening tag and
+/// content, and `after` controls blank lines between content and the closing
+/// tag. Each value can be:
+///
+/// - `false` — No padding; content appears inline with the tag.
+/// - `0` — Content on the very next line (one newline, no blank lines).
+/// - `1` — One blank line between the tag and content.
+/// - `2` — Two blank lines, and so on.
+fn pad_content_with_config(
+	new_content: &str,
+	original_content: &str,
+	padding: &PaddingConfig,
+) -> String {
 	// Extract the trailing prefix from the original content — everything after
 	// the last newline. For example, in "\n//! old\n//! " the trailing prefix
 	// is "//! ".
@@ -383,27 +379,57 @@ fn pad_content_preserving_suffix(new_content: &str, original_content: &str) -> S
 		.map(|idx| &original_content[idx + 1..])
 		.unwrap_or("");
 
-	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() * 3 + 4);
-	// Leading newline
-	if !new_content.starts_with('\n') {
-		result.push('\n');
+	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() * 4 + 8);
+
+	// Before padding: lines between opening tag and content
+	match padding.before.line_count() {
+		None => {
+			// false — content inline with opening tag
+		}
+		Some(0) => {
+			// Content on the very next line
+			if !new_content.starts_with('\n') {
+				result.push('\n');
+			}
+		}
+		Some(n) => {
+			// N blank lines between opening tag and content
+			if !new_content.starts_with('\n') {
+				result.push('\n');
+			}
+			for _ in 0..n {
+				result.push_str(trailing_prefix);
+				result.push('\n');
+			}
+		}
 	}
-	// Extra blank line between opening tag and content, using the comment prefix
-	if !trailing_prefix.is_empty() {
-		result.push_str(trailing_prefix);
-		result.push('\n');
-	}
+
 	result.push_str(new_content);
-	// Trailing newline
-	if !new_content.ends_with('\n') {
-		result.push('\n');
+
+	// After padding: lines between content and closing tag
+	match padding.after.line_count() {
+		None => {
+			// false — closing tag inline with content
+		}
+		Some(0) => {
+			// Closing tag on the very next line
+			if !new_content.ends_with('\n') {
+				result.push('\n');
+			}
+			result.push_str(trailing_prefix);
+		}
+		Some(n) => {
+			if !new_content.ends_with('\n') {
+				result.push('\n');
+			}
+			for _ in 0..n {
+				result.push_str(trailing_prefix);
+				result.push('\n');
+			}
+			result.push_str(trailing_prefix);
+		}
 	}
-	// Extra blank line between content and closing tag, using the comment prefix
-	if !trailing_prefix.is_empty() {
-		result.push_str(trailing_prefix);
-		result.push('\n');
-	}
-	result.push_str(trailing_prefix);
+
 	result
 }
 

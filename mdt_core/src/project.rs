@@ -16,6 +16,7 @@ use crate::MdtResult;
 use crate::config::CodeBlockFilter;
 use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
+use crate::config::PaddingConfig;
 use crate::engine::validate_transformers;
 use crate::parser::parse_with_diagnostics;
 use crate::source_scanner::parse_source_with_diagnostics;
@@ -121,9 +122,9 @@ pub struct ProjectContext {
 	pub project: Project,
 	/// Template data loaded from files referenced in `mdt.toml`.
 	pub data: HashMap<String, serde_json::Value>,
-	/// When true, ensure a newline always separates the opening tag from the
-	/// content and the content from the closing tag.
-	pub pad_blocks: bool,
+	/// Padding configuration controlling blank lines between tags and content.
+	/// `None` means no padding is applied.
+	pub padding: Option<PaddingConfig>,
 }
 
 impl ProjectContext {
@@ -205,7 +206,7 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		&markdown_codeblocks,
 		excluded_blocks,
 	)?;
-	let pad_blocks = config.as_ref().is_some_and(|c| c.pad_blocks);
+	let padding = config.as_ref().and_then(|c| c.padding.clone());
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
@@ -214,7 +215,7 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	Ok(ProjectContext {
 		project,
 		data,
-		pad_blocks,
+		padding,
 	})
 }
 

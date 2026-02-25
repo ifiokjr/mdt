@@ -6,7 +6,6 @@ expression: readme
 
 <!-- {=crate_docs} -->
 
-
 # My Crate
 
 A powerful library for doing things.
@@ -15,6 +14,5 @@ A powerful library for doing things.
 
 - Fast and efficient
 - Easy to use
-
 
 <!-- {/crate_docs} -->
