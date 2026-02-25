@@ -87,7 +87,7 @@ jobs:
         uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: mdt
-          manifest-path: crates/mdt_cli/Cargo.toml
+          manifest-path: mdt_cli/Cargo.toml
           ref: refs/tags/${{ env.RELEASE_TAG }}
           archive: mdt-$target-${{ steps.version.outputs.version }}
           target: ${{ matrix.target }}

@@ -41,6 +41,8 @@ jobs:
 
       - name: setup pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: build mdbook
         run: mdbook build docs
