@@ -248,12 +248,20 @@ impl MdtLanguageServer {
 
 impl LanguageServer for MdtLanguageServer {
 	async fn initialize(&self, params: InitializeParams) -> LspResult<InitializeResult> {
-		// Determine workspace root
-		#[allow(deprecated)]
+		// Determine workspace root — prefer `workspace_folders` (modern LSP),
+		// fall back to the deprecated `root_uri` for older clients.
 		let root = params
-			.root_uri
+			.workspace_folders
 			.as_ref()
-			.and_then(|uri| uri.to_file_path().map(std::borrow::Cow::into_owned));
+			.and_then(|folders| folders.first())
+			.and_then(|folder| folder.uri.to_file_path().map(std::borrow::Cow::into_owned))
+			.or_else(|| {
+				#[allow(deprecated)]
+				params
+					.root_uri
+					.as_ref()
+					.and_then(|uri| uri.to_file_path().map(std::borrow::Cow::into_owned))
+			});
 
 		{
 			let mut state = self.state.write().await;
