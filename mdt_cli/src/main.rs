@@ -116,27 +116,49 @@ fn resolve_root(args: &MdtCli) -> PathBuf {
 fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
 	let template_path = root.join("template.t.md");
+	let config_path = root.join("mdt.toml");
 
-	if template_path.exists() {
+	let template_exists = template_path.exists();
+	let config_exists = config_path.exists();
+
+	if template_exists {
 		println!("Template file already exists: {}", template_path.display());
-		return Ok(());
+	} else {
+		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
+		                      block.\n\n<!-- {/greeting} -->\n";
+
+		std::fs::write(&template_path, sample_content)?;
+		println!("Created template file: {}", template_path.display());
 	}
 
-	let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
-	                      block.\n\n<!-- {/greeting} -->\n";
+	if config_exists {
+		// Skip silently if config already exists.
+	} else {
+		let sample_config =
+			"# mdt configuration\n# See \
+			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
+			 Map data files to template namespaces.\n# Values from these files are available in \
+			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
+			 = \"Cargo.toml\"\n\n# Control blank lines between tags and content in source \
+			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
+			 [padding]\n# before = 0\n# after = 0\n";
 
-	std::fs::write(&template_path, sample_content)?;
-	println!("Created template file: {}", template_path.display());
-	println!();
-	println!("Next steps:");
-	println!(
-		"  1. Edit {} to define your template blocks",
-		template_path.display()
-	);
-	println!("  2. Add consumer tags in your markdown files:");
-	println!("     <!-- {{=greeting}} -->");
-	println!("     <!-- {{/greeting}} -->");
-	println!("  3. Run `mdt update` to sync content");
+		std::fs::write(&config_path, sample_config)?;
+		println!("Created mdt.toml");
+	}
+
+	if !template_exists {
+		println!();
+		println!("Next steps:");
+		println!(
+			"  1. Edit {} to define your template blocks",
+			template_path.display()
+		);
+		println!("  2. Add consumer tags in your markdown files:");
+		println!("     <!-- {{=greeting}} -->");
+		println!("     <!-- {{/greeting}} -->");
+		println!("  3. Run `mdt update` to sync content");
+	}
 
 	Ok(())
 }
