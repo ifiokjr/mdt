@@ -86,6 +86,7 @@ pub fn render_template(
 	}
 
 	let mut env = minijinja::Environment::new();
+	env.set_keep_trailing_newline(true);
 	env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
 	env.add_template("__inline__", content)
 		.map_err(|e| MdtError::TemplateRender(e.to_string()))?;
@@ -293,6 +294,8 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 				.map(|line| {
 					if line.is_empty() && !include_empty {
 						String::new()
+					} else if line.is_empty() {
+						prefix.trim_end().to_string()
 					} else {
 						format!("{prefix}{line}")
 					}
@@ -308,6 +311,8 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 				.map(|line| {
 					if line.is_empty() && !include_empty {
 						String::new()
+					} else if line.is_empty() {
+						suffix.trim_start().to_string()
 					} else {
 						format!("{line}{suffix}")
 					}
@@ -378,6 +383,9 @@ fn pad_content_with_config(
 		.rfind('\n')
 		.map(|idx| &original_content[idx + 1..])
 		.unwrap_or("");
+	// Trimmed prefix for blank padding lines — avoids trailing whitespace
+	// on empty lines (e.g., "//! " becomes "//!").
+	let blank_line_prefix = trailing_prefix.trim_end();
 
 	let mut result = String::with_capacity(new_content.len() + trailing_prefix.len() * 4 + 8);
 
@@ -398,7 +406,7 @@ fn pad_content_with_config(
 				result.push('\n');
 			}
 			for _ in 0..n {
-				result.push_str(trailing_prefix);
+				result.push_str(blank_line_prefix);
 				result.push('\n');
 			}
 		}
@@ -423,7 +431,7 @@ fn pad_content_with_config(
 				result.push('\n');
 			}
 			for _ in 0..n {
-				result.push_str(trailing_prefix);
+				result.push_str(blank_line_prefix);
 				result.push('\n');
 			}
 			result.push_str(trailing_prefix);

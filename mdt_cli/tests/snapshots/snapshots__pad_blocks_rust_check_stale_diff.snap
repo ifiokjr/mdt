@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpFrjn3K
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpWEqaPB
     - check
     - "--diff"
   env:
@@ -18,29 +18,29 @@ exit_code: 1
 Stale: block `crate_docs` in lib.rs:1:5
    
   -//! Old crate docs here.
-  +//! 
+  +//!
   +//! # My Crate
-  +//! 
+  +//!
   +//! A powerful library for doing things.
-  +//! 
+  +//!
   +//! ## Features
-  +//! 
+  +//!
   +//! - Fast and efficient
   +//! - Easy to use
-  +//! 
+  +//!
    //! 
 Stale: block `fn_greet` in lib.rs:5:5
    
   -/// Old function docs.
-  +/// 
+  +///
   +/// Greets the user by name.
-  +/// 
+  +///
   +/// ## Examples
-  +/// 
+  +///
   +/// ```rust
   +/// greet("Alice");
   +/// ```
-  +/// 
+  +///
    /// 
 Stale: block `crate_docs` in readme.md:3:1
    

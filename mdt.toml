@@ -1,3 +1,7 @@
+[padding]
+before = 0
+after = 0
+
 [data]
 cargo = "Cargo.toml"
 cargo_mdt_core = "mdt_core/Cargo.toml"
