@@ -191,6 +191,27 @@ If a scanned file exceeds this value, mdt returns an error instead of reading it
 
 Default value: `10485760` (10 MB).
 
+### `disable_gitignore`
+
+Disables `.gitignore` integration when scanning for files.
+
+```toml
+disable_gitignore = true
+```
+
+| Value             | Behavior                                                                 |
+| ----------------- | ------------------------------------------------------------------------ |
+| `false` (default) | mdt respects `.gitignore` patterns and skips files that git would ignore |
+| `true`            | mdt ignores `.gitignore` rules and scans all files                       |
+
+When set to `true`, file filtering is controlled entirely by the `[exclude]` and `[include]` sections. The built-in exclusions (hidden directories, `node_modules/`, `target/`, sub-project boundaries) still apply.
+
+Use this when scanning generated files or build output that contains mdt consumer blocks, when working outside a git repository, or when you want full control over file scanning via `[exclude]` and `[include]` patterns.
+
+**Type:** `bool`
+
+**Default:** `false`
+
 ## Complete example
 
 ```toml
@@ -198,6 +219,9 @@ Default value: `10485760` (10 MB).
 
 # Refuse to scan files larger than 10 MB
 max_file_size = 10485760
+
+# Respect .gitignore rules (default behavior)
+disable_gitignore = false
 
 # Ensure content is properly separated from tags (recommended for source files)
 [padding]
@@ -248,3 +272,4 @@ If `mdt.toml` doesn't exist, mdt uses defaults:
 - Templates found anywhere in the project tree
 - No padding (content is not adjusted between tags)
 - `max_file_size` defaults to 10 MB
+- `.gitignore` rules are respected (`disable_gitignore` defaults to `false`)
