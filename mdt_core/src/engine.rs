@@ -13,6 +13,7 @@ use crate::project::ProjectContext;
 
 /// A warning about undefined template variables in a provider block.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct TemplateWarning {
 	/// Path to the file containing the provider block that uses the undefined
 	/// variables.
@@ -26,6 +27,7 @@ pub struct TemplateWarning {
 
 /// Result of checking a project for stale consumers.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct CheckResult {
 	/// Consumer entries that are out of date.
 	pub stale: Vec<StaleEntry>,
@@ -55,6 +57,7 @@ impl CheckResult {
 
 /// A template render error associated with a specific consumer block.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct RenderError {
 	/// Path to the file containing the consumer block.
 	pub file: PathBuf,
@@ -70,6 +73,7 @@ pub struct RenderError {
 
 /// A consumer entry that is out of date.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct StaleEntry {
 	/// Path to the file containing the stale consumer.
 	pub file: PathBuf,
@@ -87,6 +91,7 @@ pub struct StaleEntry {
 
 /// Result of updating a project.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct UpdateResult {
 	/// Files that were modified and their new content.
 	pub updated_files: HashMap<PathBuf, String>,
