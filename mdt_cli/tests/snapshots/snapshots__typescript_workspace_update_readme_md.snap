@@ -15,6 +15,7 @@ Install `my-lib` (v1.2.3):
 ```sh
 npm install my-lib
 ```
+
 <!-- {/installGuide} -->
 
 ## API
@@ -30,4 +31,5 @@ import { createClient } from "my-lib";
 
 const client = createClient();
 ```
+
 <!-- {/apiDocs} -->

@@ -3,28 +3,28 @@ source: mdt_cli/tests/snapshots.rs
 expression: lib_rs
 ---
 //! <!-- {=crate_docs|trim|linePrefix:"//! ":true} -->
-//! 
+//!
 //! # My Crate
-//! 
+//!
 //! A powerful library for doing things.
-//! 
+//!
 //! ## Features
-//! 
+//!
 //! - Fast and efficient
 //! - Easy to use
-//! 
+//!
 //! <!-- {/crate_docs} -->
 
 /// <!-- {=fn_greet|trim|linePrefix:"/// ":true} -->
-/// 
+///
 /// Greets the user by name.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```rust
 /// greet("Alice");
 /// ```
-/// 
+///
 /// <!-- {/fn_greet} -->
 pub fn greet(name: &str) {
 	println!("Hello, {name}!");
