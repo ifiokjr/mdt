@@ -35,6 +35,10 @@ jobs:
         run: lint:format
         shell: devenv shell -c -- bash -e {0}
 
+      - name: check mdt blocks
+        run: mdt check
+        shell: devenv shell -c -- bash -e {0}
+
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
