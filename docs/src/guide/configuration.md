@@ -131,6 +131,24 @@ max_file_size = 10485760 # 10 MB
 
 If omitted, mdt uses a default of `10 MB`.
 
+### `disable_gitignore` — Disable `.gitignore` integration
+
+By default, mdt respects `.gitignore` rules when scanning for files, skipping anything that git would ignore. Set `disable_gitignore = true` to turn off this behavior:
+
+```toml
+disable_gitignore = true
+```
+
+When this option is enabled, mdt scans all files regardless of `.gitignore` rules. You can still control which files are scanned using the `[exclude]` and `[include]` sections.
+
+**When to use this:**
+
+- **Generated files with mdt blocks** — If your build output or generated files contain consumer blocks that need updating, those files are typically listed in `.gitignore` but still need to be scanned by mdt.
+- **Working outside a git repository** — If the project is not a git repo, `.gitignore` resolution can cause unnecessary overhead or errors. Disabling it avoids those issues.
+- **Full control over scanning** — When you prefer to manage file inclusion/exclusion entirely through `[exclude]` and `[include]` patterns rather than relying on `.gitignore`.
+
+If omitted, defaults to `false` (`.gitignore` rules are respected).
+
 ## Sub-project boundaries
 
 If mdt encounters a directory containing its own `mdt.toml`, it treats that directory as a separate project and skips it. This is useful in monorepos where each package manages its own templates:
@@ -156,6 +174,7 @@ Running `mdt update` from the root updates only the root project's consumers. Ea
 # mdt.toml
 
 max_file_size = 10485760
+disable_gitignore = false
 
 # Ensure content is properly separated from tags in source files
 [padding]
