@@ -14,6 +14,7 @@ use crate::patterns;
 use crate::patterns::PatternMatcher;
 use crate::project;
 use crate::project::ProjectContext;
+use crate::project::ScanOptions;
 use crate::project::scan_project_with_options;
 use crate::tokens::GetDynamicRange;
 use crate::tokens::TokenGroup;
@@ -1909,13 +1910,11 @@ fn file_too_large_error() {
 
 	let result = scan_project_with_options(
 		dir.path(),
-		&[],
-		&globset::GlobSet::empty(),
-		&[],
-		100, // 100-byte limit
-		true,
-		&CodeBlockFilter::default(),
-		&[],
+		&ScanOptions {
+			max_file_size: 100, // 100-byte limit
+			disable_gitignore: true,
+			..ScanOptions::default()
+		},
 	);
 
 	assert!(result.is_err());
@@ -1935,13 +1934,11 @@ fn file_within_size_limit_succeeds() {
 
 	let result = scan_project_with_options(
 		dir.path(),
-		&[],
-		&globset::GlobSet::empty(),
-		&[],
-		10_000, // 10KB limit
-		true,
-		&CodeBlockFilter::default(),
-		&[],
+		&ScanOptions {
+			max_file_size: 10_000, // 10KB limit
+			disable_gitignore: true,
+			..ScanOptions::default()
+		},
 	);
 
 	assert!(result.is_ok());
@@ -3815,16 +3812,13 @@ fn scan_project_with_options_exclude_patterns_parameter() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let ignore_pats = vec!["dist/".to_string()];
 	let result = scan_project_with_options(
 		tmp.path(),
-		&ignore_pats,
-		&globset::GlobSet::empty(),
-		&[],
-		DEFAULT_MAX_FILE_SIZE,
-		true, // disable gitignore so we're only testing custom patterns
-		&CodeBlockFilter::default(),
-		&[],
+		&ScanOptions {
+			exclude_patterns: vec!["dist/".to_string()],
+			disable_gitignore: true, // disable gitignore so we're only testing custom patterns
+			..ScanOptions::default()
+		},
 	)?;
 
 	assert_eq!(result.consumers.len(), 1);
@@ -4656,13 +4650,11 @@ fn scan_with_include_patterns() -> MdtResult<()> {
 
 	let project = scan_project_with_options(
 		tmp.path(),
-		&[],
-		&include_set,
-		&[],
-		DEFAULT_MAX_FILE_SIZE,
-		true,
-		&CodeBlockFilter::default(),
-		&[],
+		&ScanOptions {
+			include_set,
+			disable_gitignore: true,
+			..ScanOptions::default()
+		},
 	)?;
 
 	// The extra/test.rs consumer should be found via include pattern
@@ -4704,16 +4696,13 @@ fn scan_with_template_paths() -> MdtResult<()> {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let template_paths = vec![PathBuf::from("shared/templates")];
 	let project = scan_project_with_options(
 		tmp.path(),
-		&[],
-		&globset::GlobSet::empty(),
-		&template_paths,
-		DEFAULT_MAX_FILE_SIZE,
-		true,
-		&CodeBlockFilter::default(),
-		&[],
+		&ScanOptions {
+			template_paths: vec![PathBuf::from("shared/templates")],
+			disable_gitignore: true,
+			..ScanOptions::default()
+		},
 	)?;
 
 	assert!(
