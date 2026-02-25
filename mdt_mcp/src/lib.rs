@@ -275,7 +275,9 @@ impl MdtMcpServer {
 			.iter()
 			.map(|c| {
 				let is_stale = ctx.project.providers.get(&c.block.name).is_some_and(|p| {
-					let rendered = render_template(&p.content, &ctx.data)
+					let render_data = mdt_core::build_render_context(&ctx.data, p, c)
+						.unwrap_or_else(|| ctx.data.clone());
+					let rendered = render_template(&p.content, &render_data)
 						.unwrap_or_else(|_| p.content.clone());
 					let expected = apply_transformers(&rendered, &c.block.transformers);
 					c.content != expected
@@ -372,8 +374,10 @@ impl MdtMcpServer {
 		let mut entries = Vec::new();
 		for c in &consumer_entries {
 			let is_stale = ctx.project.providers.get(&c.block.name).is_some_and(|p| {
+				let render_data = mdt_core::build_render_context(&ctx.data, p, c)
+					.unwrap_or_else(|| ctx.data.clone());
 				let rendered =
-					render_template(&p.content, &ctx.data).unwrap_or_else(|_| p.content.clone());
+					render_template(&p.content, &render_data).unwrap_or_else(|_| p.content.clone());
 				let expected = apply_transformers(&rendered, &c.block.transformers);
 				c.content != expected
 			});

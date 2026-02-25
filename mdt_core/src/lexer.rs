@@ -278,6 +278,17 @@ impl<'a> TokenWalker<'a> {
 							let ident = self.current_slice().to_string();
 							self.push_token(Token::Ident(ident), false);
 						}
+						// Accept argument delimiters and strings for block
+						// arguments (e.g., {=name:"arg1":"arg2"}).
+						RawToken::ArgumentDelimiter => {
+							self.push_token(Token::ArgumentDelimiter, false);
+						}
+						RawToken::DoubleQuotedString => {
+							self.process_string(b'"');
+						}
+						RawToken::SingleQuotedString => {
+							self.process_string(b'\'');
+						}
 						RawToken::Newline => {
 							self.push_token(Token::Newline, false);
 						}
