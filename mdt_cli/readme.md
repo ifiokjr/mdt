@@ -26,6 +26,8 @@
 
 <!-- {/mdtCliUsage} -->
 
+<!-- {=mdtBadgeLinks:"mdt_cli"} -->
+
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
 [crate-image]: https://img.shields.io/crates/v/mdt_cli.svg
@@ -36,3 +38,5 @@
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense
+
+<!-- {/mdtBadgeLinks} -->
