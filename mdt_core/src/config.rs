@@ -77,6 +77,7 @@ pub struct MdtConfig {
 /// blank lines include the comment prefix to maintain valid syntax.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
+#[allow(variant_size_differences)]
 pub enum PaddingValue {
 	/// `false` disables padding (inline). `true` is treated as 1 blank line.
 	Bool(bool),

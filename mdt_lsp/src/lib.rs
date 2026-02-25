@@ -72,7 +72,7 @@ impl WorkspaceState {
 			return;
 		};
 
-		let Some(file_path) = uri.to_file_path().map(|p| p.into_owned()) else {
+		let Some(file_path) = uri.to_file_path().map(std::borrow::Cow::into_owned) else {
 			return;
 		};
 
@@ -249,10 +249,11 @@ impl MdtLanguageServer {
 impl LanguageServer for MdtLanguageServer {
 	async fn initialize(&self, params: InitializeParams) -> LspResult<InitializeResult> {
 		// Determine workspace root
+		#[allow(deprecated)]
 		let root = params
 			.root_uri
 			.as_ref()
-			.and_then(|uri| uri.to_file_path().map(|p| p.into_owned()));
+			.and_then(|uri| uri.to_file_path().map(std::borrow::Cow::into_owned));
 
 		{
 			let mut state = self.state.write().await;

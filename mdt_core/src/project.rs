@@ -240,6 +240,7 @@ pub fn normalize_line_endings(content: &str) -> String {
 }
 
 /// Scan a directory with exclude/include patterns and extra template paths.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn scan_project_with_options(
 	root: &Path,
 	exclude_patterns: &[String],
@@ -507,6 +508,7 @@ fn collect_files(
 	Ok(files)
 }
 
+#[allow(clippy::only_used_in_recursion)]
 fn walk_dir(
 	root: &Path,
 	dir: &Path,
