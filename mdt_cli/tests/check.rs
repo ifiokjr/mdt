@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use mdt_core::AnyEmptyResult;
+use predicates::prelude::PredicateBooleanExt;
 
 #[test]
 fn check_passes_when_up_to_date() -> AnyEmptyResult {
@@ -173,6 +174,78 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 		.assert()
 		.failure()
 		.stderr(predicates::str::contains("2 consumer block(s)"));
+
+	Ok(())
+}
+
+#[test]
+fn check_warns_undefined_template_variables() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)?;
+	// Provider with a typo: "pkgg" instead of "pkg" — renders to "npm install "
+	// (empty string for undefined variable due to Chainable behavior)
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkgg.name }}\n\n<!-- {/install} -->\n",
+	)?;
+	// Consumer content must match the rendered output (empty string for undefined)
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nnpm install \n\n<!-- {/install} -->\n",
+	)?;
+
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.stderr(predicates::str::contains("undefined variable(s)"))
+		.stderr(predicates::str::contains("pkgg.name"));
+
+	Ok(())
+}
+
+#[test]
+fn check_no_warnings_for_valid_template_variables() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)?;
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
+		 -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nnpm install my-lib@1.0.0\n\n<!-- {/install} -->\n",
+	)?;
+
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		// Should not contain "undefined" in output
+		.stderr(predicates::str::contains("undefined").not());
 
 	Ok(())
 }

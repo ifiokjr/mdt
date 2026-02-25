@@ -8,6 +8,7 @@ use clap::Parser;
 use mdt_cli::Commands;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
+use mdt_core::TemplateWarning;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::project::DiagnosticKind;
@@ -211,6 +212,11 @@ fn run_check(
 	let root = resolve_root(args);
 	let result = check_project(&ctx)?;
 
+	// Always print template variable warnings (they don't affect exit code).
+	if !result.warnings.is_empty() {
+		print_template_warnings(&result.warnings, &root);
+	}
+
 	if result.is_ok() {
 		match format {
 			OutputFormat::Json => {
@@ -366,6 +372,11 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 	let root = resolve_root(args);
 	let updates = compute_updates(&ctx)?;
 
+	// Print template variable warnings (they don't prevent updates).
+	if !updates.warnings.is_empty() {
+		print_template_warnings(&updates.warnings, &root);
+	}
+
 	if updates.updated_count == 0 {
 		println!("All consumer blocks are already up to date.");
 		return Ok(());
@@ -476,6 +487,19 @@ fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
 	rt.block_on(mdt_mcp::run_server());
 	Ok(())
+}
+
+/// Print warnings about undefined template variables.
+fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
+	for warning in warnings {
+		let rel = make_relative(&warning.provider_file, root);
+		let vars = warning.undefined_variables.join(", ");
+		eprintln!(
+			"{} provider block `{}` in {rel} references undefined variable(s): {vars}",
+			colored!("warning:", yellow),
+			warning.block_name,
+		);
+	}
 }
 
 /// Print a unified diff between two strings, colorized.

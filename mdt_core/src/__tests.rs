@@ -1426,6 +1426,7 @@ fn write_updates_creates_files() -> MdtResult<()> {
 	let updates = UpdateResult {
 		updated_files,
 		updated_count: 1,
+		warnings: Vec::new(),
 	};
 	write_updates(&updates)?;
 
@@ -7372,4 +7373,221 @@ fn excluded_blocks_defaults_to_empty() {
 		config.exclude.blocks.is_empty(),
 		"expected exclude.blocks to default to empty"
 	);
+}
+
+// --- Undefined template variable detection tests ---
+
+#[test]
+fn find_undefined_variables_with_valid_data() {
+	let mut data = HashMap::new();
+	data.insert(
+		"pkg".to_string(),
+		serde_json::json!({"name": "my-lib", "version": "1.0.0"}),
+	);
+
+	let content = "Install {{ pkg.name }} v{{ pkg.version }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert!(
+		undefined.is_empty(),
+		"expected no undefined variables, got: {undefined:?}"
+	);
+}
+
+#[test]
+fn find_undefined_variables_with_typo() {
+	let mut data = HashMap::new();
+	data.insert(
+		"pkg".to_string(),
+		serde_json::json!({"name": "my-lib", "version": "1.0.0"}),
+	);
+
+	let content = "Install {{ pkgg.name }} v{{ pkg.version }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert_eq!(undefined, vec!["pkgg.name"]);
+}
+
+#[test]
+fn find_undefined_variables_with_multiple_undefined() {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"name": "my-lib"}));
+
+	let content = "{{ unknown.field }} and {{ typo.value }} but {{ pkg.name }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert_eq!(undefined, vec!["typo.value", "unknown.field"]);
+}
+
+#[test]
+fn find_undefined_variables_empty_data() {
+	let data = HashMap::new();
+	let content = "{{ pkg.name }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert!(
+		undefined.is_empty(),
+		"expected no warnings when data is empty (template rendering is a no-op)"
+	);
+}
+
+#[test]
+fn find_undefined_variables_no_template_syntax() {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"name": "test"}));
+
+	let content = "Plain text without any template syntax.";
+	let undefined = find_undefined_variables(content, &data);
+	assert!(
+		undefined.is_empty(),
+		"expected no warnings when content has no template syntax"
+	);
+}
+
+#[test]
+fn find_undefined_variables_with_loop_builtin() {
+	let mut data = HashMap::new();
+	data.insert("items".to_string(), serde_json::json!(["a", "b", "c"]));
+
+	// `loop` is a minijinja builtin in for-loops
+	let content = "{% for item in items %}{{ loop.index }}: {{ item }}{% endfor %}";
+	let undefined = find_undefined_variables(content, &data);
+	assert!(
+		undefined.is_empty(),
+		"expected no warnings for minijinja builtins like `loop`, got: {undefined:?}"
+	);
+}
+
+#[test]
+fn find_undefined_variables_top_level_only() {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"name": "test"}));
+
+	// References a top-level variable that doesn't exist at all in data
+	let content = "{{ missing }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert_eq!(undefined, vec!["missing"]);
+}
+
+#[test]
+fn check_project_reports_undefined_variable_warnings() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Provider with a typo: "pkgg" instead of "pkg"
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkgg.name }}\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+
+	assert!(
+		result.has_warnings(),
+		"expected warnings for undefined variable"
+	);
+	assert_eq!(result.warnings.len(), 1);
+	assert_eq!(result.warnings[0].block_name, "install");
+	assert_eq!(result.warnings[0].undefined_variables, vec!["pkgg.name"]);
+
+	Ok(())
+}
+
+#[test]
+fn check_project_no_warnings_for_valid_variables() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
+		 -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+
+	assert!(
+		!result.has_warnings(),
+		"expected no warnings when all variables are defined, got: {:?}",
+		result.warnings
+	);
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_reports_undefined_variable_warnings() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Provider with a typo
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ typo.name }}\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+
+	// The update should still proceed (rendering with empty string for undefined)
+	assert!(updates.warnings.len() == 1);
+	assert_eq!(updates.warnings[0].block_name, "install");
+	assert_eq!(updates.warnings[0].undefined_variables, vec!["typo.name"]);
+
+	Ok(())
+}
+
+#[test]
+fn find_undefined_variables_partial_match() {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"name": "my-lib"}));
+	data.insert(
+		"cargo".to_string(),
+		serde_json::json!({"package": {"edition": "2024"}}),
+	);
+
+	// pkg is defined but typo is not; cargo is defined
+	let content = "{{ pkg.name }} {{ typo.version }} {{ cargo.package.edition }}";
+	let undefined = find_undefined_variables(content, &data);
+	assert_eq!(undefined, vec!["typo.version"]);
 }
