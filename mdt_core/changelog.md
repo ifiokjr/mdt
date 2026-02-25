@@ -2,6 +2,68 @@
 
 This file is maintained by `knope`.
 
+## 0.5.0 (2026-02-25)
+
+### Breaking Changes
+
+#### Add positional block arguments to provider and consumer tags.
+
+Provider blocks can now declare named parameters using `:"param_name"` syntax after the block name. Consumer blocks pass string values as positional arguments in the same position. The provider's parameter names become template variables that are interpolated with the consumer's argument values during rendering.
+
+**Syntax:**
+
+```markdown
+<!-- Provider declares a parameter -->
+<!-- {@badges:"crate_name"} -->
+
+[![crates.io](https://img.shields.io/crates/v/{{ crate_name }})]
+
+<!-- {/badges} -->
+
+<!-- Consumer passes a value -->
+<!-- {=badges:"mdt_core"} -->
+<!-- {/badges} -->
+
+<!-- Another consumer with different value -->
+<!-- {=badges:"mdt_cli"} -->
+<!-- {/badges} -->
+```
+
+Arguments work alongside existing features:
+
+- Multiple arguments: `<!-- {@tmpl:"a":"b":"c"} -->`
+- With transformers: `<!-- {=badges:"mdt_core"|trim} -->`
+- With data interpolation: `{{ crate_name }}` and `{{ pkg.version }}` can coexist
+- Single-quoted strings: `<!-- {@tmpl:'param'} -->`
+
+Argument count mismatches between provider parameters and consumer arguments are reported as render errors during `check` and skipped during `update`.
+
+This is a breaking change because the `Block` struct now includes an `arguments: Vec<String>` field.
+
+#### Add validation warnings for undefined template variables in provider content, helping catch typos in data references.
+
+**BREAKING:** `CheckResult`, `UpdateResult`, `StaleEntry`, `RenderError`, and `TemplateWarning` are now `#[non_exhaustive]`, preventing struct literal construction from outside the crate. `CheckResult` and `UpdateResult` have a new `warnings` field.
+
+### Features
+
+- Refactor `scan_project_with_options` to accept a `ScanOptions` struct instead of 8 individual parameters, improving API ergonomics and extensibility.
+
+### Fixes
+
+#### Fix clippy warnings across the workspace.
+
+- Replace `map().unwrap_or()` with `map_or()` in `engine.rs`.
+- Suppress `too_many_arguments` on `scan_project_with_options` (to be refactored separately).
+- Suppress `only_used_in_recursion` on `walk_dir`'s `root` parameter.
+- Suppress `variant_size_differences` on `PaddingValue` enum.
+- Suppress `unused_assignments` from thiserror-generated code in `MdtError`.
+- Suppress `struct_excessive_bools` on `MdtCli`.
+- Fix redundant closures in `mdt_lsp` (`map(|p| p.into_owned())` to `map(Cow::into_owned)`).
+- Suppress deprecated `root_uri` field usage in LSP (separate migration PR).
+- Suppress `disallowed_methods` false positives from `tokio::test` macro in `mdt_mcp` tests.
+- Fix `cmp_owned` warning in `mdt_mcp` tests.
+- Fix unnecessary qualifications, single-char string patterns, doc comment backticks, `approx_constant` errors, and `float_cmp` warnings in `mdt_core` tests.
+
 ## 0.4.0 (2026-02-25)
 
 ### Breaking Changes
