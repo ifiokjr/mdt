@@ -21,6 +21,75 @@ use crate::engine::validate_transformers;
 use crate::parser::parse_with_diagnostics;
 use crate::source_scanner::parse_source_with_diagnostics;
 
+/// Options for controlling how a project is scanned.
+///
+/// Use [`ScanOptions::default()`] for sensible defaults or
+/// [`ScanOptions::from_config`] to construct from an [`MdtConfig`].
+#[derive(Debug, Clone)]
+pub struct ScanOptions {
+	/// Gitignore-style patterns to exclude from scanning.
+	pub exclude_patterns: Vec<String>,
+	/// Glob patterns restricting which files to include.
+	pub include_set: GlobSet,
+	/// Directories to search for template files.
+	pub template_paths: Vec<PathBuf>,
+	/// Maximum file size to scan in bytes.
+	pub max_file_size: u64,
+	/// Whether to disable `.gitignore` integration.
+	pub disable_gitignore: bool,
+	/// How to handle markdown code blocks.
+	pub markdown_codeblocks: CodeBlockFilter,
+	/// Block names to exclude from scanning.
+	pub excluded_blocks: Vec<String>,
+}
+
+impl Default for ScanOptions {
+	fn default() -> Self {
+		Self {
+			exclude_patterns: Vec::new(),
+			include_set: GlobSet::empty(),
+			template_paths: Vec::new(),
+			max_file_size: DEFAULT_MAX_FILE_SIZE,
+			disable_gitignore: false,
+			markdown_codeblocks: CodeBlockFilter::default(),
+			excluded_blocks: Vec::new(),
+		}
+	}
+}
+
+impl ScanOptions {
+	/// Construct [`ScanOptions`] from an [`MdtConfig`].
+	///
+	/// This extracts the relevant scanning parameters from the configuration
+	/// and builds the include glob set.
+	pub fn from_config(config: Option<&MdtConfig>) -> Self {
+		let exclude_patterns = config
+			.map(|c| c.exclude.patterns.clone())
+			.unwrap_or_default();
+		let include_patterns = config.map(|c| &c.include.patterns[..]).unwrap_or_default();
+		let template_paths = config
+			.map(|c| c.templates.paths.clone())
+			.unwrap_or_default();
+		let max_file_size = config.map_or(DEFAULT_MAX_FILE_SIZE, |c| c.max_file_size);
+		let disable_gitignore = config.is_some_and(|c| c.disable_gitignore);
+		let markdown_codeblocks = config
+			.map(|c| c.exclude.markdown_codeblocks.clone())
+			.unwrap_or_default();
+		let excluded_blocks = config.map(|c| c.exclude.blocks.clone()).unwrap_or_default();
+		let include_set = build_glob_set(include_patterns);
+
+		Self {
+			exclude_patterns,
+			include_set,
+			template_paths,
+			max_file_size,
+			disable_gitignore,
+			markdown_codeblocks,
+			excluded_blocks,
+		}
+	}
+}
+
 /// Options controlling which validations are performed during check/update.
 #[derive(Debug, Clone, Default)]
 #[allow(clippy::struct_excessive_bools)]
@@ -155,57 +224,14 @@ pub struct ConsumerEntry {
 
 /// Scan a directory and discover all provider and consumer blocks.
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
-	scan_project_with_options(
-		root,
-		&[],
-		&GlobSet::empty(),
-		&[],
-		DEFAULT_MAX_FILE_SIZE,
-		false,
-		&CodeBlockFilter::default(),
-		&[],
-	)
+	scan_project_with_options(root, &ScanOptions::default())
 }
 
 /// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
 pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let config = MdtConfig::load(root)?;
-	let exclude_patterns = config
-		.as_ref()
-		.map(|c| &c.exclude.patterns[..])
-		.unwrap_or_default();
-	let include_patterns = config
-		.as_ref()
-		.map(|c| &c.include.patterns[..])
-		.unwrap_or_default();
-	let template_paths = config
-		.as_ref()
-		.map(|c| &c.templates.paths[..])
-		.unwrap_or_default();
-	let max_file_size = config
-		.as_ref()
-		.map_or(DEFAULT_MAX_FILE_SIZE, |c| c.max_file_size);
-	let disable_gitignore = config.as_ref().is_some_and(|c| c.disable_gitignore);
-	let markdown_codeblocks = config
-		.as_ref()
-		.map(|c| &c.exclude.markdown_codeblocks)
-		.cloned()
-		.unwrap_or_default();
-	let excluded_blocks = config
-		.as_ref()
-		.map(|c| &c.exclude.blocks[..])
-		.unwrap_or_default();
-	let include_set = build_glob_set(include_patterns);
-	let project = scan_project_with_options(
-		root,
-		exclude_patterns,
-		&include_set,
-		template_paths,
-		max_file_size,
-		disable_gitignore,
-		&markdown_codeblocks,
-		excluded_blocks,
-	)?;
+	let options = ScanOptions::from_config(config.as_ref());
+	let project = scan_project_with_options(root, &options)?;
 	let padding = config.as_ref().and_then(|c| c.padding.clone());
 	let data = match config {
 		Some(config) => config.load_data(root)?,
@@ -239,28 +265,22 @@ pub fn normalize_line_endings(content: &str) -> String {
 	}
 }
 
-/// Scan a directory with exclude/include patterns and extra template paths.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn scan_project_with_options(
-	root: &Path,
-	exclude_patterns: &[String],
-	include_set: &GlobSet,
-	template_paths: &[PathBuf],
-	max_file_size: u64,
-	disable_gitignore: bool,
-	markdown_codeblocks: &CodeBlockFilter,
-	excluded_blocks: &[String],
-) -> MdtResult<Project> {
+/// Scan a directory with the given [`ScanOptions`].
+pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
 	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
 	let mut consumers = Vec::new();
 
-	let mut files = collect_files(root, exclude_patterns, disable_gitignore)?;
+	let mut files = collect_files(root, &options.exclude_patterns, options.disable_gitignore)?;
 
 	// Collect files from additional template directories.
-	for template_dir in template_paths {
+	for template_dir in &options.template_paths {
 		let abs_dir = root.join(template_dir);
 		if abs_dir.is_dir() {
-			let extra_files = collect_files(&abs_dir, exclude_patterns, disable_gitignore)?;
+			let extra_files = collect_files(
+				&abs_dir,
+				&options.exclude_patterns,
+				options.disable_gitignore,
+			)?;
 			for f in extra_files {
 				if !files.contains(&f) {
 					files.push(f);
@@ -270,11 +290,17 @@ pub(crate) fn scan_project_with_options(
 	}
 
 	// Build exclude matcher for include filtering.
-	let custom_exclude = build_exclude_matcher(root, exclude_patterns)?;
+	let custom_exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
 
 	// Collect files matching include patterns.
-	if !include_set.is_empty() {
-		collect_included_files(root, root, include_set, &custom_exclude, &mut files)?;
+	if !options.include_set.is_empty() {
+		collect_included_files(
+			root,
+			root,
+			&options.include_set,
+			&custom_exclude,
+			&mut files,
+		)?;
 	}
 
 	let mut diagnostics: Vec<ProjectDiagnostic> = Vec::new();
@@ -282,11 +308,11 @@ pub(crate) fn scan_project_with_options(
 	for file in &files {
 		// Check file size before reading.
 		let metadata = std::fs::metadata(file)?;
-		if metadata.len() > max_file_size {
+		if metadata.len() > options.max_file_size {
 			return Err(MdtError::FileTooLarge {
 				path: file.display().to_string(),
 				size: metadata.len(),
-				limit: max_file_size,
+				limit: options.max_file_size,
 			});
 		}
 
@@ -295,7 +321,7 @@ pub(crate) fn scan_project_with_options(
 		let (blocks, parse_diagnostics) = if is_markdown_file(file) {
 			parse_with_diagnostics(&content)?
 		} else {
-			parse_source_with_diagnostics(&content, markdown_codeblocks)?
+			parse_source_with_diagnostics(&content, &options.markdown_codeblocks)?
 		};
 
 		// Convert parse diagnostics to project diagnostics.
@@ -367,7 +393,11 @@ pub(crate) fn scan_project_with_options(
 
 		for block in blocks {
 			// Skip blocks whose names are in the excluded_blocks list.
-			if excluded_blocks.iter().any(|name| name == &block.name) {
+			if options
+				.excluded_blocks
+				.iter()
+				.any(|name| name == &block.name)
+			{
 				continue;
 			}
 
