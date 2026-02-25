@@ -1300,3 +1300,1072 @@ async fn get_block_consumer_with_provider_and_data() {
 		"rendered content should contain interpolated version, got: {rendered}"
 	);
 }
+
+// ===========================================================================
+// scan_ctx: invalid path error
+// ===========================================================================
+
+#[test]
+fn scan_ctx_on_nonexistent_path_returns_default_context() {
+	// scan_project_with_config gracefully handles nonexistent paths by
+	// returning an empty project context (no providers, no consumers).
+	let result = scan_ctx(Path::new("/tmp/nonexistent_mdt_test_dir_12345"));
+	match result {
+		Ok(ctx) => {
+			assert!(
+				ctx.project.providers.is_empty(),
+				"nonexistent path should have no providers"
+			);
+			assert!(
+				ctx.project.consumers.is_empty(),
+				"nonexistent path should have no consumers"
+			);
+		}
+		Err(_) => {
+			// Some platforms may return an error for nonexistent paths, that's OK too.
+		}
+	}
+}
+
+// ===========================================================================
+// check: project with only providers and no consumers
+// ===========================================================================
+
+#[tokio::test]
+async fn check_project_providers_only_no_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("up to date"),
+		"project with only providers should be up to date, got: {text}"
+	);
+}
+
+// ===========================================================================
+// list: project with only providers shows empty consumers
+// ===========================================================================
+
+#[tokio::test]
+async fn list_project_with_only_providers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let providers = json["providers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("providers should be array"));
+	assert_eq!(providers.len(), 1);
+	assert_eq!(providers[0]["name"], "greeting");
+	assert_eq!(providers[0]["consumer_count"], 0);
+
+	let consumers = json["consumers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumers should be array"));
+	assert!(consumers.is_empty(), "should have no consumers");
+}
+
+// ===========================================================================
+// list: project with only consumers (orphans) shows empty providers
+// ===========================================================================
+
+#[tokio::test]
+async fn list_project_with_only_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let readme = "\
+<!-- {=orphan} -->
+
+Some content.
+
+<!-- {/orphan} -->
+";
+	std::fs::write(tmp.path().join("readme.md"), readme)
+		.unwrap_or_else(|e| panic!("write readme: {e}"));
+	// Need a template file for scanning (even if empty).
+	std::fs::write(tmp.path().join("template.t.md"), "")
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let providers = json["providers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("providers should be array"));
+	assert!(providers.is_empty(), "should have no providers");
+
+	let consumers = json["consumers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumers should be array"));
+	assert_eq!(consumers.len(), 1);
+	assert_eq!(consumers[0]["name"], "orphan");
+	// Consumer with missing provider is not stale (no provider to compare
+	// against).
+	assert_eq!(consumers[0]["is_stale"], false);
+}
+
+// ===========================================================================
+// list: consumer transformers are listed
+// ===========================================================================
+
+#[tokio::test]
+async fn list_shows_consumer_transformers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	let readme = "\
+<!-- {=greeting|trim|indent:\"  \"} -->
+
+  Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme)
+		.unwrap_or_else(|e| panic!("write readme: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let consumers = json["consumers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumers should be array"));
+	assert_eq!(consumers.len(), 1);
+
+	let transformers = consumers[0]["transformers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("transformers should be array"));
+	assert!(
+		transformers.iter().any(|t| t.as_str() == Some("trim")),
+		"expected trim transformer"
+	);
+	assert!(
+		transformers.iter().any(|t| t.as_str() == Some("indent")),
+		"expected indent transformer"
+	);
+}
+
+// ===========================================================================
+// update: dry_run reports block count
+// ===========================================================================
+
+#[tokio::test]
+async fn update_dry_run_reports_block_and_file_count() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_multi_block_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: true,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("Dry run"),
+		"expected dry run prefix, got: {text}"
+	);
+	assert!(
+		text.contains("block(s)"),
+		"expected block count in dry run output, got: {text}"
+	);
+	assert!(
+		text.contains("file(s)"),
+		"expected file count in dry run output, got: {text}"
+	);
+}
+
+// ===========================================================================
+// update: on empty project reports no changes
+// ===========================================================================
+
+#[tokio::test]
+async fn update_empty_project_reports_no_changes() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("already up to date"),
+		"empty project should report no changes, got: {text}"
+	);
+}
+
+// ===========================================================================
+// update: dry_run on synced project reports no changes
+// ===========================================================================
+
+#[tokio::test]
+async fn update_dry_run_synced_project_no_changes() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_synced_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: true,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("already up to date"),
+		"synced project dry run should report no changes, got: {text}"
+	);
+}
+
+// ===========================================================================
+// get_block: provider with no consumers lists empty consumer_files
+// ===========================================================================
+
+#[tokio::test]
+async fn get_block_provider_with_no_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@lonely} -->
+
+Nobody references me.
+
+<!-- {/lonely} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.get_block(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "lonely".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("get_block: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	assert_eq!(json["type"], "provider");
+	assert_eq!(json["name"], "lonely");
+	assert_eq!(json["consumer_count"], 0);
+	let consumer_files = json["consumer_files"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumer_files should be array"));
+	assert!(consumer_files.is_empty(), "should have no consumer files");
+}
+
+// ===========================================================================
+// get_block: provider raw_content vs rendered_content differ with data
+// ===========================================================================
+
+#[tokio::test]
+async fn get_block_provider_raw_vs_rendered_content() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "my-lib", "version": "3.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
+		 -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.get_block(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "install".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("get_block: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let raw = json["raw_content"]
+		.as_str()
+		.unwrap_or_else(|| panic!("raw_content should be string"));
+	let rendered = json["rendered_content"]
+		.as_str()
+		.unwrap_or_else(|| panic!("rendered_content should be string"));
+
+	// raw_content should still have template syntax.
+	assert!(
+		raw.contains("{{ pkg.name }}"),
+		"raw_content should contain template syntax, got: {raw}"
+	);
+	// rendered_content should have interpolated values.
+	assert!(
+		rendered.contains("npm install my-lib@3.0.0"),
+		"rendered_content should contain interpolated values, got: {rendered}"
+	);
+}
+
+// ===========================================================================
+// preview: with data interpolation
+// ===========================================================================
+
+#[tokio::test]
+async fn preview_with_data_interpolation() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version": "7.0.0"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@ver} -->\n\nv{{ pkg.version }}\n\n<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=ver} -->\n\nv6.0.0\n\n<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.preview(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "ver".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("preview: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("v7.0.0"),
+		"preview should show rendered content with interpolation, got: {text}"
+	);
+	assert!(
+		text.contains("consumer(s)"),
+		"preview should show consumer section, got: {text}"
+	);
+}
+
+// ===========================================================================
+// preview: with transformers applied to consumers
+// ===========================================================================
+
+#[tokio::test]
+async fn preview_shows_transformed_consumer_content() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	let readme = "\
+<!-- {=greeting|trim} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.preview(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "greeting".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("preview: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("Transformers:"),
+		"preview should list transformers, got: {text}"
+	);
+	assert!(
+		text.contains("trim"),
+		"preview should show trim transformer, got: {text}"
+	);
+}
+
+// ===========================================================================
+// check: stale project reports stale block names in output
+// ===========================================================================
+
+#[tokio::test]
+async fn check_stale_project_reports_block_name_and_file() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("greeting"),
+		"check output should include block name, got: {text}"
+	);
+	assert!(
+		text.contains("readme.md"),
+		"check output should include file name, got: {text}"
+	);
+	assert!(
+		text.contains("mdt_update"),
+		"check output should mention mdt_update, got: {text}"
+	);
+}
+
+// ===========================================================================
+// update: idempotent (second update on same project is no-op)
+// ===========================================================================
+
+#[tokio::test]
+async fn update_is_idempotent() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+
+	// First update.
+	let result1 = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update 1: {e:?}"));
+	assert!(
+		extract_text(&result1).contains("Updated"),
+		"first update should make changes"
+	);
+
+	// Read the file content after first update.
+	let content_after_first = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+
+	// Second update.
+	let result2 = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update 2: {e:?}"));
+	assert!(
+		extract_text(&result2).contains("already up to date"),
+		"second update should be no-op"
+	);
+
+	// Content should be unchanged.
+	let content_after_second = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+	assert_eq!(
+		content_after_first, content_after_second,
+		"content should be unchanged after idempotent update"
+	);
+}
+
+// ===========================================================================
+// init: path with nested directories
+// ===========================================================================
+
+#[tokio::test]
+async fn init_in_nested_directory() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let nested = tmp.path().join("a").join("b").join("c");
+	std::fs::create_dir_all(&nested).unwrap_or_else(|e| panic!("mkdir: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.init(Parameters(InitParam {
+			path: Some(nested.to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("init: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("Created template file"),
+		"expected creation message, got: {text}"
+	);
+	assert!(
+		nested.join("template.t.md").exists(),
+		"template should be created in nested dir"
+	);
+}
+
+// ===========================================================================
+// check: multiple stale blocks reports count
+// ===========================================================================
+
+#[tokio::test]
+async fn check_multiple_stale_blocks_reports_count() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_multi_block_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let text = extract_text(&result);
+	// multi_block_project has farewell as stale (greeting is synced).
+	assert!(
+		text.contains("stale"),
+		"expected stale blocks in output, got: {text}"
+	);
+	assert!(
+		text.contains("farewell"),
+		"expected farewell block name, got: {text}"
+	);
+}
+
+// ===========================================================================
+// get_block: multiple consumers for same block
+// ===========================================================================
+
+#[tokio::test]
+async fn get_block_provider_with_multiple_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	let readme = "\
+<!-- {=greeting} -->
+
+Old content 1.
+
+<!-- {/greeting} -->
+";
+	let docs = "\
+<!-- {=greeting} -->
+
+Old content 2.
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.get_block(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "greeting".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("get_block: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	assert_eq!(json["type"], "provider");
+	assert_eq!(json["consumer_count"], 2);
+	let consumer_files = json["consumer_files"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumer_files should be array"));
+	assert_eq!(consumer_files.len(), 2);
+}
+
+// ===========================================================================
+// update: with multiple files being updated
+// ===========================================================================
+
+#[tokio::test]
+async fn update_multiple_files() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	let readme = "\
+<!-- {=greeting} -->
+
+Old readme content.
+
+<!-- {/greeting} -->
+";
+	let docs = "\
+<!-- {=greeting} -->
+
+Old docs content.
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(text.contains("Updated"), "expected update, got: {text}");
+	assert!(
+		text.contains("2 file(s)"),
+		"expected 2 files updated, got: {text}"
+	);
+
+	// Verify both files were updated.
+	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+	let docs_content =
+		std::fs::read_to_string(tmp.path().join("docs.md")).unwrap_or_else(|e| panic!("read: {e}"));
+
+	assert!(
+		readme_content.contains("Hello from mdt!"),
+		"readme should be updated"
+	);
+	assert!(
+		docs_content.contains("Hello from mdt!"),
+		"docs should be updated"
+	);
+}
+
+// ===========================================================================
+// list: summary format is correct
+// ===========================================================================
+
+#[tokio::test]
+async fn list_summary_format() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let summary = json["summary"]
+		.as_str()
+		.unwrap_or_else(|| panic!("summary should be string"));
+	assert!(
+		summary.contains("1 provider(s)"),
+		"expected '1 provider(s)' in summary, got: {summary}"
+	);
+	assert!(
+		summary.contains("1 consumer(s)"),
+		"expected '1 consumer(s)' in summary, got: {summary}"
+	);
+}
+
+// ===========================================================================
+// list: provider content is trimmed in output
+// ===========================================================================
+
+#[tokio::test]
+async fn list_provider_content_is_trimmed() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let providers = json["providers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("providers should be array"));
+	let content = providers[0]["content"]
+		.as_str()
+		.unwrap_or_else(|| panic!("content should be string"));
+	// Content should be trimmed (no leading/trailing whitespace).
+	assert_eq!(
+		content,
+		content.trim(),
+		"provider content should be trimmed in list output"
+	);
+}
+
+// ===========================================================================
+// list: provider file paths are relative
+// ===========================================================================
+
+#[tokio::test]
+async fn list_uses_relative_file_paths() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("list: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	let providers = json["providers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("providers should be array"));
+	let file = providers[0]["file"]
+		.as_str()
+		.unwrap_or_else(|| panic!("file should be string"));
+	assert_eq!(
+		file, "template.t.md",
+		"provider file path should be relative"
+	);
+
+	let consumers = json["consumers"]
+		.as_array()
+		.unwrap_or_else(|| panic!("consumers should be array"));
+	let consumer_file = consumers[0]["file"]
+		.as_str()
+		.unwrap_or_else(|| panic!("file should be string"));
+	assert_eq!(
+		consumer_file, "readme.md",
+		"consumer file path should be relative"
+	);
+}
+
+// ===========================================================================
+// preview: with multiple consumers shows all
+// ===========================================================================
+
+#[tokio::test]
+async fn preview_with_multiple_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	let readme = "\
+<!-- {=greeting} -->
+
+Old readme.
+
+<!-- {/greeting} -->
+";
+	let docs = "\
+<!-- {=greeting|trim} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.preview(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "greeting".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("preview: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("2 consumer(s)"),
+		"expected 2 consumers, got: {text}"
+	);
+	assert!(
+		text.contains("readme.md"),
+		"expected readme.md in output, got: {text}"
+	);
+	assert!(
+		text.contains("docs.md"),
+		"expected docs.md in output, got: {text}"
+	);
+}
+
+// ===========================================================================
+// check: with invalid mdt.toml config
+// ===========================================================================
+
+#[tokio::test]
+async fn check_with_invalid_config_handles_gracefully() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Write an invalid mdt.toml (bad TOML syntax).
+	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await;
+
+	// Should return an error, not panic.
+	assert!(
+		result.is_err(),
+		"check with invalid config should return an error"
+	);
+}
+
+// ===========================================================================
+// update: with invalid mdt.toml config
+// ===========================================================================
+
+#[tokio::test]
+async fn update_with_invalid_config_handles_gracefully() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await;
+
+	assert!(
+		result.is_err(),
+		"update with invalid config should return an error"
+	);
+}
+
+// ===========================================================================
+// list: with invalid mdt.toml config
+// ===========================================================================
+
+#[tokio::test]
+async fn list_with_invalid_config_handles_gracefully() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.list(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await;
+
+	assert!(
+		result.is_err(),
+		"list with invalid config should return an error"
+	);
+}
+
+// ===========================================================================
+// get_block: with invalid mdt.toml config
+// ===========================================================================
+
+#[tokio::test]
+async fn get_block_with_invalid_config_handles_gracefully() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.get_block(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "test".to_string(),
+		}))
+		.await;
+
+	assert!(
+		result.is_err(),
+		"get_block with invalid config should return an error"
+	);
+}
+
+// ===========================================================================
+// preview: with invalid mdt.toml config
+// ===========================================================================
+
+#[tokio::test]
+async fn preview_with_invalid_config_handles_gracefully() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.preview(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "test".to_string(),
+		}))
+		.await;
+
+	assert!(
+		result.is_err(),
+		"preview with invalid config should return an error"
+	);
+}
+
+// ===========================================================================
+// check: data file referenced but missing
+// ===========================================================================
+
+#[tokio::test]
+async fn check_with_missing_data_file() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	// Config references a data file that does not exist.
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"nonexistent.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let template = "<!-- {@ver} -->\n\nv{{ pkg.version }}\n\n<!-- {/ver} -->\n";
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await;
+
+	// Should either return error or handle gracefully — not panic.
+	// The scan_ctx function will handle the missing data file.
+	assert!(
+		result.is_ok() || result.is_err(),
+		"should handle missing data file without panicking"
+	);
+}

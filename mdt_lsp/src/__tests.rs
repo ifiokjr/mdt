@@ -2652,6 +2652,826 @@ fn rescan_project_without_root_is_noop() {
 	assert!(state.consumers.is_empty());
 }
 
+// ===========================================================================
+// Diagnostics: stale consumer with data interpolation
+// ===========================================================================
+
+#[test]
+fn diagnostics_stale_consumer_with_template_data() {
+	// When provider content uses template variables and data is available,
+	// the diagnostic should compare against the rendered (interpolated) content.
+	let provider_template = "<!-- {@ver} -->\n\nv{{ pkg.version }}\n\n<!-- {/ver} -->\n";
+	let consumer_doc = "<!-- {=ver} -->\n\nv1.0.0\n\n<!-- {/ver} -->\n";
+
+	let provider_blocks = parse(provider_template).unwrap_or_default();
+	let (consumer_blocks, consumer_parse_diagnostics) =
+		parse_with_diagnostics(consumer_doc).unwrap_or_default();
+
+	let provider_block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected a provider block"));
+
+	let provider_entry = ProviderEntry {
+		block: provider_block,
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: extract_content_between_tags(provider_template, &provider_blocks[0]),
+	};
+
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut providers = HashMap::new();
+	providers.insert("ver".to_string(), provider_entry);
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		consumer_uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks,
+			parse_diagnostics: consumer_parse_diagnostics,
+		},
+	);
+
+	// Provide data so that {{ pkg.version }} renders to "2.0.0".
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"version": "2.0.0"}));
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data,
+	};
+
+	let diagnostics = compute_diagnostics(&state, &consumer_uri);
+	// Consumer has "v1.0.0" but rendered provider content is "v2.0.0",
+	// so it should be stale.
+	assert!(
+		diagnostics
+			.iter()
+			.any(|d| d.message.contains("out of date")),
+		"expected stale diagnostic when rendered content differs, got: {diagnostics:?}"
+	);
+}
+
+// ===========================================================================
+// Diagnostics: stale diagnostic includes expected content data
+// ===========================================================================
+
+#[test]
+fn diagnostics_stale_consumer_includes_data_payload() {
+	let (state, uri) = make_test_state("Hello world!", "Old content");
+	let diagnostics = compute_diagnostics(&state, &uri);
+
+	assert_eq!(diagnostics.len(), 1);
+	let data = diagnostics[0]
+		.data
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected diagnostic data"));
+
+	assert_eq!(data["kind"], "stale");
+	assert_eq!(data["block_name"], "greeting");
+	assert!(
+		data["expected_content"].is_string(),
+		"expected_content should be a string"
+	);
+}
+
+// ===========================================================================
+// Diagnostics: multiple consumers in one document
+// ===========================================================================
+
+#[test]
+fn diagnostics_multiple_consumers_in_single_document() {
+	let consumer_doc = "\
+<!-- {=greeting} -->
+
+Old greeting
+
+<!-- {/greeting} -->
+
+<!-- {=farewell} -->
+
+Old farewell
+
+<!-- {/farewell} -->
+";
+	let (consumer_blocks, consumer_parse_diagnostics) =
+		parse_with_diagnostics(consumer_doc).unwrap_or_default();
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks,
+			parse_diagnostics: consumer_parse_diagnostics,
+		},
+	);
+
+	// Create providers with different content to make both stale.
+	let provider_template_1 = "<!-- {@greeting} -->\n\nNew greeting\n\n<!-- {/greeting} -->\n";
+	let provider_blocks_1 = parse(provider_template_1).unwrap_or_default();
+	let provider_template_2 = "<!-- {@farewell} -->\n\nNew farewell\n\n<!-- {/farewell} -->\n";
+	let provider_blocks_2 = parse(provider_template_2).unwrap_or_default();
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: provider_blocks_1[0].clone(),
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: extract_content_between_tags(provider_template_1, &provider_blocks_1[0]),
+		},
+	);
+	providers.insert(
+		"farewell".to_string(),
+		ProviderEntry {
+			block: provider_blocks_2[0].clone(),
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: extract_content_between_tags(provider_template_2, &provider_blocks_2[0]),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	let stale_names: Vec<&str> = diagnostics
+		.iter()
+		.filter(|d| d.message.contains("out of date"))
+		.filter_map(|d| {
+			if d.message.contains("greeting") {
+				Some("greeting")
+			} else if d.message.contains("farewell") {
+				Some("farewell")
+			} else {
+				None
+			}
+		})
+		.collect();
+
+	assert!(
+		stale_names.contains(&"greeting"),
+		"expected greeting to be stale"
+	);
+	assert!(
+		stale_names.contains(&"farewell"),
+		"expected farewell to be stale"
+	);
+}
+
+// Note: completion_inside_provider_tag_context and
+// completion_inside_close_tag_context are already tested above.
+
+// ===========================================================================
+// Completion: multiple providers returns all
+// ===========================================================================
+
+#[test]
+fn completion_returns_all_provider_names() {
+	let doc = "<!-- {=";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: doc.to_string(),
+			blocks: Vec::new(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let make_provider = |name: &str| {
+		ProviderEntry {
+			block: Block {
+				name: name.to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\ncontent\n\n".to_string(),
+		}
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("greeting".to_string(), make_provider("greeting"));
+	providers.insert("farewell".to_string(), make_provider("farewell"));
+	providers.insert("install".to_string(), make_provider("install"));
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let position = Position {
+		line: 0,
+		character: 7,
+	};
+	let completions = compute_completions(&state, &uri, position);
+	assert_eq!(completions.len(), 3, "expected 3 completion items");
+
+	let labels: Vec<&str> = completions.iter().map(|c| c.label.as_str()).collect();
+	assert!(labels.contains(&"greeting"));
+	assert!(labels.contains(&"farewell"));
+	assert!(labels.contains(&"install"));
+}
+
+// ===========================================================================
+// Completion: transformer completions have correct kind
+// ===========================================================================
+
+#[test]
+fn transformer_completions_have_function_kind() {
+	let completions = transformer_completions();
+	assert!(!completions.is_empty());
+	for item in &completions {
+		assert_eq!(
+			item.kind,
+			Some(CompletionItemKind::FUNCTION),
+			"transformer completions should have FUNCTION kind"
+		);
+	}
+}
+
+#[test]
+fn transformer_completions_have_sort_text() {
+	let completions = transformer_completions();
+	for (i, item) in completions.iter().enumerate() {
+		assert_eq!(
+			item.sort_text,
+			Some(format!("{i:02}")),
+			"transformer at index {i} should have sort_text '{:02}'",
+			i
+		);
+	}
+}
+
+#[test]
+fn transformer_completions_include_all_known_transformers() {
+	let completions = transformer_completions();
+	let names: Vec<&str> = completions.iter().map(|c| c.label.as_str()).collect();
+	let expected = [
+		"trim",
+		"trimStart",
+		"trimEnd",
+		"indent",
+		"prefix",
+		"suffix",
+		"linePrefix",
+		"lineSuffix",
+		"wrap",
+		"codeBlock",
+		"code",
+		"replace",
+	];
+	for name in expected {
+		assert!(
+			names.contains(&name),
+			"expected transformer '{name}' in completions, got: {names:?}"
+		);
+	}
+}
+
+// ===========================================================================
+// Block name completions have correct kind
+// ===========================================================================
+
+#[test]
+fn block_name_completions_have_reference_kind() {
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\nHello!\n\n".to_string(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents: HashMap::new(),
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let completions = block_name_completions(&state);
+	assert_eq!(completions.len(), 1);
+	assert_eq!(completions[0].kind, Some(CompletionItemKind::REFERENCE));
+	assert!(
+		completions[0]
+			.detail
+			.as_ref()
+			.unwrap_or_else(|| panic!("expected detail"))
+			.contains("template.t.md")
+	);
+}
+
+// Note: document_symbols_provider_block_has_class_kind and
+// document_symbols_consumer_block_has_variable_kind are already tested below.
+
+#[test]
+fn document_symbols_full_range_spans_opening_to_closing() {
+	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let blocks = parse(content).unwrap_or_default();
+	let uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let symbols = compute_document_symbols(&state, &uri);
+	assert_eq!(symbols.len(), 1);
+	// full range.start should be at opening start
+	// full range.end should be at closing end
+	// selection_range should be just the opening tag
+	let symbol = &symbols[0];
+	assert!(
+		symbol.range.start.line <= symbol.selection_range.start.line,
+		"full range should start at or before selection range"
+	);
+	assert!(
+		symbol.range.end.line >= symbol.selection_range.end.line,
+		"full range should end at or after selection range"
+	);
+}
+
+// ===========================================================================
+// Code action: edit replaces content between tags
+// ===========================================================================
+
+#[test]
+fn code_action_edit_targets_content_between_tags() {
+	let (state, uri) = make_test_state("Hello world!", "Old content");
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("doc"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap_or_else(|| panic!("consumer block"));
+
+	let range = Range {
+		start: to_lsp_position(&block.opening.start),
+		end: to_lsp_position(&block.closing.end),
+	};
+
+	let actions = compute_code_actions(&state, &uri, range);
+	assert!(!actions.is_empty());
+
+	let CodeActionOrCommand::CodeAction(action) = &actions[0] else {
+		panic!("expected CodeAction")
+	};
+
+	assert_eq!(action.kind, Some(CodeActionKind::QUICKFIX));
+
+	// Verify the edit has changes for our URI.
+	let edit = action
+		.edit
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected workspace edit"));
+	let changes = edit
+		.changes
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected changes map"));
+	assert!(
+		changes.contains_key(&uri),
+		"changes should target the consumer file"
+	);
+
+	let text_edits = changes
+		.get(&uri)
+		.unwrap_or_else(|| panic!("expected text edits for URI"));
+	assert_eq!(text_edits.len(), 1, "expected exactly one text edit");
+
+	// The edit range start should be at the opening tag end (content starts after
+	// opening).
+	let text_edit = &text_edits[0];
+	let opening_end = to_lsp_position(&block.opening.end);
+	assert_eq!(text_edit.range.start, opening_end);
+}
+
+// ===========================================================================
+// Levenshtein distance: additional cases
+// ===========================================================================
+
+#[test]
+fn levenshtein_single_char_difference() {
+	assert_eq!(levenshtein_distance("a", "b"), 1);
+	assert_eq!(levenshtein_distance("a", "a"), 0);
+	assert_eq!(levenshtein_distance("a", ""), 1);
+}
+
+#[test]
+fn levenshtein_case_sensitive() {
+	// Levenshtein is case-sensitive.
+	assert_eq!(levenshtein_distance("Hello", "hello"), 1);
+	assert_eq!(levenshtein_distance("HELLO", "hello"), 5);
+}
+
+#[test]
+fn levenshtein_symmetric() {
+	// Distance should be the same regardless of argument order.
+	let d1 = levenshtein_distance("greeting", "greetng");
+	let d2 = levenshtein_distance("greetng", "greeting");
+	assert_eq!(d1, d2, "levenshtein should be symmetric");
+}
+
+// ===========================================================================
+// suggest_similar_names: additional edge cases
+// ===========================================================================
+
+#[test]
+fn suggest_similar_names_empty_providers_returns_empty() {
+	let providers = HashMap::new();
+	let suggestions = suggest_similar_names("anything", &providers);
+	assert!(suggestions.is_empty());
+}
+
+// Note: suggest_similar_names_exact_match_excluded is already tested below.
+
+#[test]
+fn suggest_similar_names_max_three_results() {
+	let make_provider = |name: &str| {
+		ProviderEntry {
+			block: Block {
+				name: name.to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: String::new(),
+		}
+	};
+
+	let mut providers = HashMap::new();
+	// All are one edit away from "test".
+	providers.insert("testa".to_string(), make_provider("testa"));
+	providers.insert("testb".to_string(), make_provider("testb"));
+	providers.insert("testc".to_string(), make_provider("testc"));
+	providers.insert("testd".to_string(), make_provider("testd"));
+	providers.insert("teste".to_string(), make_provider("teste"));
+
+	let suggestions = suggest_similar_names("test", &providers);
+	assert!(
+		suggestions.len() <= 3,
+		"should return at most 3 suggestions, got {}",
+		suggestions.len()
+	);
+}
+
+// ===========================================================================
+// to_lsp_position: zero/underflow handling
+// ===========================================================================
+
+#[test]
+fn to_lsp_position_saturates_at_zero() {
+	// Point with line=0, column=0 (below the 1-indexed minimum).
+	// saturating_sub(1) should produce 0, not underflow.
+	let point = mdt_core::Point::new(0, 0, 0);
+	let lsp_pos = to_lsp_position(&point);
+	assert_eq!(lsp_pos.line, 0);
+	assert_eq!(lsp_pos.character, 0);
+}
+
+// ===========================================================================
+// parse_document_content: python file (source scanner path)
+// ===========================================================================
+
+#[test]
+fn parse_document_content_python_file() {
+	let uri = "file:///test/main.py"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
+	let content = "# <!-- {=block} -->\n# content\n# <!-- {/block} -->\n";
+	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "block");
+	assert!(diagnostics.is_empty());
+}
+
+// ===========================================================================
+// parse_document_content: empty content returns empty
+// ===========================================================================
+
+#[test]
+fn parse_document_content_empty_string() {
+	let uri = "file:///test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid URI"));
+	let (blocks, diagnostics) = parse_document_content(&uri, "");
+	assert!(blocks.is_empty());
+	assert!(diagnostics.is_empty());
+}
+
+// Note: hover_provider_with_zero_consumers is already tested below.
+
+// ===========================================================================
+// Hover: provider shows content preview in code block
+// ===========================================================================
+
+#[test]
+fn hover_provider_shows_content_in_code_block() {
+	let provider_template =
+		"<!-- {@greeting} -->\n\nHello from provider!\n\n<!-- {/greeting} -->\n";
+	let provider_blocks = parse(provider_template).unwrap_or_default();
+	let provider_uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let provider_block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected a provider block"));
+
+	let provider_entry = ProviderEntry {
+		block: provider_block.clone(),
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: extract_content_between_tags(provider_template, &provider_blocks[0]),
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("greeting".to_string(), provider_entry);
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		provider_uri.clone(),
+		DocumentState {
+			content: provider_template.to_string(),
+			blocks: provider_blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let position = to_lsp_position(&provider_block.opening.start);
+	let hover = compute_hover(&state, &provider_uri, position);
+
+	assert!(hover.is_some());
+	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
+		assert!(
+			markup.value.contains("Hello from provider!"),
+			"hover should show provider content"
+		);
+		assert!(
+			markup.value.contains("```"),
+			"hover should render content in a code block"
+		);
+	} else {
+		panic!("expected Markup hover contents");
+	}
+}
+
+// ===========================================================================
+// Hover: consumer with provider shows source file path
+// ===========================================================================
+
+#[test]
+fn hover_consumer_shows_provider_source_path() {
+	let (state, uri) = make_test_state("Hello world!", "Old content");
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("doc"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap_or_else(|| panic!("consumer block"));
+
+	let position = to_lsp_position(&block.opening.start);
+	let hover = compute_hover(&state, &uri, position);
+
+	assert!(hover.is_some());
+	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
+		assert!(
+			markup.value.contains("Provider source:"),
+			"should show provider source label"
+		);
+		assert!(
+			markup.value.contains("template.t.md"),
+			"should show provider file path"
+		);
+	} else {
+		panic!("expected Markup hover contents");
+	}
+}
+
+// Note: rescan_project_with_valid_project_populates_state is already tested
+// below.
+
+// ===========================================================================
+// Goto definition: consumer cursor not on any block
+// ===========================================================================
+
+#[test]
+fn goto_definition_cursor_between_blocks_returns_none() {
+	let content = "\
+# Heading
+
+<!-- {=greeting} -->
+
+Hello
+
+<!-- {/greeting} -->
+
+Some text between blocks.
+
+<!-- {=farewell} -->
+
+Bye
+
+<!-- {/farewell} -->
+";
+	let blocks = parse(content).unwrap_or_default();
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	// Position on line 8 "Some text between blocks." — not in any block's opening.
+	let position = Position {
+		line: 8,
+		character: 5,
+	};
+	let result = compute_goto_definition(&state, &uri, position);
+	assert!(
+		result.is_none(),
+		"should return None when cursor is between blocks"
+	);
+}
+
+// ===========================================================================
+// Code action: multiple stale consumers in one document
+// ===========================================================================
+
+#[test]
+fn code_actions_for_multiple_stale_blocks() {
+	let consumer_doc = "\
+<!-- {=greeting} -->
+
+Old greeting
+
+<!-- {/greeting} -->
+
+<!-- {=farewell} -->
+
+Old farewell
+
+<!-- {/farewell} -->
+";
+	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let provider_template_1 = "<!-- {@greeting} -->\n\nNew greeting\n\n<!-- {/greeting} -->\n";
+	let provider_blocks_1 = parse(provider_template_1).unwrap_or_default();
+	let provider_template_2 = "<!-- {@farewell} -->\n\nNew farewell\n\n<!-- {/farewell} -->\n";
+	let provider_blocks_2 = parse(provider_template_2).unwrap_or_default();
+
+	let mut providers = HashMap::new();
+	providers.insert(
+		"greeting".to_string(),
+		ProviderEntry {
+			block: provider_blocks_1[0].clone(),
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: extract_content_between_tags(provider_template_1, &provider_blocks_1[0]),
+		},
+	);
+	providers.insert(
+		"farewell".to_string(),
+		ProviderEntry {
+			block: provider_blocks_2[0].clone(),
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: extract_content_between_tags(provider_template_2, &provider_blocks_2[0]),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	// Use a range that spans the entire document.
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 0,
+		},
+		end: Position {
+			line: 20,
+			character: 0,
+		},
+	};
+
+	let actions = compute_code_actions(&state, &uri, range);
+	assert_eq!(
+		actions.len(),
+		2,
+		"expected 2 code actions (one per stale block)"
+	);
+
+	let titles: Vec<String> = actions
+		.iter()
+		.map(|a| {
+			match a {
+				CodeActionOrCommand::CodeAction(ca) => ca.title.clone(),
+				CodeActionOrCommand::Command(cmd) => cmd.title.clone(),
+			}
+		})
+		.collect();
+	assert!(
+		titles.iter().any(|t| t.contains("greeting")),
+		"expected greeting code action"
+	);
+	assert!(
+		titles.iter().any(|t| t.contains("farewell")),
+		"expected farewell code action"
+	);
+}
+
 // ---- WorkspaceState default ----
 
 #[test]
