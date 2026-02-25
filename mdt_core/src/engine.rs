@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::Argument;
@@ -10,14 +11,31 @@ use crate::config::PaddingConfig;
 use crate::project::ConsumerEntry;
 use crate::project::ProjectContext;
 
+/// A warning about undefined template variables in a provider block.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct TemplateWarning {
+	/// Path to the file containing the provider block that uses the undefined
+	/// variables.
+	pub provider_file: PathBuf,
+	/// Name of the provider block.
+	pub block_name: String,
+	/// The undefined variable references found in the template (e.g.,
+	/// `["pkgg.version", "typo"]`).
+	pub undefined_variables: Vec<String>,
+}
+
 /// Result of checking a project for stale consumers.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct CheckResult {
 	/// Consumer entries that are out of date.
 	pub stale: Vec<StaleEntry>,
 	/// Errors encountered while rendering templates. These are collected
 	/// instead of aborting so that the check reports all problems at once.
 	pub render_errors: Vec<RenderError>,
+	/// Warnings about undefined template variables in provider blocks.
+	pub warnings: Vec<TemplateWarning>,
 }
 
 impl CheckResult {
@@ -30,10 +48,16 @@ impl CheckResult {
 	pub fn has_errors(&self) -> bool {
 		!self.render_errors.is_empty()
 	}
+
+	/// Returns true if there are warnings about undefined template variables.
+	pub fn has_warnings(&self) -> bool {
+		!self.warnings.is_empty()
+	}
 }
 
 /// A template render error associated with a specific consumer block.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct RenderError {
 	/// Path to the file containing the consumer block.
 	pub file: PathBuf,
@@ -49,6 +73,7 @@ pub struct RenderError {
 
 /// A consumer entry that is out of date.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct StaleEntry {
 	/// Path to the file containing the stale consumer.
 	pub file: PathBuf,
@@ -66,11 +91,14 @@ pub struct StaleEntry {
 
 /// Result of updating a project.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct UpdateResult {
 	/// Files that were modified and their new content.
 	pub updated_files: HashMap<PathBuf, String>,
 	/// Number of consumer blocks that were updated.
 	pub updated_count: usize,
+	/// Warnings about undefined template variables in provider blocks.
+	pub warnings: Vec<TemplateWarning>,
 }
 
 /// Render provider content through minijinja using the given data context.
@@ -101,6 +129,67 @@ pub fn render_template(
 		.map_err(|e| MdtError::TemplateRender(e.to_string()))
 }
 
+/// Find template variables referenced in `content` that are not defined in
+/// `data`. Returns the list of undefined variable names (with nested
+/// attribute access like `"pkgg.version"`). This uses minijinja's static
+/// analysis to detect undeclared variables, so it does not depend on
+/// runtime control flow.
+///
+/// Returns an empty `Vec` when `data` is empty (no data configured means
+/// template rendering is a no-op) or when the content has no template
+/// syntax.
+#[allow(clippy::implicit_hasher)]
+pub fn find_undefined_variables(
+	content: &str,
+	data: &HashMap<String, serde_json::Value>,
+) -> Vec<String> {
+	if data.is_empty() || !has_template_syntax(content) {
+		return Vec::new();
+	}
+
+	let mut env = minijinja::Environment::new();
+	env.set_keep_trailing_newline(true);
+	// We only need the template for static analysis, undefined behavior
+	// doesn't affect undeclared_variables.
+	let Ok(()) = env.add_template("__inline__", content) else {
+		return Vec::new();
+	};
+	let Ok(template) = env.get_template("__inline__") else {
+		return Vec::new();
+	};
+
+	// Get all undeclared variables with nested access (e.g., "pkg.version").
+	let undeclared: HashSet<String> = template.undeclared_variables(true);
+
+	// Also get top-level names so we can check both "pkg.version" (nested)
+	// and "pkg" (top-level).
+	let top_level_names: HashSet<String> = data.keys().cloned().collect();
+
+	let mut undefined: Vec<String> = undeclared
+		.into_iter()
+		.filter(|var| {
+			// Extract the top-level namespace from the variable reference.
+			let top_level = var.split('.').next().unwrap_or(var);
+			// A variable is truly undefined if its top-level namespace is
+			// not present in the data context. Variables like "loop" or
+			// "range" are minijinja builtins that we should not warn about.
+			!top_level_names.contains(top_level) && !is_builtin_variable(top_level)
+		})
+		.collect();
+
+	undefined.sort();
+	undefined
+}
+
+/// Check whether a variable name is a minijinja builtin that should not
+/// trigger an "undefined variable" warning.
+fn is_builtin_variable(name: &str) -> bool {
+	matches!(
+		name,
+		"loop" | "self" | "super" | "true" | "false" | "none" | "namespace" | "range" | "dict"
+	)
+}
+
 /// Check whether content contains minijinja template syntax.
 fn has_template_syntax(content: &str) -> bool {
 	content.contains("{{") || content.contains("{%") || content.contains("{#")
@@ -113,6 +202,7 @@ fn has_template_syntax(content: &str) -> bool {
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 	let mut render_errors = Vec::new();
+	let warnings = collect_template_warnings(ctx);
 
 	for consumer in &ctx.project.consumers {
 		let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
@@ -152,6 +242,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	Ok(CheckResult {
 		stale,
 		render_errors,
+		warnings,
 	})
 }
 
@@ -159,6 +250,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
+	let warnings = collect_template_warnings(ctx);
 
 	// Group consumers by file
 	let mut consumers_by_file: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
@@ -220,7 +312,40 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	Ok(UpdateResult {
 		updated_files: file_contents,
 		updated_count,
+		warnings,
 	})
+}
+
+/// Collect warnings about undefined template variables across all provider
+/// blocks that have at least one consumer. Each provider is checked at most
+/// once even if it has multiple consumers.
+fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
+	let mut warnings = Vec::new();
+	let mut checked_providers: HashSet<String> = HashSet::new();
+
+	// Only check providers that are actually referenced by consumers.
+	for consumer in &ctx.project.consumers {
+		let name = &consumer.block.name;
+		if checked_providers.contains(name) {
+			continue;
+		}
+		checked_providers.insert(name.clone());
+
+		let Some(provider) = ctx.project.providers.get(name) else {
+			continue;
+		};
+
+		let undefined = find_undefined_variables(&provider.content, &ctx.data);
+		if !undefined.is_empty() {
+			warnings.push(TemplateWarning {
+				provider_file: provider.file.clone(),
+				block_name: name.clone(),
+				undefined_variables: undefined,
+			});
+		}
+	}
+
+	warnings
 }
 
 /// Write the updated contents back to disk.
