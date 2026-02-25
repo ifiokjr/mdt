@@ -381,8 +381,7 @@ fn pad_content_with_config(
 	// is "//! ".
 	let trailing_prefix = original_content
 		.rfind('\n')
-		.map(|idx| &original_content[idx + 1..])
-		.unwrap_or("");
+		.map_or("", |idx| &original_content[idx + 1..]);
 	// Trimmed prefix for blank padding lines — avoids trailing whitespace
 	// on empty lines (e.g., "//! " becomes "//!").
 	let blank_line_prefix = trailing_prefix.trim_end();

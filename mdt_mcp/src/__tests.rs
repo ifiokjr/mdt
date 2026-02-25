@@ -1148,7 +1148,7 @@ fn resolve_root_none_returns_cwd() {
 	let result = resolve_root(None);
 	// Should fall back to current directory
 	assert!(
-		result.is_absolute() || result == PathBuf::from("."),
+		result.is_absolute() || result.as_path() == Path::new("."),
 		"resolve_root(None) should return an absolute path or '.', got: {result:?}"
 	);
 }

@@ -72,6 +72,7 @@ pub use source_scanner::*;
 
 pub mod config;
 mod engine;
+#[allow(unused_assignments)]
 mod error;
 pub(crate) mod lexer;
 mod parser;

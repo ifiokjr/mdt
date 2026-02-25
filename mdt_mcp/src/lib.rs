@@ -497,6 +497,7 @@ impl Default for MdtMcpServer {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)]
 mod __tests;
 
 /// Start the MCP server on stdin/stdout.

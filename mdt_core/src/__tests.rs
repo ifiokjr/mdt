@@ -1778,7 +1778,7 @@ fn validate_transformers_trim_with_args_fails() {
 	assert!(result.is_err());
 	let msg = result.unwrap_err().to_string();
 	assert!(msg.contains("trim"));
-	assert!(msg.contains("0"));
+	assert!(msg.contains('0'));
 }
 
 #[test]
@@ -1817,8 +1817,8 @@ fn error_invalid_transformer_args_message() {
 	};
 	let msg = err.to_string();
 	assert!(msg.contains("replace"));
-	assert!(msg.contains("2"));
-	assert!(msg.contains("1"));
+	assert!(msg.contains('2'));
+	assert!(msg.contains('1'));
 }
 
 // --- Block PartialEq tests ---
@@ -2352,7 +2352,7 @@ fn scan_project_collects_unclosed_block_diagnostic() {
 		project.diagnostics.iter().any(|d| {
 			matches!(
 				&d.kind,
-				project::DiagnosticKind::UnclosedBlock { name } if name == "block"
+				DiagnosticKind::UnclosedBlock { name } if name == "block"
 			)
 		}),
 		"expected UnclosedBlock diagnostic, got: {:?}",
@@ -2379,7 +2379,7 @@ fn scan_project_collects_unknown_transformer_diagnostic() {
 		project.diagnostics.iter().any(|d| {
 			matches!(
 				&d.kind,
-				project::DiagnosticKind::UnknownTransformer { name } if name == "foobar"
+				DiagnosticKind::UnknownTransformer { name } if name == "foobar"
 			)
 		}),
 		"expected UnknownTransformer diagnostic, got: {:?}",
@@ -2407,7 +2407,7 @@ fn scan_project_collects_invalid_transformer_args_diagnostic() {
 		project.diagnostics.iter().any(|d| {
 			matches!(
 				&d.kind,
-				project::DiagnosticKind::InvalidTransformerArgs { name, .. } if name == "trim"
+				DiagnosticKind::InvalidTransformerArgs { name, .. } if name == "trim"
 			)
 		}),
 		"expected InvalidTransformerArgs diagnostic, got: {:?}",
@@ -2429,7 +2429,7 @@ fn scan_project_collects_unused_provider_diagnostic() {
 		project.diagnostics.iter().any(|d| {
 			matches!(
 				&d.kind,
-				project::DiagnosticKind::UnusedProvider { name } if name == "unused_block"
+				DiagnosticKind::UnusedProvider { name } if name == "unused_block"
 			)
 		}),
 		"expected UnusedProvider diagnostic, got: {:?}",
@@ -2482,8 +2482,7 @@ fn stale_entry_includes_line_and_column() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let project =
-		project::scan_project_with_config(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
+	let project = scan_project_with_config(tmp.path()).unwrap_or_else(|e| panic!("scan: {e}"));
 	let result = check_project(&project).unwrap_or_else(|e| panic!("check: {e}"));
 	assert_eq!(result.stale.len(), 1);
 	// The consumer opening tag is on line 3 (after "Some preamble\n\n")
@@ -3822,7 +3821,7 @@ fn scan_project_with_options_exclude_patterns_parameter() -> MdtResult<()> {
 		&ignore_pats,
 		&globset::GlobSet::empty(),
 		&[],
-		crate::config::DEFAULT_MAX_FILE_SIZE,
+		DEFAULT_MAX_FILE_SIZE,
 		true, // disable gitignore so we're only testing custom patterns
 		&CodeBlockFilter::default(),
 		&[],
@@ -3848,8 +3847,7 @@ disable_gitignore = true
 [exclude]
 patterns = ["build/", "*.bak"]
 "#;
-	let config: crate::config::MdtConfig =
-		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
 	assert_eq!(config.exclude.patterns, vec!["build/", "*.bak"]);
 	assert!(config.disable_gitignore);
 }
@@ -3857,8 +3855,7 @@ patterns = ["build/", "*.bak"]
 #[test]
 fn config_defaults_for_exclude_fields() {
 	let toml_content = "";
-	let config: crate::config::MdtConfig =
-		toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
 	assert!(config.exclude.patterns.is_empty());
 	assert!(!config.disable_gitignore);
 }
@@ -3869,8 +3866,8 @@ fn config_defaults_for_exclude_fields() {
 
 // --- tokens.rs: GetDynamicRange impls for all numeric types ---
 
-/// Helper that exercises GetDynamicRange for a given value.
-/// Creates a TokenGroup with known tokens and calls position_of_range.
+/// Helper that exercises `GetDynamicRange` for a given value.
+/// Creates a `TokenGroup` with known tokens and calls `position_of_range`.
 fn exercise_get_dynamic_range(range: &impl GetDynamicRange) {
 	let group = closing_token_group();
 	let _pos = group.position_of_range(range);
@@ -5081,8 +5078,8 @@ fn project_diagnostic_message_all_kinds() {
 	};
 	let msg = diag.message();
 	assert!(msg.contains("trim"));
-	assert!(msg.contains("0"));
-	assert!(msg.contains("1"));
+	assert!(msg.contains('0'));
+	assert!(msg.contains('1'));
 
 	let diag = ProjectDiagnostic {
 		file: PathBuf::from("test.md"),
@@ -5490,7 +5487,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 		tmp.path().join("data.toml"),
 		concat!(
 			"int_val = 42\n",
-			"float_val = 3.14\n",
+			"float_val = 2.72\n",
 			"bool_val = true\n",
 			"string_val = \"hello\"\n",
 			"datetime_val = 2024-01-15T10:30:00Z\n",
@@ -5515,7 +5512,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 		(conf["float_val"]
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
-			- 3.14)
+			- 2.72)
 			.abs() < f64::EPSILON
 	);
 	// Boolean conversion
@@ -5623,7 +5620,7 @@ fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
 		tmp.path().join("data.kdl"),
 		concat!(
 			"int_val 42\n",
-			"float_val 3.14\n",
+			"float_val 2.72\n",
 			"bool_val #true\n",
 			"null_val #null\n",
 			"string_val \"hello\"\n",
@@ -5637,19 +5634,22 @@ fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
 
 	// Integer
 	assert!(conf["int_val"].is_number());
-	assert_eq!(
-		conf["int_val"]
-			.as_f64()
-			.unwrap_or_else(|| panic!("expected f64")),
-		42.0
-	);
+	#[allow(clippy::float_cmp)]
+	{
+		assert_eq!(
+			conf["int_val"]
+				.as_f64()
+				.unwrap_or_else(|| panic!("expected f64")),
+			42.0
+		);
+	}
 	// Float
 	assert!(conf["float_val"].is_number());
 	assert!(
 		(conf["float_val"]
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
-			- 3.14)
+			- 2.72)
 			.abs() < 0.001
 	);
 	// Boolean
@@ -6021,7 +6021,7 @@ fn scan_project_invalid_transformer_args_diagnostic_has_correct_fields() {
 			got,
 		} => {
 			assert_eq!(name, "replace");
-			assert!(expected.contains("2"));
+			assert!(expected.contains('2'));
 			assert_eq!(*got, 1);
 		}
 		other => panic!("expected InvalidTransformerArgs, got {other:?}"),
@@ -6070,8 +6070,8 @@ fn project_diagnostic_messages_are_descriptive() {
 		column: 1,
 	};
 	assert!(invalid_args.message().contains("replace"));
-	assert!(invalid_args.message().contains("2"));
-	assert!(invalid_args.message().contains("1"));
+	assert!(invalid_args.message().contains('2'));
+	assert!(invalid_args.message().contains('1'));
 
 	let unused = ProjectDiagnostic {
 		file: PathBuf::from("test.t.md"),
@@ -6711,12 +6711,15 @@ fn config_toml_array_of_mixed_types() -> MdtResult<()> {
 		.as_array()
 		.unwrap_or_else(|| panic!("expected array"));
 	assert_eq!(nums.len(), 3);
-	assert_eq!(
-		nums[0]
-			.as_f64()
-			.unwrap_or_else(|| panic!("expected number")),
-		10.0
-	);
+	#[allow(clippy::float_cmp)]
+	{
+		assert_eq!(
+			nums[0]
+				.as_f64()
+				.unwrap_or_else(|| panic!("expected number")),
+			10.0
+		);
+	}
 
 	let strings = conf["strings"]
 		.as_array()
@@ -6819,10 +6822,13 @@ fn config_kdl_mixed_entries_with_numbers() -> MdtResult<()> {
 		.unwrap_or_else(|| panic!("expected array"));
 	assert_eq!(arr.len(), 3);
 	// First: integer 10
-	assert_eq!(
-		arr[0].as_f64().unwrap_or_else(|| panic!("expected number")),
-		10.0
-	);
+	#[allow(clippy::float_cmp)]
+	{
+		assert_eq!(
+			arr[0].as_f64().unwrap_or_else(|| panic!("expected number")),
+			10.0
+		);
+	}
 	// Second: float 20.5
 	assert!(
 		(arr[1].as_f64().unwrap_or_else(|| panic!("expected number")) - 20.5).abs() < f64::EPSILON

@@ -16,6 +16,7 @@ use clap::ValueEnum;
 	              Create a template file\n  mdt update  Sync all consumer blocks\n  mdt check   \
 	              Verify everything is up to date"
 )]
+#[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
 	#[command(subcommand)]
 	pub command: Option<Commands>,
