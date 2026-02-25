@@ -141,6 +141,8 @@ mdt_lsp = "0.4.0"
 
 <!-- {/mdtLspInstall} -->
 
+<!-- {=mdtBadgeLinks:"mdt_lsp"} -->
+
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
 [crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg
@@ -151,3 +153,5 @@ mdt_lsp = "0.4.0"
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense
+
+<!-- {/mdtBadgeLinks} -->

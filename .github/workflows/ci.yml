@@ -36,7 +36,7 @@ jobs:
         shell: devenv shell -c -- bash -e {0}
 
       - name: check mdt blocks
-        run: mdt check
+        run: cargo run --bin mdt -- check
         shell: devenv shell -c -- bash -e {0}
 
   test:

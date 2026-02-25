@@ -25,13 +25,17 @@ mdt_core = "0.4.0"
 
 <!-- {/mdtCoreInstall} -->
 
+<!-- {=mdtBadgeLinks:"mdt_core"} -->
+
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-[crate-image]: https://img.shields.io/crates/v/mdt.svg
-[crate-link]: https://crates.io/crates/mdt
-[docs-image]: https://docs.rs/mdt/badge.svg
-[docs-link]: https://docs.rs/mdt/
+[crate-image]: https://img.shields.io/crates/v/mdt_core.svg
+[crate-link]: https://crates.io/crates/mdt_core
+[docs-image]: https://docs.rs/mdt_core/badge.svg
+[docs-link]: https://docs.rs/mdt_core/
 [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense
+
+<!-- {/mdtBadgeLinks} -->
