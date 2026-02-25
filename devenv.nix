@@ -134,7 +134,7 @@
       exec = ''
         set -e
         fix:clippy
-        mdt -- update --ignore-unused-blocks
+        mdt -- update
         fix:format
       '';
       description = "Fix all autofixable problems.";

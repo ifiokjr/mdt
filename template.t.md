@@ -147,9 +147,9 @@ write_updates(&updates).unwrap();
 
 A parsed template block representing either a provider or consumer.
 
-Provider blocks are defined in `*.t.md` template files using `<!-- {@name} -->...<!-- {/name} -->` syntax. They supply content that gets distributed to matching consumers.
+Provider blocks are defined in `*.t.md` template files using `{@name}...{/name}` tag syntax (wrapped in HTML comments). They supply content that gets distributed to matching consumers.
 
-Consumer blocks appear in any scanned file using `<!-- {=name} -->...<!-- {/name} -->` syntax. Their content is replaced with the matching provider's content (after applying any transformers) when `mdt update` is run.
+Consumer blocks appear in any scanned file using `{=name}...{/name}` tag syntax (wrapped in HTML comments). Their content is replaced with the matching provider's content (after applying any transformers) when `mdt update` is run.
 
 Each block tracks its [`name`](Block::name) for provider-consumer matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
 
