@@ -85,22 +85,32 @@ pub fn build_blocks_from_groups_with_diagnostics(
 
 	for group in token_groups {
 		match classify_group_with_diagnostics(group, &mut diagnostics) {
-			GroupKind::Provider { name, transformers } => {
+			GroupKind::Provider {
+				name,
+				transformers,
+				arguments,
+			} => {
 				pending.push(BlockCreator {
 					name,
 					r#type: BlockType::Provider,
 					opening: group.position,
 					closing: None,
 					transformers,
+					arguments,
 				});
 			}
-			GroupKind::Consumer { name, transformers } => {
+			GroupKind::Consumer {
+				name,
+				transformers,
+				arguments,
+			} => {
 				pending.push(BlockCreator {
 					name,
 					r#type: BlockType::Consumer,
 					opening: group.position,
 					closing: None,
 					transformers,
+					arguments,
 				});
 			}
 			GroupKind::Close { name } => {
@@ -133,22 +143,32 @@ fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<V
 
 	for group in token_groups {
 		match classify_group(group) {
-			GroupKind::Provider { name, transformers } => {
+			GroupKind::Provider {
+				name,
+				transformers,
+				arguments,
+			} => {
 				pending.push(BlockCreator {
 					name,
 					r#type: BlockType::Provider,
 					opening: group.position,
 					closing: None,
 					transformers,
+					arguments,
 				});
 			}
-			GroupKind::Consumer { name, transformers } => {
+			GroupKind::Consumer {
+				name,
+				transformers,
+				arguments,
+			} => {
 				pending.push(BlockCreator {
 					name,
 					r#type: BlockType::Consumer,
 					opening: group.position,
 					closing: None,
 					transformers,
+					arguments,
 				});
 			}
 			GroupKind::Close { name } => {
@@ -204,10 +224,12 @@ enum GroupKind {
 	Provider {
 		name: String,
 		transformers: Vec<Transformer>,
+		arguments: Vec<String>,
 	},
 	Consumer {
 		name: String,
 		transformers: Vec<Transformer>,
+		arguments: Vec<String>,
 	},
 	Close {
 		name: String,
@@ -218,13 +240,23 @@ enum GroupKind {
 /// Classify a token group as a provider, consumer, close tag, or unknown.
 fn classify_group(group: &TokenGroup) -> GroupKind {
 	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
-		let (name, transformers) = extract_name_and_transformers(group, &Token::ProviderTag);
-		return GroupKind::Provider { name, transformers };
+		let (name, transformers, arguments) =
+			extract_name_transformers_and_arguments(group, &Token::ProviderTag);
+		return GroupKind::Provider {
+			name,
+			transformers,
+			arguments,
+		};
 	}
 
 	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
-		let (name, transformers) = extract_name_and_transformers(group, &Token::ConsumerTag);
-		return GroupKind::Consumer { name, transformers };
+		let (name, transformers, arguments) =
+			extract_name_transformers_and_arguments(group, &Token::ConsumerTag);
+		return GroupKind::Consumer {
+			name,
+			transformers,
+			arguments,
+		};
 	}
 
 	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
@@ -242,8 +274,8 @@ fn classify_group_with_diagnostics(
 	diagnostics: &mut Vec<ParseDiagnostic>,
 ) -> GroupKind {
 	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
-		let (name, transformers, unknown) =
-			extract_name_and_transformers_with_diagnostics(group, &Token::ProviderTag);
+		let (name, transformers, arguments, unknown) =
+			extract_name_transformers_arguments_with_diagnostics(group, &Token::ProviderTag);
 		for unknown_name in unknown {
 			diagnostics.push(ParseDiagnostic::UnknownTransformer {
 				name: unknown_name,
@@ -251,12 +283,16 @@ fn classify_group_with_diagnostics(
 				column: group.position.start.column,
 			});
 		}
-		return GroupKind::Provider { name, transformers };
+		return GroupKind::Provider {
+			name,
+			transformers,
+			arguments,
+		};
 	}
 
 	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
-		let (name, transformers, unknown) =
-			extract_name_and_transformers_with_diagnostics(group, &Token::ConsumerTag);
+		let (name, transformers, arguments, unknown) =
+			extract_name_transformers_arguments_with_diagnostics(group, &Token::ConsumerTag);
 		for unknown_name in unknown {
 			diagnostics.push(ParseDiagnostic::UnknownTransformer {
 				name: unknown_name,
@@ -264,7 +300,11 @@ fn classify_group_with_diagnostics(
 				column: group.position.start.column,
 			});
 		}
-		return GroupKind::Consumer { name, transformers };
+		return GroupKind::Consumer {
+			name,
+			transformers,
+			arguments,
+		};
 	}
 
 	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
@@ -275,16 +315,21 @@ fn classify_group_with_diagnostics(
 	GroupKind::Unknown
 }
 
-/// Extract the block name and transformers from a provider or consumer token
-/// group.
-fn extract_name_and_transformers(
+/// Extract the block name, positional arguments, and transformers from a
+/// provider or consumer token group.
+///
+/// Arguments appear as `:STRING` sequences between the block name and the
+/// first `|` pipe. Transformers appear after pipes.
+fn extract_name_transformers_and_arguments(
 	group: &TokenGroup,
 	tag_token: &Token,
-) -> (String, Vec<Transformer>) {
+) -> (String, Vec<Transformer>, Vec<String>) {
 	let mut name = String::new();
 	let mut transformers = Vec::new();
+	let mut arguments = Vec::new();
 	let mut found_tag = false;
 	let mut found_name = false;
+	let mut in_transformers = false;
 
 	let mut iter = group.tokens.iter().peekable();
 
@@ -304,7 +349,29 @@ fn extract_name_and_transformers(
 			continue;
 		}
 
-		// After the name, look for pipe-delimited transformers
+		if !in_transformers {
+			match token {
+				Token::ArgumentDelimiter => {
+					// Skip whitespace before the string value.
+					while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
+						iter.next();
+					}
+					if let Some(Token::String(s, _)) = iter.next() {
+						arguments.push(s.clone());
+					}
+					continue;
+				}
+				Token::Pipe => {
+					in_transformers = true;
+					if let Some(transformer) = parse_transformer(&mut iter) {
+						transformers.push(transformer);
+					}
+					continue;
+				}
+				_ => continue,
+			}
+		}
+
 		if matches!(token, Token::Pipe) {
 			if let Some(transformer) = parse_transformer(&mut iter) {
 				transformers.push(transformer);
@@ -312,20 +379,22 @@ fn extract_name_and_transformers(
 		}
 	}
 
-	(name, transformers)
+	(name, transformers, arguments)
 }
 
-/// Like `extract_name_and_transformers` but also collects unknown transformer
-/// names for diagnostics.
-fn extract_name_and_transformers_with_diagnostics(
+/// Like `extract_name_transformers_and_arguments` but also collects unknown
+/// transformer names for diagnostics.
+fn extract_name_transformers_arguments_with_diagnostics(
 	group: &TokenGroup,
 	tag_token: &Token,
-) -> (String, Vec<Transformer>, Vec<String>) {
+) -> (String, Vec<Transformer>, Vec<String>, Vec<String>) {
 	let mut name = String::new();
 	let mut transformers = Vec::new();
+	let mut arguments = Vec::new();
 	let mut unknown_transformers = Vec::new();
 	let mut found_tag = false;
 	let mut found_name = false;
+	let mut in_transformers = false;
 
 	let mut iter = group.tokens.iter().peekable();
 
@@ -343,6 +412,34 @@ fn extract_name_and_transformers_with_diagnostics(
 				found_name = true;
 			}
 			continue;
+		}
+
+		if !in_transformers {
+			match token {
+				Token::ArgumentDelimiter => {
+					while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
+						iter.next();
+					}
+					if let Some(Token::String(s, _)) = iter.next() {
+						arguments.push(s.clone());
+					}
+					continue;
+				}
+				Token::Pipe => {
+					in_transformers = true;
+					match parse_transformer_with_unknown(&mut iter) {
+						TransformerParseResult::Ok(transformer) => {
+							transformers.push(transformer);
+						}
+						TransformerParseResult::Unknown(unknown_name) => {
+							unknown_transformers.push(unknown_name);
+						}
+						TransformerParseResult::NoIdent => {}
+					}
+					continue;
+				}
+				_ => continue,
+			}
 		}
 
 		if matches!(token, Token::Pipe) {
@@ -356,7 +453,7 @@ fn extract_name_and_transformers_with_diagnostics(
 		}
 	}
 
-	(name, transformers, unknown_transformers)
+	(name, transformers, arguments, unknown_transformers)
 }
 
 /// Result of attempting to parse a transformer from the token stream.
@@ -485,6 +582,7 @@ struct BlockCreator {
 	opening: Position,
 	closing: Option<Position>,
 	transformers: Vec<Transformer>,
+	arguments: Vec<String>,
 }
 
 impl BlockCreator {
@@ -499,6 +597,7 @@ impl BlockCreator {
 			opening: self.opening,
 			closing,
 			transformers: self.transformers,
+			arguments: self.arguments,
 		};
 
 		Ok(block)
@@ -527,6 +626,10 @@ pub struct Block {
 	/// Transformers to apply when injecting provider content into this
 	/// consumer.
 	pub transformers: Vec<Transformer>,
+	/// Positional arguments on the block tag.
+	/// For providers, these are parameter names (variable names).
+	/// For consumers, these are argument values (string literals).
+	pub arguments: Vec<String>,
 }
 
 /// <!-- {=mdtTransformerDocs|trim|linePrefix:"/// ":true} -->

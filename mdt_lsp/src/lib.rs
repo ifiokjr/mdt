@@ -12,6 +12,7 @@ use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::render_template;
+use serde_json::Value;
 use tokio::sync::RwLock;
 use tower_lsp_server::Client;
 use tower_lsp_server::LanguageServer;
@@ -41,7 +42,7 @@ struct WorkspaceState {
 	/// Cached consumers from the last project scan.
 	consumers: Vec<ConsumerEntry>,
 	/// Template data from mdt.toml config.
-	data: HashMap<String, serde_json::Value>,
+	data: HashMap<String, Value>,
 }
 
 impl WorkspaceState {
@@ -189,6 +190,23 @@ fn suggest_similar_names<'a>(
 	candidates.sort_by_key(|(_, d)| *d);
 	candidates.truncate(3);
 	candidates.into_iter().map(|(name, _)| name).collect()
+}
+
+/// Merge provider parameter names with consumer argument values into a data
+/// context for template rendering.
+fn merge_block_args(
+	base_data: &HashMap<String, Value>,
+	provider: &Block,
+	consumer: &Block,
+) -> HashMap<String, Value> {
+	if provider.arguments.is_empty() {
+		return base_data.clone();
+	}
+	let mut data = base_data.clone();
+	for (name, value) in provider.arguments.iter().zip(consumer.arguments.iter()) {
+		data.insert(name.clone(), Value::String(value.clone()));
+	}
+	data
 }
 
 /// Convert an mdt `Point` (1-indexed line, 1-indexed column) to an LSP
@@ -502,7 +520,8 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 
 				if let Some(provider) = state.providers.get(&block.name) {
 					// Check if the consumer is stale.
-					let rendered = render_template(&provider.content, &state.data)
+					let render_data = merge_block_args(&state.data, &provider.block, block);
+					let rendered = render_template(&provider.content, &render_data)
 						.unwrap_or_else(|_| provider.content.clone());
 					let expected = apply_transformers(&rendered, &block.transformers);
 
@@ -619,7 +638,8 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 			parts.push(format!("**Consumer block:** `{}`", block.name));
 
 			if let Some(provider) = state.providers.get(&block.name) {
-				let rendered = render_template(&provider.content, &state.data)
+				let render_data = merge_block_args(&state.data, &provider.block, block);
+				let rendered = render_template(&provider.content, &render_data)
 					.unwrap_or_else(|_| provider.content.clone());
 				let expected = apply_transformers(&rendered, &block.transformers);
 
@@ -949,7 +969,8 @@ fn compute_code_actions(
 			continue;
 		};
 
-		let rendered = render_template(&provider.content, &state.data)
+		let render_data = merge_block_args(&state.data, &provider.block, block);
+		let rendered = render_template(&provider.content, &render_data)
 			.unwrap_or_else(|_| provider.content.clone());
 		let expected = apply_transformers(&rendered, &block.transformers);
 		let current = extract_content_between_tags(&doc.content, block);

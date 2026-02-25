@@ -690,6 +690,7 @@ fn extract_content_between_tags_empty_block() {
 		opening: Position::new(1, 1, 0, 1, 10, 10),
 		closing: Position::new(1, 10, 10, 1, 20, 20),
 		transformers: vec![],
+		arguments: vec![],
 	};
 	let content = extract_content_between_tags("0123456789<!-- {/test} -->", &block);
 	assert_eq!(content, "");
@@ -7579,4 +7580,462 @@ fn find_undefined_variables_partial_match() {
 	let content = "{{ pkg.name }} {{ typo.version }} {{ cargo.package.edition }}";
 	let undefined = find_undefined_variables(content, &data);
 	assert_eq!(undefined, vec!["typo.version"]);
+}
+
+// ─── Block arguments ───────────────────────────────────────────────────
+
+#[test]
+fn parse_provider_with_arguments() -> MdtResult<()> {
+	let input = "<!-- {@badges:\"crate_name\"} -->\n\nContent with {{ crate_name }}\n\n<!-- \
+	             {/badges} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "badges");
+	assert_eq!(blocks[0].r#type, BlockType::Provider);
+	assert_eq!(blocks[0].arguments, vec!["crate_name"]);
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_arguments() -> MdtResult<()> {
+	let input = "<!-- {=badges:\"mdt_core\"} -->\n\nold\n\n<!-- {/badges} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "badges");
+	assert_eq!(blocks[0].r#type, BlockType::Consumer);
+	assert_eq!(blocks[0].arguments, vec!["mdt_core"]);
+	Ok(())
+}
+
+#[test]
+fn parse_provider_with_multiple_arguments() -> MdtResult<()> {
+	let input =
+		"<!-- {@tmpl:\"a\":\"b\":\"c\"} -->\n\n{{ a }} {{ b }} {{ c }}\n\n<!-- {/tmpl} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].arguments, vec!["a", "b", "c"]);
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_multiple_arguments() -> MdtResult<()> {
+	let input = "<!-- {=tmpl:\"x\":\"y\":\"z\"} -->\n\nold\n\n<!-- {/tmpl} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].arguments, vec!["x", "y", "z"]);
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_arguments_and_transformers() -> MdtResult<()> {
+	let input = "<!-- {=badges:\"mdt_core\"|trim} -->\n\nold\n\n<!-- {/badges} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].arguments, vec!["mdt_core"]);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Trim);
+	Ok(())
+}
+
+#[test]
+fn parse_block_without_arguments_has_empty_vec() -> MdtResult<()> {
+	let input = "<!-- {@block} -->\n\nContent\n\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert!(blocks[0].arguments.is_empty());
+	Ok(())
+}
+
+#[test]
+fn parse_arguments_with_spaces() -> MdtResult<()> {
+	let input = "<!-- {@tmpl : \"param1\" : \"param2\"} -->\n\nContent\n\n<!-- {/tmpl} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].arguments, vec!["param1", "param2"]);
+	Ok(())
+}
+
+#[test]
+fn parse_single_quoted_arguments() -> MdtResult<()> {
+	let input = "<!-- {@tmpl:'param1':'param2'} -->\n\nContent\n\n<!-- {/tmpl} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].arguments, vec!["param1", "param2"]);
+	Ok(())
+}
+
+#[test]
+fn build_render_context_merges_args() {
+	let provider = ProviderEntry {
+		block: Block {
+			name: "badges".to_string(),
+			r#type: BlockType::Provider,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["crate_name".to_string()],
+		},
+		file: PathBuf::from("template.t.md"),
+		content: "badge for {{ crate_name }}".to_string(),
+	};
+	let consumer = ConsumerEntry {
+		block: Block {
+			name: "badges".to_string(),
+			r#type: BlockType::Consumer,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["mdt_core".to_string()],
+		},
+		file: PathBuf::from("readme.md"),
+		content: "old".to_string(),
+	};
+
+	let base_data = HashMap::new();
+	let result = build_render_context(&base_data, &provider, &consumer);
+	assert!(result.is_some());
+	let data = result.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(
+		data.get("crate_name"),
+		Some(&serde_json::Value::String("mdt_core".to_string()))
+	);
+}
+
+#[test]
+fn build_render_context_preserves_base_data() {
+	let mut base_data = HashMap::new();
+	base_data.insert("pkg".to_string(), serde_json::json!({"version": "1.0.0"}));
+
+	let provider = ProviderEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Provider,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["name".to_string()],
+		},
+		file: PathBuf::from("template.t.md"),
+		content: "".to_string(),
+	};
+	let consumer = ConsumerEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Consumer,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["my-lib".to_string()],
+		},
+		file: PathBuf::from("readme.md"),
+		content: "".to_string(),
+	};
+
+	let result = build_render_context(&base_data, &provider, &consumer);
+	assert!(result.is_some());
+	let data = result.unwrap_or_else(|| panic!("expected Some"));
+	// base data is preserved
+	assert!(data.contains_key("pkg"));
+	// new arg is added
+	assert_eq!(
+		data.get("name"),
+		Some(&serde_json::Value::String("my-lib".to_string()))
+	);
+}
+
+#[test]
+fn build_render_context_returns_none_on_count_mismatch() {
+	let provider = ProviderEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Provider,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["a".to_string(), "b".to_string()],
+		},
+		file: PathBuf::from("template.t.md"),
+		content: "".to_string(),
+	};
+	let consumer = ConsumerEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Consumer,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec!["x".to_string()],
+		},
+		file: PathBuf::from("readme.md"),
+		content: "".to_string(),
+	};
+
+	let result = build_render_context(&HashMap::new(), &provider, &consumer);
+	assert!(result.is_none());
+}
+
+#[test]
+fn build_render_context_no_args_returns_base_data() {
+	let mut base_data = HashMap::new();
+	base_data.insert("key".to_string(), serde_json::json!("value"));
+
+	let provider = ProviderEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Provider,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec![],
+		},
+		file: PathBuf::from("template.t.md"),
+		content: "".to_string(),
+	};
+	let consumer = ConsumerEntry {
+		block: Block {
+			name: "tmpl".to_string(),
+			r#type: BlockType::Consumer,
+			opening: Position::new(1, 1, 0, 1, 10, 10),
+			closing: Position::new(3, 1, 20, 3, 10, 30),
+			transformers: vec![],
+			arguments: vec![],
+		},
+		file: PathBuf::from("readme.md"),
+		content: "".to_string(),
+	};
+
+	let result = build_render_context(&base_data, &provider, &consumer);
+	assert!(result.is_some());
+	let data = result.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(data, base_data);
+}
+
+#[test]
+fn block_arguments_end_to_end() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
+		 crate_name }})]\n\n<!-- {/badges} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=badges:\"mdt_core\"} -->\n\nold content\n\n<!-- {/badges} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+	};
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+
+	let updated_content = updates
+		.updated_files
+		.values()
+		.next()
+		.unwrap_or_else(|| panic!("expected one file"));
+	assert!(
+		updated_content.contains("mdt_core"),
+		"expected rendered crate_name in output, got: {updated_content}"
+	);
+	assert!(
+		!updated_content.contains("{{ crate_name }}"),
+		"template variable should be interpolated"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@badge:\"name\"} -->\n\n[{{ name }}](https://crates.io/crates/{{ name }})\n\n<!-- \
+		 {/badge} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("a.md"),
+		"<!-- {=badge:\"mdt_core\"} -->\n\nold\n\n<!-- {/badge} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("b.md"),
+		"<!-- {=badge:\"mdt_cli\"} -->\n\nold\n\n<!-- {/badge} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+	};
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 2);
+
+	let a_content = updates
+		.updated_files
+		.get(&tmp.path().join("a.md"))
+		.unwrap_or_else(|| panic!("expected a.md"));
+	assert!(
+		a_content.contains("mdt_core"),
+		"a.md should contain mdt_core"
+	);
+	assert!(
+		!a_content.contains("mdt_cli"),
+		"a.md should not contain mdt_cli"
+	);
+
+	let b_content = updates
+		.updated_files
+		.get(&tmp.path().join("b.md"))
+		.unwrap_or_else(|| panic!("expected b.md"));
+	assert!(b_content.contains("mdt_cli"), "b.md should contain mdt_cli");
+	assert!(
+		!b_content.contains("mdt_core"),
+		"b.md should not contain mdt_core"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn block_arguments_with_data_and_args() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version": "2.0.0"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@info:\"lib_name\"} -->\n\n{{ lib_name }} v{{ pkg.version }}\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=info:\"mylib\"} -->\n\nold\n\n<!-- {/info} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+
+	let content = updates
+		.updated_files
+		.values()
+		.next()
+		.unwrap_or_else(|| panic!("expected one file"));
+	assert!(
+		content.contains("mylib v2.0.0"),
+		"expected data + args interpolation, got: {content}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn check_project_reports_argument_count_mismatch() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@tmpl:\"a\":\"b\"} -->\n\n{{ a }} {{ b }}\n\n<!-- {/tmpl} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Consumer provides only 1 argument, provider expects 2
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=tmpl:\"x\"} -->\n\nold\n\n<!-- {/tmpl} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+	};
+	let result = check_project(&ctx)?;
+	assert!(
+		!result.render_errors.is_empty(),
+		"expected render error for argument count mismatch"
+	);
+	Ok(())
+}
+
+#[test]
+fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@badge:\"name\"} -->\n\n{{ name }}\n\n<!-- {/badge} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=badge:\"mdt_core\"|trim} -->\n\nold\n\n<!-- {/badge} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+	};
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+
+	let content = updates
+		.updated_files
+		.values()
+		.next()
+		.unwrap_or_else(|| panic!("expected one file"));
+	// trim transformer should strip leading/trailing whitespace
+	assert!(
+		content.contains("mdt_core"),
+		"expected rendered name, got: {content}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting:\"who\"} -->\n\nHello, {{ who }}!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Consumer already has the expected content
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting:\"World\"} -->\n\nHello, World!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+	};
+	let result = check_project(&ctx)?;
+	assert!(
+		result.is_ok(),
+		"consumer should be up to date: stale={:?}, errors={:?}",
+		result.stale,
+		result.render_errors
+	);
+
+	Ok(())
 }

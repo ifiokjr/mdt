@@ -10,6 +10,7 @@ use crate::TransformerType;
 use crate::config::PaddingConfig;
 use crate::project::ConsumerEntry;
 use crate::project::ProjectContext;
+use crate::project::ProviderEntry;
 
 /// A warning about undefined template variables in a provider block.
 #[derive(Debug, Clone)]
@@ -195,6 +196,40 @@ fn has_template_syntax(content: &str) -> bool {
 	content.contains("{{") || content.contains("{%") || content.contains("{#")
 }
 
+/// Build a data context that merges base project data with block-specific
+/// positional arguments. Consumer argument values are bound to the provider's
+/// declared parameter names, with block args taking precedence over data
+/// variables.
+/// Build a data context that merges base project data with block-specific
+/// positional arguments. Returns `None` if the argument count doesn't match.
+pub fn build_render_context(
+	base_data: &HashMap<String, serde_json::Value>,
+	provider: &ProviderEntry,
+	consumer: &ConsumerEntry,
+) -> Option<HashMap<String, serde_json::Value>> {
+	let param_count = provider.block.arguments.len();
+	let arg_count = consumer.block.arguments.len();
+
+	if param_count != arg_count && (param_count > 0 || arg_count > 0) {
+		return None;
+	}
+
+	if provider.block.arguments.is_empty() {
+		return Some(base_data.clone());
+	}
+
+	let mut data = base_data.clone();
+	for (name, value) in provider
+		.block
+		.arguments
+		.iter()
+		.zip(consumer.block.arguments.iter())
+	{
+		data.insert(name.clone(), serde_json::Value::String(value.clone()));
+	}
+	Some(data)
+}
+
 /// Check whether all consumer blocks in the project are up to date.
 /// Consumer blocks that reference non-existent providers are silently skipped.
 /// Template render errors are collected rather than aborting, so the check
@@ -209,7 +244,23 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			continue;
 		};
 
-		let rendered = match render_template(&provider.content, &ctx.data) {
+		let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
+			render_errors.push(RenderError {
+				file: consumer.file.clone(),
+				block_name: consumer.block.name.clone(),
+				message: format!(
+					"argument count mismatch: provider `{}` declares {} parameter(s), but \
+					 consumer passes {}",
+					consumer.block.name,
+					provider.block.arguments.len(),
+					consumer.block.arguments.len(),
+				),
+				line: consumer.block.opening.start.line,
+				column: consumer.block.opening.start.column,
+			});
+			continue;
+		};
+		let rendered = match render_template(&provider.content, &render_data) {
 			Ok(r) => r,
 			Err(e) => {
 				render_errors.push(RenderError {
@@ -281,7 +332,10 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 				continue;
 			};
 
-			let rendered = render_template(&provider.content, &ctx.data)?;
+			let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
+				continue; // Argument count mismatch — skip this consumer.
+			};
+			let rendered = render_template(&provider.content, &render_data)?;
 			let mut new_content = apply_transformers(&rendered, &consumer.block.transformers);
 			if let Some(padding) = &ctx.padding {
 				new_content = pad_content_with_config(&new_content, &consumer.content, padding);
@@ -335,7 +389,20 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 			continue;
 		};
 
-		let undefined = find_undefined_variables(&provider.content, &ctx.data);
+		// Provider params are known variables — add them to the data context
+		// so they don't trigger false undefined-variable warnings.
+		let data_with_params = if provider.block.arguments.is_empty() {
+			std::borrow::Cow::Borrowed(&ctx.data)
+		} else {
+			let mut data = ctx.data.clone();
+			for param in &provider.block.arguments {
+				data.entry(param.clone())
+					.or_insert(serde_json::Value::String(String::new()));
+			}
+			std::borrow::Cow::Owned(data)
+		};
+
+		let undefined = find_undefined_variables(&provider.content, &data_with_params);
 		if !undefined.is_empty() {
 			warnings.push(TemplateWarning {
 				provider_file: provider.file.clone(),

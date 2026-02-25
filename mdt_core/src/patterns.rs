@@ -27,6 +27,13 @@ pub fn consumer_pattern() -> Vec<PatternMatcher> {
 		optional_many(vec![Token::whitespace()]),
 		one(vec![Token::any()]),
 		optional_many(vec![Token::whitespace()]),
+		// Optional positional block arguments (e.g., :"arg1":"arg2")
+		optional_many_group(vec![
+			one(vec![Token::ArgumentDelimiter]),
+			optional_many(vec![Token::whitespace()]),
+			one(vec![Token::string()]),
+			optional_many(vec![Token::whitespace()]),
+		]),
 		optional_many_group(vec![
 			one(vec![Token::Pipe]),
 			optional_many(vec![Token::whitespace()]),
@@ -59,6 +66,13 @@ pub fn provider_pattern() -> Vec<PatternMatcher> {
 		optional_many(vec![Token::whitespace()]),
 		one(vec![Token::any()]),
 		optional_many(vec![Token::whitespace()]),
+		// Optional positional block arguments (e.g., :"param1":"param2")
+		optional_many_group(vec![
+			one(vec![Token::ArgumentDelimiter]),
+			optional_many(vec![Token::whitespace()]),
+			one(vec![Token::string()]),
+			optional_many(vec![Token::whitespace()]),
+		]),
 		optional_many_group(vec![
 			one(vec![Token::Pipe]),
 			optional_many(vec![Token::whitespace()]),
