@@ -13,6 +13,7 @@ success: true
 exit_code: 0
 ----- stdout -----
 Created template file: [TEMP_DIR]/template.t.md
+Created mdt.toml
 
 Next steps:
   1. Edit [TEMP_DIR]/template.t.md to define your template blocks

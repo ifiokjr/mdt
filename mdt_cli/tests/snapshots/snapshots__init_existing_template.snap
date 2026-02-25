@@ -13,5 +13,6 @@ success: true
 exit_code: 0
 ----- stdout -----
 Template file already exists: [TEMP_DIR]/template.t.md
+Created mdt.toml
 
 ----- stderr -----
