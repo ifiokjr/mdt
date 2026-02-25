@@ -2,6 +2,81 @@
 
 This file is maintained by `knope`.
 
+## 0.4.0 (2026-02-25)
+
+### Breaking Changes
+
+#### Large refactor of codebase
+
+A large refactor of the codebase to make it easier to navigate and improve releases.
+
+#### Replace `pad_blocks` boolean with `[padding]` configuration section.
+
+The top-level `pad_blocks = true` setting has been replaced with a `[padding]` section that provides fine-grained control over blank lines between block tags and their content:
+
+```toml
+[padding]
+before = 0 # content on next line (no blank lines)
+after = 0
+```
+
+The `before` and `after` values accept:
+
+- `false` — Content appears inline with the tag (no newline separator).
+- `0` — Content on the very next line (one newline, no blank lines). **Recommended for projects using formatters** like `rustfmt` or `dprint`, as it minimizes whitespace that formatters might alter.
+- `1` — One blank line between the tag and content (equivalent to the old `pad_blocks = true` behavior for source files with comment prefixes).
+- `2` — Two blank lines, and so on.
+
+When `[padding]` is present but values are omitted, `before` and `after` default to `1`.
+
+**Migration:** Replace `pad_blocks = true` with `[padding]` in your `mdt.toml`. For the same behavior as before, use `[padding]` with no values (defaults to `before = 1, after = 1`). For compatibility with code formatters, use `before = 0, after = 0`.
+
+### Features
+
+#### Consolidate `[ignore]` into `[exclude]` and add new exclusion options.
+
+**Breaking:** The `[ignore]` config section has been removed. Its functionality is now part of `[exclude]`, which uses gitignore-style patterns (supporting negation `!`, directory markers `/`, and all standard gitignore wildcards). Existing `[ignore]` patterns should be moved to `[exclude] patterns`.
+
+**New `[exclude]` sub-properties:**
+
+- `markdown_codeblocks`: Controls whether mdt tags inside fenced code blocks in source files are processed. Can be set to `true` (skip all code blocks), a string like `"ignore"` (skip code blocks whose info string contains the string), or an array of strings (skip code blocks matching any). Defaults to `false`.
+
+- `blocks`: An array of block names to exclude from processing. Any provider or consumer block whose name appears in this list is completely ignored during scanning — it won't be matched, checked, or updated.
+
+**DevEnv integration:** Added `mdt update --ignore-unused-blocks` to the `fix:all` command in `devenv.nix` (runs before `dprint fmt` to ensure content is updated then formatted).
+
+#### Use mdt template blocks for `mdt_core` library documentation and fix formatter compatibility.
+
+**Template blocks in lib docs:** Replace hand-written doc comments on `Block`, `Transformer`, `Argument` structs in `parser.rs` and the module-level doc comment in `lib.rs` with mdt consumer blocks that pull content from `template.t.md` provider blocks. This ensures documentation stays synchronized across the codebase.
+
+**Formatter compatibility fixes:**
+
+- Set `[padding] before = 0, after = 0` in project `mdt.toml` to eliminate blank lines between tags and content that formatters would modify.
+- Disable `wrap_comments` and `format_code_in_doc_comments` in `rustfmt.toml` to prevent rustfmt from reflowing doc comment text and reformatting code blocks, which would break the `mdt update → dprint fmt → mdt check` cycle.
+- Fix `linePrefix` and `lineSuffix` transformers to trim trailing/leading whitespace on empty lines. Previously, `linePrefix:"//! ":true` would produce `//!` (with trailing space) on empty lines; now it produces `//!` (no trailing space), matching what formatters expect.
+- Fix `pad_content_with_config` to use trimmed prefix for blank padding lines, avoiding trailing whitespace on empty comment lines in before/after padding.
+- Set `keep_trailing_newline(true)` on the minijinja environment to preserve trailing newlines in rendered template content, fixing a mismatch where minijinja would strip the final newline from provider content.
+
+### Fixes
+
+#### Show all errors in `mdt check` instead of stopping at the first failure.
+
+Previously, `check_project` would abort on the first template render error (e.g., invalid minijinja syntax). Now it collects all render errors alongside stale consumer entries and reports everything in a single pass.
+
+The `CheckResult` struct has a new `render_errors` field containing `RenderError` entries. The CLI and MCP server both display these errors before the stale block list.
+
+#### Fix release and docs-pages CI workflows.
+
+**Release workflow:** Remove the strict version verification step that caused failures when tags were created by knope before version bumps. Add `workflow_dispatch` trigger with a `tag` input so release builds can be manually triggered for any `mdt_cli` tag. Check out the tag ref directly instead of `main` so binaries are built from the tagged commit.
+
+**Docs-pages workflow:** Fix cancellation issue where multiple simultaneous releases caused the valid `mdt_cli` run to be cancelled by a subsequent non-matching release. Changed `cancel-in-progress` to `false` so runs queue instead of cancelling. Add `workflow_dispatch` trigger with an optional `ref` input (tag, branch, or commit SHA) for manually building and deploying docs. Check out the specified ref for both release and manual triggers.
+
+#### Improve error display using miette for rich, contextual diagnostics.
+
+Errors from mdt now include error codes (e.g., `mdt::unclosed_block`), actionable help text, and visual formatting with Unicode markers when color is enabled. The miette handler respects `--no-color` and the `NO_COLOR` environment variable.
+
+Validation diagnostics (unclosed blocks, unknown transformers, unused providers) are now rendered through miette with severity levels (error vs warning) and context-specific help messages.
+
 ## 0.3.0 (2026-02-24)
 
 ### Breaking Changes

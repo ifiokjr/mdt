@@ -2,6 +2,14 @@
 
 This file is maintained by `knope`.
 
+## 0.4.0 (2026-02-25)
+
+### Breaking Changes
+
+#### Large refactor of codebase
+
+A large refactor of the codebase to make it easier to navigate and improve releases.
+
 ## 0.2.0 (2026-02-24)
 
 ### Breaking Changes
