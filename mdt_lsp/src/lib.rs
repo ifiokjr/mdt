@@ -818,6 +818,11 @@ fn transformer_completions() -> Vec<CompletionItem> {
 			"replace",
 			"Replace a substring. Usage: `replace:\"old\":\"new\"`",
 		),
+		(
+			"if",
+			"Conditionally include content based on a data value. Usage: \
+			 `if:\"config.features.enabled\"`",
+		),
 	];
 
 	transformers

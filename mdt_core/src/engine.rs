@@ -273,7 +273,11 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 				continue;
 			}
 		};
-		let mut expected = apply_transformers(&rendered, &consumer.block.transformers);
+		let mut expected = apply_transformers_with_data(
+			&rendered,
+			&consumer.block.transformers,
+			Some(&render_data),
+		);
 		if let Some(padding) = &ctx.padding {
 			expected = pad_content_with_config(&expected, &consumer.content, padding);
 		}
@@ -336,7 +340,11 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 				continue; // Argument count mismatch — skip this consumer.
 			};
 			let rendered = render_template(&provider.content, &render_data)?;
-			let mut new_content = apply_transformers(&rendered, &consumer.block.transformers);
+			let mut new_content = apply_transformers_with_data(
+				&rendered,
+				&consumer.block.transformers,
+				Some(&render_data),
+			);
 			if let Some(padding) = &ctx.padding {
 				new_content = pad_content_with_config(&new_content, &consumer.content, padding);
 			}
@@ -425,16 +433,31 @@ pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 
 /// Apply a sequence of transformers to content.
 pub fn apply_transformers(content: &str, transformers: &[Transformer]) -> String {
+	apply_transformers_with_data(content, transformers, None)
+}
+
+/// Apply a sequence of transformers to content with an optional data context.
+/// The data context is used by data-dependent transformers like `if`.
+#[allow(clippy::implicit_hasher)]
+pub fn apply_transformers_with_data(
+	content: &str,
+	transformers: &[Transformer],
+	data: Option<&HashMap<String, serde_json::Value>>,
+) -> String {
 	let mut result = content.to_string();
 
 	for transformer in transformers {
-		result = apply_transformer(&result, transformer);
+		result = apply_transformer(&result, transformer, data);
 	}
 
 	result
 }
 
-fn apply_transformer(content: &str, transformer: &Transformer) -> String {
+fn apply_transformer(
+	content: &str,
+	transformer: &Transformer,
+	data: Option<&HashMap<String, serde_json::Value>>,
+) -> String {
 	match transformer.r#type {
 		TransformerType::Trim => content.trim().to_string(),
 		TransformerType::TrimStart => content.trim_start().to_string(),
@@ -512,6 +535,70 @@ fn apply_transformer(content: &str, transformer: &Transformer) -> String {
 				.collect::<Vec<_>>()
 				.join("\n")
 		}
+		TransformerType::If => {
+			let path = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			if is_data_path_truthy(data, &path) {
+				content.to_string()
+			} else {
+				String::new()
+			}
+		}
+	}
+}
+
+/// Look up a dot-separated path in the data context and return whether the
+/// value is "truthy". A value is truthy if it exists and is not `false`,
+/// `null`, `""`, or `0`.
+fn is_data_path_truthy(data: Option<&HashMap<String, serde_json::Value>>, path: &str) -> bool {
+	let Some(data) = data else {
+		return false;
+	};
+
+	let mut parts = path.split('.');
+	let Some(root) = parts.next() else {
+		return false;
+	};
+
+	let Some(mut current) = data.get(root) else {
+		return false;
+	};
+
+	for part in parts {
+		match current {
+			serde_json::Value::Object(map) => {
+				let Some(next) = map.get(part) else {
+					return false;
+				};
+				current = next;
+			}
+			_ => return false,
+		}
+	}
+
+	is_json_value_truthy(current)
+}
+
+/// Check whether a JSON value is truthy.
+/// A value is falsy if it is `null`, `false`, `""`, `0`, or `0.0`.
+/// Everything else (including non-empty arrays and objects) is truthy.
+fn is_json_value_truthy(value: &serde_json::Value) -> bool {
+	match value {
+		serde_json::Value::Null => false,
+		serde_json::Value::Bool(b) => *b,
+		serde_json::Value::Number(n) => {
+			// 0 and 0.0 are falsy
+			if let Some(i) = n.as_i64() {
+				i != 0
+			} else if let Some(u) = n.as_u64() {
+				u != 0
+			} else if let Some(f) = n.as_f64() {
+				f != 0.0
+			} else {
+				true
+			}
+		}
+		serde_json::Value::String(s) => !s.is_empty(),
+		serde_json::Value::Array(_) | serde_json::Value::Object(_) => true,
 	}
 }
 
@@ -532,6 +619,7 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 				(0, 2)
 			}
 			TransformerType::Replace => (2, 2),
+			TransformerType::If => (1, 1),
 		};
 
 		if t.args.len() < min || t.args.len() > max {
