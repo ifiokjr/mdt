@@ -1,4 +1,6 @@
 use assert_cmd::Command;
+use mdt_cli::Commands;
+use mdt_cli::MdtCli;
 use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
 
@@ -246,6 +248,62 @@ fn check_no_warnings_for_valid_template_variables() -> AnyEmptyResult {
 		.success()
 		// Should not contain "undefined" in output
 		.stderr(predicates::str::contains("undefined").not());
+
+	Ok(())
+}
+
+#[test]
+fn check_watch_flag_is_accepted_by_cli_parser() {
+	use clap::Parser;
+
+	// Verify the --watch flag parses correctly for the check command.
+	let cli = MdtCli::parse_from(["mdt", "check", "--watch"]);
+	match cli.command {
+		Some(Commands::Check { watch, diff, .. }) => {
+			assert!(watch);
+			assert!(!diff);
+		}
+		_ => panic!("expected Check command"),
+	}
+
+	// Verify --watch defaults to false when not specified.
+	let cli = MdtCli::parse_from(["mdt", "check"]);
+	match cli.command {
+		Some(Commands::Check { watch, .. }) => {
+			assert!(!watch);
+		}
+		_ => panic!("expected Check command"),
+	}
+}
+
+#[test]
+fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	// We cannot test the full watch loop (it runs forever), but we can verify
+	// the binary accepts --watch without error by checking that it produces the
+	// expected "up to date" + "Watching" output before we kill it.
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
+		.arg("--watch")
+		.arg("--path")
+		.arg(tmp.path())
+		.timeout(std::time::Duration::from_secs(3))
+		.assert()
+		// The process will be killed by timeout, but stdout should contain
+		// the initial check result and the watching message.
+		.stdout(predicates::str::contains("up to date"))
+		.stdout(predicates::str::contains("Watching for file changes"));
 
 	Ok(())
 }

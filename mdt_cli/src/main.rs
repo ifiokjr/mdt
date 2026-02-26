@@ -81,7 +81,11 @@ fn main() {
 
 	let result = match args.command {
 		Some(Commands::Init) => run_init(&args),
-		Some(Commands::Check { diff, format }) => run_check(&args, diff, format),
+		Some(Commands::Check {
+			diff,
+			format,
+			watch,
+		}) => run_check(&args, diff, format, watch),
 		Some(Commands::Update { dry_run, watch }) => run_update(&args, dry_run, watch),
 		Some(Commands::List) => run_list(&args),
 		Some(Commands::Lsp) => run_lsp(),
@@ -229,7 +233,57 @@ fn run_check(
 	args: &MdtCli,
 	show_diff: bool,
 	format: OutputFormat,
+	watch: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+	// Run the initial check.
+	let is_stale = run_check_once(args, show_diff, format)?;
+
+	if !watch {
+		if is_stale {
+			process::exit(1);
+		}
+		return Ok(());
+	}
+
+	// Watch mode
+	println!("\nWatching for file changes... (press Ctrl+C to stop)");
+
+	let root = resolve_root(args);
+	let (tx, rx) = mpsc::channel();
+
+	let mut watcher =
+		notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+			if let Ok(event) = res {
+				if matches!(
+					event.kind,
+					notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+				) {
+					let _ = tx.send(());
+				}
+			}
+		})?;
+
+	use notify::Watcher;
+	watcher.watch(&root, notify::RecursiveMode::Recursive)?;
+
+	loop {
+		rx.recv()?;
+		// Debounce: drain additional events within 200ms.
+		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
+
+		println!("\nFile change detected, checking...");
+		if let Err(e) = run_check_once(args, show_diff, format) {
+			eprintln!("{} {e}", colored!("error:", red));
+		}
+	}
+}
+
+/// Run a single check and return whether any consumers are stale (true = stale).
+fn run_check_once(
+	args: &MdtCli,
+	show_diff: bool,
+	format: OutputFormat,
+) -> Result<bool, Box<dyn std::error::Error>> {
 	let ctx = scan_and_warn(args)?;
 	let root = resolve_root(args);
 	let result = check_project(&ctx)?;
@@ -248,7 +302,7 @@ fn run_check(
 				println!("All consumer blocks are up to date.");
 			}
 		}
-		return Ok(());
+		return Ok(false);
 	}
 
 	match format {
@@ -331,7 +385,7 @@ fn run_check(
 		}
 	}
 
-	process::exit(1);
+	Ok(true)
 }
 
 fn check_summary(result: &mdt_core::CheckResult) -> String {
