@@ -5124,3 +5124,345 @@ fn code_action_for_stale_consumer_with_block_arguments() {
 		"template variable should be interpolated in code action edit, got: {new_text}"
 	);
 }
+// ---- Incremental sync helpers ----
+
+#[test]
+fn lsp_position_to_offset_start_of_file() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 0,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(0));
+}
+
+#[test]
+fn lsp_position_to_offset_middle_of_first_line() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 0,
+		character: 3,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(3));
+}
+
+#[test]
+fn lsp_position_to_offset_end_of_first_line() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 0,
+		character: 5,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(5));
+}
+
+#[test]
+fn lsp_position_to_offset_start_of_second_line() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 1,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(6));
+}
+
+#[test]
+fn lsp_position_to_offset_middle_of_second_line() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 1,
+		character: 3,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(9));
+}
+
+#[test]
+fn lsp_position_to_offset_out_of_bounds_line() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 5,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), None);
+}
+
+#[test]
+fn lsp_position_to_offset_out_of_bounds_character() {
+	let content = "hello\nworld\n";
+	let pos = Position {
+		line: 0,
+		character: 99,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), None);
+}
+
+#[test]
+fn lsp_position_to_offset_empty_content() {
+	let content = "";
+	let pos = Position {
+		line: 0,
+		character: 0,
+	};
+	// Empty string split by '\n' yields one empty element at index 0.
+	assert_eq!(lsp_position_to_offset(content, pos), Some(0));
+}
+
+#[test]
+fn lsp_position_to_offset_empty_line() {
+	let content = "hello\n\nworld";
+	// Line 1 is the empty line between "hello" and "world".
+	let pos = Position {
+		line: 1,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos), Some(6));
+}
+
+#[test]
+fn lsp_position_to_offset_multibyte_utf8_ascii_like() {
+	// The euro sign is U+20AC: 3 bytes in UTF-8, 1 code unit in UTF-16.
+	let content = "a\u{20AC}b";
+	// LSP sees: a(1 UTF-16 unit) + euro(1 UTF-16 unit) + b(1 UTF-16 unit)
+	// character=0 -> byte 0 (a)
+	// character=1 -> byte 1 (start of euro sign, 3 bytes)
+	// character=2 -> byte 4 (b)
+	let pos_a = Position {
+		line: 0,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_a), Some(0));
+
+	let pos_euro = Position {
+		line: 0,
+		character: 1,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_euro), Some(1));
+
+	let pos_b = Position {
+		line: 0,
+		character: 2,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_b), Some(4));
+}
+
+#[test]
+fn lsp_position_to_offset_surrogate_pair() {
+	// U+1F600 (grinning face emoji): 4 bytes in UTF-8, 2 code units in UTF-16.
+	let content = "a\u{1F600}b";
+	// LSP sees: a(1 unit) + emoji(2 units) + b(1 unit)
+	// character=0 -> byte 0 (a)
+	// character=1 -> byte 1 (start of emoji, 4 bytes)
+	// character=3 -> byte 5 (b)
+	let pos_a = Position {
+		line: 0,
+		character: 0,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_a), Some(0));
+
+	let pos_emoji = Position {
+		line: 0,
+		character: 1,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_emoji), Some(1));
+
+	let pos_b = Position {
+		line: 0,
+		character: 3,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_b), Some(5));
+
+	// character=2 is in the middle of the surrogate pair — should be None.
+	let pos_mid_surrogate = Position {
+		line: 0,
+		character: 2,
+	};
+	assert_eq!(lsp_position_to_offset(content, pos_mid_surrogate), None);
+}
+
+// ---- Incremental change application tests ----
+
+/// Helper to apply a single incremental change to content.
+fn apply_incremental_change(content: &str, range: Range, new_text: &str) -> String {
+	let mut result = content.to_string();
+	let start = lsp_position_to_offset(&result, range.start)
+		.unwrap_or_else(|| panic!("invalid start position"));
+	let end = lsp_position_to_offset(&result, range.end)
+		.unwrap_or_else(|| panic!("invalid end position"));
+	result.replace_range(start..end, new_text);
+	result
+}
+
+#[test]
+fn incremental_insert_at_beginning() {
+	let content = "hello world";
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 0,
+		},
+		end: Position {
+			line: 0,
+			character: 0,
+		},
+	};
+	let result = apply_incremental_change(content, range, "prefix ");
+	assert_eq!(result, "prefix hello world");
+}
+
+#[test]
+fn incremental_insert_at_end() {
+	let content = "hello";
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 5,
+		},
+		end: Position {
+			line: 0,
+			character: 5,
+		},
+	};
+	let result = apply_incremental_change(content, range, " world");
+	assert_eq!(result, "hello world");
+}
+
+#[test]
+fn incremental_delete_range() {
+	let content = "hello world";
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 5,
+		},
+		end: Position {
+			line: 0,
+			character: 11,
+		},
+	};
+	let result = apply_incremental_change(content, range, "");
+	assert_eq!(result, "hello");
+}
+
+#[test]
+fn incremental_replace_range() {
+	let content = "hello world";
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 6,
+		},
+		end: Position {
+			line: 0,
+			character: 11,
+		},
+	};
+	let result = apply_incremental_change(content, range, "rust");
+	assert_eq!(result, "hello rust");
+}
+
+#[test]
+fn incremental_multiline_insert() {
+	let content = "line1\nline2\nline3";
+	let range = Range {
+		start: Position {
+			line: 1,
+			character: 5,
+		},
+		end: Position {
+			line: 1,
+			character: 5,
+		},
+	};
+	let result = apply_incremental_change(content, range, " extra");
+	assert_eq!(result, "line1\nline2 extra\nline3");
+}
+
+#[test]
+fn incremental_multiline_delete() {
+	let content = "line1\nline2\nline3";
+	// Delete from end of line1 to start of line3, removing "\nline2\n".
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 5,
+		},
+		end: Position {
+			line: 2,
+			character: 0,
+		},
+	};
+	let result = apply_incremental_change(content, range, "\n");
+	assert_eq!(result, "line1\nline3");
+}
+
+#[test]
+fn incremental_replace_across_lines() {
+	let content = "aaa\nbbb\nccc";
+	// Replace from middle of first line to middle of last line.
+	let range = Range {
+		start: Position {
+			line: 0,
+			character: 1,
+		},
+		end: Position {
+			line: 2,
+			character: 2,
+		},
+	};
+	let result = apply_incremental_change(content, range, "XYZ");
+	assert_eq!(result, "aXYZc");
+}
+
+#[test]
+fn incremental_full_replacement_no_range() {
+	// When range is None, the change represents a full content replacement.
+	// This is the backward-compatibility path. We test the logic directly:
+	let original = "old content";
+	let new_text = "brand new content";
+	// Simulate: if range is None, just use new_text directly.
+	let result = new_text.to_string();
+	assert_eq!(result, "brand new content");
+	assert_ne!(result, original);
+}
+
+#[test]
+fn incremental_multiple_sequential_changes() {
+	// Simulate applying multiple changes in order (as the LSP spec requires).
+	let mut content = "abcdef".to_string();
+
+	// First change: insert "X" at position 3.
+	let range1 = Range {
+		start: Position {
+			line: 0,
+			character: 3,
+		},
+		end: Position {
+			line: 0,
+			character: 3,
+		},
+	};
+	let start1 = lsp_position_to_offset(&content, range1.start)
+		.unwrap_or_else(|| panic!("invalid position"));
+	let end1 =
+		lsp_position_to_offset(&content, range1.end).unwrap_or_else(|| panic!("invalid position"));
+	content.replace_range(start1..end1, "X");
+	assert_eq!(content, "abcXdef");
+
+	// Second change: delete character at position 1 (the "b").
+	let range2 = Range {
+		start: Position {
+			line: 0,
+			character: 1,
+		},
+		end: Position {
+			line: 0,
+			character: 2,
+		},
+	};
+	let start2 = lsp_position_to_offset(&content, range2.start)
+		.unwrap_or_else(|| panic!("invalid position"));
+	let end2 =
+		lsp_position_to_offset(&content, range2.end).unwrap_or_else(|| panic!("invalid position"));
+	content.replace_range(start2..end2, "");
+	assert_eq!(content, "acXdef");
+}

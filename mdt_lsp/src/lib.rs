@@ -226,6 +226,33 @@ fn to_lsp_range(pos: &mdt_core::Position) -> Range {
 	}
 }
 
+/// Convert an LSP `Position` (0-indexed line, character in UTF-16 code units)
+/// to a byte offset within `content`. Returns `None` if the position is out of
+/// bounds.
+fn lsp_position_to_offset(content: &str, position: Position) -> Option<usize> {
+	let mut offset = 0;
+	for (i, line) in content.split('\n').enumerate() {
+		if i == position.line as usize {
+			// LSP character offsets are in UTF-16 code units, so we need to
+			// walk the line converting from UTF-16 units to byte indices.
+			let mut utf16_offset = 0u32;
+			for (byte_idx, c) in line.char_indices() {
+				if utf16_offset == position.character {
+					return Some(offset + byte_idx);
+				}
+				utf16_offset += c.len_utf16() as u32;
+			}
+			// Position at end of line (past last character).
+			if utf16_offset == position.character {
+				return Some(offset + line.len());
+			}
+			return None;
+		}
+		offset += line.len() + 1; // +1 for '\n'
+	}
+	None
+}
+
 /// The MDT language server.
 #[derive(Debug)]
 pub struct MdtLanguageServer {
@@ -290,7 +317,7 @@ impl LanguageServer for MdtLanguageServer {
 		Ok(InitializeResult {
 			capabilities: ServerCapabilities {
 				text_document_sync: Some(TextDocumentSyncCapability::Kind(
-					TextDocumentSyncKind::FULL,
+					TextDocumentSyncKind::INCREMENTAL,
 				)),
 				hover_provider: Some(HoverProviderCapability::Simple(true)),
 				completion_provider: Some(CompletionOptions {
@@ -332,10 +359,37 @@ impl LanguageServer for MdtLanguageServer {
 
 	async fn did_change(&self, params: DidChangeTextDocumentParams) {
 		let uri = params.text_document.uri;
-		// We use Full sync, so the last change contains the entire document.
-		if let Some(change) = params.content_changes.into_iter().next_back() {
-			self.on_document_change(&uri, change.text).await;
+
+		// Get the current document content to apply incremental changes to.
+		let current_content = {
+			let state = self.state.read().await;
+			state.documents.get(&uri).map(|doc| doc.content.clone())
+		};
+
+		let Some(mut content) = current_content else {
+			// Document not tracked yet — use the last change as full content.
+			if let Some(change) = params.content_changes.into_iter().next_back() {
+				self.on_document_change(&uri, change.text).await;
+			}
+			return;
+		};
+
+		// Apply each content change in order. With INCREMENTAL sync, each
+		// change has a `range` indicating the region to replace. If `range`
+		// is `None`, treat it as a full content replacement (backward compat).
+		for change in params.content_changes {
+			if let Some(range) = change.range {
+				let start = lsp_position_to_offset(&content, range.start);
+				let end = lsp_position_to_offset(&content, range.end);
+				if let (Some(start), Some(end)) = (start, end) {
+					content.replace_range(start..end, &change.text);
+				}
+			} else {
+				content = change.text;
+			}
 		}
+
+		self.on_document_change(&uri, content).await;
 	}
 
 	async fn did_save(&self, params: DidSaveTextDocumentParams) {
