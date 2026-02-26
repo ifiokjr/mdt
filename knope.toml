@@ -1,53 +1,19 @@
 [changes]
 ignore_conventional_commits = true
 
-[packages.mdt_core]
+[package]
 versioned_files = [
-	"Cargo.lock",
-	"mdt_core/Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_core" },
+	"Cargo.toml",
+	{ dependency = "mdt_core", path = "Cargo.lock" },
+	{ dependency = "mdt_core", path = "Cargo.toml" },
+	{ dependency = "mdt_cli", path = "Cargo.lock" },
+	{ dependency = "mdt_lsp", path = "Cargo.lock" },
+	{ dependency = "mdt_lsp", path = "Cargo.toml" },
+	{ dependency = "mdt_mcp", path = "Cargo.lock" },
+	{ dependency = "mdt_mcp", path = "Cargo.toml" },
 ]
-changelog = "mdt_core/changelog.md"
-scopes = ["mdt_core"]
-extra_changelog_sections = [
-	{ name = "Notes", footers = [], types = ["note"] },
-	{ name = "Documentation", footers = [], types = ["docs"] },
-]
-
-[packages.mdt_cli]
-versioned_files = [
-	"Cargo.lock",
-	"mdt_cli/Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_cli" },
-]
-changelog = "mdt_cli/changelog.md"
-scopes = ["mdt_cli"]
-extra_changelog_sections = [
-	{ name = "Notes", footers = [], types = ["note"] },
-	{ name = "Documentation", footers = [], types = ["docs"] },
-]
-
-[packages.mdt_lsp]
-versioned_files = [
-	"Cargo.lock",
-	"mdt_lsp/Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_lsp" },
-]
-changelog = "mdt_lsp/changelog.md"
-scopes = ["mdt_lsp"]
-extra_changelog_sections = [
-	{ name = "Notes", footers = [], types = ["note"] },
-	{ name = "Documentation", footers = [], types = ["docs"] },
-]
-
-[packages.mdt_mcp]
-versioned_files = [
-	"Cargo.lock",
-	"mdt_mcp/Cargo.toml",
-	{ path = "Cargo.toml", dependency = "mdt_mcp" },
-]
-changelog = "mdt_mcp/changelog.md"
-scopes = ["mdt_mcp"]
+changelog = "changelog.md"
+scopes = ["core", "cli", "lsp", "mcp"]
 extra_changelog_sections = [
 	{ name = "Notes", footers = [], types = ["note"] },
 	{ name = "Documentation", footers = [], types = ["docs"] },
@@ -77,7 +43,7 @@ command = "git add --all"
 
 [[workflows.steps]]
 type = "Command"
-command = 'git commit -m "chore: prepare releases"'
+command = 'git commit -m "chore: prepare releases $version"'
 
 [[workflows.steps]]
 type = "Command"

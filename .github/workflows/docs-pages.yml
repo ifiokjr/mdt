@@ -21,11 +21,6 @@ concurrency:
 
 jobs:
   build:
-    # For release events, only deploy on mdt_cli releases (not library-only).
-    # For workflow_dispatch, always run.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      startsWith(github.event.release.tag_name, 'mdt_cli/')
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:

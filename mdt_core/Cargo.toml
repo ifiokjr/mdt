@@ -1,6 +1,6 @@
 [package]
 name = "mdt_core"
-version = "0.5.0"
+version = { workspace = true }
 categories = { workspace = true }
 documentation = "https://docs.rs/mdt_core"
 edition = { workspace = true }

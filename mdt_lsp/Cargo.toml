@@ -1,6 +1,6 @@
 [package]
 name = "mdt_lsp"
-version = "0.4.1"
+version = { workspace = true }
 categories = { workspace = true }
 documentation = "https://docs.rs/mdt_lsp"
 edition = { workspace = true }

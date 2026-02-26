@@ -3,6 +3,7 @@ members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp"]
 resolver = "2"
 
 [workspace.package]
+version = "0.5.0"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["development-tools"]
 edition = "2024"
@@ -48,8 +49,8 @@ tower-lsp-server = { default-features = false, version = "^0.23" }
 
 # Internal crates
 mdt_core = { path = "./mdt_core", version = "0.5.0" }
-mdt_lsp = { path = "./mdt_lsp", version = "0.4.1" }
-mdt_mcp = { path = "./mdt_mcp", version = "0.4.1" }
+mdt_lsp = { path = "./mdt_lsp", version = "0.5.0" }
+mdt_mcp = { path = "./mdt_mcp", version = "0.5.0" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. mdt_cli/v0.3.0). Must start with mdt_cli/ and have a matching GitHub release."
+        description: "Release tag (e.g. v0.3.0). Must start with `v` and have a matching GitHub release."
         required: true
         type: string
 
@@ -27,7 +27,7 @@ jobs:
     # Only build binaries for mdt_cli releases (not the mdt library releases).
     if: >-
       github.repository_owner == 'ifiokjr' &&
-      startsWith(inputs.tag || github.event.release.tag_name, 'mdt_cli/')
+      startsWith(inputs.tag || github.event.release.tag_name, "v")
     strategy:
       fail-fast: false
       matrix:
@@ -59,14 +59,6 @@ jobs:
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # Extract the version from the tag (e.g. "mdt_cli/v0.1.0" -> "v0.1.0")
-      - name: extract version from tag
-        id: version
-        run: echo "version=${TAG#*/}" >> "${GITHUB_OUTPUT}"
-        env:
-          TAG: ${{ env.RELEASE_TAG }}
-        shell: bash
-
       - name: setup cross toolchain
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
@@ -89,7 +81,7 @@ jobs:
           bin: mdt
           manifest-path: mdt_cli/Cargo.toml
           ref: refs/tags/${{ env.RELEASE_TAG }}
-          archive: mdt-$target-${{ steps.version.outputs.version }}
+          archive: $bin-$target-$tag
           target: ${{ matrix.target }}
           tar: all
           zip: windows
