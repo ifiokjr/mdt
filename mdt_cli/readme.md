@@ -30,13 +30,7 @@
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-[crate-image]: https://img.shields.io/crates/v/mdt_cli.svg
-[crate-link]: https://crates.io/crates/mdt_cli
-[docs-image]: https://docs.rs/mdt_cli/badge.svg
-[docs-link]: https://docs.rs/mdt_cli/
-[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
-[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
-[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
-[unlicense-link]: https://opensource.org/license/unlicense
+
+[crate-image]: https://img.shields.io/crates/v/mdt_cli.svg [crate-link]: https://crates.io/crates/mdt_cli [docs-image]: https://docs.rs/mdt_cli/badge.svg [docs-link]: https://docs.rs/mdt_cli/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

@@ -136,7 +136,7 @@ The template values can be defined in the following ways.
 
 ```toml
 [dependencies]
-mdt_lsp = "0.4.1"
+mdt_lsp = "0.5.0"
 ```
 
 <!-- {/mdtLspInstall} -->
@@ -145,13 +145,7 @@ mdt_lsp = "0.4.1"
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg
-[crate-link]: https://crates.io/crates/mdt_lsp
-[docs-image]: https://docs.rs/mdt_lsp/badge.svg
-[docs-link]: https://docs.rs/mdt_lsp/
-[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
-[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
-[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
-[unlicense-link]: https://opensource.org/license/unlicense
+
+[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg [crate-link]: https://crates.io/crates/mdt_lsp [docs-image]: https://docs.rs/mdt_lsp/badge.svg [docs-link]: https://docs.rs/mdt_lsp/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

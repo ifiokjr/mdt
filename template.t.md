@@ -54,7 +54,7 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wra
 
 ```toml
 [dependencies]
-mdt_core = "{{ cargo_mdt_core.package.version }}"
+mdt_core = "{{ cargo.workspace.package.version }}"
 ```
 
 <!-- {/mdtCoreInstall} -->
@@ -63,7 +63,7 @@ mdt_core = "{{ cargo_mdt_core.package.version }}"
 
 ```toml
 [dependencies]
-mdt_lsp = "{{ cargo_mdt_cli.package.version }}"
+mdt_lsp = "{{ cargo.workspace.package.version }}"
 ```
 
 <!-- {/mdtLspInstall} -->
@@ -72,7 +72,7 @@ mdt_lsp = "{{ cargo_mdt_cli.package.version }}"
 
 ```toml
 [dependencies]
-mdt_mcp = "{{ cargo_mdt_mcp.package.version }}"
+mdt_mcp = "{{ cargo.workspace.package.version }}"
 ```
 
 <!-- {/mdtMcpInstall} -->
@@ -193,13 +193,7 @@ Three types are supported:
 
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
-[crate-link]: https://crates.io/crates/{{ crateName }}
-[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
-[docs-link]: https://docs.rs/{{ crateName }}/
-[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
-[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
-[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
-[unlicense-link]: https://opensource.org/license/unlicense
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg [crate-link]: https://crates.io/crates/{{ crateName }} [docs-image]: https://docs.rs/{{ crateName }}/badge.svg [docs-link]: https://docs.rs/{{ crateName }}/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->
