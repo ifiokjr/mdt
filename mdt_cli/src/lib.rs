@@ -79,6 +79,11 @@ pub enum Commands {
 		/// GitHub Actions annotations that appear inline on PRs.
 		#[arg(long, value_enum, default_value_t = OutputFormat::Text)]
 		format: OutputFormat,
+
+		/// Watch for file changes and re-run checks automatically. Monitors
+		/// template files and consumer files for modifications.
+		#[arg(long, default_value_t = false)]
+		watch: bool,
 	},
 	/// Update all consumer blocks with the latest provider content.
 	///
