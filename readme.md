@@ -62,7 +62,14 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `wra
 
 ## LSP
 
-Language server protocol support is planned via the `mdt_lsp` crate. This will provide editor integration for template validation and auto-completion.
+The `mdt_lsp` crate provides a fully implemented language server for editor integration. Start it with `mdt lsp` or run the `mdt-lsp` binary directly. The server communicates over stdin/stdout and supports the following capabilities:
+
+- **Diagnostics** -- reports stale consumer blocks, missing providers with name suggestions, unclosed blocks, unknown transformers, invalid transformer arguments, unused providers, and provider blocks in non-template files.
+- **Completions** -- suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+- **Hover** -- shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
+- **Go to definition** -- navigates from a consumer block to its provider, or from a provider to all of its consumers.
+- **Document symbols** -- lists all provider and consumer blocks in the outline/symbol view.
+- **Code actions** -- offers a quick-fix to update stale consumer blocks in place.
 
 ## Contributing
 
