@@ -1,5 +1,5 @@
 [workspace]
-members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp"]
+members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp", "mdt_mcp"]
 resolver = "2"
 
 [workspace.package]
