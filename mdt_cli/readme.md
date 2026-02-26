@@ -1,6 +1,6 @@
 # mdt_cli
 
-> the cli which updates markdown content anywhere using comments as template tags
+> the CLI for mdt (manage markdown templates)
 
 <br />
 
@@ -14,6 +14,16 @@
 
 <!-- {/mdtPackageDocumentation} -->
 
+## Installation
+
+<!-- {=mdtCliInstall} -->
+
+```sh
+cargo install mdt_cli
+```
+
+<!-- {/mdtCliInstall} -->
+
 <!-- {=mdtCliUsage} -->
 
 ### CLI Commands
@@ -26,11 +36,51 @@
 
 <!-- {/mdtCliUsage} -->
 
+<!-- {=mdtTemplateSyntax} -->
+
+### Template Syntax
+
+**Provider tag** (defines a template block in `*.t.md` definition files):
+
+```markdown
+<!-- {@blockName} -->
+
+Content to inject
+
+<!-- {/blockName} -->
+```
+
+**Consumer tag** (marks where content should be injected):
+
+```markdown
+<!-- {=blockName} -->
+
+This content gets replaced
+
+<!-- {/blockName} -->
+```
+
+**Filters and pipes:** Template values support pipe-delimited transformers:
+
+```markdown
+<!-- {=block|prefix:"\n"|indent:"  "} -->
+```
+
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
+
+<!-- {/mdtTemplateSyntax} -->
+
 <!-- {=mdtBadgeLinks:"mdt_cli"} -->
 
+[crate-image]: https://img.shields.io/crates/v/mdt_cli.svg
+[crate-link]: https://crates.io/crates/mdt_cli
+[docs-image]: https://docs.rs/mdt_cli/badge.svg
+[docs-link]: https://docs.rs/mdt_cli/
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-
-[crate-image]: https://img.shields.io/crates/v/mdt_cli.svg [crate-link]: https://crates.io/crates/mdt_cli [docs-image]: https://docs.rs/mdt_cli/badge.svg [docs-link]: https://docs.rs/mdt_cli/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
+[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
+[unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

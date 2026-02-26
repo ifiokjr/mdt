@@ -46,9 +46,96 @@ This content gets replaced
 <!-- {=block|prefix:"\n"|indent:"  "} -->
 ```
 
-Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`.
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 
 <!-- {/mdtTemplateSyntax} -->
+
+<!-- {@mdtCliInstall} -->
+
+```sh
+cargo install mdt_cli
+```
+
+<!-- {/mdtCliInstall} -->
+
+<!-- {@mdtLspOverview} -->
+
+`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
+
+### Capabilities
+
+- **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
+- **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+- **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
+- **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
+- **References** — finds all provider and consumer blocks sharing the same name.
+- **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
+- **Document symbols** — lists all provider and consumer blocks in the outline/symbol view.
+- **Code actions** — offers a quick-fix to update stale consumer blocks in place.
+
+### Usage
+
+Start the language server via the CLI:
+
+```sh
+mdt lsp
+```
+
+The server communicates over stdin/stdout using the Language Server Protocol.
+
+<!-- {/mdtLspOverview} -->
+
+<!-- {@mdtMcpOverview} -->
+
+`mdt_mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [mdt](https://github.com/ifiokjr/mdt) template engine. It exposes mdt functionality as MCP tools that can be used by AI assistants and other MCP-compatible clients.
+
+### Tools
+
+- **`mdt_check`** — Verify all consumer blocks are up-to-date.
+- **`mdt_update`** — Update all consumer blocks with latest provider content.
+- **`mdt_list`** — List all providers and consumers in the project.
+- **`mdt_get_block`** — Get the content of a specific block by name.
+- **`mdt_preview`** — Preview the result of applying transformers to a block.
+- **`mdt_init`** — Initialize a new mdt project with a sample template file.
+
+### Usage
+
+Start the MCP server via the CLI:
+
+```sh
+mdt mcp
+```
+
+Add the following to your MCP client configuration:
+
+```json
+{
+	"mcpServers": {
+		"mdt": {
+			"command": "mdt",
+			"args": ["mcp"]
+		}
+	}
+}
+```
+
+<!-- {/mdtMcpOverview} -->
+
+<!-- {@mdtContributing} -->
+
+[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
+
+To automatically load the environment you should [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
+
+```bash
+# The security mechanism didn't allow to load the `.envrc`.
+# Since we trust it, let's allow it execution.
+direnv allow .
+```
+
+At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling and dependencies.
+
+<!-- {/mdtContributing} -->
 
 <!-- {@mdtCoreInstall} -->
 
@@ -191,9 +278,15 @@ Three types are supported:
 
 <!-- {@mdtBadgeLinks:"crateName"} -->
 
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
+[crate-link]: https://crates.io/crates/{{ crateName }}
+[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
+[docs-link]: https://docs.rs/{{ crateName }}/
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-
-[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg [crate-link]: https://crates.io/crates/{{ crateName }} [docs-image]: https://docs.rs/{{ crateName }}/badge.svg [docs-link]: https://docs.rs/{{ crateName }}/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
+[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
+[unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

@@ -14,6 +14,16 @@
 
 <!-- {/mdtPackageDocumentation} -->
 
+## Installation
+
+<!-- {=mdtCliInstall} -->
+
+```sh
+cargo install mdt_cli
+```
+
+<!-- {/mdtCliInstall} -->
+
 <!-- {=mdtTemplateSyntax} -->
 
 ### Template Syntax
@@ -44,7 +54,7 @@ This content gets replaced
 <!-- {=block|prefix:"\n"|indent:"  "} -->
 ```
 
-Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`.
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 
 <!-- {/mdtTemplateSyntax} -->
 
@@ -60,26 +70,20 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 <!-- {/mdtCliUsage} -->
 
-## LSP
+## Crates
 
-The `mdt_lsp` crate provides a fully implemented language server for editor integration. Start it with `mdt lsp` or run the `mdt-lsp` binary directly. The server communicates over stdin/stdout and supports the following capabilities:
-
-- **Diagnostics** -- reports stale consumer blocks, missing providers with name suggestions, unclosed blocks, unknown transformers, invalid transformer arguments, unused providers, and provider blocks in non-template files.
-- **Completions** -- suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
-- **Hover** -- shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
-- **Go to definition** -- navigates from a consumer block to its provider, or from a provider to all of its consumers.
-- **Document symbols** -- lists all provider and consumer blocks in the outline/symbol view.
-- **Code actions** -- offers a quick-fix to update stale consumer blocks in place.
+| Crate                    | Description                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| [`mdt_core`](./mdt_core) | Core library — lexer, parser, scanner, and template engine                     |
+| [`mdt_cli`](./mdt_cli)   | CLI tool — `mdt` binary for managing templates                                 |
+| [`mdt_lsp`](./mdt_lsp)   | LSP server — editor integration with diagnostics, completions, hover, and more |
+| [`mdt_mcp`](./mdt_mcp)   | MCP server — AI assistant integration via the Model Context Protocol           |
 
 ## Contributing
 
+<!-- {=mdtContributing} -->
+
 [`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
-
-If you want to use flakes you may need to run the following command after initial setup.
-
-```bash
-echo "experimental-features = nix-command flakes" >> $HOME/.config/nix/nix.conf
-```
 
 To automatically load the environment you should [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
 
@@ -89,24 +93,9 @@ To automatically load the environment you should [install direnv](https://devenv
 direnv allow .
 ```
 
-At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling.
+At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling and dependencies.
 
-To setup recommended configuration for your favourite editor run the following commands.
-
-```bash
-setup:vscode # Setup vscode
-setup:helix  # Setup helix configuration
-```
-
-### Upgrading `devenv`
-
-If you have an outdated version of `devenv` you can update it by running the following commands. If you know an easier way, please create a PR and I'll update these docs.
-
-```bash
-nix profile list # find the index of the nix package
-nix profile remove <index>
-nix profile install --accept-flake-config github:cachix/devenv/<version>
-```
+<!-- {/mdtContributing} -->
 
 [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
