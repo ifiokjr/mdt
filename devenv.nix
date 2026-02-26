@@ -2,8 +2,13 @@
   pkgs,
   lib,
   config,
+  inputs,
   ...
 }:
+
+let
+  extra = inputs.ifiokjr-nixpkgs.packages.${pkgs.stdenv.system};
+in
 
 {
   packages =
@@ -13,6 +18,7 @@
       cargo-run-bin
       deno
       dprint
+      extra.knope
       mdbook
       nixfmt
       rustup
@@ -40,14 +46,6 @@
         cargo run --quiet --bin mdt -- $@
       '';
       description = "The `mdt` executable";
-      binary = "bash";
-    };
-    "knope" = {
-      exec = ''
-        set -e
-        cargo bin knope $@
-      '';
-      description = "The `knope` executable";
       binary = "bash";
     };
     "install:all" = {
@@ -206,24 +204,6 @@
         cargo insta accept
       '';
       description = "Update insta snapshots.";
-      binary = "bash";
-    };
-    "setup:vscode" = {
-      exec = ''
-        set -e
-        rm -rf .vscode
-        cp -r $DEVENV_ROOT/setup/editors/vscode .vscode
-      '';
-      description = "Setup the environment for vscode.";
-      binary = "bash";
-    };
-    "setup:helix" = {
-      exec = ''
-        set -e
-        rm -rf .helix
-        cp -r $DEVENV_ROOT/setup/editors/helix .helix
-      '';
-      description = "Setup for the helix editor.";
       binary = "bash";
     };
   };
