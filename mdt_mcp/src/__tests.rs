@@ -2369,3 +2369,180 @@ async fn check_with_missing_data_file() {
 		"should handle missing data file without panicking"
 	);
 }
+
+// ===========================================================================
+// Block arguments helpers
+// ===========================================================================
+
+/// Create a project where the provider declares a parameter (`crate_name`)
+/// and the consumer passes an argument value (`mdt_core`).  The consumer
+/// body is stale — it does NOT match the rendered provider content.
+fn create_stale_args_project(root: &Path) {
+	let template = "\
+<!-- {@badges:\"crate_name\"} -->
+
+[![crates.io](https://img.shields.io/crates/v/{{ \
+	                crate_name }})]
+
+<!-- {/badges} -->
+";
+	let readme = "\
+<!-- {=badges:\"mdt_core\"} -->
+
+Old stale content.
+
+<!-- {/badges} -->
+";
+	std::fs::write(root.join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(root.join("readme.md"), readme).unwrap_or_else(|e| panic!("write readme: {e}"));
+}
+
+/// Create a project where the consumer passes too many arguments relative
+/// to the provider's parameter count (count mismatch).
+fn create_args_mismatch_project(root: &Path) {
+	let template = "\
+<!-- {@badges:\"crate_name\"} -->
+
+Content for {{ crate_name }}.
+
+<!-- {/badges} -->
+";
+	// Consumer passes 2 arguments, but provider declares only 1 parameter.
+	let readme = "\
+<!-- {=badges:\"mdt_core\":\"extra\"} -->
+
+Old content.
+
+<!-- {/badges} -->
+";
+	std::fs::write(root.join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(root.join("readme.md"), readme).unwrap_or_else(|e| panic!("write readme: {e}"));
+}
+
+// ===========================================================================
+// check: block arguments
+// ===========================================================================
+
+#[tokio::test]
+async fn check_with_block_arguments_detects_stale() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_args_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("stale"),
+		"expected stale message, got: {text}"
+	);
+	assert!(
+		text.contains("badges"),
+		"expected block name in message, got: {text}"
+	);
+}
+
+#[tokio::test]
+async fn check_reports_argument_count_mismatch() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_args_mismatch_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("argument count mismatch"),
+		"expected argument count mismatch message, got: {text}"
+	);
+}
+
+// ===========================================================================
+// update: block arguments
+// ===========================================================================
+
+#[tokio::test]
+async fn update_with_block_arguments_applies_changes() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_args_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("Updated"),
+		"expected update confirmation, got: {text}"
+	);
+
+	// Verify the file was written with the rendered argument value.
+	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read readme: {e}"));
+	assert!(
+		readme_content.contains("mdt_core"),
+		"consumer should contain rendered argument value 'mdt_core'"
+	);
+	assert!(
+		!readme_content.contains("{{ crate_name }}"),
+		"template variable should be interpolated"
+	);
+	assert!(
+		!readme_content.contains("Old stale content"),
+		"old stale content should be replaced"
+	);
+}
+
+// ===========================================================================
+// preview: block arguments
+// ===========================================================================
+
+#[tokio::test]
+async fn preview_with_block_arguments_shows_provider_template() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_args_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.preview(Parameters(BlockParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: "badges".to_string(),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("preview: {e:?}"));
+
+	let text = extract_text(&result);
+	assert!(
+		text.contains("Provider `badges`"),
+		"expected provider heading, got: {text}"
+	);
+	// The preview shows the provider template.  Since provider has a
+	// parameter `crate_name` without base data, the raw template variable
+	// may or may not be present depending on render behaviour.  At minimum
+	// the consumer section should list the consumer file.
+	assert!(
+		text.contains("consumer(s)"),
+		"expected consumer section, got: {text}"
+	);
+	assert!(
+		text.contains("readme.md"),
+		"expected consumer file listed, got: {text}"
+	);
+}

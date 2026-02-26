@@ -4938,6 +4938,193 @@ fn document_symbols_multiple_blocks_correct_ranges() {
 	);
 }
 
+// ---- Block arguments tests ----
+
+/// Build a `WorkspaceState` with a provider that declares a parameter and a
+/// consumer that passes an argument value.  The provider template uses
+/// `{{ crate_name }}` which should be replaced by the consumer's argument.
+fn make_args_test_state(consumer_arg: &str, consumer_body: &str) -> (WorkspaceState, Uri) {
+	let provider_template =
+		"<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
+		 crate_name }})]\n\n<!-- {/badges} -->\n";
+	let consumer_doc = format!(
+		"# Readme\n\n<!-- {{=badges:\"{consumer_arg}\"}} -->\n\n{consumer_body}\n\n<!-- \
+		 {{/badges}} -->\n"
+	);
+
+	let provider_blocks = parse(provider_template).unwrap_or_default();
+	let (consumer_blocks, consumer_parse_diagnostics) =
+		parse_with_diagnostics(&consumer_doc).unwrap_or_default();
+
+	let provider_block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected a provider block in template"));
+
+	let provider_entry = ProviderEntry {
+		block: provider_block,
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: extract_content_between_tags(provider_template, &provider_blocks[0]),
+	};
+
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut providers = HashMap::new();
+	providers.insert("badges".to_string(), provider_entry.clone());
+
+	let mut consumers = Vec::new();
+	for block in &consumer_blocks {
+		if block.r#type == BlockType::Consumer {
+			consumers.push(ConsumerEntry {
+				block: block.clone(),
+				file: PathBuf::from("/tmp/test/readme.md"),
+				content: extract_content_between_tags(&consumer_doc, block),
+			});
+		}
+	}
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		consumer_uri.clone(),
+		DocumentState {
+			content: consumer_doc,
+			blocks: consumer_blocks,
+			parse_diagnostics: consumer_parse_diagnostics,
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers,
+		data: HashMap::new(),
+	};
+
+	(state, consumer_uri)
+}
+
+#[test]
+fn diagnostics_stale_consumer_with_block_arguments() {
+	let (state, uri) = make_args_test_state("mdt_core", "Old stale content");
+	let diagnostics = compute_diagnostics(&state, &uri);
+
+	assert_eq!(diagnostics.len(), 1);
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
+	assert!(
+		diagnostics[0].message.contains("out of date"),
+		"expected 'out of date' in message: {}",
+		diagnostics[0].message
+	);
+	assert!(diagnostics[0].message.contains("badges"));
+
+	// The diagnostic data should contain the expected content with the
+	// consumer argument interpolated.
+	let data = diagnostics[0]
+		.data
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected diagnostic data"));
+	let expected_content = data["expected_content"]
+		.as_str()
+		.unwrap_or_else(|| panic!("expected expected_content string"));
+	assert!(
+		expected_content.contains("mdt_core"),
+		"expected rendered argument 'mdt_core' in expected content, got: {expected_content}"
+	);
+	assert!(
+		!expected_content.contains("{{ crate_name }}"),
+		"template variable should be interpolated, got: {expected_content}"
+	);
+}
+
+#[test]
+fn hover_on_consumer_with_block_arguments_shows_rendered_content() {
+	let (state, uri) = make_args_test_state("mdt_core", "Old content");
+	let doc = state.documents.get(&uri).unwrap();
+	let block = doc
+		.blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+
+	let position = to_lsp_position(&block.opening.start);
+	let hover = compute_hover(&state, &uri, position);
+
+	assert!(hover.is_some());
+	let hover = hover.unwrap();
+	if let HoverContents::Markup(markup) = &hover.contents {
+		assert!(
+			markup.value.contains("Consumer block"),
+			"expected 'Consumer block' in hover: {}",
+			markup.value
+		);
+		assert!(
+			markup.value.contains("badges"),
+			"expected block name 'badges' in hover: {}",
+			markup.value
+		);
+		// The hover should show rendered content with the consumer argument
+		// interpolated, not the raw template variable.
+		assert!(
+			markup.value.contains("mdt_core"),
+			"expected rendered argument 'mdt_core' in hover content: {}",
+			markup.value
+		);
+		assert!(
+			!markup.value.contains("{{ crate_name }}"),
+			"template variable should be interpolated in hover content: {}",
+			markup.value
+		);
+	} else {
+		panic!("expected Markup hover contents");
+	}
+}
+
+#[test]
+fn code_action_for_stale_consumer_with_block_arguments() {
+	let (state, uri) = make_args_test_state("mdt_core", "Old stale content");
+	let doc = state.documents.get(&uri).unwrap();
+	let block = doc
+		.blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+
+	let range = Range {
+		start: to_lsp_position(&block.opening.start),
+		end: to_lsp_position(&block.closing.end),
+	};
+
+	let actions = compute_code_actions(&state, &uri, range);
+	assert!(!actions.is_empty(), "expected at least one code action");
+
+	let CodeActionOrCommand::CodeAction(action) = &actions[0] else {
+		panic!("expected CodeAction")
+	};
+
+	assert!(action.title.contains("Update block"));
+	assert!(action.title.contains("badges"));
+	assert!(action.edit.is_some());
+
+	// Verify the edit text contains the rendered argument, not the raw
+	// template variable.
+	let edit = action.edit.as_ref().unwrap();
+	let changes = edit.changes.as_ref().unwrap();
+	let edits = changes.get(&uri).unwrap();
+	let new_text = &edits[0].new_text;
+	assert!(
+		new_text.contains("mdt_core"),
+		"expected rendered argument 'mdt_core' in code action edit, got: {new_text}"
+	);
+	assert!(
+		!new_text.contains("{{ crate_name }}"),
+		"template variable should be interpolated in code action edit, got: {new_text}"
+	);
+}
+
 // ---- References tests ----
 
 #[test]
