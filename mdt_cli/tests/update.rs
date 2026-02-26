@@ -262,8 +262,7 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	let template = "\
-<!-- {@badge:\"crateName\"} -->
+	let template = r#"<!-- {@badge:"crateName"} -->
 
 [crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
 [crate-link]: https://crates.io/crates/{{ crateName }}
@@ -273,11 +272,18 @@ fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
 [ci-link]: https://github.com/example/repo/actions
 
 <!-- {/badge} -->
-";
+"#;
 	std::fs::write(tmp.path().join("template.t.md"), template)?;
 	std::fs::write(
 		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=badge:\"my_crate\"} -->\n\nold\n\n<!-- {/badge} -->\n",
+		r#"# Readme
+
+<!-- {=badge:"my_crate"} -->
+
+old
+
+<!-- {/badge} -->
+"#,
 	)?;
 
 	let mut cmd = Command::cargo_bin("mdt")?;
@@ -327,15 +333,14 @@ fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
 fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	let template = "\
-<!-- {@links} -->
+	let template = r#"<!-- {@links} -->
 
 [repo]: https://github.com/example/repo
 [docs]: https://docs.example.com
 [ci]: https://ci.example.com/badge.svg
 
 <!-- {/links} -->
-";
+"#;
 	std::fs::write(tmp.path().join("template.t.md"), template)?;
 	std::fs::write(
 		tmp.path().join("readme.md"),
@@ -368,7 +373,10 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 		.stdout(predicates::str::contains("already up to date"));
 
 	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert_eq!(after_first, after_second, "Second update should not change the file");
+	assert_eq!(
+		after_first, after_second,
+		"Second update should not change the file"
+	);
 
 	Ok(())
 }
