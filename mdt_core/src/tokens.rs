@@ -15,6 +15,7 @@ use crate::Position;
 
 /// Only tokenize the blocks, not the content inside them or anything else.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum Token {
 	/// `\n`
 	Newline,

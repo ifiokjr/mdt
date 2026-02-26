@@ -4,10 +4,6 @@ after = 0
 
 [data]
 cargo = "Cargo.toml"
-cargo_mdt_core = "mdt_core/Cargo.toml"
-cargo_mdt_cli = "mdt_cli/Cargo.toml"
-cargo_mdt_lsp = "mdt_lsp/Cargo.toml"
-cargo_mdt_mcp = "mdt_mcp/Cargo.toml"
 
 [exclude]
 patterns = [

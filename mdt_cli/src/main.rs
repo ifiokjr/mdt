@@ -637,12 +637,14 @@ fn diagnostic_to_report(
 				 unused provider"
 			)
 		}
+		_ => diag.message(),
 	};
 	let code = match &diag.kind {
 		DiagnosticKind::UnclosedBlock { .. } => "mdt::unclosed_block",
 		DiagnosticKind::UnknownTransformer { .. } => "mdt::unknown_transformer",
 		DiagnosticKind::InvalidTransformerArgs { .. } => "mdt::invalid_transformer_args",
 		DiagnosticKind::UnusedProvider { .. } => "mdt::unused_provider",
+		_ => "mdt::diagnostic",
 	};
 
 	let diag_value = miette::MietteDiagnostic::new(message)

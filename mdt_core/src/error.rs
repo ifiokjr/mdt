@@ -2,6 +2,7 @@ use miette::Diagnostic;
 use thiserror::Error;
 
 #[derive(Debug, Diagnostic, Error)]
+#[non_exhaustive]
 pub enum MdtError {
 	#[error(transparent)]
 	#[diagnostic(code(mdt::io_error))]

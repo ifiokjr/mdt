@@ -17,7 +17,7 @@ mdt_core = { workspace = true }
 rmcp = { workspace = true, features = ["server", "transport-io", "macros"] }
 serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
-tokio = { workspace = true, features = ["full"], default-features = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"], default-features = true }
 
 [dev-dependencies]
 tempfile = { workspace = true, default-features = true }
