@@ -1115,8 +1115,8 @@ fn compute_references(
 /// the tag's starting LSP position. The name appears after `{@`, `{=`, or
 /// `{/` in the tag text.
 fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Option<Range> {
-	// The tag looks like `<!-- {=name} -->` or `<!-- {@name} -->` or
-	// `<!-- {/name} -->` or `<!-- {=name|transformers} -->`.
+	// Tags have the form: `<!-- ` + open/close marker + name + ` -->`.
+	// Open markers: `{@` (provider), `{=` (consumer). Close marker: `{/`.
 	// We find `{@`, `{=`, or `{/`, then look for the name immediately after.
 	let tag_prefix_patterns = ["{@", "{=", "{/"];
 	let mut search_start = 0;
