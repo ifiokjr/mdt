@@ -5126,6 +5126,516 @@ fn code_action_for_stale_consumer_with_block_arguments() {
 		"template variable should be interpolated in code action edit, got: {new_text}"
 	);
 }
+
+// ---- References tests ----
+
+#[test]
+fn references_from_consumer_returns_provider_and_consumers() {
+	let (state, consumer_uri) = make_test_state("Hello!", "Old");
+
+	let doc = state.documents.get(&consumer_uri).unwrap();
+	let block = doc
+		.blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+
+	let position = to_lsp_position(&block.opening.start);
+	let result = compute_references(&state, &consumer_uri, position);
+
+	assert!(result.is_some(), "expected references result");
+	let locations = result.unwrap();
+
+	// Should include the provider + at least 1 consumer.
+	assert!(
+		locations.len() >= 2,
+		"expected at least 2 locations (provider + consumer), got {}",
+		locations.len()
+	);
+
+	// Provider location should point to template file.
+	assert!(
+		locations
+			.iter()
+			.any(|l| l.uri.path().as_str().contains("template.t.md")),
+		"expected provider location in references"
+	);
+
+	// Consumer location should point to readme.
+	assert!(
+		locations
+			.iter()
+			.any(|l| l.uri.path().as_str().contains("readme.md")),
+		"expected consumer location in references"
+	);
+}
+
+#[test]
+fn references_from_provider_returns_provider_and_consumers() {
+	let provider_template = "<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n";
+	let provider_blocks = parse(provider_template).unwrap_or_default();
+	let provider_uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let provider_block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected a provider block"));
+
+	let provider_entry = ProviderEntry {
+		block: provider_block.clone(),
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: extract_content_between_tags(provider_template, &provider_blocks[0]),
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("greeting".to_string(), provider_entry);
+
+	let consumers = vec![
+		ConsumerEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Consumer,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+				arguments: vec![],
+			},
+			file: PathBuf::from("/tmp/test/readme.md"),
+			content: "\n\nold\n\n".to_string(),
+		},
+		ConsumerEntry {
+			block: Block {
+				name: "greeting".to_string(),
+				r#type: BlockType::Consumer,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+				arguments: vec![],
+			},
+			file: PathBuf::from("/tmp/test/docs.md"),
+			content: "\n\nold\n\n".to_string(),
+		},
+	];
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		provider_uri.clone(),
+		DocumentState {
+			content: provider_template.to_string(),
+			blocks: provider_blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers,
+		data: HashMap::new(),
+	};
+
+	let position = to_lsp_position(&provider_block.opening.start);
+	let result = compute_references(&state, &provider_uri, position);
+
+	assert!(result.is_some(), "expected references result");
+	let locations = result.unwrap();
+
+	// Provider + 2 consumers = 3 locations.
+	assert_eq!(locations.len(), 3, "expected 3 locations");
+
+	let paths: Vec<String> = locations
+		.iter()
+		.map(|l| l.uri.path().as_str().to_string())
+		.collect();
+	assert!(
+		paths.iter().any(|p| p.contains("template.t.md")),
+		"expected provider in references"
+	);
+	assert!(
+		paths.iter().any(|p| p.contains("readme.md")),
+		"expected readme consumer in references"
+	);
+	assert!(
+		paths.iter().any(|p| p.contains("docs.md")),
+		"expected docs consumer in references"
+	);
+}
+
+#[test]
+fn references_outside_block_returns_none() {
+	let (state, uri) = make_test_state("Hello!", "Hello!");
+
+	let position = Position {
+		line: 0,
+		character: 0,
+	};
+	let result = compute_references(&state, &uri, position);
+	assert!(result.is_none(), "expected None for position outside block");
+}
+
+#[test]
+fn references_consumer_without_provider_returns_only_consumer() {
+	let consumer_doc = "<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n";
+	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks.clone(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let consumers = vec![ConsumerEntry {
+		block: consumer_blocks[0].clone(),
+		file: PathBuf::from("/tmp/test/readme.md"),
+		content: "\n\nstuff\n\n".to_string(),
+	}];
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers,
+		data: HashMap::new(),
+	};
+
+	let block = consumer_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+	let position = to_lsp_position(&block.opening.start);
+	let result = compute_references(&state, &uri, position);
+
+	assert!(result.is_some(), "expected references result");
+	let locations = result.unwrap();
+	assert_eq!(locations.len(), 1, "expected only the consumer location");
+	assert!(locations[0].uri.path().as_str().contains("readme.md"));
+}
+
+// ---- Prepare Rename tests ----
+
+#[test]
+fn prepare_rename_on_consumer_returns_name_range() {
+	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks.clone(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let block = consumer_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+	let position = to_lsp_position(&block.opening.start);
+	let result = compute_prepare_rename(&state, &uri, position);
+
+	assert!(result.is_some(), "expected prepare rename result");
+	match result.unwrap() {
+		PrepareRenameResponse::Range(range) => {
+			// The name "greeting" in `<!-- {=greeting} -->` starts after
+			// `<!-- {=` (7 chars) and spans 8 chars.
+			assert_eq!(range.start.line, 0);
+			assert_eq!(range.start.character, 7);
+			assert_eq!(range.end.line, 0);
+			assert_eq!(range.end.character, 15);
+		}
+		other => panic!("expected Range response, got: {other:?}"),
+	}
+}
+
+#[test]
+fn prepare_rename_on_provider_returns_name_range() {
+	let provider_doc = "<!-- {@myBlock} -->\n\nContent\n\n<!-- {/myBlock} -->\n";
+	let provider_blocks = parse(provider_doc).unwrap_or_default();
+	let uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: provider_doc.to_string(),
+			blocks: provider_blocks.clone(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.unwrap();
+	let position = to_lsp_position(&block.opening.start);
+	let result = compute_prepare_rename(&state, &uri, position);
+
+	assert!(result.is_some(), "expected prepare rename result");
+	match result.unwrap() {
+		PrepareRenameResponse::Range(range) => {
+			// The name "myBlock" in `<!-- {@myBlock} -->` starts after
+			// `<!-- {@` (7 chars) and spans 7 chars.
+			assert_eq!(range.start.line, 0);
+			assert_eq!(range.start.character, 7);
+			assert_eq!(range.end.line, 0);
+			assert_eq!(range.end.character, 14);
+		}
+		other => panic!("expected Range response, got: {other:?}"),
+	}
+}
+
+#[test]
+fn prepare_rename_outside_block_returns_none() {
+	let (state, uri) = make_test_state("Hello!", "Hello!");
+
+	let position = Position {
+		line: 0,
+		character: 0,
+	};
+	let result = compute_prepare_rename(&state, &uri, position);
+	assert!(result.is_none(), "expected None for position outside block");
+}
+
+// ---- Rename tests ----
+
+#[test]
+fn rename_consumer_renames_both_tags_in_open_document() {
+	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
+	let consumer_uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let provider_template = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let provider_blocks = parse(provider_template).unwrap_or_default();
+	let provider_uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let provider_block = provider_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected provider block"));
+
+	let provider_entry = ProviderEntry {
+		block: provider_block,
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: extract_content_between_tags(provider_template, &provider_blocks[0]),
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("greeting".to_string(), provider_entry);
+
+	let mut consumers = Vec::new();
+	for block in &consumer_blocks {
+		if block.r#type == BlockType::Consumer {
+			consumers.push(ConsumerEntry {
+				block: block.clone(),
+				file: PathBuf::from("/tmp/test/readme.md"),
+				content: extract_content_between_tags(consumer_doc, block),
+			});
+		}
+	}
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		consumer_uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: consumer_blocks.clone(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+	documents.insert(
+		provider_uri.clone(),
+		DocumentState {
+			content: provider_template.to_string(),
+			blocks: provider_blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers,
+		data: HashMap::new(),
+	};
+
+	let block = consumer_blocks
+		.iter()
+		.find(|b| b.r#type == BlockType::Consumer)
+		.unwrap();
+	let position = to_lsp_position(&block.opening.start);
+	let result = compute_rename(&state, &consumer_uri, position, "salutation");
+
+	assert!(result.is_some(), "expected rename result");
+	let edit = result.unwrap();
+	let changes = edit.changes.unwrap();
+
+	// Should have edits for both the consumer file and the provider file.
+	assert!(
+		changes.contains_key(&consumer_uri),
+		"expected edits for consumer file"
+	);
+	assert!(
+		changes.contains_key(&provider_uri),
+		"expected edits for provider file"
+	);
+
+	// Consumer file: opening + closing = 2 edits.
+	let consumer_edits = &changes[&consumer_uri];
+	assert_eq!(
+		consumer_edits.len(),
+		2,
+		"expected 2 edits for consumer (open + close tag)"
+	);
+	for edit in consumer_edits {
+		assert_eq!(edit.new_text, "salutation");
+	}
+
+	// Provider file: opening + closing = 2 edits.
+	let provider_edits = &changes[&provider_uri];
+	assert_eq!(
+		provider_edits.len(),
+		2,
+		"expected 2 edits for provider (open + close tag)"
+	);
+	for edit in provider_edits {
+		assert_eq!(edit.new_text, "salutation");
+	}
+}
+
+#[test]
+fn rename_outside_block_returns_none() {
+	let (state, uri) = make_test_state("Hello!", "Hello!");
+
+	let position = Position {
+		line: 0,
+		character: 0,
+	};
+	let result = compute_rename(&state, &uri, position, "newName");
+	assert!(result.is_none(), "expected None for position outside block");
+}
+
+// ---- find_name_range_in_tag tests ----
+
+#[test]
+fn find_name_range_in_consumer_tag() {
+	let tag = "<!-- {=greeting} -->";
+	let start = Position {
+		line: 0,
+		character: 0,
+	};
+	let range = find_name_range_in_tag(tag, start, "greeting");
+	assert!(range.is_some(), "expected name range");
+	let range = range.unwrap();
+	assert_eq!(range.start.line, 0);
+	assert_eq!(range.start.character, 7); // after `<!-- {=`
+	assert_eq!(range.end.line, 0);
+	assert_eq!(range.end.character, 15); // 7 + 8
+}
+
+#[test]
+fn find_name_range_in_provider_tag() {
+	let tag = "<!-- {@myBlock} -->";
+	let start = Position {
+		line: 0,
+		character: 0,
+	};
+	let range = find_name_range_in_tag(tag, start, "myBlock");
+	assert!(range.is_some(), "expected name range");
+	let range = range.unwrap();
+	assert_eq!(range.start.line, 0);
+	assert_eq!(range.start.character, 7); // after `<!-- {@`
+	assert_eq!(range.end.line, 0);
+	assert_eq!(range.end.character, 14); // 7 + 7
+}
+
+#[test]
+fn find_name_range_in_close_tag() {
+	let tag = "<!-- {/greeting} -->";
+	let start = Position {
+		line: 0,
+		character: 0,
+	};
+	let range = find_name_range_in_tag(tag, start, "greeting");
+	assert!(range.is_some(), "expected name range");
+	let range = range.unwrap();
+	assert_eq!(range.start.line, 0);
+	assert_eq!(range.start.character, 7); // after `<!-- {/`
+	assert_eq!(range.end.line, 0);
+	assert_eq!(range.end.character, 15); // 7 + 8
+}
+
+#[test]
+fn find_name_range_with_nonzero_start() {
+	let tag = "<!-- {=greeting} -->";
+	let start = Position {
+		line: 5,
+		character: 10,
+	};
+	let range = find_name_range_in_tag(tag, start, "greeting");
+	assert!(range.is_some(), "expected name range");
+	let range = range.unwrap();
+	assert_eq!(range.start.line, 5);
+	assert_eq!(range.start.character, 17); // 10 + 7
+	assert_eq!(range.end.line, 5);
+	assert_eq!(range.end.character, 25); // 17 + 8
+}
+
+#[test]
+fn find_name_range_in_consumer_with_transformers() {
+	let tag = "<!-- {=greeting|trim|indent:\"  \"} -->";
+	let start = Position {
+		line: 0,
+		character: 0,
+	};
+	let range = find_name_range_in_tag(tag, start, "greeting");
+	assert!(range.is_some(), "expected name range");
+	let range = range.unwrap();
+	assert_eq!(range.start.line, 0);
+	assert_eq!(range.start.character, 7);
+	assert_eq!(range.end.line, 0);
+	assert_eq!(range.end.character, 15);
+}
+
 // ---- Incremental sync helpers ----
 
 #[test]

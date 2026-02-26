@@ -329,6 +329,13 @@ impl LanguageServer for MdtLanguageServer {
 					..Default::default()
 				}),
 				definition_provider: Some(OneOf::Left(true)),
+				references_provider: Some(OneOf::Left(true)),
+				rename_provider: Some(OneOf::Right(RenameOptions {
+					prepare_provider: Some(true),
+					work_done_progress_options: WorkDoneProgressOptions {
+						work_done_progress: None,
+					},
+				})),
 				document_symbol_provider: Some(OneOf::Left(true)),
 				code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
 				..Default::default()
@@ -481,6 +488,34 @@ impl LanguageServer for MdtLanguageServer {
 		} else {
 			Ok(Some(actions))
 		}
+	}
+
+	async fn references(&self, params: ReferenceParams) -> LspResult<Option<Vec<Location>>> {
+		let uri = &params.text_document_position.text_document.uri;
+		let position = params.text_document_position.position;
+
+		let state = self.state.read().await;
+		Ok(compute_references(&state, uri, position))
+	}
+
+	async fn prepare_rename(
+		&self,
+		params: TextDocumentPositionParams,
+	) -> LspResult<Option<PrepareRenameResponse>> {
+		let uri = &params.text_document.uri;
+		let position = params.position;
+
+		let state = self.state.read().await;
+		Ok(compute_prepare_rename(&state, uri, position))
+	}
+
+	async fn rename(&self, params: RenameParams) -> LspResult<Option<WorkspaceEdit>> {
+		let uri = &params.text_document_position.text_document.uri;
+		let position = params.text_document_position.position;
+		let new_name = &params.new_name;
+
+		let state = self.state.read().await;
+		Ok(compute_rename(&state, uri, position, new_name))
 	}
 }
 
@@ -1080,6 +1115,313 @@ fn ranges_overlap(a: Range, b: Range) -> bool {
 		|| (a.end.line == b.start.line && a.end.character < b.start.character)
 		|| b.end.line < a.start.line
 		|| (b.end.line == a.start.line && b.end.character < a.start.character))
+}
+
+// ---------------------------------------------------------------------------
+// References
+// ---------------------------------------------------------------------------
+
+/// Compute references: return all locations that share the same block name.
+/// If on a consumer, return the provider + all other consumers.
+/// If on a provider, return all consumers (and the provider itself if
+/// `include_declaration` would apply — but we always include all for
+/// simplicity).
+fn compute_references(
+	state: &WorkspaceState,
+	uri: &Uri,
+	position: Position,
+) -> Option<Vec<Location>> {
+	let doc = state.documents.get(uri)?;
+	let block = find_block_at_position(&doc.blocks, position)?;
+	let name = &block.name;
+
+	let mut locations = Vec::new();
+
+	// Include the provider location if it exists.
+	if let Some(provider) = state.providers.get(name) {
+		if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+			locations.push(Location {
+				uri: provider_uri,
+				range: to_lsp_range(&provider.block.opening),
+			});
+		}
+	}
+
+	// Include all consumer locations.
+	for consumer in &state.consumers {
+		if consumer.block.name == *name {
+			if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+				locations.push(Location {
+					uri: consumer_uri,
+					range: to_lsp_range(&consumer.block.opening),
+				});
+			}
+		}
+	}
+
+	if locations.is_empty() {
+		None
+	} else {
+		Some(locations)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rename
+// ---------------------------------------------------------------------------
+
+/// Find the range of the block name within a tag, given the tag text and
+/// the tag's starting LSP position. The name appears after `{@`, `{=`, or
+/// `{/` in the tag text.
+fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Option<Range> {
+	// Tags have the form: `<!-- ` + open/close marker + name + ` -->`.
+	// Open markers: `{@` (provider), `{=` (consumer). Close marker: `{/`.
+	// We find `{@`, `{=`, or `{/`, then look for the name immediately after.
+	let tag_prefix_patterns = ["{@", "{=", "{/"];
+	let mut search_start = 0;
+
+	for pattern in &tag_prefix_patterns {
+		if let Some(pos) = tag_text[search_start..].find(pattern) {
+			search_start = search_start + pos + pattern.len();
+			break;
+		}
+	}
+
+	// Find the name after the tag prefix.
+	let name_start_in_tag = tag_text[search_start..].find(name)?;
+	let name_byte_offset = search_start + name_start_in_tag;
+
+	// Calculate the LSP position of the name by counting characters from
+	// the tag start.
+	let before_name = &tag_text[..name_byte_offset];
+	let lines_before: Vec<&str> = before_name.split('\n').collect();
+	let newline_count = lines_before.len() - 1;
+
+	let start_line = tag_start.line + newline_count as u32;
+	let start_character = if newline_count > 0 {
+		lines_before.last().map_or(0, |l| l.len() as u32)
+	} else {
+		tag_start.character + before_name.len() as u32
+	};
+
+	let name_end = &tag_text[name_byte_offset..name_byte_offset + name.len()];
+	let name_lines: Vec<&str> = name_end.split('\n').collect();
+	let name_newlines = name_lines.len() - 1;
+
+	let end_line = start_line + name_newlines as u32;
+	let end_character = if name_newlines > 0 {
+		name_lines.last().map_or(0, |l| l.len() as u32)
+	} else {
+		start_character + name.len() as u32
+	};
+
+	Some(Range {
+		start: Position {
+			line: start_line,
+			character: start_character,
+		},
+		end: Position {
+			line: end_line,
+			character: end_character,
+		},
+	})
+}
+
+/// Extract the text of a tag from the document content using the tag's mdt
+/// `Position`.
+fn extract_tag_text<'a>(content: &'a str, tag_pos: &mdt_core::Position) -> &'a str {
+	let start = tag_pos.start.offset;
+	let end = tag_pos.end.offset;
+	if end <= content.len() && start <= end {
+		&content[start..end]
+	} else {
+		""
+	}
+}
+
+/// Compute `prepare_rename`: validate the cursor is on a block name and return
+/// its range.
+fn compute_prepare_rename(
+	state: &WorkspaceState,
+	uri: &Uri,
+	position: Position,
+) -> Option<PrepareRenameResponse> {
+	let doc = state.documents.get(uri)?;
+	let block = find_block_at_position(&doc.blocks, position)?;
+
+	let tag_text = extract_tag_text(&doc.content, &block.opening);
+	let name_range =
+		find_name_range_in_tag(tag_text, to_lsp_position(&block.opening.start), &block.name)?;
+
+	Some(PrepareRenameResponse::Range(name_range))
+}
+
+/// Compute rename: rename a block name across all provider and consumer tags.
+fn compute_rename(
+	state: &WorkspaceState,
+	uri: &Uri,
+	position: Position,
+	new_name: &str,
+) -> Option<WorkspaceEdit> {
+	let doc = state.documents.get(uri)?;
+	let block = find_block_at_position(&doc.blocks, position)?;
+	let old_name = &block.name;
+
+	let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+
+	// Collect all blocks to rename: the provider + all consumers with this
+	// name.
+	let mut blocks_to_rename: Vec<(&Block, &str, Uri)> = Vec::new();
+
+	// Add the provider if it exists.
+	if let Some(provider) = state.providers.get(old_name) {
+		if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+			blocks_to_rename.push((&provider.block, "", provider_uri));
+		}
+	}
+
+	// Add all consumers with this name.
+	for consumer in &state.consumers {
+		if consumer.block.name == *old_name {
+			if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+				blocks_to_rename.push((&consumer.block, "", consumer_uri));
+			}
+		}
+	}
+
+	for (blk, _, blk_uri) in &blocks_to_rename {
+		// Get the document content for this block's file.
+		let content = if let Some(doc) = state.documents.get(blk_uri) {
+			&doc.content
+		} else {
+			// For files not currently open, we need to read the file content
+			// from the provider/consumer entry.
+			continue;
+		};
+
+		let mut edits = Vec::new();
+
+		// Rename in the opening tag.
+		let open_text = extract_tag_text(content, &blk.opening);
+		if let Some(range) =
+			find_name_range_in_tag(open_text, to_lsp_position(&blk.opening.start), old_name)
+		{
+			edits.push(TextEdit {
+				range,
+				new_text: new_name.to_string(),
+			});
+		}
+
+		// Rename in the closing tag.
+		let close_text = extract_tag_text(content, &blk.closing);
+		if let Some(range) =
+			find_name_range_in_tag(close_text, to_lsp_position(&blk.closing.start), old_name)
+		{
+			edits.push(TextEdit {
+				range,
+				new_text: new_name.to_string(),
+			});
+		}
+
+		if !edits.is_empty() {
+			changes.entry(blk_uri.clone()).or_default().extend(edits);
+		}
+	}
+
+	// Also handle files that are not currently open in the editor.
+	// For the provider file, if not open we can try reading from disk via
+	// the stored file path.
+	if let Some(provider) = state.providers.get(old_name) {
+		let provider_uri_opt = Uri::from_file_path(&provider.file);
+		if let Some(provider_uri) = provider_uri_opt {
+			if !state.documents.contains_key(&provider_uri) {
+				// Read file from disk.
+				if let Ok(content) = std::fs::read_to_string(&provider.file) {
+					let mut edits = Vec::new();
+
+					let open_text = extract_tag_text(&content, &provider.block.opening);
+					if let Some(range) = find_name_range_in_tag(
+						open_text,
+						to_lsp_position(&provider.block.opening.start),
+						old_name,
+					) {
+						edits.push(TextEdit {
+							range,
+							new_text: new_name.to_string(),
+						});
+					}
+
+					let close_text = extract_tag_text(&content, &provider.block.closing);
+					if let Some(range) = find_name_range_in_tag(
+						close_text,
+						to_lsp_position(&provider.block.closing.start),
+						old_name,
+					) {
+						edits.push(TextEdit {
+							range,
+							new_text: new_name.to_string(),
+						});
+					}
+
+					if !edits.is_empty() {
+						changes.entry(provider_uri).or_default().extend(edits);
+					}
+				}
+			}
+		}
+	}
+
+	// For consumer files not currently open.
+	for consumer in &state.consumers {
+		if consumer.block.name != *old_name {
+			continue;
+		}
+		let consumer_uri_opt = Uri::from_file_path(&consumer.file);
+		if let Some(consumer_uri) = consumer_uri_opt {
+			if !state.documents.contains_key(&consumer_uri) {
+				if let Ok(content) = std::fs::read_to_string(&consumer.file) {
+					let mut edits = Vec::new();
+
+					let open_text = extract_tag_text(&content, &consumer.block.opening);
+					if let Some(range) = find_name_range_in_tag(
+						open_text,
+						to_lsp_position(&consumer.block.opening.start),
+						old_name,
+					) {
+						edits.push(TextEdit {
+							range,
+							new_text: new_name.to_string(),
+						});
+					}
+
+					let close_text = extract_tag_text(&content, &consumer.block.closing);
+					if let Some(range) = find_name_range_in_tag(
+						close_text,
+						to_lsp_position(&consumer.block.closing.start),
+						old_name,
+					) {
+						edits.push(TextEdit {
+							range,
+							new_text: new_name.to_string(),
+						});
+					}
+
+					if !edits.is_empty() {
+						changes.entry(consumer_uri).or_default().extend(edits);
+					}
+				}
+			}
+		}
+	}
+
+	if changes.is_empty() {
+		None
+	} else {
+		Some(WorkspaceEdit {
+			changes: Some(changes),
+			..Default::default()
+		})
+	}
 }
 
 /// Start the LSP server on stdin/stdout. This is used by both the standalone
