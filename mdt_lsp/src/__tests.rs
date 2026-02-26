@@ -757,6 +757,7 @@ fn transformer_type_display_all() {
 	assert_eq!(TransformerType::CodeBlock.to_string(), "codeBlock");
 	assert_eq!(TransformerType::Code.to_string(), "code");
 	assert_eq!(TransformerType::Replace.to_string(), "replace");
+	assert_eq!(TransformerType::If.to_string(), "if");
 }
 
 // ---- New diagnostic tests ----
@@ -2963,6 +2964,7 @@ fn transformer_completions_include_all_known_transformers() {
 		"codeBlock",
 		"code",
 		"replace",
+		"if",
 	];
 	for name in expected {
 		assert!(

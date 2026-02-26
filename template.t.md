@@ -167,7 +167,7 @@ Transformers are specified using pipe-delimited syntax after the block name in a
 
 Transformers are applied in left-to-right order. Each transformer has a [`TransformerType`] and zero or more [`Argument`]s passed via colon-delimited syntax (e.g., `indent:"  "`).
 
-Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`.
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 
 <!-- {/mdtTransformerDocs} -->
 

@@ -493,6 +493,7 @@ fn parse_transformer_with_unknown(
 		"suffix" => TransformerType::Suffix,
 		"linePrefix" | "line_prefix" => TransformerType::LinePrefix,
 		"lineSuffix" | "line_suffix" => TransformerType::LineSuffix,
+		"if" => TransformerType::If,
 		_ => return TransformerParseResult::Unknown(transformer_name),
 	};
 
@@ -643,7 +644,7 @@ pub struct Block {
 ///
 /// Transformers are applied in left-to-right order. Each transformer has a [`TransformerType`] and zero or more [`Argument`]s passed via colon-delimited syntax (e.g., `indent:"  "`).
 ///
-/// Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`.
+/// Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 /// <!-- {/mdtTransformerDocs} -->
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transformer {
@@ -722,6 +723,11 @@ pub enum TransformerType {
 	LinePrefix,
 	/// Add a suffix string after each line.
 	LineSuffix,
+	/// Conditionally include content based on a data value.
+	/// If the value at the given dot-separated path is truthy, the content is
+	/// included unchanged. Otherwise, the content is replaced with an empty
+	/// string.
+	If,
 }
 
 impl std::fmt::Display for TransformerType {
@@ -739,6 +745,7 @@ impl std::fmt::Display for TransformerType {
 			Self::Suffix => write!(f, "suffix"),
 			Self::LinePrefix => write!(f, "linePrefix"),
 			Self::LineSuffix => write!(f, "lineSuffix"),
+			Self::If => write!(f, "if"),
 		}
 	}
 }

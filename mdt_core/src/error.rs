@@ -74,7 +74,7 @@ pub enum MdtError {
 		code(mdt::unknown_transformer),
 		help(
 			"available transformers: trim, trimStart, trimEnd, indent, prefix, suffix, \
-			 linePrefix, lineSuffix, wrap, codeBlock, code, replace"
+			 linePrefix, lineSuffix, wrap, codeBlock, code, replace, if"
 		)
 	)]
 	UnknownTransformer(String),

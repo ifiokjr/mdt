@@ -4740,6 +4740,7 @@ fn transformer_type_display_all() {
 	assert_eq!(format!("{}", TransformerType::Suffix), "suffix");
 	assert_eq!(format!("{}", TransformerType::LinePrefix), "linePrefix");
 	assert_eq!(format!("{}", TransformerType::LineSuffix), "lineSuffix");
+	assert_eq!(format!("{}", TransformerType::If), "if");
 }
 
 // --- parser.rs: OrderedFloat::Display ---
@@ -8037,5 +8038,391 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 		result.render_errors
 	);
 
+	Ok(())
+}
+
+// --- engine.rs: `if` transformer tests ---
+
+#[test]
+fn transformer_if_truthy_bool_includes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": true}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.enabled".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "hello world");
+}
+
+#[test]
+fn transformer_if_falsy_bool_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": false}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.enabled".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_falsy_null_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"value": null}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.value".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_falsy_empty_string_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"name": ""}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.name".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_falsy_zero_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"count": 0}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.count".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_falsy_zero_float_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"ratio": 0.0}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.ratio".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_nested_data_path() {
+	let mut data = HashMap::new();
+	data.insert(
+		"config".to_string(),
+		serde_json::json!({"features": {"experimental": true}}),
+	);
+	let result = apply_transformers_with_data(
+		"experimental content",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.features.experimental".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "experimental content");
+}
+
+#[test]
+fn transformer_if_nested_data_path_falsy() {
+	let mut data = HashMap::new();
+	data.insert(
+		"config".to_string(),
+		serde_json::json!({"features": {"deprecated_api": false}}),
+	);
+	let result = apply_transformers_with_data(
+		"deprecated content",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String(
+				"config.features.deprecated_api".to_string(),
+			)],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_missing_path_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": true}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.nonexistent".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_missing_root_namespace_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": true}));
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("missing.key".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_no_data_context_excludes_content() {
+	let result = apply_transformers_with_data(
+		"hello world",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.enabled".to_string())],
+		}],
+		None,
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_combined_with_trim() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": true}));
+	let result = apply_transformers_with_data(
+		"  hello world  ",
+		&[
+			Transformer {
+				r#type: TransformerType::If,
+				args: vec![Argument::String("config.enabled".to_string())],
+			},
+			Transformer {
+				r#type: TransformerType::Trim,
+				args: vec![],
+			},
+		],
+		Some(&data),
+	);
+	assert_eq!(result, "hello world");
+}
+
+#[test]
+fn transformer_if_falsy_combined_with_trim() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": false}));
+	let result = apply_transformers_with_data(
+		"  hello world  ",
+		&[
+			Transformer {
+				r#type: TransformerType::If,
+				args: vec![Argument::String("config.enabled".to_string())],
+			},
+			Transformer {
+				r#type: TransformerType::Trim,
+				args: vec![],
+			},
+		],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_truthy_string_includes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"name": "hello"}));
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.name".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "content here");
+}
+
+#[test]
+fn transformer_if_truthy_nonzero_number_includes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"count": 42}));
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.count".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "content here");
+}
+
+#[test]
+fn transformer_if_truthy_array_includes_content() {
+	let mut data = HashMap::new();
+	data.insert(
+		"config".to_string(),
+		serde_json::json!({"items": [1, 2, 3]}),
+	);
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.items".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "content here");
+}
+
+#[test]
+fn transformer_if_truthy_object_includes_content() {
+	let mut data = HashMap::new();
+	data.insert(
+		"config".to_string(),
+		serde_json::json!({"nested": {"key": "value"}}),
+	);
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.nested".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "content here");
+}
+
+#[test]
+fn transformer_if_path_into_non_object_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"value": "string"}));
+	// Trying to access config.value.deeper when config.value is a string
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("config.value.deeper".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_empty_path_excludes_content() {
+	let mut data = HashMap::new();
+	data.insert("config".to_string(), serde_json::json!({"enabled": true}));
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String(String::new())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "");
+}
+
+#[test]
+fn transformer_if_top_level_key() {
+	let mut data = HashMap::new();
+	data.insert("enabled".to_string(), serde_json::json!(true));
+	let result = apply_transformers_with_data(
+		"content here",
+		&[Transformer {
+			r#type: TransformerType::If,
+			args: vec![Argument::String("enabled".to_string())],
+		}],
+		Some(&data),
+	);
+	assert_eq!(result, "content here");
+}
+
+#[test]
+fn transformer_if_validates_requires_one_arg() -> MdtResult<()> {
+	let result = validate_transformers(&[Transformer {
+		r#type: TransformerType::If,
+		args: vec![],
+	}]);
+	assert!(result.is_err());
+	Ok(())
+}
+
+#[test]
+fn transformer_if_validates_rejects_extra_args() -> MdtResult<()> {
+	let result = validate_transformers(&[Transformer {
+		r#type: TransformerType::If,
+		args: vec![
+			Argument::String("a".to_string()),
+			Argument::String("b".to_string()),
+		],
+	}]);
+	assert!(result.is_err());
+	Ok(())
+}
+
+#[test]
+fn transformer_if_validates_accepts_one_arg() -> MdtResult<()> {
+	validate_transformers(&[Transformer {
+		r#type: TransformerType::If,
+		args: vec![Argument::String("config.enabled".to_string())],
+	}])?;
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_if_transformer() -> MdtResult<()> {
+	let input = "<!-- {=block|if:\"config.features.enabled\"} -->\ncontent\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::If);
+	assert_eq!(
+		blocks[0].transformers[0].args,
+		vec![Argument::String("config.features.enabled".to_string())]
+	);
+	Ok(())
+}
+
+#[test]
+fn parse_consumer_with_if_and_other_transformers() -> MdtResult<()> {
+	let input =
+		"<!-- {=block|if:\"config.enabled\"|trim|indent:\"  \"} -->\ncontent\n<!-- {/block} -->\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 3);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::If);
+	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Trim);
+	assert_eq!(blocks[0].transformers[2].r#type, TransformerType::Indent);
 	Ok(())
 }
