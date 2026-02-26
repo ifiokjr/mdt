@@ -50,14 +50,6 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 <!-- {/mdtTemplateSyntax} -->
 
-<!-- {@mdtCliInstall} -->
-
-```sh
-cargo install mdt_cli
-```
-
-<!-- {/mdtCliInstall} -->
-
 <!-- {@mdtLspOverview} -->
 
 `mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
@@ -163,6 +155,14 @@ mdt_mcp = "{{ cargo.workspace.package.version }}"
 ```
 
 <!-- {/mdtMcpInstall} -->
+
+<!-- {@mdtCliInstall} -->
+
+```sh
+cargo install mdt_cli@{{ cargo.workspace.package.version }}
+```
+
+<!-- {/mdtCliInstall} -->
 
 <!-- {@mdtCoreOverview} -->
 

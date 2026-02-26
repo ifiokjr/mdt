@@ -8426,3 +8426,219 @@ fn parse_consumer_with_if_and_other_transformers() -> MdtResult<()> {
 	assert_eq!(blocks[0].transformers[2].r#type, TransformerType::Indent);
 	Ok(())
 }
+
+#[test]
+fn update_preserves_multiline_link_definitions_with_template_vars() -> MdtResult<()> {
+	let input = r#"<!-- {@badge:"crateName"} -->
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
+[crate-link]: https://crates.io/crates/{{ crateName }}
+[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
+[docs-link]: https://docs.rs/{{ crateName }}/
+
+<!-- {/badge} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1, "Should parse one block");
+	let content = extract_content_between_tags(input, &blocks[0]);
+	assert!(
+		content.contains('\n'),
+		"Content should contain newlines but got: {content:?}"
+	);
+	let newline_count = content.chars().filter(|c| *c == '\n').count();
+	assert!(
+		newline_count >= 6,
+		"Content should have at least 6 newlines but got {newline_count}: {content:?}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn update_preserves_multiline_content_in_consumer() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let template_content = r#"<!-- {@badge:"crateName"} -->
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
+[crate-link]: https://crates.io/crates/{{ crateName }}
+[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
+[docs-link]: https://docs.rs/{{ crateName }}/
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
+[coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
+[coverage-link]: https://codecov.io/gh/ifiokjr/mdt
+[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
+[unlicense-link]: https://opensource.org/license/unlicense
+
+<!-- {/badge} -->
+"#;
+	let consumer_content = r#"# Readme
+
+<!-- {=badge:"mdt_core"} -->
+
+old content
+
+<!-- {/badge} -->
+"#;
+	std::fs::write(tmp.path().join("template.t.md"), template_content)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), consumer_content)
+		.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+
+	let readme_path = tmp.path().join("readme.md");
+	let updated = updates
+		.updated_files
+		.get(&readme_path)
+		.unwrap_or_else(|| panic!("readme.md should be in updated files"));
+
+	// Every link definition should be on its own line
+	assert!(
+		updated.contains("\n[crate-image]:"),
+		"crate-image should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[crate-link]:"),
+		"crate-link should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[docs-image]:"),
+		"docs-image should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[docs-link]:"),
+		"docs-link should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[ci-status-image]:"),
+		"ci-status-image should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[ci-status-link]:"),
+		"ci-status-link should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[coverage-image]:"),
+		"coverage-image should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[coverage-link]:"),
+		"coverage-link should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[unlicense-image]:"),
+		"unlicense-image should be on its own line"
+	);
+	assert!(
+		updated.contains("\n[unlicense-link]:"),
+		"unlicense-link should be on its own line"
+	);
+
+	Ok(())
+}
+
+/// Verifies that running `mdt update` twice (idempotency) preserves
+/// newlines even when the consumer already contains valid link
+/// reference definitions from a previous update.
+#[test]
+fn update_idempotent_multiline_link_definitions() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let template_content = r#"<!-- {@badge:"crateName"} -->
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
+[crate-link]: https://crates.io/crates/{{ crateName }}
+[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
+[docs-link]: https://docs.rs/{{ crateName }}/
+
+<!-- {/badge} -->
+"#;
+	// Consumer already has rendered multi-line content from a previous update
+	let consumer_content = r#"# Readme
+
+<!-- {=badge:"mdt_core"} -->
+
+[crate-image]: https://img.shields.io/crates/v/mdt_core.svg
+[crate-link]: https://crates.io/crates/mdt_core
+[docs-image]: https://docs.rs/mdt_core/badge.svg
+[docs-link]: https://docs.rs/mdt_core/
+
+<!-- {/badge} -->
+"#;
+	std::fs::write(tmp.path().join("template.t.md"), template_content)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), consumer_content)
+		.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+
+	// When content already matches, there should be no updates
+	assert_eq!(
+		updates.updated_count, 0,
+		"Re-running update on already-up-to-date content should produce no changes"
+	);
+
+	Ok(())
+}
+
+/// Verifies that link reference definitions with valid URLs (no
+/// template variables) are preserved across the full
+/// scan → update → re-scan cycle.
+#[test]
+fn update_preserves_newlines_with_valid_link_definitions() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Template with NO template variables — all URLs are valid
+	let template_content = r#"<!-- {@links} -->
+
+[repo]: https://github.com/example/repo
+[docs]: https://docs.example.com
+[ci]: https://ci.example.com/badge.svg
+
+<!-- {/links} -->
+"#;
+	let consumer_content = r#"# Readme
+
+<!-- {=links} -->
+
+old content
+
+<!-- {/links} -->
+"#;
+	std::fs::write(tmp.path().join("template.t.md"), template_content)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), consumer_content)
+		.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	// First update
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	write_updates(&updates)?;
+
+	// Read back the updated content
+	let updated = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+	assert!(
+		updated.contains("\n[repo]:"),
+		"[repo] should be on its own line after first update"
+	);
+	assert!(
+		updated.contains("\n[docs]:"),
+		"[docs] should be on its own line after first update"
+	);
+	assert!(
+		updated.contains("\n[ci]:"),
+		"[ci] should be on its own line after first update"
+	);
+
+	// Second update — should be idempotent
+	let ctx2 = scan_project_with_config(tmp.path())?;
+	let updates2 = compute_updates(&ctx2)?;
+	assert_eq!(
+		updates2.updated_count, 0,
+		"Second update should find nothing to change"
+	);
+
+	Ok(())
+}
