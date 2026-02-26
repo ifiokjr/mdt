@@ -21,9 +21,19 @@
 - [Source File Support](./guide/source-files.md)
 - [CI Integration](./guide/ci-integration.md)
 
+# Advanced Topics
+
+- [Monorepo & Multi-Project Setups](./advanced/monorepos.md)
+- [Block Arguments](./advanced/block-arguments.md)
+
 # Reference
 
 - [CLI](./reference/cli.md)
 - [Template Syntax](./reference/template-syntax.md)
 - [Transformer Reference](./reference/transformers.md)
 - [Configuration Reference](./reference/configuration.md)
+
+# Help
+
+- [Troubleshooting](./troubleshooting.md)
+- [FAQ](./faq.md)
