@@ -16,6 +16,7 @@ use crate::tokens::TokenGroup;
 /// A diagnostic produced during parsing. These are issues that don't prevent
 /// parsing from completing but indicate problems in the source content.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum ParseDiagnostic {
 	/// A block was opened but never closed.
 	UnclosedBlock {
@@ -671,6 +672,7 @@ pub struct Transformer {
 /// - **Boolean** — `true` or `false`
 /// <!-- {/mdtArgumentDocs} -->
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Argument {
 	/// A quoted string value, e.g. `"hello"` or `'world'`.
 	String(String),
@@ -698,6 +700,7 @@ impl std::fmt::Display for OrderedFloat {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TransformerType {
 	/// Trim all whitespace from the start and end of the content.
 	Trim,
@@ -751,6 +754,7 @@ impl std::fmt::Display for TransformerType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BlockType {
 	/// These are the blocks that are used to provide a value to any consumers.
 	/// Their names can be referenced by consumers to hoist content. They should

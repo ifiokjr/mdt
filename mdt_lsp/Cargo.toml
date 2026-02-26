@@ -15,7 +15,7 @@ description = "LSP server for mdt (manage markdown templates)"
 [dependencies]
 mdt_core = { workspace = true }
 serde_json = { workspace = true, default-features = true }
-tokio = { workspace = true, features = ["full"], default-features = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "io-std"], default-features = true }
 tower-lsp-server = { workspace = true, features = ["proposed"], default-features = true }
 
 [dev-dependencies]

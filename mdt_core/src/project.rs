@@ -107,6 +107,7 @@ pub struct ValidationOptions {
 
 /// The kind of diagnostic produced during project scanning and validation.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum DiagnosticKind {
 	/// A block was opened but never closed.
 	UnclosedBlock { name: String },

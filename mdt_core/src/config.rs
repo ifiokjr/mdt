@@ -77,6 +77,7 @@ pub struct MdtConfig {
 /// blank lines include the comment prefix to maintain valid syntax.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
+#[non_exhaustive]
 #[allow(variant_size_differences)]
 pub enum PaddingValue {
 	/// `false` disables padding (inline). `true` is treated as 1 blank line.
@@ -139,6 +140,7 @@ fn default_max_file_size() -> u64 {
 ///   **any** of the given strings.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
+#[non_exhaustive]
 pub enum CodeBlockFilter {
 	/// `true` to skip all code blocks, `false` to process normally.
 	Bool(bool),

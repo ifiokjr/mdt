@@ -26,7 +26,7 @@ notify = { workspace = true, features = ["macos_fsevent"], default-features = tr
 owo-colors = { workspace = true, features = ["supports-colors"], default-features = true }
 serde_json = { workspace = true, default-features = true }
 similar = { workspace = true, default-features = true }
-tokio = { workspace = true, features = ["full"], default-features = true }
+tokio = { workspace = true, features = ["rt-multi-thread"], default-features = true }
 
 [dev-dependencies]
 assert_cmd = { workspace = true, default-features = true }

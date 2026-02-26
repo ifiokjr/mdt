@@ -79,7 +79,7 @@ mod parser;
 pub(crate) mod patterns;
 mod position;
 pub mod project;
-mod source_scanner;
+pub mod source_scanner;
 pub(crate) mod tokens;
 
 #[cfg(test)]

@@ -1,3 +1,37 @@
+//! <!-- {=mdtMcpOverview|trim|linePrefix:"//! ":true} -->
+//! `mdt_mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [mdt](https://github.com/ifiokjr/mdt) template engine. It exposes mdt functionality as MCP tools that can be used by AI assistants and other MCP-compatible clients.
+//!
+//! ### Tools
+//!
+//! - **`mdt_check`** — Verify all consumer blocks are up-to-date.
+//! - **`mdt_update`** — Update all consumer blocks with latest provider content.
+//! - **`mdt_list`** — List all providers and consumers in the project.
+//! - **`mdt_get_block`** — Get the content of a specific block by name.
+//! - **`mdt_preview`** — Preview the result of applying transformers to a block.
+//! - **`mdt_init`** — Initialize a new mdt project with a sample template file.
+//!
+//! ### Usage
+//!
+//! Start the MCP server via the CLI:
+//!
+//! ```sh
+//! mdt mcp
+//! ```
+//!
+//! Add the following to your MCP client configuration:
+//!
+//! ```json
+//! {
+//! 	"mcpServers": {
+//! 		"mdt": {
+//! 			"command": "mdt",
+//! 			"args": ["mcp"]
+//! 		}
+//! 	}
+//! }
+//! ```
+//! <!-- {/mdtMcpOverview} -->
+
 use std::path::Path;
 use std::path::PathBuf;
 

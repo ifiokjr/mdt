@@ -1,3 +1,28 @@
+//! <!-- {=mdtLspOverview|trim|linePrefix:"//! ":true} -->
+//! `mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
+//!
+//! ### Capabilities
+//!
+//! - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
+//! - **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+//! - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
+//! - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
+//! - **References** — finds all provider and consumer blocks sharing the same name.
+//! - **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
+//! - **Document symbols** — lists all provider and consumer blocks in the outline/symbol view.
+//! - **Code actions** — offers a quick-fix to update stale consumer blocks in place.
+//!
+//! ### Usage
+//!
+//! Start the language server via the CLI:
+//!
+//! ```sh
+//! mdt lsp
+//! ```
+//!
+//! The server communicates over stdin/stdout using the Language Server Protocol.
+//! <!-- {/mdtLspOverview} -->
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -599,6 +624,7 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 					..Default::default()
 				});
 			}
+			_ => {}
 		}
 	}
 
@@ -681,6 +707,7 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 					});
 				}
 			}
+			_ => {}
 		}
 	}
 
@@ -782,6 +809,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 
 			parts.join("")
 		}
+		_ => return None,
 	};
 
 	Some(Hover {
@@ -979,6 +1007,7 @@ fn compute_goto_definition(
 				Some(GotoDefinitionResponse::Array(locations))
 			}
 		}
+		_ => None,
 	}
 }
 
@@ -998,11 +1027,12 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSy
 		.map(|block| {
 			let kind = match block.r#type {
 				BlockType::Provider => SymbolKind::CLASS,
-				BlockType::Consumer => SymbolKind::VARIABLE,
+				_ => SymbolKind::VARIABLE,
 			};
 			let prefix = match block.r#type {
 				BlockType::Provider => "@",
 				BlockType::Consumer => "=",
+				_ => "?",
 			};
 			let full_range = Range {
 				start: to_lsp_position(&block.opening.start),
