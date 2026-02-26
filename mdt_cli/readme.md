@@ -19,7 +19,7 @@
 <!-- {=mdtCliInstall} -->
 
 ```sh
-cargo install mdt_cli
+cargo install mdt_cli@0.5.0
 ```
 
 <!-- {/mdtCliInstall} -->

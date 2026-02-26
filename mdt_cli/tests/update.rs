@@ -259,6 +259,129 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 }
 
 #[test]
+fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	let template = r#"<!-- {@badge:"crateName"} -->
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
+[crate-link]: https://crates.io/crates/{{ crateName }}
+[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
+[docs-link]: https://docs.rs/{{ crateName }}/
+[ci-image]: https://github.com/example/repo/workflows/ci/badge.svg
+[ci-link]: https://github.com/example/repo/actions
+
+<!-- {/badge} -->
+"#;
+	std::fs::write(tmp.path().join("template.t.md"), template)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		r#"# Readme
+
+<!-- {=badge:"my_crate"} -->
+
+old
+
+<!-- {/badge} -->
+"#,
+	)?;
+
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success();
+
+	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+
+	// Each link definition must be on its own line — newlines must be preserved.
+	assert!(
+		content.contains("\n[crate-image]:"),
+		"[crate-image] should be on its own line"
+	);
+	assert!(
+		content.contains("\n[crate-link]:"),
+		"[crate-link] should be on its own line"
+	);
+	assert!(
+		content.contains("\n[docs-image]:"),
+		"[docs-image] should be on its own line"
+	);
+	assert!(
+		content.contains("\n[docs-link]:"),
+		"[docs-link] should be on its own line"
+	);
+	assert!(
+		content.contains("\n[ci-image]:"),
+		"[ci-image] should be on its own line"
+	);
+	assert!(
+		content.contains("\n[ci-link]:"),
+		"[ci-link] should be on its own line"
+	);
+
+	// Verify template variables were rendered
+	assert!(content.contains("my_crate"));
+	assert!(!content.contains("{{ crateName }}"));
+
+	Ok(())
+}
+
+#[test]
+fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	let template = r#"<!-- {@links} -->
+
+[repo]: https://github.com/example/repo
+[docs]: https://docs.example.com
+[ci]: https://ci.example.com/badge.svg
+
+<!-- {/links} -->
+"#;
+	std::fs::write(tmp.path().join("template.t.md"), template)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=links} -->\n\nold\n\n<!-- {/links} -->\n",
+	)?;
+
+	// First update
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.stdout(predicates::str::contains("Updated"));
+
+	let after_first = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	assert!(after_first.contains("\n[repo]:"));
+	assert!(after_first.contains("\n[docs]:"));
+	assert!(after_first.contains("\n[ci]:"));
+
+	// Second update — should be idempotent
+	let mut cmd2 = Command::cargo_bin("mdt")?;
+	cmd2.env("NO_COLOR", "1")
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.stdout(predicates::str::contains("already up to date"));
+
+	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	assert_eq!(
+		after_first, after_second,
+		"Second update should not change the file"
+	);
+
+	Ok(())
+}
+
+#[test]
 fn update_preserves_surrounding_content() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
