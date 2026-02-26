@@ -27,7 +27,7 @@ jobs:
     # Only build binaries for mdt_cli releases (not the mdt library releases).
     if: >-
       github.repository_owner == 'ifiokjr' &&
-      startsWith(inputs.tag || github.event.release.tag_name, "v")
+      startsWith(inputs.tag || github.event.release.tag_name, 'v')
     strategy:
       fail-fast: false
       matrix:
