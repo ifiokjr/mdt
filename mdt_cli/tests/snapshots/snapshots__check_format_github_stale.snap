@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpesSzBO
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpuPtbV9
     - check
     - "--format"
     - github
@@ -18,5 +18,4 @@ exit_code: 1
 ::warning file=readme.md,line=9,col=10::Consumer block `version` is out of date
 
 ----- stderr -----
-
 2 consumer block(s) are out of date. Run `mdt update` to fix.

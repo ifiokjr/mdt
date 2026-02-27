@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmprewbA6
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpBCporD
     - check
   env:
     NO_COLOR: "1"
@@ -12,6 +12,6 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-All consumer blocks are up to date.
+Check passed: all consumer blocks are up to date.
 
 ----- stderr -----

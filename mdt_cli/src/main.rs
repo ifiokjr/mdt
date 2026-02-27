@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process;
@@ -8,12 +10,15 @@ use clap::Parser;
 use mdt_cli::Commands;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
+use mdt_core::MdtConfig;
 use mdt_core::TemplateWarning;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
+use mdt_core::project::ConsumerEntry;
 use mdt_core::project::DiagnosticKind;
 use mdt_core::project::ProjectContext;
 use mdt_core::project::ProjectDiagnostic;
+use mdt_core::project::ProviderEntry;
 use mdt_core::project::ValidationOptions;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::write_updates;
@@ -88,6 +93,7 @@ fn main() {
 		}) => run_check(&args, diff, format, watch),
 		Some(Commands::Update { dry_run, watch }) => run_update(&args, dry_run, watch),
 		Some(Commands::List) => run_list(&args),
+		Some(Commands::Info) => run_info(&args),
 		Some(Commands::Lsp) => run_lsp(),
 		Some(Commands::Mcp) => run_mcp(),
 		None => {
@@ -118,6 +124,15 @@ fn resolve_root(args: &MdtCli) -> PathBuf {
 		.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
 
+fn print_section(title: &str) {
+	println!();
+	println!("{}", colored!(title, bold));
+}
+
+fn print_field(label: &str, value: impl std::fmt::Display) {
+	println!("{label:<28} {value}");
+}
+
 fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
 	let template_path = root.join("template.t.md");
@@ -139,8 +154,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if config_exists {
 		// Skip silently if config already exists.
 	} else {
-		let sample_config =
-			"# mdt configuration\n# See \
+		let sample_config = "# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
 			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
@@ -175,6 +189,75 @@ fn validation_options(args: &MdtCli) -> ValidationOptions {
 		ignore_invalid_names: args.ignore_invalid_names,
 		ignore_invalid_transformers: args.ignore_invalid_transformers,
 	}
+}
+
+#[derive(Debug, Default)]
+struct ConfigSummary {
+	path: Option<PathBuf>,
+	data_sources: Vec<(String, PathBuf)>,
+	template_dirs: Vec<PathBuf>,
+}
+
+fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error::Error>> {
+	let config_path = root.join("mdt.toml");
+	let config = MdtConfig::load(root)?;
+
+	let Some(config) = config else {
+		return Ok(ConfigSummary::default());
+	};
+
+	let mut data_sources: Vec<_> = config.data.into_iter().collect();
+	data_sources.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+
+	let mut template_dirs = config.templates.paths;
+	template_dirs.sort();
+	template_dirs.dedup();
+
+	Ok(ConfigSummary {
+		path: Some(config_path),
+		data_sources,
+		template_dirs,
+	})
+}
+
+fn normalize_dir_hint(path: &Path) -> String {
+	let mut hint = path.display().to_string();
+	if !hint.ends_with('/') {
+		hint.push('/');
+	}
+	hint
+}
+
+fn template_directory_hints(template_dirs: &[PathBuf]) -> Vec<String> {
+	let mut hints = BTreeSet::new();
+	for dir in template_dirs {
+		hints.insert(normalize_dir_hint(dir));
+	}
+	for canonical in ["templates/", "docs/templates/", "shared/templates/"] {
+		hints.insert(canonical.to_string());
+	}
+	hints.into_iter().collect()
+}
+
+fn count_orphan_consumers(
+	providers: &std::collections::HashMap<String, ProviderEntry>,
+	consumers: &[ConsumerEntry],
+) -> usize {
+	consumers
+		.iter()
+		.filter(|consumer| !providers.contains_key(&consumer.block.name))
+		.count()
+}
+
+fn count_unused_providers(
+	providers: &std::collections::HashMap<String, ProviderEntry>,
+	consumers: &[ConsumerEntry],
+) -> usize {
+	let referenced: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
+	providers
+		.keys()
+		.filter(|name| !referenced.contains(name.as_str()))
+		.count()
 }
 
 fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Error>> {
@@ -218,8 +301,10 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 		return Err("validation errors found".into());
 	}
 
-	// Warn about consumers referencing non-existent providers
-	for name in &ctx.find_missing_providers() {
+	// Warn about consumers referencing non-existent providers.
+	let mut missing_providers = ctx.find_missing_providers();
+	missing_providers.sort();
+	for name in missing_providers {
 		eprintln!(
 			"{} consumer block `{name}` has no matching provider",
 			colored!("warning:", yellow)
@@ -298,8 +383,11 @@ fn run_check_once(
 			OutputFormat::Json => {
 				println!("{{\"ok\":true,\"stale\":[]}}");
 			}
-			OutputFormat::Github | OutputFormat::Text => {
+			OutputFormat::Github => {
 				println!("All consumer blocks are up to date.");
+			}
+			OutputFormat::Text => {
+				println!("Check passed: all consumer blocks are up to date.");
 			}
 		}
 		return Ok(false);
@@ -359,28 +447,41 @@ fn run_check_once(
 			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
-			for err in &result.render_errors {
-				let rel = make_relative(&err.file, &root);
-				eprintln!(
-					"{} block `{}` in {rel}:{}:{}: {}",
-					colored!("error:", red),
-					err.block_name,
-					err.line,
-					err.column,
-					err.message
-				);
-			}
-			for entry in &result.stale {
-				let rel = make_relative(&entry.file, &root);
-				eprintln!(
-					"Stale: block `{}` in {rel}:{}:{}",
-					entry.block_name, entry.line, entry.column
-				);
+			eprintln!("Check failed.");
+			eprintln!("  render errors: {}", result.render_errors.len());
+			eprintln!("  stale consumers: {}", result.stale.len());
 
-				if show_diff {
-					print_diff(&entry.current_content, &entry.expected_content);
+			let sorted_errors = sorted_render_errors(&result, &root);
+			if !sorted_errors.is_empty() {
+				eprintln!();
+				eprintln!("Render errors:");
+				for err in sorted_errors {
+					let rel = make_relative(&err.file, &root);
+					eprintln!(
+						"  block `{}` at {rel}:{}:{}: {}",
+						err.block_name, err.line, err.column, err.message
+					);
 				}
 			}
+
+			let sorted_stale = sorted_stale_entries(&result, &root);
+			if !sorted_stale.is_empty() {
+				eprintln!();
+				eprintln!("Stale consumers:");
+				for entry in sorted_stale {
+					let rel = make_relative(&entry.file, &root);
+					eprintln!(
+						"  block `{}` at {rel}:{}:{}",
+						entry.block_name, entry.line, entry.column
+					);
+
+					if show_diff {
+						print_diff(&entry.current_content, &entry.expected_content);
+					}
+				}
+			}
+
+			eprintln!();
 			eprintln!("{}", check_summary(&result));
 		}
 	}
@@ -399,7 +500,37 @@ fn check_summary(result: &mdt_core::CheckResult) -> String {
 			result.stale.len()
 		));
 	}
-	format!("\n{}. Run `mdt update` to fix.", parts.join(" and "))
+	format!("{}. Run `mdt update` to fix.", parts.join(" and "))
+}
+
+fn sorted_stale_entries<'a>(
+	result: &'a mdt_core::CheckResult,
+	root: &Path,
+) -> Vec<&'a mdt_core::StaleEntry> {
+	let mut stale_entries: Vec<_> = result.stale.iter().collect();
+	stale_entries.sort_by(|a, b| {
+		make_relative(&a.file, root)
+			.cmp(&make_relative(&b.file, root))
+			.then_with(|| a.line.cmp(&b.line))
+			.then_with(|| a.column.cmp(&b.column))
+			.then_with(|| a.block_name.cmp(&b.block_name))
+	});
+	stale_entries
+}
+
+fn sorted_render_errors<'a>(
+	result: &'a mdt_core::CheckResult,
+	root: &Path,
+) -> Vec<&'a mdt_core::RenderError> {
+	let mut render_errors: Vec<_> = result.render_errors.iter().collect();
+	render_errors.sort_by(|a, b| {
+		make_relative(&a.file, root)
+			.cmp(&make_relative(&b.file, root))
+			.then_with(|| a.line.cmp(&b.line))
+			.then_with(|| a.column.cmp(&b.column))
+			.then_with(|| a.block_name.cmp(&b.block_name))
+	});
+	render_errors
 }
 
 fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -553,6 +684,104 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
+fn run_info(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+	let root = resolve_root(args);
+	let config = load_config_summary(&root)?;
+	let ctx = scan_project_with_config(&root)?;
+	let options = validation_options(args);
+
+	let provider_count = ctx.project.providers.len();
+	let consumer_count = ctx.project.consumers.len();
+	let orphan_consumer_count =
+		count_orphan_consumers(&ctx.project.providers, &ctx.project.consumers);
+	let unused_provider_count =
+		count_unused_providers(&ctx.project.providers, &ctx.project.consumers);
+
+	let template_files: Vec<String> = ctx
+		.project
+		.providers
+		.values()
+		.map(|entry| make_relative(&entry.file, &root))
+		.collect::<BTreeSet<_>>()
+		.into_iter()
+		.collect();
+
+	let diagnostics_total = ctx.project.diagnostics.len();
+	let diagnostics_errors = ctx
+		.project
+		.diagnostics
+		.iter()
+		.filter(|diag| diag.is_error(&options))
+		.count();
+	let diagnostics_warnings = diagnostics_total.saturating_sub(diagnostics_errors);
+
+	let mut missing_providers = ctx.find_missing_providers();
+	missing_providers.sort();
+
+	let template_hints = template_directory_hints(&config.template_dirs);
+	let configured_template_dirs = if config.template_dirs.is_empty() {
+		"default scan (*.t.md)".to_string()
+	} else {
+		config
+			.template_dirs
+			.iter()
+			.map(|path| path.display().to_string())
+			.collect::<Vec<_>>()
+			.join(", ")
+	};
+
+	let resolved_config = config
+		.path
+		.map_or_else(|| "none".to_string(), |path| path.display().to_string());
+
+	println!("{}", colored!("mdt info", bold));
+
+	print_section("Project");
+	print_field("Project root", root.display());
+	print_field("Resolved config", resolved_config);
+
+	print_section("Blocks");
+	print_field("Providers", provider_count);
+	print_field("Consumers", consumer_count);
+	print_field("Orphan consumers", orphan_consumer_count);
+	print_field("Unused providers", unused_provider_count);
+
+	print_section("Data");
+	print_field("Namespaces", config.data_sources.len());
+	if config.data_sources.is_empty() {
+		print_field("Source files", "none");
+	} else {
+		for (namespace, source_file) in &config.data_sources {
+			println!("{:<28} {namespace} -> {}", "source", source_file.display());
+		}
+	}
+
+	print_section("Templates");
+	print_field("Template files", template_files.len());
+	print_field("Configured dirs", configured_template_dirs);
+	print_field("Canonical hints", template_hints.join(", "));
+	if template_files.is_empty() {
+		print_field("Discovered files", "none");
+	} else {
+		for file in &template_files {
+			println!("{:<28} {file}", "template file");
+		}
+	}
+
+	print_section("Diagnostics");
+	print_field("Total", diagnostics_total);
+	print_field("Errors", diagnostics_errors);
+	print_field("Warnings", diagnostics_warnings);
+	print_field("Missing providers", missing_providers.len());
+	if missing_providers.is_empty() {
+		print_field("Missing names", "none");
+	} else {
+		print_field("Missing names", missing_providers.join(", "));
+	}
+
+	Ok(())
+}
+
 fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
 	rt.block_on(mdt_lsp::run_server());
@@ -567,9 +796,18 @@ fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Print warnings about undefined template variables.
 fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
-	for warning in warnings {
+	let mut sorted_warnings: Vec<_> = warnings.iter().collect();
+	sorted_warnings.sort_by(|a, b| {
+		make_relative(&a.provider_file, root)
+			.cmp(&make_relative(&b.provider_file, root))
+			.then_with(|| a.block_name.cmp(&b.block_name))
+	});
+
+	for warning in sorted_warnings {
 		let rel = make_relative(&warning.provider_file, root);
-		let vars = warning.undefined_variables.join(", ");
+		let mut undefined_vars = warning.undefined_variables.clone();
+		undefined_vars.sort();
+		let vars = undefined_vars.join(", ");
 		eprintln!(
 			"{} provider block `{}` in {rel} references undefined variable(s): {vars}",
 			colored!("warning:", yellow),

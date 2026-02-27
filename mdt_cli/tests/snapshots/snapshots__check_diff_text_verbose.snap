@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpHIn7Me
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpYU9SPk
     - "--verbose"
     - check
     - "--diff"
@@ -20,13 +20,18 @@ Scanned project: 2 provider(s), 2 consumer(s)
     @version ([TEMP_DIR]/template.t.md)
 
 ----- stderr -----
-Stale: block `intro` in readme.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 2
+
+Stale consumers:
+  block `intro` at readme.md:3:1
    
    
   -Old intro.
   +Welcome to the project.
    
-Stale: block `version` in readme.md:9:10
+  block `version` at readme.md:9:10
   -v0.9.0
   +v1.0.0
 

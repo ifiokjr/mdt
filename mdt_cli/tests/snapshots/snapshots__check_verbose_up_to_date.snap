@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpOtQOPV
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpEVO8Rr
     - "--verbose"
     - check
   env:
@@ -17,6 +17,6 @@ Scanned project: 2 provider(s), 3 consumer(s)
   Providers:
     @apiDocs ([TEMP_DIR]/template.t.md)
     @installGuide ([TEMP_DIR]/template.t.md)
-All consumer blocks are up to date.
+Check passed: all consumer blocks are up to date.
 
 ----- stderr -----

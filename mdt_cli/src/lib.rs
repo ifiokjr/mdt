@@ -14,7 +14,7 @@ use clap::ValueEnum;
 	              template tags to define content once and distribute it to multiple locations — \
 	              markdown files, code comments, READMEs, and more.\n\nQuick start:\n  mdt init    \
 	              Create a template file\n  mdt update  Sync all consumer blocks\n  mdt check   \
-	              Verify everything is up to date"
+	              Verify everything is up to date\n  mdt info    Inspect project diagnostics"
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
@@ -110,6 +110,12 @@ pub enum Commands {
 	/// found across the project, along with file paths and block names. Useful
 	/// for auditing template coverage and discovering orphaned consumers.
 	List,
+	/// Print a human-readable diagnostic summary of the current project.
+	///
+	/// Shows discovered providers/consumers, orphan and unused counts,
+	/// data namespaces from config, template file overview, and diagnostic
+	/// totals (errors, warnings, and missing providers).
+	Info,
 	/// Start the mdt language server (LSP).
 	///
 	/// Communicates over stdin/stdout using the Language Server Protocol.

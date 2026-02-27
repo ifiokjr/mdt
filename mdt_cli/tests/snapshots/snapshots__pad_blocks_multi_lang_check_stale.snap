@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpA17H6o
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpbjTHwo
     - check
   env:
     NO_COLOR: "1"
@@ -14,9 +14,14 @@ exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-Stale: block `api_docs` in src/index.ts:2:4
-Stale: block `api_docs` in src/lib.rs:1:5
-Stale: block `api_docs` in src/main.go:3:4
-Stale: block `api_docs` in src/main.py:1:3
+Check failed.
+  render errors: 0
+  stale consumers: 4
+
+Stale consumers:
+  block `api_docs` at src/index.ts:2:4
+  block `api_docs` at src/lib.rs:1:5
+  block `api_docs` at src/main.go:3:4
+  block `api_docs` at src/main.py:1:3
 
 4 consumer block(s) are out of date. Run `mdt update` to fix.

@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpJqS1Dk
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp6x6HNf
     - "--ignore-unclosed-blocks"
     - "--verbose"
     - check
@@ -24,6 +24,11 @@ mdt::unclosed_block
   ! [unclosed.md:3:1] missing closing tag for block `valid_block`
   help: add `<!-- {/valid_block} -->` to close this block
 
-Stale: block `valid_block` in valid.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `valid_block` at valid.md:3:1
 
 1 consumer block(s) are out of date. Run `mdt update` to fix.

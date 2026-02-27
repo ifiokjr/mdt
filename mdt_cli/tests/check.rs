@@ -149,7 +149,8 @@ fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 		.arg(tmp.path())
 		.assert()
 		.failure()
-		.stderr(predicates::str::contains("Stale: block `myBlock`"))
+		.stderr(predicates::str::contains("Stale consumers:"))
+		.stderr(predicates::str::contains("block `myBlock`"))
 		.stderr(predicates::str::contains("readme.md"));
 
 	Ok(())
@@ -306,4 +307,15 @@ fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
 		.stdout(predicates::str::contains("Watching for file changes"));
 
 	Ok(())
+}
+
+#[test]
+fn info_command_is_accepted_by_cli_parser() {
+	use clap::Parser;
+
+	let cli = MdtCli::parse_from(["mdt", "info"]);
+	match cli.command {
+		Some(Commands::Info) => {}
+		_ => panic!("expected Info command"),
+	}
 }

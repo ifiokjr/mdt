@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpnXSF14
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpvqnQLD
     - "--ignore-unused-blocks"
     - "--verbose"
     - check
@@ -26,6 +26,11 @@ mdt::unused_provider
   help: add a consumer block `<!-- {=orphan_block} -->...<!-- {/orphan_block}
         -->` or remove the unused provider
 
-Stale: block `used_block` in readme.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `used_block` at readme.md:3:1
 
 1 consumer block(s) are out of date. Run `mdt update` to fix.

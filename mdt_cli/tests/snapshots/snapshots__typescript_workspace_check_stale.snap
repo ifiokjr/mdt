@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpNCp5vO
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpIB38xt
     - check
   env:
     NO_COLOR: "1"
@@ -14,8 +14,13 @@ exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-Stale: block `installGuide` in readme.md:7:1
-Stale: block `apiDocs` in readme.md:15:1
-Stale: block `apiDocs` in src/index.ts:2:4
+Check failed.
+  render errors: 0
+  stale consumers: 3
+
+Stale consumers:
+  block `installGuide` at readme.md:7:1
+  block `apiDocs` at readme.md:15:1
+  block `apiDocs` at src/index.ts:2:4
 
 3 consumer block(s) are out of date. Run `mdt update` to fix.
