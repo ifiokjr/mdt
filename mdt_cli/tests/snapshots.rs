@@ -177,6 +177,35 @@ fn info_project() -> AnyEmptyResult {
 	Ok(())
 }
 
+#[test]
+fn info_empty_project_json() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"info_empty_project_json",
+			mdt_cmd(tmp.path()).arg("info").arg("--format").arg("json")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn info_project_json() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("info_project", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"info_project_json",
+			mdt_cmd(tmp.path()).arg("info").arg("--format").arg("json")
+		);
+	});
+
+	Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // check output formats: text (default), json, github
 // ---------------------------------------------------------------------------

@@ -929,6 +929,7 @@ dependencies = [
  "owo-colors",
  "predicates",
  "rstest",
+ "serde",
  "serde_json",
  "similar",
  "similar-asserts",

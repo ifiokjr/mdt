@@ -1,0 +1,53 @@
+---
+source: mdt_cli/tests/snapshots.rs
+assertion_line: 185
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpXXVXV2
+    - info
+    - "--format"
+    - json
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+{
+  "project": {
+    "root": "[TEMP_DIR]",
+    "resolved_config": "none"
+  },
+  "blocks": {
+    "providers": 0,
+    "consumers": 0,
+    "orphan_consumers": 0,
+    "unused_providers": 0
+  },
+  "data": {
+    "namespace_count": 0,
+    "namespaces": []
+  },
+  "templates": {
+    "file_count": 0,
+    "configured_dirs": [],
+    "canonical_hints": [
+      ".templates/",
+      "docs/templates/",
+      "shared/templates/",
+      "templates/"
+    ],
+    "discovered_files": []
+  },
+  "diagnostics": {
+    "total": 0,
+    "errors": 0,
+    "warnings": 0,
+    "missing_provider_count": 0,
+    "missing_provider_names": []
+  }
+}
+
+----- stderr -----

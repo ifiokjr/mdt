@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use mdt_cli::Commands;
+use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
@@ -313,7 +314,17 @@ fn info_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "info"]);
 	match cli.command {
-		Some(Commands::Info) => {}
+		Some(Commands::Info { format }) => {
+			assert!(matches!(format, InfoOutputFormat::Text));
+		}
+		_ => panic!("expected Info command"),
+	}
+
+	let cli = MdtCli::parse_from(["mdt", "info", "--format", "json"]);
+	match cli.command {
+		Some(Commands::Info { format }) => {
+			assert!(matches!(format, InfoOutputFormat::Json));
+		}
 		_ => panic!("expected Info command"),
 	}
 }

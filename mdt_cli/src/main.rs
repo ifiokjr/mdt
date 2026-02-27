@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use clap::Parser;
 use mdt_cli::Commands;
+use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
 use mdt_core::MdtConfig;
@@ -93,7 +94,7 @@ fn main() {
 		}) => run_check(&args, diff, format, watch),
 		Some(Commands::Update { dry_run, watch }) => run_update(&args, dry_run, watch),
 		Some(Commands::List) => run_list(&args),
-		Some(Commands::Info) => run_info(&args),
+		Some(Commands::Info { format }) => run_info(&args, format),
 		Some(Commands::Lsp) => run_lsp(),
 		Some(Commands::Mcp) => run_mcp(),
 		None => {
@@ -211,8 +212,35 @@ fn validation_options(args: &MdtCli) -> ValidationOptions {
 #[derive(Debug, Default)]
 struct ConfigSummary {
 	path: Option<PathBuf>,
-	data_sources: Vec<(String, PathBuf)>,
+	data_sources: Vec<DataSourceSummary>,
 	template_dirs: Vec<PathBuf>,
+}
+
+#[derive(Debug)]
+struct DataSourceSummary {
+	namespace: String,
+	path: PathBuf,
+	format: String,
+	explicit_format: bool,
+}
+
+fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
+	if let Some(explicit) = source
+		.format()
+		.map(str::trim)
+		.filter(|value| !value.is_empty())
+	{
+		return (explicit.to_ascii_lowercase(), true);
+	}
+
+	let inferred = source
+		.path()
+		.extension()
+		.and_then(|ext| ext.to_str())
+		.unwrap_or("unknown")
+		.to_ascii_lowercase();
+
+	(inferred, false)
 }
 
 fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error::Error>> {
@@ -226,9 +254,21 @@ fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error:
 	let mut data_sources: Vec<_> = config
 		.data
 		.into_iter()
-		.map(|(namespace, source)| (namespace, source.path().to_path_buf()))
+		.map(|(namespace, source)| {
+			let (format, explicit_format) = data_source_format(&source);
+			DataSourceSummary {
+				namespace,
+				path: source.path().to_path_buf(),
+				format,
+				explicit_format,
+			}
+		})
 		.collect();
-	data_sources.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+	data_sources.sort_by(|a, b| {
+		a.namespace
+			.cmp(&b.namespace)
+			.then_with(|| a.path.cmp(&b.path))
+	});
 
 	let mut template_dirs = config.templates.paths;
 	template_dirs.sort();
@@ -710,7 +750,61 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
-fn run_info(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+#[derive(serde::Serialize)]
+struct InfoProjectSection {
+	root: String,
+	resolved_config: String,
+}
+
+#[derive(serde::Serialize)]
+struct InfoBlocksSection {
+	providers: usize,
+	consumers: usize,
+	orphan_consumers: usize,
+	unused_providers: usize,
+}
+
+#[derive(serde::Serialize)]
+struct InfoDataSourceSection {
+	namespace: String,
+	path: String,
+	format: String,
+	explicit_format: bool,
+}
+
+#[derive(serde::Serialize)]
+struct InfoDataSection {
+	namespace_count: usize,
+	namespaces: Vec<InfoDataSourceSection>,
+}
+
+#[derive(serde::Serialize)]
+struct InfoTemplatesSection {
+	file_count: usize,
+	configured_dirs: Vec<String>,
+	canonical_hints: Vec<String>,
+	discovered_files: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
+struct InfoDiagnosticsSection {
+	total: usize,
+	errors: usize,
+	warnings: usize,
+	missing_provider_count: usize,
+	missing_provider_names: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
+struct InfoReport {
+	project: InfoProjectSection,
+	blocks: InfoBlocksSection,
+	data: InfoDataSection,
+	templates: InfoTemplatesSection,
+	diagnostics: InfoDiagnosticsSection,
+}
+
+fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
 	let config = load_config_summary(&root)?;
 	let ctx = scan_project_with_config(&root)?;
@@ -745,69 +839,128 @@ fn run_info(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	missing_providers.sort();
 
 	let template_hints = template_directory_hints(&config.template_dirs);
-	let configured_template_dirs = if config.template_dirs.is_empty() {
+	let configured_template_dirs: Vec<String> = config
+		.template_dirs
+		.iter()
+		.map(|path| path.display().to_string())
+		.collect();
+	let configured_template_dirs_display = if configured_template_dirs.is_empty() {
 		"default scan (*.t.md)".to_string()
 	} else {
-		config
-			.template_dirs
-			.iter()
-			.map(|path| path.display().to_string())
-			.collect::<Vec<_>>()
-			.join(", ")
+		configured_template_dirs.join(", ")
 	};
 
 	let resolved_config = config
 		.path
+		.as_ref()
 		.map_or_else(|| "none".to_string(), |path| path.display().to_string());
 
-	println!("{}", colored!("mdt info", bold));
+	let data_sources: Vec<InfoDataSourceSection> = config
+		.data_sources
+		.iter()
+		.map(|source| {
+			InfoDataSourceSection {
+				namespace: source.namespace.clone(),
+				path: source.path.display().to_string(),
+				format: source.format.clone(),
+				explicit_format: source.explicit_format,
+			}
+		})
+		.collect();
 
-	print_section("Project");
-	print_field("Project root", root.display());
-	print_field("Resolved config", resolved_config);
+	let report = InfoReport {
+		project: InfoProjectSection {
+			root: root.display().to_string(),
+			resolved_config,
+		},
+		blocks: InfoBlocksSection {
+			providers: provider_count,
+			consumers: consumer_count,
+			orphan_consumers: orphan_consumer_count,
+			unused_providers: unused_provider_count,
+		},
+		data: InfoDataSection {
+			namespace_count: data_sources.len(),
+			namespaces: data_sources,
+		},
+		templates: InfoTemplatesSection {
+			file_count: template_files.len(),
+			configured_dirs: configured_template_dirs,
+			canonical_hints: template_hints,
+			discovered_files: template_files,
+		},
+		diagnostics: InfoDiagnosticsSection {
+			total: diagnostics_total,
+			errors: diagnostics_errors,
+			warnings: diagnostics_warnings,
+			missing_provider_count: missing_providers.len(),
+			missing_provider_names: missing_providers,
+		},
+	};
 
-	print_section("Blocks");
-	print_field("Providers", provider_count);
-	print_field("Consumers", consumer_count);
-	print_field("Orphan consumers", orphan_consumer_count);
-	print_field("Unused providers", unused_provider_count);
-
-	print_section("Data");
-	print_field("Namespaces", config.data_sources.len());
-	if config.data_sources.is_empty() {
-		print_field("Source files", "none");
-	} else {
-		for (namespace, source_file) in &config.data_sources {
-			println!("{:<28} {namespace} -> {}", "source", source_file.display());
+	match format {
+		InfoOutputFormat::Json => {
+			println!("{}", serde_json::to_string_pretty(&report)?);
 		}
-	}
+		InfoOutputFormat::Text => {
+			println!("{}", colored!("mdt info", bold));
 
-	print_section("Templates");
-	print_field("Template files", template_files.len());
-	print_field("Configured dirs", configured_template_dirs);
-	print_field("Canonical hints", template_hints.join(", "));
-	if template_files.is_empty() {
-		print_field("Discovered files", "none");
-	} else {
-		for file in &template_files {
-			println!("{:<28} {file}", "template file");
+			print_section("Project");
+			print_field("Project root", &report.project.root);
+			print_field("Resolved config", &report.project.resolved_config);
+
+			print_section("Blocks");
+			print_field("Providers", report.blocks.providers);
+			print_field("Consumers", report.blocks.consumers);
+			print_field("Orphan consumers", report.blocks.orphan_consumers);
+			print_field("Unused providers", report.blocks.unused_providers);
+
+			print_section("Data");
+			print_field("Namespaces", report.data.namespace_count);
+			if report.data.namespaces.is_empty() {
+				print_field("Source files", "none");
+			} else {
+				for source in &report.data.namespaces {
+					println!("{:<28} {} -> {}", "source", source.namespace, source.path);
+				}
+			}
+
+			print_section("Templates");
+			print_field("Template files", report.templates.file_count);
+			print_field("Configured dirs", configured_template_dirs_display);
+			print_field(
+				"Canonical hints",
+				report.templates.canonical_hints.join(", "),
+			);
+			if report.templates.discovered_files.is_empty() {
+				print_field("Discovered files", "none");
+			} else {
+				for file in &report.templates.discovered_files {
+					println!("{:<28} {file}", "template file");
+				}
+			}
+
+			print_section("Diagnostics");
+			print_field("Total", report.diagnostics.total);
+			print_field("Errors", report.diagnostics.errors);
+			print_field("Warnings", report.diagnostics.warnings);
+			print_field(
+				"Missing providers",
+				report.diagnostics.missing_provider_count,
+			);
+			if report.diagnostics.missing_provider_names.is_empty() {
+				print_field("Missing names", "none");
+			} else {
+				print_field(
+					"Missing names",
+					report.diagnostics.missing_provider_names.join(", "),
+				);
+			}
 		}
-	}
-
-	print_section("Diagnostics");
-	print_field("Total", diagnostics_total);
-	print_field("Errors", diagnostics_errors);
-	print_field("Warnings", diagnostics_warnings);
-	print_field("Missing providers", missing_providers.len());
-	if missing_providers.is_empty() {
-		print_field("Missing names", "none");
-	} else {
-		print_field("Missing names", missing_providers.join(", "));
 	}
 
 	Ok(())
 }
-
 fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
 	rt.block_on(mdt_lsp::run_server());
