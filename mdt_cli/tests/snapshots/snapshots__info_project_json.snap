@@ -1,0 +1,74 @@
+---
+source: mdt_cli/tests/snapshots.rs
+assertion_line: 203
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpnMBFFI
+    - info
+    - "--format"
+    - json
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+{
+  "project": {
+    "root": "[TEMP_DIR]",
+    "resolved_config": "[TEMP_DIR]/mdt.toml"
+  },
+  "blocks": {
+    "providers": 2,
+    "consumers": 2,
+    "orphan_consumers": 1,
+    "unused_providers": 1
+  },
+  "data": {
+    "namespace_count": 2,
+    "namespaces": [
+      {
+        "namespace": "meta",
+        "path": "meta.toml",
+        "format": "toml",
+        "explicit_format": false
+      },
+      {
+        "namespace": "pkg",
+        "path": "package.json",
+        "format": "json",
+        "explicit_format": false
+      }
+    ]
+  },
+  "templates": {
+    "file_count": 2,
+    "configured_dirs": [
+      "shared/templates",
+      "templates"
+    ],
+    "canonical_hints": [
+      ".templates/",
+      "docs/templates/",
+      "shared/templates/",
+      "templates/"
+    ],
+    "discovered_files": [
+      "templates/extra.t.md",
+      "templates/main.t.md"
+    ]
+  },
+  "diagnostics": {
+    "total": 1,
+    "errors": 1,
+    "warnings": 0,
+    "missing_provider_count": 1,
+    "missing_provider_names": [
+      "missing_block"
+    ]
+  }
+}
+
+----- stderr -----

@@ -24,6 +24,7 @@ mdt_mcp = { workspace = true }
 miette = { workspace = true, features = ["fancy"], default-features = true }
 notify = { workspace = true, features = ["macos_fsevent"], default-features = true }
 owo-colors = { workspace = true, features = ["supports-colors"], default-features = true }
+serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
 similar = { workspace = true, default-features = true }
 tokio = { workspace = true, features = ["rt-multi-thread"], default-features = true }
