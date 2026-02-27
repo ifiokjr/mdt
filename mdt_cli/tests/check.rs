@@ -49,7 +49,7 @@ fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
