@@ -1,16 +1,20 @@
 # Configuration Reference
 
-mdt is configured via an `mdt.toml` file in the project root. All sections are optional.
+mdt is configured via a TOML file in the project root. All sections are optional.
 
 ## File location
 
-mdt looks for `mdt.toml` in the root directory passed via `--path` (or the current directory if not specified).
+mdt resolves config in the root directory passed via `--path` (or the current directory if not specified) using this precedence:
+
+1. `mdt.toml`
+2. `.mdt.toml`
+3. `.config/mdt.toml`
 
 ## Sections
 
 ### `[data]`
 
-Maps namespace names to data file paths. Each key becomes a namespace for template variable access.
+Maps namespace names to data sources. Each key becomes a namespace for template variable access.
 
 ```toml
 [data]
@@ -18,26 +22,34 @@ package = "package.json"
 cargo = "Cargo.toml"
 config = "settings.yaml"
 metadata = "data.kdl"
+release = { path = "release-info", format = "json" }
 ```
 
 **Keys:** Any valid TOML key. Used as the namespace prefix in templates (`{{ key.field }}`).
 
-**Values:** Relative file paths from the project root. The file extension determines the parser.
+**Values:**
+
+- String path (backward-compatible): `pkg = "package.json"`
+- Typed entry with explicit format: `release = { path = "release-info", format = "json" }`
+
+String paths infer format from file extension. Typed entries use `format` and are useful for files without extensions.
 
 **Supported formats:**
 
-| Extension       | Parser                              |
-| --------------- | ----------------------------------- |
-| `.json`         | JSON (`serde_json`)                 |
-| `.toml`         | TOML (converted to JSON internally) |
-| `.yaml`, `.yml` | YAML (`serde_yml`)                  |
-| `.kdl`          | KDL (converted to JSON internally)  |
+| Format / Extension | Parser                              |
+| ------------------ | ----------------------------------- |
+| `json`, `.json`    | JSON (`serde_json`)                 |
+| `toml`, `.toml`    | TOML (converted to JSON internally) |
+| `yaml`, `.yaml`    | YAML (`serde_yaml_ng`)              |
+| `yml`, `.yml`      | YAML (`serde_yaml_ng`)              |
+| `kdl`, `.kdl`      | KDL (converted to JSON internally)  |
+| `ini`, `.ini`      | INI (`serde_ini`)                   |
 
-Other extensions produce an error:
+Other formats produce an error:
 
 ```
 error: unsupported data file format: `xml`
-  help: supported formats: .json, .toml, .yaml, .yml, .kdl
+  help: supported formats: .json, .toml, .yaml, .yml, .kdl, .ini
 ```
 
 If a referenced file doesn't exist, mdt produces an error:
@@ -67,7 +79,7 @@ These patterns are applied **in addition to** the built-in exclusions:
 - Hidden directories (names starting with `.`)
 - `node_modules/`
 - `target/`
-- Directories containing their own `mdt.toml` (sub-project boundaries)
+- Directories containing their own mdt config file (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`) (sub-project boundaries)
 
 **`markdown_codeblocks`:** Controls whether mdt tags inside fenced code blocks in source files are processed.
 
@@ -116,12 +128,14 @@ Directories to search for template files.
 
 ```toml
 [templates]
-paths = ["templates", "shared/docs"]
+paths = [".templates", "templates", "shared/docs"]
 ```
 
-**`paths`:** Array of directory paths relative to the project root. When present, only `*.t.md` files within these directories are recognized as templates.
+**`paths`:** Array of directory paths relative to the project root.
 
-By default (when this section is absent), mdt finds `*.t.md` files anywhere in the project tree.
+Canonical recommendation: place provider templates in `.templates/`. Compatibility: `templates/` is also supported.
+
+By default (when this section is absent), mdt finds `*.t.md` files in the project tree, including `.templates/`.
 
 ### `[padding]`
 
@@ -264,7 +278,7 @@ package = "package.json"
 
 ## No config
 
-If `mdt.toml` doesn't exist, mdt uses defaults:
+If no config file (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`) exists, mdt uses defaults:
 
 - No data interpolation (template variables pass through unchanged)
 - No extra exclusions (only built-in exclusions apply, no block or code block filtering)

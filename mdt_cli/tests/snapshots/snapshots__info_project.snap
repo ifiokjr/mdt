@@ -1,10 +1,11 @@
 ---
 source: mdt_cli/tests/snapshots.rs
+assertion_line: 174
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp4odMCq
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp6s5U9G
     - info
   env:
     NO_COLOR: "1"
@@ -32,7 +33,7 @@ source                       pkg -> package.json
 Templates
 Template files               2
 Configured dirs              shared/templates, templates
-Canonical hints              docs/templates/, shared/templates/, templates/
+Canonical hints              .templates/, docs/templates/, shared/templates/, templates/
 template file                templates/extra.t.md
 template file                templates/main.t.md
 

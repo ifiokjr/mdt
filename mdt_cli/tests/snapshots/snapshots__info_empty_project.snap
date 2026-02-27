@@ -1,10 +1,11 @@
 ---
 source: mdt_cli/tests/snapshots.rs
+assertion_line: 162
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpY9zB3H
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpA4Cz6F
     - info
   env:
     NO_COLOR: "1"
@@ -31,7 +32,7 @@ Source files                 none
 Templates
 Template files               0
 Configured dirs              default scan (*.t.md)
-Canonical hints              docs/templates/, shared/templates/, templates/
+Canonical hints              .templates/, docs/templates/, shared/templates/, templates/
 Discovered files             none
 
 Diagnostics

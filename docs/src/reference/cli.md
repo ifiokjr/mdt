@@ -18,14 +18,14 @@ mdt [OPTIONS] [COMMAND]
 
 ### `mdt init`
 
-Create a sample `template.t.md` file with a getting-started example.
+Create a sample `.templates/template.t.md` file with a getting-started example.
 
 ```sh
 mdt init
 mdt init --path ./my-project
 ```
 
-If `template.t.md` already exists, prints a message and exits without overwriting.
+If `.templates/template.t.md` exists (or legacy `template.t.md`/`templates/template.t.md` exists), prints a message and exits without overwriting.
 
 Creates a file containing:
 
@@ -159,7 +159,7 @@ mdt info --path ./my-project
 
 Includes:
 
-- Project root and resolved `mdt.toml` path (or `none`).
+- Project root and resolved config path (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`; or `none`).
 - Provider/consumer counts, orphan consumers, and unused providers.
 - Data namespaces and their configured source files.
 - Template file count, discovered template files, and template directory hints.

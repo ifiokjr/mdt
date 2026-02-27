@@ -206,7 +206,7 @@ cargo = "Cargo.toml"
 
 Then in provider blocks: `{{ "{{" }} pkg.version {{ "}}" }}` or `{{ "{{" }} cargo.package.edition {{ "}}" }}`.
 
-Supported formats: JSON, TOML, YAML, and KDL.
+Supported formats: JSON, TOML, YAML, KDL, and INI.
 
 ## Quick Start
 

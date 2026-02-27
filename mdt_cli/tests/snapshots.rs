@@ -84,7 +84,7 @@ fn init_fresh_directory() -> AnyEmptyResult {
 		assert_cmd_snapshot!("init_fresh_directory", mdt_cmd(tmp.path()).arg("init"));
 	});
 
-	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
+	let template = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))?;
 	insta::assert_snapshot!("init_fresh_directory_template", template);
 
 	Ok(())

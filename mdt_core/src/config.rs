@@ -10,6 +10,58 @@ use crate::MdtResult;
 /// Default maximum file size in bytes (10 MB).
 pub const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
+/// Supported config file locations in discovery order (highest precedence
+/// first).
+pub const CONFIG_FILE_CANDIDATES: [&str; 3] = ["mdt.toml", ".mdt.toml", ".config/mdt.toml"];
+
+/// Data source entry for a `[data]` namespace.
+///
+/// Backward-compatible string entries are supported:
+///
+/// ```toml
+/// [data]
+/// pkg = "package.json"
+/// ```
+///
+/// Typed entries can provide an explicit format:
+///
+/// ```toml
+/// [data]
+/// release = { path = "release-info", format = "json" }
+/// ```
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+#[non_exhaustive]
+pub enum DataSource {
+	Path(PathBuf),
+	Typed(TypedDataSource),
+}
+
+impl DataSource {
+	/// Returns the configured relative path for this data source.
+	pub fn path(&self) -> &Path {
+		match self {
+			Self::Path(path) => path.as_path(),
+			Self::Typed(typed) => typed.path.as_path(),
+		}
+	}
+
+	/// Returns the explicit format override (if configured).
+	pub fn format(&self) -> Option<&str> {
+		match self {
+			Self::Path(_) => None,
+			Self::Typed(typed) => Some(typed.format.as_str()),
+		}
+	}
+}
+
+/// Typed data source configuration for `[data]` entries.
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+pub struct TypedDataSource {
+	pub path: PathBuf,
+	pub format: String,
+}
+
 /// Configuration loaded from an `mdt.toml` file.
 ///
 /// ```toml
@@ -38,7 +90,7 @@ pub const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 pub struct MdtConfig {
 	/// Map of namespace name to relative file path for data sources.
 	#[serde(default)]
-	pub data: HashMap<String, PathBuf>,
+	pub data: HashMap<String, DataSource>,
 	/// Exclusion configuration using gitignore-style patterns.
 	#[serde(default)]
 	pub exclude: ExcludeConfig,
@@ -226,14 +278,21 @@ pub struct TemplatesConfig {
 }
 
 impl MdtConfig {
-	/// Load the config from `mdt.toml` at the given root directory.
+	/// Resolve the config path from known discovery candidates.
+	#[must_use]
+	pub fn resolve_path(root: &Path) -> Option<PathBuf> {
+		CONFIG_FILE_CANDIDATES
+			.iter()
+			.map(|candidate| root.join(candidate))
+			.find(|path| path.is_file())
+	}
+
+	/// Load the config from the first discovered config file at `root`.
 	/// Returns `None` if the file does not exist.
 	pub fn load(root: &Path) -> MdtResult<Option<MdtConfig>> {
-		let config_path = root.join("mdt.toml");
-
-		if !config_path.exists() {
+		let Some(config_path) = Self::resolve_path(root) else {
 			return Ok(None);
-		}
+		};
 
 		let content = std::fs::read_to_string(&config_path)?;
 		let config: MdtConfig =
@@ -247,7 +306,15 @@ impl MdtConfig {
 	pub fn load_data(&self, root: &Path) -> MdtResult<HashMap<String, serde_json::Value>> {
 		let mut data = HashMap::new();
 
-		for (namespace, rel_path) in &self.data {
+		let mut namespaces: Vec<_> = self.data.keys().cloned().collect();
+		namespaces.sort();
+
+		for namespace in namespaces {
+			let source = self
+				.data
+				.get(&namespace)
+				.unwrap_or_else(|| panic!("missing namespace `{namespace}`"));
+			let rel_path = source.path();
 			let abs_path = root.join(rel_path);
 			let content = std::fs::read_to_string(&abs_path).map_err(|e| {
 				MdtError::DataFile {
@@ -256,10 +323,22 @@ impl MdtConfig {
 				}
 			})?;
 
-			let ext = abs_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+			let format = source
+				.format()
+				.map(str::trim)
+				.filter(|value| !value.is_empty())
+				.map(str::to_ascii_lowercase)
+				.unwrap_or_else(|| {
+					abs_path
+						.extension()
+						.and_then(|e| e.to_str())
+						.unwrap_or("")
+						.to_ascii_lowercase()
+				});
 
-			let value = parse_data_file(&content, ext, &rel_path.display().to_string())?;
-			data.insert(namespace.clone(), value);
+			let value =
+				parse_data_file(&content, format.as_str(), &rel_path.display().to_string())?;
+			data.insert(namespace, value);
 		}
 
 		Ok(data)
@@ -267,13 +346,13 @@ impl MdtConfig {
 }
 
 /// Parse a data file's content into a `serde_json::Value` based on its
-/// extension.
+/// format.
 fn parse_data_file(
 	content: &str,
-	extension: &str,
+	format: &str,
 	path_display: &str,
 ) -> MdtResult<serde_json::Value> {
-	match extension {
+	match format {
 		"json" => {
 			serde_json::from_str(content).map_err(|e| {
 				MdtError::DataFile {
@@ -307,6 +386,14 @@ fn parse_data_file(
 				}
 			})?;
 			kdl_document_to_value(&doc, path_display)
+		}
+		"ini" => {
+			serde_ini::from_str(content).map_err(|e| {
+				MdtError::DataFile {
+					path: path_display.to_string(),
+					reason: e.to_string(),
+				}
+			})
 		}
 		other => Err(MdtError::UnsupportedDataFormat(other.to_string())),
 	}

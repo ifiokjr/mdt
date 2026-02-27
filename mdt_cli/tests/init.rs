@@ -15,7 +15,7 @@ fn can_init() -> AnyEmptyResult {
 		.stdout(predicates::str::contains("Created template file"))
 		.stdout(predicates::str::contains("Created mdt.toml"));
 
-	let template_path = tmp.path().join("template.t.md");
+	let template_path = tmp.path().join(".templates/template.t.md");
 	assert!(template_path.exists());
 
 	let content = std::fs::read_to_string(&template_path)?;
@@ -71,7 +71,7 @@ fn init_creates_valid_template() -> AnyEmptyResult {
 		.success();
 
 	// The generated template should be parseable by mdt
-	let template_content = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
+	let template_content = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))?;
 	let blocks = mdt_core::parse(&template_content)?;
 	assert!(!blocks.is_empty(), "init should create at least one block");
 	assert_eq!(blocks[0].r#type, mdt_core::BlockType::Provider);
@@ -108,10 +108,13 @@ fn init_creates_both_template_and_config() -> AnyEmptyResult {
 		.stdout(predicates::str::contains("Created template file"))
 		.stdout(predicates::str::contains("Created mdt.toml"));
 
-	let template_path = tmp.path().join("template.t.md");
+	let template_path = tmp.path().join(".templates/template.t.md");
 	let config_path = tmp.path().join("mdt.toml");
 
-	assert!(template_path.exists(), "template.t.md should be created");
+	assert!(
+		template_path.exists(),
+		".templates/template.t.md should be created"
+	);
 	assert!(config_path.exists(), "mdt.toml should be created");
 
 	// Verify template content

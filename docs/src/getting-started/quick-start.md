@@ -11,7 +11,7 @@ mkdir my-project && cd my-project
 mdt init
 ```
 
-This creates `template.t.md` with a sample provider block:
+This creates `.templates/template.t.md` with a sample provider block:
 
 ```markdown
 <!-- {@greeting} -->
@@ -71,7 +71,7 @@ The content between the consumer tags has been replaced with the provider's cont
 
 ## 4. Check for staleness
 
-Edit the provider in `template.t.md`:
+Edit the provider in `.templates/template.t.md`:
 
 ```markdown
 <!-- {@greeting} -->
@@ -119,7 +119,7 @@ Output:
 
 ```
 Providers:
-  @greeting template.t.md (1 consumer(s))
+  @greeting .templates/template.t.md (1 consumer(s))
 
 Consumers:
   =greeting readme.md [linked]

@@ -9,9 +9,15 @@ Add a `[data]` section to your `mdt.toml`:
 ```toml
 [data]
 package = "package.json"
+release = { path = "release-info", format = "json" }
 ```
 
-This maps the file `package.json` to the namespace `package`. If your `package.json` contains:
+This maps the file `package.json` to the namespace `package`.
+
+- String values are backward-compatible and infer format from extension.
+- Typed values (`{ path, format }`) let you explicitly declare a format for files without extensions.
+
+If your `package.json` contains:
 
 ```json
 {
@@ -47,12 +53,14 @@ A great library.
 
 ## Supported data formats
 
-| Extension       | Parser |
-| --------------- | ------ |
-| `.json`         | JSON   |
-| `.toml`         | TOML   |
-| `.yaml`, `.yml` | YAML   |
-| `.kdl`          | KDL    |
+| Format / Extension | Parser |
+| ------------------ | ------ |
+| `json`, `.json`    | JSON   |
+| `toml`, `.toml`    | TOML   |
+| `yaml`, `.yaml`    | YAML   |
+| `yml`, `.yml`      | YAML   |
+| `kdl`, `.kdl`      | KDL    |
+| `ini`, `.ini`      | INI    |
 
 All formats are converted to a common structure internally. You access values using dot notation regardless of the source format.
 
