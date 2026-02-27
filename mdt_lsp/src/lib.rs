@@ -3,7 +3,7 @@
 //!
 //! ### Capabilities
 //!
-//! - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
+//! - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
 //! - **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
 //! - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
 //! - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
@@ -215,6 +215,52 @@ fn suggest_similar_names<'a>(
 	candidates.sort_by_key(|(_, d)| *d);
 	candidates.truncate(3);
 	candidates.into_iter().map(|(name, _)| name).collect()
+}
+
+/// Count provider definitions for `name` in the current document and collect
+/// conflicting provider files from other documents and cached project state.
+fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usize, Vec<PathBuf>) {
+	let mut current_count = 0;
+	let mut other_files: Vec<PathBuf> = Vec::new();
+
+	for (doc_uri, doc) in &state.documents {
+		if !doc_uri.path().as_str().ends_with(".t.md") {
+			continue;
+		}
+
+		let count = doc
+			.blocks
+			.iter()
+			.filter(|block| block.r#type == BlockType::Provider && block.name == name)
+			.count();
+		if count == 0 {
+			continue;
+		}
+
+		if doc_uri == uri {
+			current_count += count;
+			continue;
+		}
+
+		if let Some(path) = doc_uri.to_file_path().map(std::borrow::Cow::into_owned)
+			&& !other_files.contains(&path)
+		{
+			other_files.push(path);
+		}
+	}
+
+	if let Some(provider) = state.providers.get(name) {
+		let current_file = uri.to_file_path().map(std::borrow::Cow::into_owned);
+		if current_file
+			.as_ref()
+			.is_none_or(|file| *file != provider.file)
+			&& !other_files.contains(&provider.file)
+		{
+			other_files.push(provider.file.clone());
+		}
+	}
+
+	(current_count, other_files)
 }
 
 /// Merge provider parameter names with consumer argument values into a data
@@ -682,6 +728,34 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 			}
 			BlockType::Provider => {
 				if is_template {
+					let (current_count, other_files) =
+						provider_conflicts_for(state, uri, &block.name);
+					if current_count > 1 || !other_files.is_empty() {
+						let mut details = Vec::new();
+						if current_count > 1 {
+							details.push("multiple definitions in this file".to_string());
+						}
+						details.extend(
+							other_files
+								.iter()
+								.map(|path| format!("`{}`", path.display())),
+						);
+
+						diagnostics.push(Diagnostic {
+							range: to_lsp_range(&block.opening),
+							severity: Some(DiagnosticSeverity::ERROR),
+							source: Some("mdt".to_string()),
+							message: format!(
+								"Duplicate provider block `{}`. Provider names are global; \
+								 conflicts found in {}",
+								block.name,
+								details.join(", ")
+							),
+							..Default::default()
+						});
+						continue;
+					}
+
 					// Check for unused providers (no consumers reference this
 					// block).
 					let has_consumers = state.consumers.iter().any(|c| c.block.name == block.name);
