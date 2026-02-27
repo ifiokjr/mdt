@@ -1,0 +1,44 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpY9zB3H
+    - info
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+mdt info
+
+Project
+Project root                 [TEMP_DIR]
+Resolved config              none
+
+Blocks
+Providers                    0
+Consumers                    0
+Orphan consumers             0
+Unused providers             0
+
+Data
+Namespaces                   0
+Source files                 none
+
+Templates
+Template files               0
+Configured dirs              default scan (*.t.md)
+Canonical hints              docs/templates/, shared/templates/, templates/
+Discovered files             none
+
+Diagnostics
+Total                        0
+Errors                       0
+Warnings                     0
+Missing providers            0
+Missing names                none
+
+----- stderr -----

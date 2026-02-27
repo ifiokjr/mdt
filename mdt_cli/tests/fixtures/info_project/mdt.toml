@@ -1,0 +1,6 @@
+[data]
+pkg = "package.json"
+meta = "meta.toml"
+
+[templates]
+paths = ["templates", "shared/templates"]

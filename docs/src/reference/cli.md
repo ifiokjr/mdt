@@ -148,6 +148,23 @@ Consumers:
 
 Transformers are shown after the file path when present.
 
+### `mdt info`
+
+Print a human-readable diagnostics summary for the current project.
+
+```sh
+mdt info
+mdt info --path ./my-project
+```
+
+Includes:
+
+- Project root and resolved `mdt.toml` path (or `none`).
+- Provider/consumer counts, orphan consumers, and unused providers.
+- Data namespaces and their configured source files.
+- Template file count, discovered template files, and template directory hints.
+- Diagnostic totals (errors/warnings) and missing provider names.
+
 ### `mdt lsp`
 
 Start the language server for editor integration. Communicates over stdin/stdout using the Language Server Protocol.

@@ -151,6 +151,33 @@ fn list_blocks_verbose() -> AnyEmptyResult {
 }
 
 // ---------------------------------------------------------------------------
+// info: project diagnostics summary
+// ---------------------------------------------------------------------------
+
+#[test]
+fn info_empty_project() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!("info_empty_project", mdt_cmd(tmp.path()).arg("info"));
+	});
+
+	Ok(())
+}
+
+#[test]
+fn info_project() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("info_project", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!("info_project", mdt_cmd(tmp.path()).arg("info"));
+	});
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // check output formats: text (default), json, github
 // ---------------------------------------------------------------------------
 

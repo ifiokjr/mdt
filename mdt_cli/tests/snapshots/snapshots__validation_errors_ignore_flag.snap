@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpHS98fY
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp6st2W2
     - "--ignore-unclosed-blocks"
     - check
   env:
@@ -15,6 +15,11 @@ exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-Stale: block `valid_block` in valid.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `valid_block` at valid.md:3:1
 
 1 consumer block(s) are out of date. Run `mdt update` to fix.

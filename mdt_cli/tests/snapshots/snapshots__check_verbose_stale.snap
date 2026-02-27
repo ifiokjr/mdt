@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpZdLQNM
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpFeC4Zi
     - "--verbose"
     - check
   env:
@@ -19,7 +19,12 @@ Scanned project: 2 provider(s), 2 consumer(s)
     @version ([TEMP_DIR]/template.t.md)
 
 ----- stderr -----
-Stale: block `intro` in readme.md:3:1
-Stale: block `version` in readme.md:9:10
+Check failed.
+  render errors: 0
+  stale consumers: 2
+
+Stale consumers:
+  block `intro` at readme.md:3:1
+  block `version` at readme.md:9:10
 
 2 consumer block(s) are out of date. Run `mdt update` to fix.

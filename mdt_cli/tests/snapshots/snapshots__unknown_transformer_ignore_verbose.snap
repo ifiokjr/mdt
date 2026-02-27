@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp1ryIjg
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpCEiF6y
     - "--ignore-invalid-transformers"
     - "--verbose"
     - check
@@ -25,6 +25,11 @@ mdt::unknown_transformer
   help: available transformers: trim, trimStart, trimEnd, indent, prefix,
         suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace
 
-Stale: block `docs` in readme.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `docs` at readme.md:3:1
 
 1 consumer block(s) are out of date. Run `mdt update` to fix.

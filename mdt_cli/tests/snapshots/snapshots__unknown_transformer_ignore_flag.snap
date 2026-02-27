@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpUWh3wG
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpzzPb4P
     - "--ignore-invalid-transformers"
     - check
   env:
@@ -15,6 +15,11 @@ exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-Stale: block `docs` in readme.md:3:1
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `docs` at readme.md:3:1
 
 1 consumer block(s) are out of date. Run `mdt update` to fix.

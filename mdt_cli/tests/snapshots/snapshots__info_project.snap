@@ -1,0 +1,46 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp4odMCq
+    - info
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+mdt info
+
+Project
+Project root                 [TEMP_DIR]
+Resolved config              [TEMP_DIR]/mdt.toml
+
+Blocks
+Providers                    2
+Consumers                    2
+Orphan consumers             1
+Unused providers             1
+
+Data
+Namespaces                   2
+source                       meta -> meta.toml
+source                       pkg -> package.json
+
+Templates
+Template files               2
+Configured dirs              shared/templates, templates
+Canonical hints              docs/templates/, shared/templates/, templates/
+template file                templates/extra.t.md
+template file                templates/main.t.md
+
+Diagnostics
+Total                        1
+Errors                       1
+Warnings                     0
+Missing providers            1
+Missing names                missing_block
+
+----- stderr -----
