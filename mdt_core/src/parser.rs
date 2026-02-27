@@ -2,6 +2,8 @@ use markdown::ParseOptions;
 use markdown::mdast::Html;
 use markdown::mdast::Node;
 use markdown::to_mdast;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::MdtError;
 use super::MdtResult;
@@ -615,7 +617,7 @@ impl BlockCreator {
 ///
 /// Each block tracks its [`name`](Block::name) for provider-consumer matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
 /// <!-- {/mdtBlockDocs} -->
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
 	/// The name of the block used for matching providers to consumers.
 	pub name: String,
@@ -647,7 +649,7 @@ pub struct Block {
 ///
 /// Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 /// <!-- {/mdtTransformerDocs} -->
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Transformer {
 	/// The kind of transformation to apply (e.g., `Trim`, `Indent`,
 	/// `LinePrefix`).
@@ -671,7 +673,7 @@ pub struct Transformer {
 /// - **Number** — Integer or floating-point, e.g. `42` or `3.14`
 /// - **Boolean** — `true` or `false`
 /// <!-- {/mdtArgumentDocs} -->
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum Argument {
 	/// A quoted string value, e.g. `"hello"` or `'world'`.
@@ -684,7 +686,7 @@ pub enum Argument {
 
 /// A float wrapper that implements `Eq` via approximate comparison,
 /// allowing `Argument` to derive `PartialEq` cleanly.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct OrderedFloat(pub f64);
 
 impl PartialEq for OrderedFloat {
@@ -699,7 +701,7 @@ impl std::fmt::Display for OrderedFloat {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum TransformerType {
 	/// Trim all whitespace from the start and end of the content.
@@ -753,7 +755,7 @@ impl std::fmt::Display for TransformerType {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum BlockType {
 	/// These are the blocks that are used to provide a value to any consumers.

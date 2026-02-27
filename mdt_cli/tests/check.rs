@@ -37,6 +37,37 @@ fn check_passes_when_up_to_date() -> AnyEmptyResult {
 }
 
 #[test]
+fn check_writes_project_cache_artifact() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = Command::cargo_bin("mdt")?;
+	cmd.env("NO_COLOR", "1")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success();
+
+	let cache_path = tmp.path().join(".mdt").join("cache").join("index-v1.json");
+	assert!(
+		cache_path.is_file(),
+		"expected cache file at {}",
+		cache_path.display()
+	);
+
+	Ok(())
+}
+
+#[test]
 fn check_fails_when_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 

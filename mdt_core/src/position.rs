@@ -3,10 +3,12 @@ use std::fmt::Display;
 
 use markdown::unist::Point as UnistPoint;
 use markdown::unist::Position as UnistPosition;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// One place in a source file. This is taken from the [unist] crate with the
 /// `Copy` trait added.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Point {
 	/// 1-indexed integer representing a line in a source file.
 	pub line: usize,
@@ -62,7 +64,7 @@ impl Debug for Point {
 
 /// Location of a node in a source file. This is taken from the `unist` crate
 /// with the `Copy` trait added.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Position {
 	/// Represents the place of the first character of the parsed source region.
 	pub start: Point,

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
@@ -8,6 +9,8 @@ use globset::GlobSet;
 use globset::GlobSetBuilder;
 use ignore::gitignore::Gitignore;
 use ignore::gitignore::GitignoreBuilder;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::Block;
 use crate::BlockType;
@@ -19,6 +22,9 @@ use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
 use crate::config::PaddingConfig;
 use crate::engine::validate_transformers;
+use crate::index_cache;
+use crate::index_cache::FileFingerprint;
+use crate::index_cache::ProjectIndexCache;
 use crate::parser::parse_with_diagnostics;
 use crate::source_scanner::parse_source_with_diagnostics;
 
@@ -107,7 +113,7 @@ pub struct ValidationOptions {
 }
 
 /// The kind of diagnostic produced during project scanning and validation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DiagnosticKind {
 	/// A block was opened but never closed.
@@ -125,7 +131,7 @@ pub enum DiagnosticKind {
 }
 
 /// A diagnostic produced during project scanning and validation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectDiagnostic {
 	/// The file where the diagnostic was found.
 	pub file: PathBuf,
@@ -171,7 +177,7 @@ impl ProjectDiagnostic {
 }
 
 /// A scanned project containing all discovered blocks.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
 	/// Provider blocks keyed by block name. Each value is the provider block
 	/// and the file path it was found in.
@@ -207,7 +213,7 @@ impl ProjectContext {
 }
 
 /// A provider block with its source file and content.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderEntry {
 	pub block: Block,
 	pub file: PathBuf,
@@ -216,7 +222,7 @@ pub struct ProviderEntry {
 }
 
 /// A consumer block with its source file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsumerEntry {
 	pub block: Block,
 	pub file: PathBuf,
@@ -267,6 +273,58 @@ pub fn normalize_line_endings(content: &str) -> String {
 	}
 }
 
+fn build_project_cache_key(options: &ScanOptions) -> String {
+	let mut exclude_patterns = options.exclude_patterns.clone();
+	exclude_patterns.sort();
+
+	let mut template_paths: Vec<String> = options
+		.template_paths
+		.iter()
+		.map(|path| path.to_string_lossy().replace('\\', "/"))
+		.collect();
+	template_paths.sort();
+
+	let mut excluded_blocks = options.excluded_blocks.clone();
+	excluded_blocks.sort();
+
+	format!(
+		"index-v1|max={}|disable_gitignore={}|markdown={:?\
+		 }|exclude={}|templates={}|excluded_blocks={}",
+		options.max_file_size,
+		options.disable_gitignore,
+		options.markdown_codeblocks,
+		exclude_patterns.join("\u{1f}"),
+		template_paths.join("\u{1f}"),
+		excluded_blocks.join("\u{1f}"),
+	)
+}
+
+fn collect_file_fingerprints(
+	root: &Path,
+	files: &[PathBuf],
+	max_file_size: u64,
+) -> MdtResult<BTreeMap<String, FileFingerprint>> {
+	let mut fingerprints = BTreeMap::new();
+
+	for file in files {
+		let metadata = std::fs::metadata(file)?;
+		if metadata.len() > max_file_size {
+			return Err(MdtError::FileTooLarge {
+				path: file.display().to_string(),
+				size: metadata.len(),
+				limit: max_file_size,
+			});
+		}
+
+		fingerprints.insert(
+			index_cache::relative_file_key(root, file),
+			index_cache::build_file_fingerprint(&metadata),
+		);
+	}
+
+	Ok(fingerprints)
+}
+
 /// Scan a directory with the given [`ScanOptions`].
 pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
 	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
@@ -306,19 +364,18 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		)?;
 	}
 
+	let project_key = build_project_cache_key(options);
+	let file_fingerprints = collect_file_fingerprints(root, &files, options.max_file_size)?;
+
+	if let Some(cache) = index_cache::load(root, &project_key) {
+		if cache.files == file_fingerprints {
+			return Ok(cache.project);
+		}
+	}
+
 	let mut diagnostics: Vec<ProjectDiagnostic> = Vec::new();
 
 	for file in &files {
-		// Check file size before reading.
-		let metadata = std::fs::metadata(file)?;
-		if metadata.len() > options.max_file_size {
-			return Err(MdtError::FileTooLarge {
-				path: file.display().to_string(),
-				size: metadata.len(),
-				limit: options.max_file_size,
-			});
-		}
-
 		let raw_content = std::fs::read_to_string(file)?;
 		let content = normalize_line_endings(&raw_content);
 		let (blocks, parse_diagnostics) = if is_markdown_file(file) {
@@ -451,13 +508,17 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		}
 	}
 
-	Ok(Project {
+	let project = Project {
 		providers,
 		consumers,
 		diagnostics,
-	})
-}
+	};
 
+	let cache = ProjectIndexCache::new(project_key, file_fingerprints, project.clone());
+	index_cache::save(root, &cache);
+
+	Ok(project)
+}
 /// Extract the text content between a block's opening tag end and closing tag
 /// start. The opening position's end marks where the opening comment ends,
 /// and the closing position's start marks where the closing comment begins.

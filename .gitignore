@@ -3,6 +3,7 @@
 /result
 /.direnv
 /.bin
+/.mdt/
 /docs/book
 
 # Devenv

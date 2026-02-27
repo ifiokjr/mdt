@@ -8843,3 +8843,118 @@ fn scan_project_discovers_templates_in_dot_templates_directory() -> MdtResult<()
 
 	Ok(())
 }
+
+#[test]
+fn scan_project_writes_index_cache_artifact() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let _ = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	let cache_path = index_cache::cache_path(tmp.path());
+	assert!(
+		cache_path.is_file(),
+		"expected cache file at {}",
+		cache_path.display()
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_returns_cached_project_when_files_unchanged() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let _ = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let mut cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+
+	cache_json["project"]["providers"]["greeting"]["content"] =
+		serde_json::Value::String("CACHED SENTINEL".to_string());
+	std::fs::write(
+		&cache_path,
+		serde_json::to_vec_pretty(&cache_json).unwrap_or_else(|e| panic!("encode cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("rewrite cache: {e}"));
+
+	let project = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	assert_eq!(
+		project.providers["greeting"].content, "CACHED SENTINEL",
+		"unchanged project should have returned cached project content"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_invalidates_cache_after_file_change() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let template_path = tmp.path().join("template.t.md");
+	std::fs::write(
+		&template_path,
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let _ = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let mut cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+	cache_json["project"]["providers"]["greeting"]["content"] =
+		serde_json::Value::String("STALE CACHED CONTENT".to_string());
+	std::fs::write(
+		&cache_path,
+		serde_json::to_vec_pretty(&cache_json).unwrap_or_else(|e| panic!("encode cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("rewrite cache: {e}"));
+
+	std::fs::write(
+		&template_path,
+		"<!-- {@greeting} -->\n\nFresh content from disk.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("rewrite provider: {e}"));
+
+	let project = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	assert!(
+		project.providers["greeting"]
+			.content
+			.contains("Fresh content from disk."),
+		"changed file should invalidate stale cache entry"
+	);
+	assert_ne!(
+		project.providers["greeting"].content,
+		"STALE CACHED CONTENT"
+	);
+
+	Ok(())
+}
