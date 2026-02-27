@@ -1,4 +1,5 @@
-use assert_cmd::Command;
+mod common;
+
 use mdt_cli::Commands;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
@@ -21,7 +22,7 @@ fn check_passes_when_up_to_date() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	let _ = cmd
 		.env("NO_COLOR", "1")
 		.arg("check")
@@ -50,7 +51,7 @@ fn check_fails_when_stale() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -68,7 +69,7 @@ fn check_with_no_blocks() -> AnyEmptyResult {
 
 	std::fs::write(tmp.path().join("readme.md"), "# Just a readme\n")?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -93,7 +94,7 @@ fn check_verbose_shows_provider_count() -> AnyEmptyResult {
 		"<!-- {=block} -->\n\ncontent\n\n<!-- {/block} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--verbose")
@@ -117,7 +118,7 @@ fn check_warns_missing_provider() -> AnyEmptyResult {
 		"<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -144,7 +145,7 @@ fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 		"<!-- {=myBlock} -->\n\nold\n\n<!-- {/myBlock} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -171,7 +172,7 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 		"<!-- {=a} -->\n\nold a\n\n<!-- {/a} -->\n\n<!-- {=b} -->\n\nold b\n\n<!-- {/b} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -207,7 +208,7 @@ fn check_warns_undefined_template_variables() -> AnyEmptyResult {
 		"<!-- {=install} -->\n\nnpm install \n\n<!-- {/install} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -242,7 +243,7 @@ fn check_no_warnings_for_valid_template_variables() -> AnyEmptyResult {
 		"<!-- {=install} -->\n\nnpm install my-lib@1.0.0\n\n<!-- {/install} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -295,7 +296,7 @@ fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
 	// We cannot test the full watch loop (it runs forever), but we can verify
 	// the binary accepts --watch without crashing. Output timing can be flaky
 	// under piped test execution, so we avoid asserting on stdout contents.
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	let _ = cmd
 		.env("NO_COLOR", "1")
 		.arg("check")

@@ -1,4 +1,5 @@
-use assert_cmd::Command;
+mod common;
+
 use mdt_core::AnyEmptyResult;
 
 #[test]
@@ -17,7 +18,7 @@ fn update_replaces_stale_content() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -47,7 +48,7 @@ fn update_noop_when_in_sync() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -72,7 +73,7 @@ fn update_dry_run_does_not_write() -> AnyEmptyResult {
 		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n";
 	std::fs::write(tmp.path().join("readme.md"), consumer_content)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--dry-run")
@@ -103,7 +104,7 @@ fn update_with_transformers() -> AnyEmptyResult {
 		"<!-- {=docs|trim} -->\n\nold\n\n<!-- {/docs} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -130,7 +131,7 @@ fn update_verbose_shows_files() -> AnyEmptyResult {
 		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--verbose")
@@ -152,7 +153,7 @@ fn update_warns_missing_provider() -> AnyEmptyResult {
 		"<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -179,7 +180,7 @@ fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
 		"<!-- {=a} -->\n\nold\n\n<!-- {/a} -->\n\n<!-- {=b} -->\n\nold\n\n<!-- {/b} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -209,7 +210,7 @@ fn update_dry_run_shows_file_list() -> AnyEmptyResult {
 		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--dry-run")
@@ -244,7 +245,7 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -286,7 +287,7 @@ old
 "#,
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -348,7 +349,7 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	)?;
 
 	// First update
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -363,7 +364,7 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	assert!(after_first.contains("\n[ci]:"));
 
 	// Second update — should be idempotent
-	let mut cmd2 = Command::cargo_bin("mdt")?;
+	let mut cmd2 = common::mdt_cmd();
 	cmd2.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -395,7 +396,7 @@ fn update_preserves_surrounding_content() -> AnyEmptyResult {
 		 -->\n\nParagraph after.\n",
 	)?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")

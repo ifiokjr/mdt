@@ -1,4 +1,5 @@
-use assert_cmd::Command;
+mod common;
+
 use mdt_core::AnyEmptyResult;
 
 #[test]
@@ -8,7 +9,7 @@ fn info_resolves_dot_mdt_toml() -> AnyEmptyResult {
 
 	let expected_path = tmp.path().join(".mdt.toml").display().to_string();
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("info")
 		.arg("--path")
 		.arg(tmp.path())
@@ -28,7 +29,7 @@ fn info_resolves_dot_config_mdt_toml() -> AnyEmptyResult {
 
 	let expected_path = tmp.path().join(".config/mdt.toml").display().to_string();
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("info")
 		.arg("--path")
 		.arg(tmp.path())
@@ -50,7 +51,7 @@ fn info_prefers_mdt_toml_over_other_candidates() -> AnyEmptyResult {
 
 	let expected_path = tmp.path().join("mdt.toml").display().to_string();
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("info")
 		.arg("--path")
 		.arg(tmp.path())

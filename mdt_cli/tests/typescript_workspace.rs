@@ -1,6 +1,7 @@
+mod common;
+
 use std::path::Path;
 
-use assert_cmd::Command;
 use mdt_core::AnyEmptyResult;
 
 fn copy_fixture(dest: &Path) {
@@ -33,7 +34,7 @@ fn update_typescript_workspace() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture(tmp.path());
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	cmd.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -78,7 +79,7 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 	copy_fixture(tmp.path());
 
 	// First update
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
@@ -87,7 +88,7 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 		.success();
 
 	// Then check — should pass
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -105,7 +106,7 @@ fn check_typescript_workspace_stale() -> AnyEmptyResult {
 	copy_fixture(tmp.path());
 
 	// Check without updating — should fail because content is stale
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
@@ -123,7 +124,7 @@ fn dry_run_typescript_workspace() -> AnyEmptyResult {
 
 	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--dry-run")
