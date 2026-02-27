@@ -6,6 +6,7 @@
 //! - **`mdt_check`** — Verify all consumer blocks are up-to-date.
 //! - **`mdt_update`** — Update all consumer blocks with latest provider content.
 //! - **`mdt_list`** — List all providers and consumers in the project.
+//! - **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
 //! - **`mdt_get_block`** — Get the content of a specific block by name.
 //! - **`mdt_preview`** — Preview the result of applying transformers to a block.
 //! - **`mdt_init`** — Initialize a new mdt project with a sample template file.
@@ -89,6 +90,18 @@ pub struct InitParam {
 	pub path: Option<String>,
 }
 
+/// Parameters for reuse discovery.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReuseParam {
+	/// Path to the project root directory. Defaults to the current directory.
+	pub path: Option<String>,
+	/// Optional proposed block name to match against existing providers.
+	pub block_name: Option<String>,
+	/// Max number of suggested providers to return.
+	#[serde(default = "default_reuse_limit")]
+	pub limit: usize,
+}
+
 /// A provider info entry for JSON output.
 #[derive(Debug, Serialize)]
 struct ProviderInfo {
@@ -107,6 +120,17 @@ struct ConsumerInfo {
 	is_stale: bool,
 }
 
+/// A candidate provider to reuse.
+#[derive(Debug, Serialize)]
+struct ReuseCandidate {
+	name: String,
+	file: String,
+	consumer_count: usize,
+	markdown_files: Vec<String>,
+	code_files: Vec<String>,
+	distance: Option<usize>,
+}
+
 /// The MCP server for mdt.
 #[derive(Debug, Clone)]
 pub struct MdtMcpServer {
@@ -120,7 +144,9 @@ impl ServerHandler for MdtMcpServer {
 			instructions: Some(
 				"mdt (manage markdown templates) keeps documentation synchronized across your \
 				 project using comment-based template tags. Use these tools to check, update, \
-				 list, and preview template blocks."
+				 list, preview, and find reusable blocks. Before creating a new provider, run \
+				 mdt_find_reuse or mdt_list to discover similar block names and existing \
+				 markdown/source consumers."
 					.into(),
 			),
 			capabilities: ServerCapabilities::builder().enable_tools().build(),
@@ -134,6 +160,44 @@ fn resolve_root(path: Option<&str>) -> PathBuf {
 		|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
 		PathBuf::from,
 	)
+}
+
+fn default_reuse_limit() -> usize {
+	5
+}
+
+fn is_markdown_path(path: &Path) -> bool {
+	path.extension()
+		.and_then(|ext| ext.to_str())
+		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"))
+}
+
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+	let a_len = a.len();
+	let b_len = b.len();
+
+	if a_len == 0 {
+		return b_len;
+	}
+	if b_len == 0 {
+		return a_len;
+	}
+
+	let mut prev_row: Vec<usize> = (0..=b_len).collect();
+	let mut curr_row = vec![0; b_len + 1];
+
+	for (i, a_char) in a.chars().enumerate() {
+		curr_row[0] = i + 1;
+		for (j, b_char) in b.chars().enumerate() {
+			let cost = usize::from(a_char != b_char);
+			curr_row[j + 1] = (prev_row[j + 1] + 1)
+				.min(curr_row[j] + 1)
+				.min(prev_row[j] + cost);
+		}
+		std::mem::swap(&mut prev_row, &mut curr_row);
+	}
+
+	prev_row[b_len]
 }
 
 fn make_relative(path: &Path, root: &Path) -> String {
@@ -338,6 +402,97 @@ impl MdtMcpServer {
 				providers.len(),
 				consumers.len()
 			),
+		});
+
+		Ok(CallToolResult::success(vec![Content::text(
+			serde_json::to_string_pretty(&output)
+				.unwrap_or_else(|_| "Failed to serialize output".to_string()),
+		)]))
+	}
+
+	#[tool(
+		name = "mdt_find_reuse",
+		description = "Find similar existing providers and where they are consumed across \
+		               markdown and source files. Use this before creating a new provider to \
+		               encourage template reuse."
+	)]
+	async fn find_reuse(
+		&self,
+		Parameters(params): Parameters<ReuseParam>,
+	) -> Result<CallToolResult, McpError> {
+		let root = resolve_root(params.path.as_deref());
+		let ctx = scan_ctx(&root)?;
+		let limit = params.limit.clamp(1, 20);
+		let query = params
+			.block_name
+			.as_ref()
+			.map(|value| value.trim().to_string())
+			.filter(|value| !value.is_empty());
+
+		let mut candidates: Vec<ReuseCandidate> = ctx
+			.project
+			.providers
+			.iter()
+			.map(|(name, entry)| {
+				let consumers: Vec<_> = ctx
+					.project
+					.consumers
+					.iter()
+					.filter(|consumer| consumer.block.name == *name)
+					.collect();
+
+				let mut markdown_files = Vec::new();
+				let mut code_files = Vec::new();
+				for consumer in &consumers {
+					let rel = make_relative(&consumer.file, &root);
+					if is_markdown_path(&consumer.file) {
+						markdown_files.push(rel);
+					} else {
+						code_files.push(rel);
+					}
+				}
+				markdown_files.sort();
+				markdown_files.dedup();
+				code_files.sort();
+				code_files.dedup();
+
+				ReuseCandidate {
+					name: name.clone(),
+					file: make_relative(&entry.file, &root),
+					consumer_count: consumers.len(),
+					markdown_files,
+					code_files,
+					distance: query
+						.as_ref()
+						.map(|value| levenshtein_distance(value, name)),
+				}
+			})
+			.collect();
+
+		if query.is_some() {
+			candidates.sort_by(|a, b| {
+				a.distance
+					.cmp(&b.distance)
+					.then_with(|| b.consumer_count.cmp(&a.consumer_count))
+					.then_with(|| a.name.cmp(&b.name))
+			});
+		} else {
+			candidates.sort_by(|a, b| {
+				b.consumer_count
+					.cmp(&a.consumer_count)
+					.then_with(|| a.name.cmp(&b.name))
+			});
+		}
+		candidates.truncate(limit);
+
+		let output = serde_json::json!({
+			"query": query,
+			"guidance": "Prefer reusing an existing provider when semantics match. Candidates show where blocks are already consumed in markdown and source files.",
+			"candidates": candidates,
+			"next_steps": [
+				"If a candidate already matches your intent, reuse that block name in new consumers.",
+				"If no candidate fits, create a new provider in .templates/ (or another configured template path)."
+			],
 		});
 
 		Ok(CallToolResult::success(vec![Content::text(

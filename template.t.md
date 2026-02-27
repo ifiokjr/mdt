@@ -86,6 +86,7 @@ The server communicates over stdin/stdout using the Language Server Protocol.
 - **`mdt_check`** — Verify all consumer blocks are up-to-date.
 - **`mdt_update`** — Update all consumer blocks with latest provider content.
 - **`mdt_list`** — List all providers and consumers in the project.
+- **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
 - **`mdt_get_block`** — Get the content of a specific block by name.
 - **`mdt_preview`** — Preview the result of applying transformers to a block.
 - **`mdt_init`** — Initialize a new mdt project with a sample template file.

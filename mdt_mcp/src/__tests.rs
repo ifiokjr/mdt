@@ -504,6 +504,161 @@ async fn list_with_multiple_blocks_returns_sorted_providers() {
 	assert_eq!(providers[1]["name"], "greeting");
 }
 
+#[tokio::test]
+async fn find_reuse_suggests_similar_blocks_and_file_types() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+
+<!-- {@goodbye} -->
+
+Bye!
+
+<!-- {/goodbye} -->
+";
+	let readme = "\
+<!-- {=greeting} -->
+
+Old markdown content.
+
+<!-- {/greeting} -->
+";
+	let source = "\
+//! <!-- {=greeting} -->
+//!
+//! Old source content.
+//!
+//! <!-- {/greeting} -->
+";
+
+	std::fs::create_dir_all(tmp.path().join("src"))
+		.unwrap_or_else(|e| panic!("create src dir: {e}"));
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme)
+		.unwrap_or_else(|e| panic!("write readme: {e}"));
+	std::fs::write(tmp.path().join("src/lib.rs"), source)
+		.unwrap_or_else(|e| panic!("write source: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.find_reuse(Parameters(ReuseParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: Some("greting".to_string()),
+			limit: 5,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("find_reuse: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+
+	assert!(
+		json["guidance"]
+			.as_str()
+			.is_some_and(|guidance| guidance.contains("reusing an existing provider")),
+		"expected reuse guidance, got: {text}"
+	);
+
+	let candidates = json["candidates"]
+		.as_array()
+		.unwrap_or_else(|| panic!("candidates should be array"));
+	assert!(!candidates.is_empty(), "expected at least one candidate");
+	assert_eq!(candidates[0]["name"], "greeting");
+	assert_eq!(candidates[0]["consumer_count"], 2);
+	assert!(
+		candidates[0]["markdown_files"]
+			.as_array()
+			.unwrap_or_else(|| panic!("markdown_files should be array"))
+			.iter()
+			.any(|value| value == "readme.md"),
+		"expected readme.md in markdown_files, got: {text}"
+	);
+	assert!(
+		candidates[0]["code_files"]
+			.as_array()
+			.unwrap_or_else(|| panic!("code_files should be array"))
+			.iter()
+			.any(|value| value == "src/lib.rs"),
+		"expected src/lib.rs in code_files, got: {text}"
+	);
+}
+
+#[tokio::test]
+async fn find_reuse_sorts_by_consumer_count_without_query() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let template = "\
+<!-- {@popular} -->
+
+Popular block
+
+<!-- {/popular} -->
+
+<!-- {@rare} -->
+
+Rare block
+
+<!-- {/rare} -->
+";
+	let readme = "\
+<!-- {=popular} -->
+
+Old content.
+
+<!-- {/popular} -->
+
+<!-- {=rare} -->
+
+Old content.
+
+<!-- {/rare} -->
+";
+	let changelog = "\
+<!-- {=popular} -->
+
+Old changelog content.
+
+<!-- {/popular} -->
+";
+
+	std::fs::write(tmp.path().join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("readme.md"), readme)
+		.unwrap_or_else(|e| panic!("write readme: {e}"));
+	std::fs::write(tmp.path().join("changelog.md"), changelog)
+		.unwrap_or_else(|e| panic!("write changelog: {e}"));
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.find_reuse(Parameters(ReuseParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			block_name: None,
+			limit: 2,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("find_reuse: {e:?}"));
+
+	let text = extract_text(&result);
+	let json: serde_json::Value =
+		serde_json::from_str(text).unwrap_or_else(|e| panic!("invalid JSON: {e}"));
+	let candidates = json["candidates"]
+		.as_array()
+		.unwrap_or_else(|| panic!("candidates should be array"));
+
+	assert_eq!(candidates.len(), 2);
+	assert_eq!(candidates[0]["name"], "popular");
+	assert_eq!(candidates[0]["consumer_count"], 2);
+	assert_eq!(candidates[1]["name"], "rare");
+	assert_eq!(candidates[1]["consumer_count"], 1);
+}
+
 // ===========================================================================
 // get_block
 // ===========================================================================
@@ -948,6 +1103,10 @@ fn get_info_returns_server_info() {
 	assert!(
 		instructions.contains("mdt"),
 		"instructions should mention mdt, got: {instructions}"
+	);
+	assert!(
+		instructions.contains("mdt_find_reuse"),
+		"instructions should encourage reuse discovery, got: {instructions}"
 	);
 	// Should have tool capabilities enabled
 	assert!(
