@@ -1153,3 +1153,65 @@ fn typescript_workspace_update_idempotent() -> AnyEmptyResult {
 
 	Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// doctor: project health diagnostics
+// ---------------------------------------------------------------------------
+
+#[test]
+fn doctor_empty_project() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!("doctor_empty_project", mdt_cmd(tmp.path()).arg("doctor"));
+	});
+
+	Ok(())
+}
+
+#[test]
+fn doctor_empty_project_json() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"doctor_empty_project_json",
+			mdt_cmd(tmp.path())
+				.arg("doctor")
+				.arg("--format")
+				.arg("json")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn doctor_info_project_fails() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("info_project", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"doctor_info_project_fails",
+			mdt_cmd(tmp.path()).arg("doctor")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn doctor_duplicate_provider_fails() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	copy_fixture("doctor_duplicate_provider", tmp.path());
+
+	with_redacted_paths(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"doctor_duplicate_provider_fails",
+			mdt_cmd(tmp.path()).arg("doctor")
+		);
+	});
+
+	Ok(())
+}

@@ -14,7 +14,8 @@ use clap::ValueEnum;
 	              template tags to define content once and distribute it to multiple locations — \
 	              markdown files, code comments, READMEs, and more.\n\nQuick start:\n  mdt init    \
 	              Create a template file\n  mdt update  Sync all consumer blocks\n  mdt check   \
-	              Verify everything is up to date\n  mdt info    Inspect project diagnostics"
+	              Verify everything is up to date\n  mdt info    Inspect project diagnostics\n  \
+	              mdt doctor  Run project health checks"
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
@@ -121,6 +122,17 @@ pub enum Commands {
 		#[arg(long, value_enum, default_value_t = InfoOutputFormat::Text)]
 		format: InfoOutputFormat,
 	},
+	/// Run project health checks with actionable remediation hints.
+	///
+	/// Evaluates config discovery, data loading, provider/consumer linkage,
+	/// template directory conventions, and parser diagnostics. Exits with a
+	/// non-zero code when failing checks are present.
+	Doctor {
+		/// Output format for doctor results. Use `text` for human-readable
+		/// output or `json` for programmatic consumption.
+		#[arg(long, value_enum, default_value_t = DoctorOutputFormat::Text)]
+		format: DoctorOutputFormat,
+	},
 	/// Start the mdt language server (LSP).
 	///
 	/// Communicates over stdin/stdout using the Language Server Protocol.
@@ -156,6 +168,14 @@ pub enum OutputFormat {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum InfoOutputFormat {
+	/// Human-readable text output with colors and formatting.
+	Text,
+	/// JSON output for programmatic consumption.
+	Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum DoctorOutputFormat {
 	/// Human-readable text output with colors and formatting.
 	Text,
 	/// JSON output for programmatic consumption.

@@ -1,0 +1,86 @@
+---
+source: mdt_cli/tests/snapshots.rs
+assertion_line: 1177
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmph4nWNV
+    - doctor
+    - "--format"
+    - json
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+{
+  "ok": true,
+  "summary": {
+    "pass": 6,
+    "warn": 1,
+    "fail": 0,
+    "skip": 1
+  },
+  "checks": [
+    {
+      "id": "config_discovery",
+      "title": "Config Discovery",
+      "status": "warn",
+      "message": "no config file found (using defaults)",
+      "hint": "create `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` to define data and scan rules"
+    },
+    {
+      "id": "data_sources",
+      "title": "Data Sources",
+      "status": "skip",
+      "message": "skipped because no valid config was loaded",
+      "hint": "add a config file to enable explicit data source validation"
+    },
+    {
+      "id": "template_layout",
+      "title": "Template Layout",
+      "status": "pass",
+      "message": "using default template discovery (`*.t.md`)",
+      "hint": null
+    },
+    {
+      "id": "duplicate_providers",
+      "title": "Duplicate Providers",
+      "status": "pass",
+      "message": "provider names are unique",
+      "hint": null
+    },
+    {
+      "id": "missing_providers",
+      "title": "Missing Providers",
+      "status": "pass",
+      "message": "all consumer blocks resolve to providers",
+      "hint": null
+    },
+    {
+      "id": "orphan_consumers",
+      "title": "Orphan Consumers",
+      "status": "pass",
+      "message": "no orphan consumer blocks found",
+      "hint": null
+    },
+    {
+      "id": "unused_providers",
+      "title": "Unused Providers",
+      "status": "pass",
+      "message": "all providers have at least one consumer",
+      "hint": null
+    },
+    {
+      "id": "parser_diagnostics",
+      "title": "Parser Diagnostics",
+      "status": "pass",
+      "message": "no parser diagnostics found",
+      "hint": null
+    }
+  ]
+}
+
+----- stderr -----

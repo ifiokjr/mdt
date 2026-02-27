@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use mdt_cli::Commands;
+use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_core::AnyEmptyResult;
@@ -326,5 +327,26 @@ fn info_command_is_accepted_by_cli_parser() {
 			assert!(matches!(format, InfoOutputFormat::Json));
 		}
 		_ => panic!("expected Info command"),
+	}
+}
+
+#[test]
+fn doctor_command_is_accepted_by_cli_parser() {
+	use clap::Parser;
+
+	let cli = MdtCli::parse_from(["mdt", "doctor"]);
+	match cli.command {
+		Some(Commands::Doctor { format }) => {
+			assert!(matches!(format, DoctorOutputFormat::Text));
+		}
+		_ => panic!("expected Doctor command"),
+	}
+
+	let cli = MdtCli::parse_from(["mdt", "doctor", "--format", "json"]);
+	match cli.command {
+		Some(Commands::Doctor { format }) => {
+			assert!(matches!(format, DoctorOutputFormat::Json));
+		}
+		_ => panic!("expected Doctor command"),
 	}
 }

@@ -1,0 +1,31 @@
+---
+source: mdt_cli/tests/snapshots.rs
+assertion_line: 1207
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmppy1uCY
+    - doctor
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+mdt doctor
+[WARN] Config Discovery       no config file found (using defaults)
+       hint: create `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` to define data and scan rules
+[SKIP] Data Sources           skipped because no valid config was loaded
+       hint: add a config file to enable explicit data source validation
+[PASS] Template Layout        using default template discovery (`*.t.md`)
+[FAIL] Duplicate Providers    provider `greeting` is declared in `[TEMP_DIR]/one.t.md` and `[TEMP_DIR]/two.t.md`
+       hint: rename one provider to a unique name; provider names must be globally unique
+[SKIP] Missing Providers      skipped because project scan did not complete
+[SKIP] Orphan Consumers       skipped because project scan did not complete
+[SKIP] Unused Providers       skipped because project scan did not complete
+[SKIP] Parser Diagnostics     skipped because project scan did not complete
+
+summary: 1 pass, 1 warn, 1 fail, 5 skip
+
+----- stderr -----
