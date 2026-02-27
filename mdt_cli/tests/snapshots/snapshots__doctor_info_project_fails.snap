@@ -1,0 +1,33 @@
+---
+source: mdt_cli/tests/snapshots.rs
+assertion_line: 1192
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp0HzGJR
+    - doctor
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+mdt doctor
+[PASS] Config Discovery       resolved config at [TEMP_DIR]/mdt.toml
+[PASS] Data Sources           loaded 2 namespace(s) successfully
+[WARN] Template Layout        configured template directories: templates, shared/templates
+       hint: prefer `.templates/` as the canonical location for template files
+[PASS] Duplicate Providers    provider names are unique
+[FAIL] Missing Providers      1 missing provider name(s): missing_block
+       hint: define the missing provider blocks in template files or rename orphan consumers
+[FAIL] Orphan Consumers       found 1 orphan consumer block(s)
+       hint: add matching provider blocks or remove stale consumer references
+[WARN] Unused Providers       found 1 unused provider block(s)
+       hint: reuse existing providers from consumer blocks or remove dead templates
+[FAIL] Parser Diagnostics     1 error(s), 0 warning(s)
+       hint: fix malformed blocks and invalid transformers reported by `mdt check`
+
+summary: 3 pass, 2 warn, 3 fail, 0 skip
+
+----- stderr -----

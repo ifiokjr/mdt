@@ -8,10 +8,12 @@ use std::time::Duration;
 
 use clap::Parser;
 use mdt_cli::Commands;
+use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
 use mdt_core::MdtConfig;
+use mdt_core::MdtError;
 use mdt_core::TemplateWarning;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
@@ -95,6 +97,7 @@ fn main() {
 		Some(Commands::Update { dry_run, watch }) => run_update(&args, dry_run, watch),
 		Some(Commands::List) => run_list(&args),
 		Some(Commands::Info { format }) => run_info(&args, format),
+		Some(Commands::Doctor { format }) => run_doctor(&args, format),
 		Some(Commands::Lsp) => run_lsp(),
 		Some(Commands::Mcp) => run_mcp(),
 		None => {
@@ -106,7 +109,7 @@ fn main() {
 	if let Err(e) = result {
 		// Try to render through miette for rich diagnostics with help text
 		// and error codes.
-		match e.downcast::<mdt_core::MdtError>() {
+		match e.downcast::<MdtError>() {
 			Ok(mdt_err) => {
 				let report: miette::Report = (*mdt_err).into();
 				eprintln!("{report:?}");
@@ -960,6 +963,474 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	}
 
 	Ok(())
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum DoctorStatus {
+	Pass,
+	Warn,
+	Fail,
+	Skip,
+}
+
+impl DoctorStatus {
+	fn tag(self) -> &'static str {
+		match self {
+			Self::Pass => "PASS",
+			Self::Warn => "WARN",
+			Self::Fail => "FAIL",
+			Self::Skip => "SKIP",
+		}
+	}
+
+	fn colored_tag(self) -> String {
+		match self {
+			Self::Pass => colored!(self.tag(), green),
+			Self::Warn => colored!(self.tag(), yellow),
+			Self::Fail => colored!(self.tag(), red),
+			Self::Skip => self.tag().to_string(),
+		}
+	}
+}
+
+#[derive(Debug, serde::Serialize)]
+struct DoctorCheck {
+	id: &'static str,
+	title: &'static str,
+	status: DoctorStatus,
+	message: String,
+	hint: Option<String>,
+}
+
+#[derive(Debug, Default, serde::Serialize)]
+struct DoctorSummary {
+	pass: usize,
+	warn: usize,
+	fail: usize,
+	skip: usize,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct DoctorReport {
+	ok: bool,
+	summary: DoctorSummary,
+	checks: Vec<DoctorCheck>,
+}
+
+fn add_doctor_check(
+	checks: &mut Vec<DoctorCheck>,
+	id: &'static str,
+	title: &'static str,
+	status: DoctorStatus,
+	message: impl Into<String>,
+	hint: Option<String>,
+) {
+	checks.push(DoctorCheck {
+		id,
+		title,
+		status,
+		message: message.into(),
+		hint,
+	});
+}
+
+fn is_canonical_template_dir(path: &Path) -> bool {
+	path.components()
+		.next()
+		.is_some_and(|component| component.as_os_str() == ".templates")
+}
+
+fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
+	let root = resolve_root(args);
+	let mut checks = Vec::new();
+	let options = validation_options(args);
+
+	let config_path = MdtConfig::resolve_path(&root);
+	if let Some(path) = &config_path {
+		add_doctor_check(
+			&mut checks,
+			"config_discovery",
+			"Config Discovery",
+			DoctorStatus::Pass,
+			format!("resolved config at {}", path.display()),
+			None,
+		);
+	} else {
+		add_doctor_check(
+			&mut checks,
+			"config_discovery",
+			"Config Discovery",
+			DoctorStatus::Warn,
+			"no config file found (using defaults)",
+			Some(
+				"create `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` to define data and scan \
+				 rules"
+					.to_string(),
+			),
+		);
+	}
+
+	let config = match MdtConfig::load(&root) {
+		Ok(config) => config,
+		Err(error) => {
+			add_doctor_check(
+				&mut checks,
+				"config_parse",
+				"Config Parse",
+				DoctorStatus::Fail,
+				format!("failed to parse config: {error}"),
+				Some(
+					"fix TOML syntax and section structure in the discovered config file"
+						.to_string(),
+				),
+			);
+			None
+		}
+	};
+
+	match &config {
+		Some(config) if config.data.is_empty() => {
+			add_doctor_check(
+				&mut checks,
+				"data_sources",
+				"Data Sources",
+				DoctorStatus::Pass,
+				"no data namespaces configured".to_string(),
+				None,
+			);
+		}
+		Some(config) => {
+			match config.load_data(&root) {
+				Ok(loaded_data) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Pass,
+						format!("loaded {} namespace(s) successfully", loaded_data.len()),
+						None,
+					);
+				}
+				Err(error) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Fail,
+						format!("failed to load configured data sources: {error}"),
+						Some(
+							"verify data file paths, formats, and parse validity for each [data] \
+							 namespace"
+								.to_string(),
+						),
+					);
+				}
+			}
+		}
+		None => {
+			add_doctor_check(
+				&mut checks,
+				"data_sources",
+				"Data Sources",
+				DoctorStatus::Skip,
+				"skipped because no valid config was loaded".to_string(),
+				Some("add a config file to enable explicit data source validation".to_string()),
+			);
+		}
+	}
+
+	let template_paths: Vec<PathBuf> = config
+		.as_ref()
+		.map(|cfg| cfg.templates.paths.clone())
+		.unwrap_or_default();
+
+	if template_paths
+		.iter()
+		.any(|path| is_canonical_template_dir(path))
+	{
+		add_doctor_check(
+			&mut checks,
+			"template_layout",
+			"Template Layout",
+			DoctorStatus::Pass,
+			"using canonical `.templates/` layout".to_string(),
+			None,
+		);
+	} else if root.join(".templates").is_dir() {
+		add_doctor_check(
+			&mut checks,
+			"template_layout",
+			"Template Layout",
+			DoctorStatus::Pass,
+			"found `.templates/` directory".to_string(),
+			None,
+		);
+	} else if !template_paths.is_empty() {
+		let configured = template_paths
+			.iter()
+			.map(|path| path.display().to_string())
+			.collect::<Vec<_>>()
+			.join(", ");
+		add_doctor_check(
+			&mut checks,
+			"template_layout",
+			"Template Layout",
+			DoctorStatus::Warn,
+			format!("configured template directories: {configured}"),
+			Some("prefer `.templates/` as the canonical location for template files".to_string()),
+		);
+	} else if root.join("templates").is_dir() {
+		add_doctor_check(
+			&mut checks,
+			"template_layout",
+			"Template Layout",
+			DoctorStatus::Warn,
+			"using legacy `templates/` directory".to_string(),
+			Some("consider moving templates to `.templates/` for consistency".to_string()),
+		);
+	} else {
+		add_doctor_check(
+			&mut checks,
+			"template_layout",
+			"Template Layout",
+			DoctorStatus::Pass,
+			"using default template discovery (`*.t.md`)".to_string(),
+			None,
+		);
+	}
+
+	let scan_result = scan_project_with_config(&root);
+	match scan_result {
+		Ok(ctx) => {
+			add_doctor_check(
+				&mut checks,
+				"duplicate_providers",
+				"Duplicate Providers",
+				DoctorStatus::Pass,
+				"provider names are unique".to_string(),
+				None,
+			);
+
+			let mut missing_providers = ctx.find_missing_providers();
+			missing_providers.sort();
+			if missing_providers.is_empty() {
+				add_doctor_check(
+					&mut checks,
+					"missing_providers",
+					"Missing Providers",
+					DoctorStatus::Pass,
+					"all consumer blocks resolve to providers".to_string(),
+					None,
+				);
+			} else {
+				add_doctor_check(
+					&mut checks,
+					"missing_providers",
+					"Missing Providers",
+					DoctorStatus::Fail,
+					format!(
+						"{} missing provider name(s): {}",
+						missing_providers.len(),
+						missing_providers.join(", ")
+					),
+					Some(
+						"define the missing provider blocks in template files or rename orphan \
+						 consumers"
+							.to_string(),
+					),
+				);
+			}
+
+			let orphan_count =
+				count_orphan_consumers(&ctx.project.providers, &ctx.project.consumers);
+			if orphan_count == 0 {
+				add_doctor_check(
+					&mut checks,
+					"orphan_consumers",
+					"Orphan Consumers",
+					DoctorStatus::Pass,
+					"no orphan consumer blocks found".to_string(),
+					None,
+				);
+			} else {
+				add_doctor_check(
+					&mut checks,
+					"orphan_consumers",
+					"Orphan Consumers",
+					DoctorStatus::Fail,
+					format!("found {orphan_count} orphan consumer block(s)"),
+					Some(
+						"add matching provider blocks or remove stale consumer references"
+							.to_string(),
+					),
+				);
+			}
+
+			let unused_provider_count =
+				count_unused_providers(&ctx.project.providers, &ctx.project.consumers);
+			if unused_provider_count == 0 {
+				add_doctor_check(
+					&mut checks,
+					"unused_providers",
+					"Unused Providers",
+					DoctorStatus::Pass,
+					"all providers have at least one consumer".to_string(),
+					None,
+				);
+			} else {
+				add_doctor_check(
+					&mut checks,
+					"unused_providers",
+					"Unused Providers",
+					DoctorStatus::Warn,
+					format!("found {unused_provider_count} unused provider block(s)"),
+					Some(
+						"reuse existing providers from consumer blocks or remove dead templates"
+							.to_string(),
+					),
+				);
+			}
+
+			let diagnostics_errors = ctx
+				.project
+				.diagnostics
+				.iter()
+				.filter(|diag| diag.is_error(&options))
+				.count();
+			let diagnostics_warnings = ctx
+				.project
+				.diagnostics
+				.len()
+				.saturating_sub(diagnostics_errors);
+
+			if diagnostics_errors == 0 && diagnostics_warnings == 0 {
+				add_doctor_check(
+					&mut checks,
+					"parser_diagnostics",
+					"Parser Diagnostics",
+					DoctorStatus::Pass,
+					"no parser diagnostics found".to_string(),
+					None,
+				);
+			} else if diagnostics_errors > 0 {
+				add_doctor_check(
+					&mut checks,
+					"parser_diagnostics",
+					"Parser Diagnostics",
+					DoctorStatus::Fail,
+					format!("{diagnostics_errors} error(s), {diagnostics_warnings} warning(s)"),
+					Some(
+						"fix malformed blocks and invalid transformers reported by `mdt check`"
+							.to_string(),
+					),
+				);
+			} else {
+				add_doctor_check(
+					&mut checks,
+					"parser_diagnostics",
+					"Parser Diagnostics",
+					DoctorStatus::Warn,
+					format!("0 error(s), {diagnostics_warnings} warning(s)"),
+					Some("review warnings to keep template hygiene strong over time".to_string()),
+				);
+			}
+		}
+		Err(error) => {
+			match error {
+				MdtError::DuplicateProvider {
+					name,
+					first_file,
+					second_file,
+				} => {
+					add_doctor_check(
+						&mut checks,
+						"duplicate_providers",
+						"Duplicate Providers",
+						DoctorStatus::Fail,
+						format!(
+							"provider `{name}` is declared in `{first_file}` and `{second_file}`"
+						),
+						Some(
+							"rename one provider to a unique name; provider names must be \
+							 globally unique"
+								.to_string(),
+						),
+					);
+				}
+				other => {
+					add_doctor_check(
+						&mut checks,
+						"project_scan",
+						"Project Scan",
+						DoctorStatus::Fail,
+						format!("project scan failed: {other}"),
+						Some("fix scan/config errors first, then rerun `mdt doctor`".to_string()),
+					);
+				}
+			}
+
+			for (id, title) in [
+				("missing_providers", "Missing Providers"),
+				("orphan_consumers", "Orphan Consumers"),
+				("unused_providers", "Unused Providers"),
+				("parser_diagnostics", "Parser Diagnostics"),
+			] {
+				add_doctor_check(
+					&mut checks,
+					id,
+					title,
+					DoctorStatus::Skip,
+					"skipped because project scan did not complete".to_string(),
+					None,
+				);
+			}
+		}
+	}
+
+	let mut summary = DoctorSummary::default();
+	for check in &checks {
+		match check.status {
+			DoctorStatus::Pass => summary.pass += 1,
+			DoctorStatus::Warn => summary.warn += 1,
+			DoctorStatus::Fail => summary.fail += 1,
+			DoctorStatus::Skip => summary.skip += 1,
+		}
+	}
+
+	let report = DoctorReport {
+		ok: summary.fail == 0,
+		summary,
+		checks,
+	};
+
+	match format {
+		DoctorOutputFormat::Json => {
+			println!("{}", serde_json::to_string_pretty(&report)?);
+		}
+		DoctorOutputFormat::Text => {
+			println!("{}", colored!("mdt doctor", bold));
+			for check in &report.checks {
+				println!(
+					"[{}] {:<22} {}",
+					check.status.colored_tag(),
+					check.title,
+					check.message
+				);
+				if let Some(hint) = &check.hint {
+					println!("       hint: {hint}");
+				}
+			}
+
+			println!();
+			println!(
+				"summary: {} pass, {} warn, {} fail, {} skip",
+				report.summary.pass, report.summary.warn, report.summary.fail, report.summary.skip
+			);
+		}
+	}
+
+	if report.ok { Ok(()) } else { process::exit(1) }
 }
 fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
