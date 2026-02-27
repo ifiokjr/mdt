@@ -178,6 +178,124 @@ fn diagnostics_provider_in_non_template_file() {
 	assert!(diagnostics[0].message.contains("only recognized in *.t.md"));
 }
 
+#[test]
+fn diagnostics_duplicate_provider_across_template_files() {
+	let provider_a = "<!-- {@shared} -->\n\nA\n\n<!-- {/shared} -->\n";
+	let provider_b = "<!-- {@shared} -->\n\nB\n\n<!-- {/shared} -->\n";
+
+	let blocks_a = parse(provider_a).unwrap_or_default();
+	let blocks_b = parse(provider_b).unwrap_or_default();
+	let uri_a = "file:///tmp/test/a.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+	let uri_b = "file:///tmp/test/b.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri_a.clone(),
+		DocumentState {
+			content: provider_a.to_string(),
+			blocks: blocks_a.clone(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+	documents.insert(
+		uri_b.clone(),
+		DocumentState {
+			content: provider_b.to_string(),
+			blocks: blocks_b,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let provider_block = blocks_a
+		.iter()
+		.find(|block| block.r#type == BlockType::Provider)
+		.cloned()
+		.unwrap_or_else(|| panic!("expected provider block"));
+	let provider_entry = ProviderEntry {
+		block: provider_block,
+		file: PathBuf::from("/tmp/test/a.t.md"),
+		content: extract_content_between_tags(provider_a, &blocks_a[0]),
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("shared".to_string(), provider_entry);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics_a = compute_diagnostics(&state, &uri_a);
+	assert!(diagnostics_a.iter().any(|diagnostic| {
+		diagnostic.severity == Some(DiagnosticSeverity::ERROR)
+			&& diagnostic
+				.message
+				.contains("Duplicate provider block `shared`")
+			&& diagnostic.message.contains("b.t.md")
+	}));
+
+	let diagnostics_b = compute_diagnostics(&state, &uri_b);
+	assert!(diagnostics_b.iter().any(|diagnostic| {
+		diagnostic.severity == Some(DiagnosticSeverity::ERROR)
+			&& diagnostic
+				.message
+				.contains("Duplicate provider block `shared`")
+			&& diagnostic.message.contains("a.t.md")
+	}));
+}
+
+#[test]
+fn diagnostics_duplicate_provider_in_same_file() {
+	let content = "<!-- {@shared} -->\n\nA\n\n<!-- {/shared} -->\n\n<!-- {@shared} \
+	               -->\n\nB\n\n<!-- {/shared} -->\n";
+	let blocks = parse(content).unwrap_or_default();
+	let uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: content.to_string(),
+			blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers: HashMap::new(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	let duplicate_diagnostics = diagnostics
+		.iter()
+		.filter(|diagnostic| {
+			diagnostic
+				.message
+				.contains("Duplicate provider block `shared`")
+		})
+		.collect::<Vec<_>>();
+
+	assert_eq!(duplicate_diagnostics.len(), 2);
+	assert!(duplicate_diagnostics.iter().all(|diagnostic| {
+		diagnostic.severity == Some(DiagnosticSeverity::ERROR)
+			&& diagnostic
+				.message
+				.contains("multiple definitions in this file")
+	}));
+}
 // ---- Hover tests ----
 
 #[test]

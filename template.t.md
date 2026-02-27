@@ -56,7 +56,7 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 ### Capabilities
 
-- **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
+- **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
 - **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
 - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
 - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
