@@ -154,7 +154,8 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if config_exists {
 		// Skip silently if config already exists.
 	} else {
-		let sample_config = "# mdt configuration\n# See \
+		let sample_config =
+			"# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
 			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
