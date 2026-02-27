@@ -13,6 +13,7 @@ use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
+use crate::config::CONFIG_FILE_CANDIDATES;
 use crate::config::CodeBlockFilter;
 use crate::config::DEFAULT_MAX_FILE_SIZE;
 use crate::config::MdtConfig;
@@ -228,7 +229,7 @@ pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	scan_project_with_options(root, &ScanOptions::default())
 }
 
-/// Scan a project with config — loads `mdt.toml`, reads data files, and scans.
+/// Scan a project with config — loads discovered project config, reads data files, and scans.
 pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let config = MdtConfig::load(root)?;
 	let options = ScanOptions::from_config(config.as_ref());
@@ -301,6 +302,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 			&options.include_set,
 			&custom_exclude,
 			&mut files,
+			true,
 		)?;
 	}
 
@@ -539,6 +541,16 @@ fn collect_files(
 	Ok(files)
 }
 
+fn is_ignored_directory_name(name: &str) -> bool {
+	(name.starts_with('.') && name != ".templates") || name == "node_modules" || name == "target"
+}
+
+fn has_project_config(dir: &Path) -> bool {
+	CONFIG_FILE_CANDIDATES
+		.iter()
+		.any(|candidate| dir.join(candidate).is_file())
+}
+
 #[allow(clippy::only_used_in_recursion)]
 fn walk_dir(
 	root: &Path,
@@ -569,7 +581,7 @@ fn walk_dir(
 
 		// Skip hidden directories and common non-source directories.
 		if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-			if name.starts_with('.') || name == "node_modules" || name == "target" {
+			if is_ignored_directory_name(name) {
 				continue;
 			}
 		}
@@ -587,9 +599,9 @@ fn walk_dir(
 		}
 
 		if is_dir {
-			// Skip subdirectories that have their own mdt.toml (separate
+			// Skip subdirectories that have their own mdt config file (separate
 			// project scope).
-			if !is_root && path.join("mdt.toml").exists() {
+			if !is_root && has_project_config(&path) {
 				continue;
 			}
 			walk_dir(
@@ -616,6 +628,7 @@ fn collect_included_files(
 	include_set: &GlobSet,
 	exclude_matcher: &Gitignore,
 	files: &mut Vec<PathBuf>,
+	is_root: bool,
 ) -> MdtResult<()> {
 	if !dir.is_dir() {
 		return Ok(());
@@ -628,7 +641,7 @@ fn collect_included_files(
 		let path = entry.path();
 
 		if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-			if name.starts_with('.') || name == "node_modules" || name == "target" {
+			if is_ignored_directory_name(name) {
 				continue;
 			}
 		}
@@ -647,7 +660,10 @@ fn collect_included_files(
 		}
 
 		if is_dir {
-			collect_included_files(root, &path, include_set, exclude_matcher, files)?;
+			if !is_root && has_project_config(&path) {
+				continue;
+			}
+			collect_included_files(root, &path, include_set, exclude_matcher, files, false)?;
 		}
 	}
 

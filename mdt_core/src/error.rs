@@ -51,7 +51,7 @@ pub enum MdtError {
 	#[error("unsupported data file format: `{0}`")]
 	#[diagnostic(
 		code(mdt::unsupported_format),
-		help("supported formats: .json, .toml, .yaml, .yml, .kdl")
+		help("supported formats: .json, .toml, .yaml, .yml, .kdl, .ini")
 	)]
 	UnsupportedDataFormat(String),
 

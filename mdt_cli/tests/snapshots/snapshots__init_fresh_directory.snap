@@ -1,10 +1,11 @@
 ---
 source: mdt_cli/tests/snapshots.rs
+assertion_line: 84
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpVWmBWD
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpaSvSdR
     - init
   env:
     NO_COLOR: "1"
@@ -12,11 +13,11 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-Created template file: [TEMP_DIR]/template.t.md
+Created template file: [TEMP_DIR]/.templates/template.t.md
 Created mdt.toml
 
 Next steps:
-  1. Edit [TEMP_DIR]/template.t.md to define your template blocks
+  1. Edit [TEMP_DIR]/.templates/template.t.md to define your template blocks
   2. Add consumer tags in your markdown files:
      <!-- {=greeting} -->
      <!-- {/greeting} -->

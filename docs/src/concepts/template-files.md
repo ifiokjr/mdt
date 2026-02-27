@@ -40,7 +40,7 @@ Content outside of provider blocks is ignored by mdt. You can use it for notes, 
 
 ## Template variables
 
-Provider content can include [minijinja](https://docs.rs/minijinja) template variables that reference data from project files. This requires an `mdt.toml` config file. See [Data Interpolation](../guide/data-interpolation.md) for details.
+Provider content can include [minijinja](https://docs.rs/minijinja) template variables that reference data from project files. This requires an mdt config file (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`). See [Data Interpolation](../guide/data-interpolation.md) for details.
 
 ```
 <!-- {@installGuide} -->
@@ -56,17 +56,21 @@ When mdt renders this provider, `{{ package.name }}` and `{{ package.version }}`
 
 ## Where to place template files
 
-Template files can live anywhere in your project directory. Common patterns:
+Template files can live anywhere in your project directory.
 
-**Single template at the root:**
+Canonical recommendation: use `.templates/` at the project root.
+
+**Canonical layout (`.templates/`):**
 
 ```
 my-project/
-  template.t.md
+  .templates/
+    template.t.md
+    docs.t.md
   readme.md
 ```
 
-**Dedicated templates directory:**
+**Compatible alternative (`templates/`):**
 
 ```
 my-project/
@@ -76,16 +80,12 @@ my-project/
   readme.md
 ```
 
-**Per-package templates in a monorepo:**
+**Legacy single template at the root (still supported):**
 
 ```
 my-project/
-  template.t.md           # shared across the project
-  packages/
-    lib-a/
-      template.t.md       # specific to lib-a
-    lib-b/
-      template.t.md       # specific to lib-b
+  template.t.md
+  readme.md
 ```
 
 You can also configure explicit template paths in `mdt.toml`:

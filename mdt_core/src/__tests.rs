@@ -844,7 +844,7 @@ fn config_load_valid() -> MdtResult<()> {
 	let config = config.unwrap_or_else(|| panic!("expected Some"));
 	assert_eq!(
 		config.data.get("package"),
-		Some(&PathBuf::from("package.json"))
+		Some(&DataSource::Path(PathBuf::from("package.json")))
 	);
 
 	Ok(())
@@ -6297,10 +6297,9 @@ fn error_unconvertible_float_display_format() {
 #[test]
 fn config_unsupported_format_returns_specific_error() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[data]\ndata = \"data.ini\"\n")
+	std::fs::write(tmp.path().join("mdt.toml"), "[data]\ndata = \"data.xml\"\n")
 		.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(tmp.path().join("data.ini"), "key=value")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("data.xml"), "<data/>").unwrap_or_else(|e| panic!("write: {e}"));
 
 	let config = MdtConfig::load(tmp.path())
 		.unwrap_or_else(|e| panic!("load: {e}"))
@@ -6309,7 +6308,7 @@ fn config_unsupported_format_returns_specific_error() {
 	assert!(result.is_err());
 	let err_msg = result.unwrap_err().to_string();
 	assert!(
-		err_msg.contains("unsupported") || err_msg.contains("ini"),
+		err_msg.contains("unsupported") || err_msg.contains("xml"),
 		"error should mention unsupported format, got: {err_msg}"
 	);
 }
@@ -7078,7 +7077,10 @@ fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 	assert_eq!(config.exclude.patterns, vec!["vendor/**", "build/"]);
 	assert_eq!(config.include.patterns, vec!["**/*.txt"]);
 	assert_eq!(config.templates.paths, vec![PathBuf::from("shared")]);
-	assert_eq!(config.data.get("pkg"), Some(&PathBuf::from("package.json")));
+	assert_eq!(
+		config.data.get("pkg"),
+		Some(&DataSource::Path(PathBuf::from("package.json")))
+	);
 
 	Ok(())
 }
@@ -8639,6 +8641,205 @@ old content
 		updates2.updated_count, 0,
 		"Second update should find nothing to change"
 	);
+
+	Ok(())
+}
+
+// --- PR2: config discovery + typed data entries + ini + canonical templates ---
+
+#[test]
+fn config_load_data_ini() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nsettings = \"settings.ini\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("settings.ini"),
+		"name = my-app\n[server]\nport = 8080\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+
+	assert_eq!(data["settings"]["name"], "my-app");
+	assert_eq!(data["settings"]["server"]["port"], "8080");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_typed_entry_explicit_json_format() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nrelease = { path = \"release-info\", format = \"json\" }\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("release-info"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(
+		config.data.get("release"),
+		Some(&DataSource::Typed(TypedDataSource {
+			path: PathBuf::from("release-info"),
+			format: "json".to_string(),
+		}))
+	);
+
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["release"]["version"], "1.2.3");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_resolves_dot_mdt_toml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"name":"dot-config"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	assert_eq!(
+		MdtConfig::resolve_path(tmp.path()),
+		Some(tmp.path().join(".mdt.toml"))
+	);
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["pkg"]["name"], "dot-config");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_resolves_dot_config_mdt_toml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".config")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".config/mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name":"nested-config"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	assert_eq!(
+		MdtConfig::resolve_path(tmp.path()),
+		Some(tmp.path().join(".config/mdt.toml"))
+	);
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["pkg"]["name"], "nested-config");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_prefers_mdt_toml_over_other_candidates() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".config")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nselected = \"a.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join(".mdt.toml"),
+		"[data]\nselected = \"b.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join(".config/mdt.toml"),
+		"[data]\nselected = \"c.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("a.json"), r#"{"name":"primary"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("b.json"), r#"{"name":"secondary"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("c.json"), r#"{"name":"tertiary"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	assert_eq!(
+		MdtConfig::resolve_path(tmp.path()),
+		Some(tmp.path().join("mdt.toml"))
+	);
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["selected"]["name"], "primary");
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_sub_project_boundary_dot_mdt_toml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("packages/subproject"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(tmp.path().join("packages/subproject/.mdt.toml"), "[data]\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("packages/subproject/readme.md"),
+		"<!-- {=block} -->\n\nsub content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert!(project.consumers.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_sub_project_boundary_dot_config_mdt_toml() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("packages/subproject/.config"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("packages/subproject/.config/mdt.toml"),
+		"[data]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("packages/subproject/readme.md"),
+		"<!-- {=block} -->\n\nsub content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert!(project.consumers.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_discovers_templates_in_dot_templates_directory() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".templates")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".templates/template.t.md"),
+		"<!-- {@intro} -->\n\nHello from hidden templates.\n\n<!-- {/intro} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=intro} -->\n\nold\n\n<!-- {/intro} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(ctx.project.providers.contains_key("intro"));
+	assert_eq!(ctx.project.consumers.len(), 1);
 
 	Ok(())
 }

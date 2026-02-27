@@ -135,11 +135,24 @@ fn print_field(label: &str, value: impl std::fmt::Display) {
 
 fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
-	let template_path = root.join("template.t.md");
-	let config_path = root.join("mdt.toml");
-
+	let canonical_template_path = root.join(".templates/template.t.md");
+	let legacy_template_paths = [
+		root.join("template.t.md"),
+		root.join("templates/template.t.md"),
+	];
+	let template_path = if canonical_template_path.exists() {
+		canonical_template_path.clone()
+	} else {
+		legacy_template_paths
+			.iter()
+			.find(|path| path.exists())
+			.cloned()
+			.unwrap_or_else(|| canonical_template_path.clone())
+	};
 	let template_exists = template_path.exists();
-	let config_exists = config_path.exists();
+
+	let config_path = root.join("mdt.toml");
+	let config_exists = MdtConfig::resolve_path(&root).is_some();
 
 	if template_exists {
 		println!("Template file already exists: {}", template_path.display());
@@ -147,6 +160,9 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
 		                      block.\n\n<!-- {/greeting} -->\n";
 
+		if let Some(parent) = template_path.parent() {
+			std::fs::create_dir_all(parent)?;
+		}
 		std::fs::write(&template_path, sample_content)?;
 		println!("Created template file: {}", template_path.display());
 	}
@@ -200,14 +216,18 @@ struct ConfigSummary {
 }
 
 fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error::Error>> {
-	let config_path = root.join("mdt.toml");
+	let config_path = MdtConfig::resolve_path(root);
 	let config = MdtConfig::load(root)?;
 
 	let Some(config) = config else {
 		return Ok(ConfigSummary::default());
 	};
 
-	let mut data_sources: Vec<_> = config.data.into_iter().collect();
+	let mut data_sources: Vec<_> = config
+		.data
+		.into_iter()
+		.map(|(namespace, source)| (namespace, source.path().to_path_buf()))
+		.collect();
 	data_sources.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
 
 	let mut template_dirs = config.templates.paths;
@@ -215,7 +235,7 @@ fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error:
 	template_dirs.dedup();
 
 	Ok(ConfigSummary {
-		path: Some(config_path),
+		path: config_path,
 		data_sources,
 		template_dirs,
 	})
@@ -234,7 +254,12 @@ fn template_directory_hints(template_dirs: &[PathBuf]) -> Vec<String> {
 	for dir in template_dirs {
 		hints.insert(normalize_dir_hint(dir));
 	}
-	for canonical in ["templates/", "docs/templates/", "shared/templates/"] {
+	for canonical in [
+		".templates/",
+		"templates/",
+		"docs/templates/",
+		"shared/templates/",
+	] {
 		hints.insert(canonical.to_string());
 	}
 	hints.into_iter().collect()

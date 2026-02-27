@@ -36,6 +36,7 @@ rmcp = { default-features = false, version = "^0.16" }
 rstest = { default-features = false, version = "^0.26" }
 schemars = { default-features = false, version = "^0.8" }
 serde = { default-features = false, version = "^1" }
+serde_ini = { default-features = false, version = "^0.2" }
 serde_json = { default-features = false, version = "^1" }
 serde_yaml_ng = { default-features = false, version = "^0.10" }
 similar = { default-features = false, version = "^2" }
