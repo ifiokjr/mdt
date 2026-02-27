@@ -1,10 +1,11 @@
-use assert_cmd::Command;
+mod common;
+
 use mdt_core::AnyEmptyResult;
 
 #[test]
 fn can_init() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	let assert = cmd
 		.arg("init")
 		.arg("--path")
@@ -41,7 +42,7 @@ fn init_does_not_overwrite() -> AnyEmptyResult {
 	let config_path = tmp.path().join("mdt.toml");
 	std::fs::write(&config_path, "existing config")?;
 
-	let mut cmd = Command::cargo_bin("mdt")?;
+	let mut cmd = common::mdt_cmd();
 	let assert = cmd
 		.arg("init")
 		.arg("--path")
@@ -63,7 +64,7 @@ fn init_does_not_overwrite() -> AnyEmptyResult {
 fn init_creates_valid_template() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
@@ -83,7 +84,7 @@ fn init_creates_valid_template() -> AnyEmptyResult {
 fn init_shows_next_steps() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
@@ -99,7 +100,7 @@ fn init_shows_next_steps() -> AnyEmptyResult {
 fn init_creates_both_template_and_config() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
@@ -138,7 +139,7 @@ fn init_creates_config_when_template_exists() -> AnyEmptyResult {
 	let template_path = tmp.path().join("template.t.md");
 	std::fs::write(&template_path, "existing template")?;
 
-	Command::cargo_bin("mdt")?
+	common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
