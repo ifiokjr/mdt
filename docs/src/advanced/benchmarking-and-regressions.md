@@ -40,9 +40,7 @@ This avoids failing on tiny/noisy deltas.
 
 ## Regression policy
 
-If benchmark regressions are detected on a pull request, the PR must include a
-`## Benchmark Justification` section in the PR description explaining why the
-tradeoff is acceptable.
+If benchmark regressions are detected on a pull request, the PR must include a `## Benchmark Justification` section in the PR description explaining why the tradeoff is acceptable.
 
 Without this section, the benchmark workflow fails.
 

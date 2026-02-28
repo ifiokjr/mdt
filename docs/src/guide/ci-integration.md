@@ -193,8 +193,7 @@ jobs:
 
 ## Benchmark CI (this repository)
 
-This repository also runs `.github/workflows/benchmark.yml` on `pull_request`
-and `push` to `main`.
+This repository also runs `.github/workflows/benchmark.yml` on `pull_request` and `push` to `main`.
 
 The benchmark job:
 
@@ -203,6 +202,4 @@ The benchmark job:
 3. Compares medians per scenario with relative and absolute thresholds.
 4. Uploads raw benchmark artifacts and posts a PR comment report.
 
-When regressions exceed threshold, pull requests must include a
-`## Benchmark Justification` section in the PR description to document the
-tradeoff.
+When regressions exceed threshold, pull requests must include a `## Benchmark Justification` section in the PR description to document the tradeoff.

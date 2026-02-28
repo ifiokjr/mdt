@@ -36,43 +36,43 @@ fail_on_regression=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--baseline)
-			baseline="${2:-}"
-			shift 2
-			;;
-		--candidate)
-			candidate="${2:-}"
-			shift 2
-			;;
-		--output)
-			output="${2:-}"
-			shift 2
-			;;
-		--markdown)
-			markdown="${2:-}"
-			shift 2
-			;;
-		--relative-threshold-pct)
-			relative_threshold_pct="${2:-}"
-			shift 2
-			;;
-		--absolute-threshold-ms)
-			absolute_threshold_ms="${2:-}"
-			shift 2
-			;;
-		--fail-on-regression)
-			fail_on_regression=true
-			shift
-			;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		*)
-			echo "unknown option: $1" >&2
-			usage >&2
-			exit 1
-			;;
+	--baseline)
+		baseline="${2:-}"
+		shift 2
+		;;
+	--candidate)
+		candidate="${2:-}"
+		shift 2
+		;;
+	--output)
+		output="${2:-}"
+		shift 2
+		;;
+	--markdown)
+		markdown="${2:-}"
+		shift 2
+		;;
+	--relative-threshold-pct)
+		relative_threshold_pct="${2:-}"
+		shift 2
+		;;
+	--absolute-threshold-ms)
+		absolute_threshold_ms="${2:-}"
+		shift 2
+		;;
+	--fail-on-regression)
+		fail_on_regression=true
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "unknown option: $1" >&2
+		usage >&2
+		exit 1
+		;;
 	esac
 done
 
@@ -157,7 +157,7 @@ jq -n \
 		else "ok"
 		end
 	)
-' > "$output"
+' >"$output"
 
 if [[ -n "$markdown" ]]; then
 	mkdir -p "$(dirname "$markdown")"
@@ -182,7 +182,7 @@ if [[ -n "$markdown" ]]; then
 		echo "Regressions: $(jq '.regression_count' "$output")"
 		echo "Improvements: $(jq '.improvement_count' "$output")"
 		echo "Missing scenarios: $(jq '.missing_count' "$output")"
-	} > "$markdown"
+	} >"$markdown"
 fi
 
 status=$(jq -r '.status' "$output")
@@ -193,7 +193,7 @@ echo "comparison status: $status"
 echo "regression_count: $regression_count"
 echo "missing_count: $missing_count"
 
-if (( missing_count > 0 )); then
+if ((missing_count > 0)); then
 	echo "missing scenarios detected between baseline and candidate" >&2
 	exit 2
 fi
