@@ -37,6 +37,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
+      - name: mark workspace as safe for git
+        shell: bash
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
       - name: install benchmark dependencies
         run: |
           apt-get update
@@ -159,7 +164,11 @@ jobs:
             echo "- Baseline ref: \`${{ steps.refs.outputs.baseline_ref }}\`"
             echo "- Candidate ref: \`${{ steps.refs.outputs.candidate_ref }}\`"
             echo
-            cat benchmark-results/compare.md
+            if [[ -f benchmark-results/compare.md ]]; then
+              cat benchmark-results/compare.md
+            else
+              echo "Benchmark comparison report was not generated."
+            fi
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: upload benchmark artifacts
@@ -171,7 +180,7 @@ jobs:
           retention-days: 90
 
       - name: comment benchmark report on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && hashFiles('benchmark-results/compare.md') != ''
         uses: actions/github-script@v7
         with:
           script: |

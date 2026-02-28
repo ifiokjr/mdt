@@ -56,7 +56,7 @@ join_by() {
 
 calc_stats_json() {
 	local values=("$@")
-	if (( ${#values[@]} == 0 )); then
+	if ((${#values[@]} == 0)); then
 		echo '{"min_ms":0,"max_ms":0,"mean_ms":0,"median_ms":0,"p95_ms":0,"samples_ms":[]}'
 		return
 	fi
@@ -226,43 +226,43 @@ workdir=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--binary)
-			binary="${2:-}"
-			shift 2
-			;;
-		--output)
-			output="${2:-}"
-			shift 2
-			;;
-		--label)
-			label="${2:-}"
-			shift 2
-			;;
-		--iterations)
-			iterations="${2:-}"
-			shift 2
-			;;
-		--warmup)
-			warmup="${2:-}"
-			shift 2
-			;;
-		--files)
-			file_count="${2:-}"
-			shift 2
-			;;
-		--workdir)
-			workdir="${2:-}"
-			shift 2
-			;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		*)
-			echo "unknown option: $1" >&2
-			usage >&2
-			exit 1
-			;;
+	--binary)
+		binary="${2:-}"
+		shift 2
+		;;
+	--output)
+		output="${2:-}"
+		shift 2
+		;;
+	--label)
+		label="${2:-}"
+		shift 2
+		;;
+	--iterations)
+		iterations="${2:-}"
+		shift 2
+		;;
+	--warmup)
+		warmup="${2:-}"
+		shift 2
+		;;
+	--files)
+		file_count="${2:-}"
+		shift 2
+		;;
+	--workdir)
+		workdir="${2:-}"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "unknown option: $1" >&2
+		usage >&2
+		exit 1
+		;;
 	esac
 done
 
@@ -285,23 +285,23 @@ for numeric_arg in iterations warmup file_count; do
 	value="${!numeric_arg}"
 	if ! [[ "$value" =~ ^[0-9]+$ ]]; then
 		case "$numeric_arg" in
-			file_count)
-				echo "--files must be a non-negative integer" >&2
-				;;
-			*)
-				echo "--$numeric_arg must be a non-negative integer" >&2
-				;;
+		file_count)
+			echo "--files must be a non-negative integer" >&2
+			;;
+		*)
+			echo "--$numeric_arg must be a non-negative integer" >&2
+			;;
 		esac
 		exit 1
 	fi
 done
 
-if (( iterations < 1 )); then
+if ((iterations < 1)); then
 	echo "--iterations must be >= 1" >&2
 	exit 1
 fi
 
-if (( file_count < 1 )); then
+if ((file_count < 1)); then
 	echo "--files must be >= 1" >&2
 	exit 1
 fi
@@ -343,7 +343,7 @@ escaped_binary=$(json_escape "$binary")
 generated_at_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 scenario_joined=$(join_by , "${scenario_json_entries[@]}")
 
-cat > "$output" <<EOF_JSON
+cat >"$output" <<EOF_JSON
 {
 	"schema_version": 1,
 	"generated_at_utc": "${generated_at_utc}",

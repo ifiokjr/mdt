@@ -19,23 +19,23 @@ file_count=180
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--output)
-			output_dir="${2:-}"
-			shift 2
-			;;
-		--files)
-			file_count="${2:-}"
-			shift 2
-			;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		*)
-			echo "unknown option: $1" >&2
-			usage >&2
-			exit 1
-			;;
+	--output)
+		output_dir="${2:-}"
+		shift 2
+		;;
+	--files)
+		file_count="${2:-}"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "unknown option: $1" >&2
+		usage >&2
+		exit 1
+		;;
 	esac
 done
 
@@ -50,7 +50,7 @@ if ! [[ "$file_count" =~ ^[0-9]+$ ]]; then
 	exit 1
 fi
 
-if (( file_count < 1 )); then
+if ((file_count < 1)); then
 	echo "--files must be >= 1" >&2
 	exit 1
 fi
@@ -58,7 +58,7 @@ fi
 rm -rf "$output_dir"
 mkdir -p "$output_dir/.templates" "$output_dir/modules"
 
-cat > "$output_dir/package.json" <<'JSON'
+cat >"$output_dir/package.json" <<'JSON'
 {
 	"name": "mdt-benchmark-fixture",
 	"version": "1.0.0",
@@ -66,7 +66,7 @@ cat > "$output_dir/package.json" <<'JSON'
 }
 JSON
 
-cat > "$output_dir/mdt.toml" <<'TOML'
+cat >"$output_dir/mdt.toml" <<'TOML'
 [templates]
 paths = [".templates"]
 
@@ -78,7 +78,7 @@ before = 0
 after = 0
 TOML
 
-cat > "$output_dir/.templates/template.t.md" <<'TEMPLATE'
+cat >"$output_dir/.templates/template.t.md" <<'TEMPLATE'
 <!-- {@overview} -->
 
 {{ package.name }} v{{ package.version }}
@@ -116,7 +116,7 @@ for ((i = 1; i <= file_count; i++)); do
 	group_dir="$output_dir/modules/group-$group_id"
 	mkdir -p "$group_dir"
 
-	cat > "$group_dir/module-$module_id.md" <<EOF_MODULE
+	cat >"$group_dir/module-$module_id.md" <<EOF_MODULE
 # Module $module_id
 
 <!-- {=overview|trim} -->
