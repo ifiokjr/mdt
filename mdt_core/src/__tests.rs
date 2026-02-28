@@ -8958,3 +8958,108 @@ fn scan_project_invalidates_cache_after_file_change() -> MdtResult<()> {
 
 	Ok(())
 }
+
+#[test]
+fn scan_project_reuses_unchanged_files_when_other_files_change() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let alpha_template = tmp.path().join("alpha.t.md");
+	let beta_template = tmp.path().join("beta.t.md");
+	std::fs::write(
+		&alpha_template,
+		"<!-- {@alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write alpha provider: {e}"));
+	std::fs::write(
+		&beta_template,
+		"<!-- {@beta} -->\n\nBeta from disk.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write beta provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n\n<!-- {=beta} -->\n\nBeta \
+		 from disk.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let _ = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let mut cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+	cache_json["file_data"]["alpha.t.md"]["providers"][0]["content"] =
+		serde_json::Value::String("CACHED ALPHA".to_string());
+	cache_json["file_data"]["beta.t.md"]["providers"][0]["content"] =
+		serde_json::Value::String("STALE BETA FROM CACHE".to_string());
+	std::fs::write(
+		&cache_path,
+		serde_json::to_vec_pretty(&cache_json).unwrap_or_else(|e| panic!("encode cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("rewrite cache: {e}"));
+
+	std::fs::write(
+		&beta_template,
+		"<!-- {@beta} -->\n\nBeta from changed disk file.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("rewrite beta provider: {e}"));
+
+	let project = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	assert_eq!(
+		project.providers["alpha"].content, "CACHED ALPHA",
+		"unchanged file should be reused from cache"
+	);
+	assert!(
+		project.providers["beta"]
+			.content
+			.contains("Beta from changed disk file."),
+		"changed file should be reparsed from disk"
+	);
+	assert_ne!(
+		project.providers["beta"].content, "STALE BETA FROM CACHE",
+		"changed file must not reuse stale cached entry"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_removes_deleted_files_from_cache() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let alpha_template = tmp.path().join("alpha.t.md");
+	std::fs::write(
+		&alpha_template,
+		"<!-- {@alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let _ = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	std::fs::remove_file(&alpha_template).unwrap_or_else(|e| panic!("remove provider: {e}"));
+
+	let project = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
+	assert!(
+		!project.providers.contains_key("alpha"),
+		"deleted provider file should not remain in project providers"
+	);
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+	assert!(
+		cache_json["files"].get("alpha.t.md").is_none(),
+		"deleted file fingerprint should be removed from cache"
+	);
+	assert!(
+		cache_json["file_data"].get("alpha.t.md").is_none(),
+		"deleted file entry should be removed from cache"
+	);
+
+	Ok(())
+}

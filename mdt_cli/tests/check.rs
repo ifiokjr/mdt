@@ -57,7 +57,7 @@ fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 		.assert()
 		.success();
 
-	let cache_path = tmp.path().join(".mdt").join("cache").join("index-v1.json");
+	let cache_path = tmp.path().join(".mdt").join("cache").join("index-v2.json");
 	assert!(
 		cache_path.is_file(),
 		"expected cache file at {}",
