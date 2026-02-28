@@ -8776,8 +8776,8 @@ fn config_load_data_script_text_entry() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[data]\nversion = { command = \"printf 1.2.3\", format = \"text\", watch = \
-		 [\"VERSION\"] }\n",
+		"[data]\nversion = { command = \"printf 1.2.3\", format = \"text\", watch = [\"VERSION\"] \
+		 }\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(tmp.path().join("VERSION"), "1.2.3\n").unwrap_or_else(|e| panic!("write: {e}"));

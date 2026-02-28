@@ -10,7 +10,7 @@ mdt (manage **m**ark**d**own **t**emplates) is a data-driven template engine for
 
 1. **Content synchronization**: Provider blocks define content in `*.t.md` template files. Consumer blocks in other files reference providers by name and get replaced with the provider content on `mdt update`.
 
-2. **Data interpolation** (via `minijinja`): Provider content can reference data pulled from project files (e.g., `package.json` version, `Cargo.toml` metadata) using `{{ namespace.key }}` syntax. An `mdt.toml` config file maps source files to namespaces. Supports JSON, TOML, YAML, and KDL data sources.
+2. **Data interpolation** (via `minijinja`): Provider content can reference data pulled from project files (e.g., `package.json` version, `Cargo.toml` metadata) using `{{ namespace.key }}` syntax. An `mdt.toml` config file maps source files to namespaces. Supports JSON, TOML, YAML, KDL, and INI data sources.
 
 3. **Source file scanning**: Consumer tags are detected inside code comments in any language (`.rs`, `.ts`, `.py`, `.go`, `.java`, etc.), not just markdown files. This enables keeping Rust doc comments, JSDoc, Python docstrings, etc. in sync with central template definitions.
 
@@ -138,6 +138,10 @@ This content gets replaced
 - `mdt init [--path <dir>]` — Create a sample `template.t.md` file with getting-started instructions.
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
+- `mdt info [--path <dir>] [--format text|json]` — Print project diagnostics and cache observability metrics.
+- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency trends.
+- `mdt lsp` — Start the language server.
+- `mdt mcp` — Start the MCP server for AI/agent integrations.
 
 ### Data Interpolation
 
@@ -152,7 +156,13 @@ cargo = "Cargo.toml"
 
 Then in provider blocks: `Version: {{ pkg.version }}` or `Edition: {{ cargo.package.edition }}`.
 
-Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`.
+Supported data file formats: `.json`, `.toml`, `.yaml`/`.yml`, `.kdl`, `.ini`.
+
+### Cache Diagnostics
+
+- `mdt info` includes cache artifact/schema status and reuse/reparse telemetry.
+- `mdt doctor` includes cache checks (`Cache Artifact`, `Cache Hash Mode`, `Cache Efficiency`).
+- Set `MDT_CACHE_VERIFY_HASH=1` to include content hashes in cache fingerprints while troubleshooting cache consistency.
 
 ### Block Padding
 
@@ -251,12 +261,14 @@ Defined in `.cargo/config.toml` — these proxy to `cargo-run-bin`:
 
 **Every change MUST be made via a pull request.** Do not commit directly to `main`. The workflow is:
 
-1. Create a feature branch from `main`
+1. Create a feature branch from `origin/main` (not from a stacked feature branch unless intentionally stacking)
 2. Make all changes on the feature branch
 3. Create a PR with a descriptive title and summary
 4. Monitor CI checks — wait for all checks to pass
-5. Merge the PR back into `main` only after all checks pass
-6. If checks fail, fix the issues on the branch and push again
+5. Ensure the PR is merge-clean before merging (`gh pr view --json mergeStateStatus` should be `CLEAN`)
+6. If the PR is `DIRTY`, rebase/cherry-pick onto fresh `origin/main` and push again before merging
+7. Merge the PR back into `main` only after all checks pass
+8. If checks fail, fix the issues on the branch and push again
 
 ### Logic Bug Testing Protocol
 

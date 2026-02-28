@@ -36,6 +36,12 @@ cargo install mdt_cli@0.6.0
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
 - `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
 
+### Diagnostics Workflow
+
+- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
+- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
+- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
+
 <!-- {/mdtCliUsage} -->
 
 <!-- {=mdtTemplateSyntax} -->
@@ -66,7 +72,9 @@ This content gets replaced
 
 ```markdown
 <!-- {~version:"{{ package.version }}"} -->
+
 0.0.0
+
 <!-- {/version} -->
 ```
 

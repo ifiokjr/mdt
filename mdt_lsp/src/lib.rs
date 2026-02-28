@@ -738,8 +738,8 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 						severity: Some(DiagnosticSeverity::ERROR),
 						source: Some("mdt".to_string()),
 						message: format!(
-							"Inline block `{}` requires a template argument, e.g. \
-							 <!-- {{~{}:\"{{{{ pkg.version }}}}\"}} -->",
+							"Inline block `{}` requires a template argument, e.g. <!-- \
+							 {{~{}:\"{{{{ pkg.version }}}}\"}} -->",
 							block.name, block.name
 						),
 						..Default::default()
@@ -1056,15 +1056,17 @@ fn block_name_completions(state: &WorkspaceState) -> Vec<CompletionItem> {
 	state
 		.providers
 		.iter()
-		.map(|(name, entry)| CompletionItem {
-			label: name.clone(),
-			kind: Some(CompletionItemKind::REFERENCE),
-			detail: Some(format!("Provider from {}", entry.file.display())),
-			documentation: Some(Documentation::MarkupContent(MarkupContent {
-				kind: MarkupKind::Markdown,
-				value: format!("```\n{}\n```", entry.content.trim()),
-			})),
-			..Default::default()
+		.map(|(name, entry)| {
+			CompletionItem {
+				label: name.clone(),
+				kind: Some(CompletionItemKind::REFERENCE),
+				detail: Some(format!("Provider from {}", entry.file.display())),
+				documentation: Some(Documentation::MarkupContent(MarkupContent {
+					kind: MarkupKind::Markdown,
+					value: format!("```\n{}\n```", entry.content.trim()),
+				})),
+				..Default::default()
+			}
 		})
 		.collect()
 }
@@ -1115,12 +1117,14 @@ fn transformer_completions() -> Vec<CompletionItem> {
 	transformers
 		.iter()
 		.enumerate()
-		.map(|(i, (name, desc))| CompletionItem {
-			label: (*name).to_string(),
-			kind: Some(CompletionItemKind::FUNCTION),
-			detail: Some((*desc).to_string()),
-			sort_text: Some(format!("{i:02}")),
-			..Default::default()
+		.map(|(i, (name, desc))| {
+			CompletionItem {
+				label: (*name).to_string(),
+				kind: Some(CompletionItemKind::FUNCTION),
+				detail: Some((*desc).to_string()),
+				sort_text: Some(format!("{i:02}")),
+				..Default::default()
+			}
 		})
 		.collect()
 }

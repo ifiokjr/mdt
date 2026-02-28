@@ -197,7 +197,8 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if config_exists {
 		// Skip silently if config already exists.
 	} else {
-		let sample_config = "# mdt configuration\n# See \
+		let sample_config =
+			"# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
 			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
@@ -261,17 +262,20 @@ fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
 	}
 
 	let inferred = match source {
-		mdt_core::DataSource::Path(path) => path
-			.extension()
-			.and_then(|ext| ext.to_str())
-			.unwrap_or("unknown")
-			.to_ascii_lowercase(),
-		mdt_core::DataSource::Typed(typed) => typed
-			.path
-			.extension()
-			.and_then(|ext| ext.to_str())
-			.unwrap_or("unknown")
-			.to_ascii_lowercase(),
+		mdt_core::DataSource::Path(path) => {
+			path.extension()
+				.and_then(|ext| ext.to_str())
+				.unwrap_or("unknown")
+				.to_ascii_lowercase()
+		}
+		mdt_core::DataSource::Typed(typed) => {
+			typed
+				.path
+				.extension()
+				.and_then(|ext| ext.to_str())
+				.unwrap_or("unknown")
+				.to_ascii_lowercase()
+		}
 		mdt_core::DataSource::Script(_) => "text".to_string(),
 		_ => "unknown".to_string(),
 	};
@@ -285,14 +289,16 @@ fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String)
 		mdt_core::DataSource::Typed(typed) => {
 			(typed.path.display().to_string(), "file".to_string())
 		}
-		mdt_core::DataSource::Script(script) => (
-			format!("script: {}", script.command),
-			if script.watch.is_empty() {
-				"script".to_string()
-			} else {
-				format!("script (watch: {})", script.watch.len())
-			},
-		),
+		mdt_core::DataSource::Script(script) => {
+			(
+				format!("script: {}", script.command),
+				if script.watch.is_empty() {
+					"script".to_string()
+				} else {
+					format!("script (watch: {})", script.watch.len())
+				},
+			)
+		}
 		_ => ("unknown".to_string(), "unknown".to_string()),
 	}
 }
@@ -987,12 +993,14 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
 		.iter()
-		.map(|source| InfoDataSourceSection {
-			namespace: source.namespace.clone(),
-			location: source.location.clone(),
-			kind: source.kind.clone(),
-			format: source.format.clone(),
-			explicit_format: source.explicit_format,
+		.map(|source| {
+			InfoDataSourceSection {
+				namespace: source.namespace.clone(),
+				location: source.location.clone(),
+				kind: source.kind.clone(),
+				format: source.format.clone(),
+				explicit_format: source.explicit_format,
+			}
 		})
 		.collect();
 
@@ -1322,32 +1330,34 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				None,
 			);
 		}
-		Some(config) => match config.load_data(&root) {
-			Ok(loaded_data) => {
-				add_doctor_check(
-					&mut checks,
-					"data_sources",
-					"Data Sources",
-					DoctorStatus::Pass,
-					format!("loaded {} namespace(s) successfully", loaded_data.len()),
-					None,
-				);
-			}
-			Err(error) => {
-				add_doctor_check(
-					&mut checks,
-					"data_sources",
-					"Data Sources",
-					DoctorStatus::Fail,
-					format!("failed to load configured data sources: {error}"),
-					Some(
-						"verify data file paths, script commands, formats, and parse validity \
+		Some(config) => {
+			match config.load_data(&root) {
+				Ok(loaded_data) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Pass,
+						format!("loaded {} namespace(s) successfully", loaded_data.len()),
+						None,
+					);
+				}
+				Err(error) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Fail,
+						format!("failed to load configured data sources: {error}"),
+						Some(
+							"verify data file paths, script commands, formats, and parse validity \
 							 for each [data] namespace"
-							.to_string(),
-					),
-				);
+								.to_string(),
+						),
+					);
+				}
 			}
-		},
+		}
 		None => {
 			add_doctor_check(
 				&mut checks,

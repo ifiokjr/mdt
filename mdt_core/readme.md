@@ -50,8 +50,7 @@ cargo = "Cargo.toml"
 
 Then in provider blocks: `{{ pkg.version }}` or `{{ cargo.package.edition }}`.
 
-Supported sources: files and script commands. Supported formats: text, JSON,
-TOML, YAML, KDL, and INI.
+Supported sources: files and script commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
 
 ## Quick Start
 

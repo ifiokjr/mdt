@@ -52,7 +52,9 @@ This content gets replaced
 
 ```markdown
 <!-- {~version:"{{ package.version }}"} -->
+
 0.0.0
+
 <!-- {/version} -->
 ```
 
@@ -77,6 +79,12 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 - `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
 - `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
+
+### Diagnostics Workflow
+
+- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
+- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
+- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
 
 <!-- {/mdtCliUsage} -->
 

@@ -13,6 +13,24 @@ Add a step to your CI workflow that runs `mdt check`:
 
 If any consumer blocks are out of date, the step fails and the pipeline reports which blocks need updating.
 
+## CI diagnostics triage
+
+When `mdt check` fails in CI, add diagnostics commands so logs include root-cause context:
+
+```yaml
+- name: diagnostics
+  run: |
+    mdt info
+    mdt doctor
+```
+
+This gives you:
+
+- Project/config resolution details (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`)
+- Provider/consumer linkage summary (orphans, missing providers, duplicates)
+- Cache artifact health and reuse/reparse telemetry
+- Actionable doctor hints for config/data/layout/cache issues
+
 ## GitHub Actions
 
 ### Full workflow example

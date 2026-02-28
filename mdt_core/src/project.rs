@@ -486,34 +486,40 @@ fn hash_file_contents(path: &Path) -> MdtResult<u64> {
 
 fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDiagnostic {
 	match diag {
-		ParseDiagnostic::UnclosedBlock { name, line, column } => ProjectDiagnostic {
-			file: file.to_path_buf(),
-			kind: DiagnosticKind::UnclosedBlock { name },
-			line,
-			column,
-		},
-		ParseDiagnostic::UnknownTransformer { name, line, column } => ProjectDiagnostic {
-			file: file.to_path_buf(),
-			kind: DiagnosticKind::UnknownTransformer { name },
-			line,
-			column,
-		},
+		ParseDiagnostic::UnclosedBlock { name, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::UnclosedBlock { name },
+				line,
+				column,
+			}
+		}
+		ParseDiagnostic::UnknownTransformer { name, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::UnknownTransformer { name },
+				line,
+				column,
+			}
+		}
 		ParseDiagnostic::InvalidTransformerArgs {
 			name,
 			expected,
 			got,
 			line,
 			column,
-		} => ProjectDiagnostic {
-			file: file.to_path_buf(),
-			kind: DiagnosticKind::InvalidTransformerArgs {
-				name,
-				expected,
-				got,
-			},
-			line,
-			column,
-		},
+		} => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::InvalidTransformerArgs {
+					name,
+					expected,
+					got,
+				},
+				line,
+				column,
+			}
+		}
 	}
 }
 
