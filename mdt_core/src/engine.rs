@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::Argument;
+use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
 use crate::Transformer;
@@ -240,57 +241,105 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let warnings = collect_template_warnings(ctx);
 
 	for consumer in &ctx.project.consumers {
-		let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-			continue;
-		};
+		match consumer.block.r#type {
+			BlockType::Consumer => {
+				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+					continue;
+				};
 
-		let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
-			render_errors.push(RenderError {
-				file: consumer.file.clone(),
-				block_name: consumer.block.name.clone(),
-				message: format!(
-					"argument count mismatch: provider `{}` declares {} parameter(s), but \
-					 consumer passes {}",
-					consumer.block.name,
-					provider.block.arguments.len(),
-					consumer.block.arguments.len(),
-				),
-				line: consumer.block.opening.start.line,
-				column: consumer.block.opening.start.column,
-			});
-			continue;
-		};
-		let rendered = match render_template(&provider.content, &render_data) {
-			Ok(r) => r,
-			Err(e) => {
-				render_errors.push(RenderError {
-					file: consumer.file.clone(),
-					block_name: consumer.block.name.clone(),
-					message: e.to_string(),
-					line: consumer.block.opening.start.line,
-					column: consumer.block.opening.start.column,
-				});
-				continue;
+				let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
+					render_errors.push(RenderError {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						message: format!(
+							"argument count mismatch: provider `{}` declares {} parameter(s), but \
+							 consumer passes {}",
+							consumer.block.name,
+							provider.block.arguments.len(),
+							consumer.block.arguments.len(),
+						),
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+					continue;
+				};
+				let rendered = match render_template(&provider.content, &render_data) {
+					Ok(r) => r,
+					Err(e) => {
+						render_errors.push(RenderError {
+							file: consumer.file.clone(),
+							block_name: consumer.block.name.clone(),
+							message: e.to_string(),
+							line: consumer.block.opening.start.line,
+							column: consumer.block.opening.start.column,
+						});
+						continue;
+					}
+				};
+				let mut expected = apply_transformers_with_data(
+					&rendered,
+					&consumer.block.transformers,
+					Some(&render_data),
+				);
+				if let Some(padding) = &ctx.padding {
+					expected = pad_content_with_config(&expected, &consumer.content, padding);
+				}
+
+				if consumer.content != expected {
+					stale.push(StaleEntry {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						current_content: consumer.content.clone(),
+						expected_content: expected,
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+				}
 			}
-		};
-		let mut expected = apply_transformers_with_data(
-			&rendered,
-			&consumer.block.transformers,
-			Some(&render_data),
-		);
-		if let Some(padding) = &ctx.padding {
-			expected = pad_content_with_config(&expected, &consumer.content, padding);
-		}
+			BlockType::Inline => {
+				let Some(template) = consumer.block.arguments.first() else {
+					render_errors.push(RenderError {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						message: "inline block requires one template argument, e.g. \
+						          <!-- {~name:\"{{ pkg.version }}\"} -->"
+							.to_string(),
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+					continue;
+				};
+				let rendered = match render_template(template, &ctx.data) {
+					Ok(r) => r,
+					Err(e) => {
+						render_errors.push(RenderError {
+							file: consumer.file.clone(),
+							block_name: consumer.block.name.clone(),
+							message: e.to_string(),
+							line: consumer.block.opening.start.line,
+							column: consumer.block.opening.start.column,
+						});
+						continue;
+					}
+				};
+				let expected = apply_transformers_with_data(
+					&rendered,
+					&consumer.block.transformers,
+					Some(&ctx.data),
+				);
 
-		if consumer.content != expected {
-			stale.push(StaleEntry {
-				file: consumer.file.clone(),
-				block_name: consumer.block.name.clone(),
-				current_content: consumer.content.clone(),
-				expected_content: expected,
-				line: consumer.block.opening.start.line,
-				column: consumer.block.opening.start.column,
-			});
+				if consumer.content != expected {
+					stale.push(StaleEntry {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						current_content: consumer.content.clone(),
+						expected_content: expected,
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+				}
+			}
+			BlockType::Provider => {}
 		}
 	}
 
@@ -332,22 +381,41 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 			.sort_by(|a, b| b.block.opening.end.offset.cmp(&a.block.opening.end.offset));
 
 		for consumer in sorted_consumers {
-			let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-				continue;
-			};
+			let new_content = match consumer.block.r#type {
+				BlockType::Consumer => {
+					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+						continue;
+					};
 
-			let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
-				continue; // Argument count mismatch — skip this consumer.
+					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
+					else {
+						continue; // Argument count mismatch — skip this consumer.
+					};
+					let rendered = render_template(&provider.content, &render_data)?;
+					let mut new_content = apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&render_data),
+					);
+					if let Some(padding) = &ctx.padding {
+						new_content =
+							pad_content_with_config(&new_content, &consumer.content, padding);
+					}
+					new_content
+				}
+				BlockType::Inline => {
+					let Some(template) = consumer.block.arguments.first() else {
+						continue;
+					};
+					let rendered = render_template(template, &ctx.data)?;
+					apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&ctx.data),
+					)
+				}
+				BlockType::Provider => continue,
 			};
-			let rendered = render_template(&provider.content, &render_data)?;
-			let mut new_content = apply_transformers_with_data(
-				&rendered,
-				&consumer.block.transformers,
-				Some(&render_data),
-			);
-			if let Some(padding) = &ctx.padding {
-				new_content = pad_content_with_config(&new_content, &consumer.content, padding);
-			}
 
 			if consumer.content != new_content {
 				let start = consumer.block.opening.end.offset;
@@ -387,6 +455,9 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 
 	// Only check providers that are actually referenced by consumers.
 	for consumer in &ctx.project.consumers {
+		if consumer.block.r#type != BlockType::Consumer {
+			continue;
+		}
 		let name = &consumer.block.name;
 		if checked_providers.contains(name) {
 			continue;
@@ -721,21 +792,17 @@ fn pad_content_with_config(
 }
 
 fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {
-	args.get(index).map(|arg| {
-		match arg {
-			Argument::String(s) => s.clone(),
-			Argument::Number(n) => n.to_string(),
-			Argument::Boolean(b) => b.to_string(),
-		}
+	args.get(index).map(|arg| match arg {
+		Argument::String(s) => s.clone(),
+		Argument::Number(n) => n.to_string(),
+		Argument::Boolean(b) => b.to_string(),
 	})
 }
 
 fn get_bool_arg(args: &[Argument], index: usize) -> Option<bool> {
-	args.get(index).map(|arg| {
-		match arg {
-			Argument::Boolean(b) => *b,
-			Argument::String(s) => s == "true",
-			Argument::Number(n) => n.0 != 0.0,
-		}
+	args.get(index).map(|arg| match arg {
+		Argument::Boolean(b) => *b,
+		Argument::String(s) => s == "true",
+		Argument::Number(n) => n.0 != 0.0,
 	})
 }

@@ -60,6 +60,14 @@ This content gets replaced
 <!-- {/blockName} -->
 ```
 
+**Inline tag** (provider-free interpolation using configured data):
+
+```markdown
+<!-- {~version:"{{ package.version }}"} -->
+0.0.0
+<!-- {/version} -->
+```
+
 **Filters and pipes:** Template values support pipe-delimited transformers:
 
 ```markdown

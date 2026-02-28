@@ -27,6 +27,8 @@ pub enum Token {
 	ConsumerTag,
 	/// `{@`
 	ProviderTag,
+	/// `{~`
+	InlineTag,
 	/// `{/`
 	CloseTag,
 	/// `}`
@@ -56,6 +58,7 @@ impl PartialEq for Token {
 			| (Token::HtmlCommentClose, Token::HtmlCommentClose)
 			| (Token::ConsumerTag, Token::ConsumerTag)
 			| (Token::ProviderTag, Token::ProviderTag)
+			| (Token::InlineTag, Token::InlineTag)
 			| (Token::CloseTag, Token::CloseTag)
 			| (Token::BraceClose, Token::BraceClose)
 			| (Token::Pipe, Token::Pipe)
@@ -79,7 +82,7 @@ impl Token {
 		match self {
 			Token::HtmlCommentOpen => 4,
 			Token::HtmlCommentClose => 3,
-			Token::ProviderTag | Token::ConsumerTag | Token::CloseTag => 2,
+			Token::ProviderTag | Token::ConsumerTag | Token::InlineTag | Token::CloseTag => 2,
 			Token::Newline
 			| Token::BraceClose
 			| Token::Pipe
@@ -118,6 +121,7 @@ impl Display for Token {
 			Token::HtmlCommentClose => write!(f, "-->"),
 			Token::ConsumerTag => write!(f, "{{="),
 			Token::ProviderTag => write!(f, "{{@"),
+			Token::InlineTag => write!(f, "{{~"),
 			Token::CloseTag => write!(f, "{{/"),
 			Token::BraceClose => write!(f, "}}"),
 			Token::Pipe => write!(f, "|"),

@@ -11,6 +11,7 @@ use crate::Position;
 use crate::lexer::tokenize;
 use crate::patterns::closing_pattern;
 use crate::patterns::consumer_pattern;
+use crate::patterns::inline_pattern;
 use crate::patterns::provider_pattern;
 use crate::tokens::Token;
 use crate::tokens::TokenGroup;
@@ -116,6 +117,20 @@ pub fn build_blocks_from_groups_with_diagnostics(
 					arguments,
 				});
 			}
+			GroupKind::Inline {
+				name,
+				transformers,
+				arguments,
+			} => {
+				pending.push(BlockCreator {
+					name,
+					r#type: BlockType::Inline,
+					opening: group.position,
+					closing: None,
+					transformers,
+					arguments,
+				});
+			}
 			GroupKind::Close { name } => {
 				let pos = pending.iter().rposition(|bc| bc.name == name);
 				if let Some(idx) = pos {
@@ -168,6 +183,20 @@ fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<V
 				pending.push(BlockCreator {
 					name,
 					r#type: BlockType::Consumer,
+					opening: group.position,
+					closing: None,
+					transformers,
+					arguments,
+				});
+			}
+			GroupKind::Inline {
+				name,
+				transformers,
+				arguments,
+			} => {
+				pending.push(BlockCreator {
+					name,
+					r#type: BlockType::Inline,
 					opening: group.position,
 					closing: None,
 					transformers,
@@ -234,6 +263,11 @@ enum GroupKind {
 		transformers: Vec<Transformer>,
 		arguments: Vec<String>,
 	},
+	Inline {
+		name: String,
+		transformers: Vec<Transformer>,
+		arguments: Vec<String>,
+	},
 	Close {
 		name: String,
 	},
@@ -256,6 +290,16 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 		let (name, transformers, arguments) =
 			extract_name_transformers_and_arguments(group, &Token::ConsumerTag);
 		return GroupKind::Consumer {
+			name,
+			transformers,
+			arguments,
+		};
+	}
+
+	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
+		let (name, transformers, arguments) =
+			extract_name_transformers_and_arguments(group, &Token::InlineTag);
+		return GroupKind::Inline {
 			name,
 			transformers,
 			arguments,
@@ -304,6 +348,23 @@ fn classify_group_with_diagnostics(
 			});
 		}
 		return GroupKind::Consumer {
+			name,
+			transformers,
+			arguments,
+		};
+	}
+
+	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
+		let (name, transformers, arguments, unknown) =
+			extract_name_transformers_arguments_with_diagnostics(group, &Token::InlineTag);
+		for unknown_name in unknown {
+			diagnostics.push(ParseDiagnostic::UnknownTransformer {
+				name: unknown_name,
+				line: group.position.start.line,
+				column: group.position.start.column,
+			});
+		}
+		return GroupKind::Inline {
 			name,
 			transformers,
 			arguments,
@@ -776,6 +837,13 @@ pub enum BlockType {
 	/// <!-- {/exampleConsumer} -->
 	/// ```
 	Consumer,
+	/// Inline blocks render minijinja template content directly from the
+	/// block's first positional argument (without resolving a provider).
+	///
+	/// ```md
+	/// <!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->
+	/// ```
+	Inline,
 }
 
 impl std::fmt::Display for BlockType {
@@ -783,6 +851,7 @@ impl std::fmt::Display for BlockType {
 		match self {
 			Self::Provider => write!(f, "provider"),
 			Self::Consumer => write!(f, "consumer"),
+			Self::Inline => write!(f, "inline"),
 		}
 	}
 }

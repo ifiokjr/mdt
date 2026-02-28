@@ -86,6 +86,34 @@ pub fn provider_token_group() -> TokenGroup {
 	}
 }
 
+pub fn inline_token_group_with_argument() -> TokenGroup {
+	TokenGroup {
+		tokens: vec![
+			Token::HtmlCommentOpen,
+			Token::Whitespace(b' '),
+			Token::InlineTag,
+			Token::Ident("version".to_string()),
+			Token::ArgumentDelimiter,
+			Token::String("{{ pkg.version }}".to_string(), b'"'),
+			Token::BraceClose,
+			Token::Whitespace(b' '),
+			Token::HtmlCommentClose,
+		],
+		position: Position {
+			start: Point {
+				line: 1,
+				column: 1,
+				offset: 0,
+			},
+			end: Point {
+				line: 1,
+				column: 40,
+				offset: 39,
+			},
+		},
+	}
+}
+
 pub fn closing_token_group() -> TokenGroup {
 	TokenGroup {
 		tokens: vec![

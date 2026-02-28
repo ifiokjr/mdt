@@ -316,11 +316,9 @@ impl MdtConfig {
 				.unwrap_or_else(|| panic!("missing namespace `{namespace}`"));
 			let rel_path = source.path();
 			let abs_path = root.join(rel_path);
-			let content = std::fs::read_to_string(&abs_path).map_err(|e| {
-				MdtError::DataFile {
-					path: rel_path.display().to_string(),
-					reason: e.to_string(),
-				}
+			let content = std::fs::read_to_string(&abs_path).map_err(|e| MdtError::DataFile {
+				path: rel_path.display().to_string(),
+				reason: e.to_string(),
 			})?;
 
 			let format = source
@@ -353,48 +351,36 @@ fn parse_data_file(
 	path_display: &str,
 ) -> MdtResult<serde_json::Value> {
 	match format {
-		"json" => {
-			serde_json::from_str(content).map_err(|e| {
-				MdtError::DataFile {
-					path: path_display.to_string(),
-					reason: e.to_string(),
-				}
-			})
-		}
+		"json" => serde_json::from_str(content).map_err(|e| MdtError::DataFile {
+			path: path_display.to_string(),
+			reason: e.to_string(),
+		}),
 		"toml" => {
-			let toml_value: toml::Value = toml::from_str(content).map_err(|e| {
-				MdtError::DataFile {
+			let toml_value: toml::Value =
+				toml::from_str(content).map_err(|e| MdtError::DataFile {
 					path: path_display.to_string(),
 					reason: e.to_string(),
-				}
-			})?;
+				})?;
 			toml_to_json(toml_value, path_display)
 		}
-		"yaml" | "yml" => {
-			serde_yaml_ng::from_str(content).map_err(|e| {
-				MdtError::DataFile {
-					path: path_display.to_string(),
-					reason: e.to_string(),
-				}
-			})
-		}
+		"yaml" | "yml" => serde_yaml_ng::from_str(content).map_err(|e| MdtError::DataFile {
+			path: path_display.to_string(),
+			reason: e.to_string(),
+		}),
 		"kdl" => {
-			let doc: kdl::KdlDocument = content.parse().map_err(|e: kdl::KdlError| {
-				MdtError::DataFile {
-					path: path_display.to_string(),
-					reason: e.to_string(),
-				}
-			})?;
+			let doc: kdl::KdlDocument =
+				content
+					.parse()
+					.map_err(|e: kdl::KdlError| MdtError::DataFile {
+						path: path_display.to_string(),
+						reason: e.to_string(),
+					})?;
 			kdl_document_to_value(&doc, path_display)
 		}
-		"ini" => {
-			serde_ini::from_str(content).map_err(|e| {
-				MdtError::DataFile {
-					path: path_display.to_string(),
-					reason: e.to_string(),
-				}
-			})
-		}
+		"ini" => serde_ini::from_str(content).map_err(|e| MdtError::DataFile {
+			path: path_display.to_string(),
+			reason: e.to_string(),
+		}),
 		other => Err(MdtError::UnsupportedDataFormat(other.to_string())),
 	}
 }
@@ -505,26 +491,20 @@ fn kdl_entry_value_to_json(
 ) -> MdtResult<serde_json::Value> {
 	match value {
 		kdl::KdlValue::String(s) => Ok(serde_json::Value::String(s.clone())),
-		kdl::KdlValue::Integer(i) => {
-			Ok(serde_json::Value::Number(
-				serde_json::Number::from_f64(*i as f64).ok_or_else(|| {
-					MdtError::UnconvertibleFloat {
-						path: path_display.to_string(),
-						value: i.to_string(),
-					}
-				})?,
-			))
-		}
-		kdl::KdlValue::Float(f) => {
-			Ok(serde_json::Value::Number(
-				serde_json::Number::from_f64(*f).ok_or_else(|| {
-					MdtError::UnconvertibleFloat {
-						path: path_display.to_string(),
-						value: f.to_string(),
-					}
-				})?,
-			))
-		}
+		kdl::KdlValue::Integer(i) => Ok(serde_json::Value::Number(
+			serde_json::Number::from_f64(*i as f64).ok_or_else(|| {
+				MdtError::UnconvertibleFloat {
+					path: path_display.to_string(),
+					value: i.to_string(),
+				}
+			})?,
+		)),
+		kdl::KdlValue::Float(f) => Ok(serde_json::Value::Number(
+			serde_json::Number::from_f64(*f).ok_or_else(|| MdtError::UnconvertibleFloat {
+				path: path_display.to_string(),
+				value: f.to_string(),
+			})?,
+		)),
 		kdl::KdlValue::Bool(b) => Ok(serde_json::Value::Bool(*b)),
 		kdl::KdlValue::Null => Ok(serde_json::Value::Null),
 	}

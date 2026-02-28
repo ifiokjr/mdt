@@ -30,8 +30,8 @@ A tag has three parts:
 <!-- {sigil name | transformers} -->
        │      │    │
        │      │    └── Optional: pipe-delimited content filters
-       │      └─────── The block name (shared between provider and consumer)
-       └────────────── @ for provider, = for consumer, / for close
+       │      └─────── The block name
+       └────────────── @ provider, = consumer, ~ inline, / close
 ```
 
 ## File conventions
@@ -41,8 +41,8 @@ mdt determines how to treat files based on their names:
 | Pattern                              | Role                                                           |
 | ------------------------------------ | -------------------------------------------------------------- |
 | `*.t.md`                             | **Template files** — only these can contain provider blocks    |
-| `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for consumer blocks               |
-| `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for consumer blocks inside comments |
+| `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for consumer and inline blocks               |
+| `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for consumer and inline blocks inside comments |
 
 Provider blocks found in non-template files are ignored. This prevents accidental content injection from arbitrary files.
 
