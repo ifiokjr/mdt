@@ -190,3 +190,19 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v4
 ```
+
+## Benchmark CI (this repository)
+
+This repository also runs `.github/workflows/benchmark.yml` on `pull_request`
+and `push` to `main`.
+
+The benchmark job:
+
+1. Builds `mdt` for a baseline ref and the candidate ref.
+2. Runs both binaries against the same deterministic workload.
+3. Compares medians per scenario with relative and absolute thresholds.
+4. Uploads raw benchmark artifacts and posts a PR comment report.
+
+When regressions exceed threshold, pull requests must include a
+`## Benchmark Justification` section in the PR description to document the
+tradeoff.
