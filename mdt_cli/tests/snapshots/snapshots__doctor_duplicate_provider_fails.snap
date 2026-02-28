@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 1207
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmppy1uCY
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpUNsyae
     - doctor
   env:
     NO_COLOR: "1"
@@ -25,7 +24,13 @@ mdt doctor
 [SKIP] Orphan Consumers       skipped because project scan did not complete
 [SKIP] Unused Providers       skipped because project scan did not complete
 [SKIP] Parser Diagnostics     skipped because project scan did not complete
+[WARN] Cache Artifact         cache artifact not found at [TEMP_DIR]/.mdt/cache/index-v2.json
+       hint: run `mdt check` or `mdt info` to trigger a scan and write the cache artifact
+[PASS] Cache Hash Mode        content-hash verification disabled (mtime + size fingerprints only)
+       hint: set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while troubleshooting
+[SKIP] Cache Efficiency       cache telemetry unavailable
+       hint: ensure cache artifact is valid, then run `mdt info` or `mdt check` a few times to gather telemetry
 
-summary: 1 pass, 1 warn, 1 fail, 5 skip
+summary: 2 pass, 2 warn, 1 fail, 6 skip
 
 ----- stderr -----

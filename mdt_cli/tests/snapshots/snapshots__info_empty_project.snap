@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 162
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpA4Cz6F
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpCbOHK6
     - info
   env:
     NO_COLOR: "1"
@@ -41,5 +40,18 @@ Errors                       0
 Warnings                     0
 Missing providers            0
 Missing names                none
+
+Cache
+Artifact path                [TEMP_DIR]/.mdt/cache/index-v2.json
+Artifact status              ok
+Schema version               2 (supported)
+Project key match            yes
+Hash verification            disabled
+Scans recorded               1
+Full project hits            0 (0.0%)
+File reuse totals            0 reused / 0 reparsed (n/a)
+Last scan mode               incremental reuse
+Last scan files              0 reused / 0 reparsed / 0 total
+Last scan unix ms            [UNIX_MS]
 
 ----- stderr -----

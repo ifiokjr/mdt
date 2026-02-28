@@ -221,6 +221,83 @@ impl ProjectContext {
 	}
 }
 
+/// Metrics for the most recent cache-assisted project scan.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectCacheLastScan {
+	/// Unix timestamp in milliseconds when the scan completed.
+	pub timestamp_unix_ms: u64,
+	/// Whether the scan reused the entire cached project without reparsing.
+	pub full_project_hit: bool,
+	/// Number of files reused from cache.
+	pub reused_files: u64,
+	/// Number of files reparsed from disk.
+	pub reparsed_files: u64,
+	/// Total files considered by this scan.
+	pub total_files: u64,
+}
+
+/// Cumulative cache telemetry persisted in the project index cache artifact.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectCacheTelemetry {
+	/// Number of scans recorded in this cache artifact lineage.
+	pub scan_count: u64,
+	/// Number of scans that were full cache hits.
+	pub full_project_hit_count: u64,
+	/// Total number of file entries reused from cache across scans.
+	pub reused_file_count_total: u64,
+	/// Total number of file entries reparsed from disk across scans.
+	pub reparsed_file_count_total: u64,
+	/// Metrics for the most recent scan, if available.
+	pub last_scan: Option<ProjectCacheLastScan>,
+}
+
+/// Read-only inspection of the on-disk project index cache artifact.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectCacheInspection {
+	/// Absolute path to the cache artifact.
+	pub path: PathBuf,
+	/// Whether a cache artifact file exists at the expected path.
+	pub exists: bool,
+	/// Whether the artifact could be read from disk.
+	pub readable: bool,
+	/// Whether the artifact parsed and matched the supported schema.
+	pub valid: bool,
+	/// Schema version read from the artifact, if present.
+	pub schema_version: Option<u32>,
+	/// Whether the artifact schema matches the current implementation.
+	pub schema_supported: bool,
+	/// Whether the artifact key matches current scan options.
+	pub project_key_matches: bool,
+	/// Whether content-hash cache verification is enabled for this scan mode.
+	pub hash_verification_enabled: bool,
+	/// Persisted telemetry metrics if the artifact parsed successfully.
+	pub telemetry: Option<ProjectCacheTelemetry>,
+}
+
+impl From<index_cache::LastScanTelemetry> for ProjectCacheLastScan {
+	fn from(value: index_cache::LastScanTelemetry) -> Self {
+		Self {
+			timestamp_unix_ms: value.timestamp_unix_ms,
+			full_project_hit: value.full_project_hit,
+			reused_files: value.reused_files,
+			reparsed_files: value.reparsed_files,
+			total_files: value.total_files,
+		}
+	}
+}
+
+impl From<index_cache::CacheTelemetry> for ProjectCacheTelemetry {
+	fn from(value: index_cache::CacheTelemetry) -> Self {
+		Self {
+			scan_count: value.scan_count,
+			full_project_hit_count: value.full_project_hit_count,
+			reused_file_count_total: value.reused_file_count_total,
+			reparsed_file_count_total: value.reparsed_file_count_total,
+			last_scan: value.last_scan.map(Into::into),
+		}
+	}
+}
+
 /// A provider block with its source file and content.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderEntry {
@@ -307,6 +384,64 @@ fn build_project_cache_key(options: &ScanOptions) -> String {
 		excluded_blocks.join("\u{1f}"),
 		options.cache_verify_hash,
 	)
+}
+
+/// Return the absolute path to the current project's cache artifact.
+pub fn project_cache_path(root: &Path) -> PathBuf {
+	index_cache::cache_path(root)
+}
+
+/// Inspect the project's cache artifact without mutating it.
+///
+/// This is intended for diagnostics surfaces (`mdt info`, `mdt doctor`) that
+/// need to report cache health and telemetry details.
+pub fn inspect_project_cache(root: &Path, options: &ScanOptions) -> ProjectCacheInspection {
+	let path = project_cache_path(root);
+	let mut inspection = ProjectCacheInspection {
+		path: path.clone(),
+		exists: path.is_file(),
+		readable: false,
+		valid: false,
+		schema_version: None,
+		schema_supported: false,
+		project_key_matches: false,
+		hash_verification_enabled: options.cache_verify_hash,
+		telemetry: None,
+	};
+
+	if !inspection.exists {
+		return inspection;
+	}
+
+	let Ok(bytes) = std::fs::read(&path) else {
+		return inspection;
+	};
+	inspection.readable = true;
+
+	let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+		return inspection;
+	};
+
+	let schema_version = value
+		.get("schema_version")
+		.and_then(serde_json::Value::as_u64)
+		.and_then(|version| u32::try_from(version).ok());
+	inspection.schema_version = schema_version;
+	inspection.schema_supported = schema_version == Some(index_cache::CACHE_SCHEMA_VERSION);
+
+	let expected_project_key = build_project_cache_key(options);
+	inspection.project_key_matches = value
+		.get("project_key")
+		.and_then(serde_json::Value::as_str)
+		.is_some_and(|key| key == expected_project_key);
+
+	let Ok(cache) = serde_json::from_value::<ProjectIndexCache>(value) else {
+		return inspection;
+	};
+
+	inspection.valid = inspection.schema_supported;
+	inspection.telemetry = Some(cache.telemetry.into());
+	inspection
 }
 
 fn collect_file_fingerprints(
@@ -558,15 +693,21 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		options.max_file_size,
 		options.cache_verify_hash,
 	)?;
-	let cache = index_cache::load(root, &project_key);
+	let mut cache = index_cache::load(root, &project_key);
 
-	if let Some(cached) = &cache {
+	if let Some(cached) = &mut cache {
 		if cached.files == file_fingerprints {
+			cached
+				.telemetry
+				.record_scan(true, files.len(), 0, files.len());
+			index_cache::save(root, cached);
 			return Ok(cached.project.clone());
 		}
 	}
 
 	let mut merged_file_data = BTreeMap::new();
+	let mut reused_file_count = 0usize;
+	let mut reparsed_file_count = 0usize;
 	for file in &files {
 		let file_key = index_cache::relative_file_key(root, file);
 		let fingerprint = file_fingerprints.get(&file_key);
@@ -579,8 +720,10 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		});
 
 		let entry = if let Some(entry) = cached_entry {
+			reused_file_count = reused_file_count.saturating_add(1);
 			entry
 		} else {
+			reparsed_file_count = reparsed_file_count.saturating_add(1);
 			parse_file_for_scan(file, options)?
 		};
 
@@ -588,13 +731,19 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 	}
 
 	let project = build_project_from_file_data(root, &files, &merged_file_data)?;
-	let cache = ProjectIndexCache::new(
+	let mut next_cache = ProjectIndexCache::new(
 		project_key,
 		file_fingerprints,
 		merged_file_data,
 		project.clone(),
 	);
-	index_cache::save(root, &cache);
+	if let Some(previous_cache) = cache {
+		next_cache.telemetry = previous_cache.telemetry;
+	}
+	next_cache
+		.telemetry
+		.record_scan(false, reused_file_count, reparsed_file_count, files.len());
+	index_cache::save(root, &next_cache);
 
 	Ok(project)
 }

@@ -166,6 +166,30 @@ Includes:
 - Data namespaces and their configured source files.
 - Template file count, discovered template files, and template directory hints.
 - Diagnostic totals (errors/warnings) and missing provider names.
+- Cache observability details (artifact path/health, schema compatibility, hash verification mode, cumulative reuse/reparse totals, and last scan metrics).
+
+### `mdt doctor`
+
+Run project health checks with remediation hints and an explicit pass/warn/fail summary.
+
+```sh
+mdt doctor
+mdt doctor --path ./my-project
+mdt doctor --format json
+```
+
+Checks include:
+
+- Config discovery and config parse status.
+- Data source loading and parse validity.
+- Template layout conventions (`.templates/` preferred).
+- Provider/consumer integrity (duplicates, missing providers, orphan consumers, unused providers).
+- Parser diagnostics aggregation.
+- Cache artifact validity and schema compatibility.
+- Cache hash verification mode guidance.
+- Cache efficiency trend analysis based on reuse vs reparse telemetry.
+
+Text output prints one line per check with a status tag (`PASS`, `WARN`, `FAIL`, `SKIP`) and optional hints. JSON output includes `ok`, `summary`, and a detailed `checks` array.
 
 ### `mdt lsp`
 
@@ -196,6 +220,7 @@ Use this command when you want an AI assistant to query template providers, cons
 
 ## Environment variables
 
-| Variable   | Effect                                                                  |
-| ---------- | ----------------------------------------------------------------------- |
-| `NO_COLOR` | When set (to any value), disables colored output. Same as `--no-color`. |
+| Variable                | Effect                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `NO_COLOR`              | When set (to any value), disables colored output. Same as `--no-color`.                                            |
+| `MDT_CACHE_VERIFY_HASH` | When set (to any value), cache fingerprints include content hashes (in addition to size/mtime) for stricter reuse. |

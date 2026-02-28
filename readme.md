@@ -73,6 +73,8 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 - `mdt init [--path <dir>]` — Create a sample `template.t.md` file with getting-started instructions.
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
+- `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
+- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
 - `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
 

@@ -6,6 +6,7 @@ use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
+use serde_json::Value;
 
 #[test]
 fn check_passes_when_up_to_date() -> AnyEmptyResult {
@@ -381,4 +382,87 @@ fn doctor_command_is_accepted_by_cli_parser() {
 		}
 		_ => panic!("expected Doctor command"),
 	}
+}
+
+#[test]
+fn info_json_includes_cache_observability_fields() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	let output = cmd
+		.env("NO_COLOR", "1")
+		.arg("info")
+		.arg("--format")
+		.arg("json")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.get_output()
+		.stdout
+		.clone();
+
+	let report: Value = serde_json::from_slice(&output)?;
+	let cache = report
+		.get("cache")
+		.unwrap_or_else(|| panic!("expected `cache` section in info report"));
+	assert_eq!(cache["exists"], Value::Bool(true));
+	assert_eq!(cache["readable"], Value::Bool(true));
+	assert_eq!(cache["valid"], Value::Bool(true));
+	assert!(cache["scan_count"].as_u64().is_some());
+	assert!(cache["full_project_hit_count"].as_u64().is_some());
+	assert!(cache["reused_file_count_total"].as_u64().is_some());
+	assert!(cache["reparsed_file_count_total"].as_u64().is_some());
+	assert!(cache["last_scan"].is_object());
+
+	Ok(())
+}
+
+#[test]
+fn doctor_json_includes_cache_checks() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	let output = cmd
+		.env("NO_COLOR", "1")
+		.arg("doctor")
+		.arg("--format")
+		.arg("json")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.get_output()
+		.stdout
+		.clone();
+
+	let report: Value = serde_json::from_slice(&output)?;
+	let checks = report["checks"]
+		.as_array()
+		.unwrap_or_else(|| panic!("expected checks array"));
+	let check_ids: std::collections::BTreeSet<&str> = checks
+		.iter()
+		.filter_map(|check| check.get("id").and_then(Value::as_str))
+		.collect();
+	assert!(check_ids.contains("cache_artifact"));
+	assert!(check_ids.contains("cache_hash_mode"));
+	assert!(check_ids.contains("cache_efficiency"));
+
+	Ok(())
 }

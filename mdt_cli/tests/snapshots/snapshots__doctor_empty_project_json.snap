@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 1177
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmph4nWNV
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpllT9hC
     - doctor
     - "--format"
     - json
@@ -18,10 +17,10 @@ exit_code: 0
 {
   "ok": true,
   "summary": {
-    "pass": 6,
+    "pass": 8,
     "warn": 1,
     "fail": 0,
-    "skip": 1
+    "skip": 2
   },
   "checks": [
     {
@@ -78,6 +77,27 @@ exit_code: 0
       "title": "Parser Diagnostics",
       "status": "pass",
       "message": "no parser diagnostics found",
+      "hint": null
+    },
+    {
+      "id": "cache_artifact",
+      "title": "Cache Artifact",
+      "status": "pass",
+      "message": "cache artifact is readable and valid at [TEMP_DIR]/.mdt/cache/index-v2.json",
+      "hint": null
+    },
+    {
+      "id": "cache_hash_mode",
+      "title": "Cache Hash Mode",
+      "status": "pass",
+      "message": "content-hash verification disabled (mtime + size fingerprints only)",
+      "hint": "set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while troubleshooting"
+    },
+    {
+      "id": "cache_efficiency",
+      "title": "Cache Efficiency",
+      "status": "skip",
+      "message": "insufficient history for trend analysis (need at least 3 scans)",
       "hint": null
     }
   ]

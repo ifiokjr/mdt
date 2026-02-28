@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 1166
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpyrhrWI
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpfYCLXK
     - doctor
   env:
     NO_COLOR: "1"
@@ -24,7 +23,11 @@ mdt doctor
 [PASS] Orphan Consumers       no orphan consumer blocks found
 [PASS] Unused Providers       all providers have at least one consumer
 [PASS] Parser Diagnostics     no parser diagnostics found
+[PASS] Cache Artifact         cache artifact is readable and valid at [TEMP_DIR]/.mdt/cache/index-v2.json
+[PASS] Cache Hash Mode        content-hash verification disabled (mtime + size fingerprints only)
+       hint: set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while troubleshooting
+[SKIP] Cache Efficiency       insufficient history for trend analysis (need at least 3 scans)
 
-summary: 6 pass, 1 warn, 0 fail, 1 skip
+summary: 8 pass, 1 warn, 0 fail, 2 skip
 
 ----- stderr -----

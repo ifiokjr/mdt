@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 185
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpXXVXV2
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpNOea9e
     - info
     - "--format"
     - json
@@ -47,6 +46,29 @@ exit_code: 0
     "warnings": 0,
     "missing_provider_count": 0,
     "missing_provider_names": []
+  },
+  "cache": {
+    "path": "[TEMP_DIR]/.mdt/cache/index-v2.json",
+    "exists": true,
+    "readable": true,
+    "valid": true,
+    "schema_version": 2,
+    "schema_supported": true,
+    "project_key_matches": true,
+    "hash_verification_enabled": false,
+    "scan_count": 1,
+    "full_project_hit_count": 0,
+    "full_project_hit_rate": "0.0%",
+    "reused_file_count_total": 0,
+    "reparsed_file_count_total": 0,
+    "file_reuse_rate": "n/a",
+    "last_scan": {
+      "timestamp_unix_ms": [UNIX_MS],
+      "full_project_hit": false,
+      "reused_files": 0,
+      "reparsed_files": 0,
+      "total_files": 0
+    }
   }
 }
 
