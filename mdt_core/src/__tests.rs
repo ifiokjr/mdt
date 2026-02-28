@@ -9063,3 +9063,89 @@ fn scan_project_removes_deleted_files_from_cache() -> MdtResult<()> {
 
 	Ok(())
 }
+
+#[test]
+fn scan_project_cache_stores_content_hash_when_enabled() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let options = ScanOptions {
+		cache_verify_hash: true,
+		..ScanOptions::default()
+	};
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+	assert!(
+		cache_json["files"]["template.t.md"]["content_hash"].is_number(),
+		"expected content hash for template fingerprint when hash mode is enabled"
+	);
+	assert!(
+		cache_json["files"]["readme.md"]["content_hash"].is_number(),
+		"expected content hash for consumer fingerprint when hash mode is enabled"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_hash_mismatch_invalidates_cache() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let options = ScanOptions {
+		cache_verify_hash: true,
+		..ScanOptions::default()
+	};
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache_path = index_cache::cache_path(tmp.path());
+	let mut cache_json: serde_json::Value = serde_json::from_str(
+		&std::fs::read_to_string(&cache_path).unwrap_or_else(|e| panic!("read cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("parse cache json: {e}"));
+	cache_json["project"]["providers"]["greeting"]["content"] =
+		serde_json::Value::String("STALE CACHED CONTENT".to_string());
+	cache_json["files"]["template.t.md"]["content_hash"] = serde_json::Value::Null;
+	std::fs::write(
+		&cache_path,
+		serde_json::to_vec_pretty(&cache_json).unwrap_or_else(|e| panic!("encode cache: {e}")),
+	)
+	.unwrap_or_else(|e| panic!("rewrite cache: {e}"));
+
+	let project = scan_project_with_options(tmp.path(), &options)?;
+	assert_ne!(
+		project.providers["greeting"].content, "STALE CACHED CONTENT",
+		"content hash mismatch should force cache miss and fresh parse"
+	);
+	assert!(
+		project.providers["greeting"]
+			.content
+			.contains("Hello world!"),
+		"fresh parse should preserve on-disk provider content"
+	);
+
+	Ok(())
+}
