@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -49,6 +52,8 @@ pub struct ScanOptions {
 	pub markdown_codeblocks: CodeBlockFilter,
 	/// Block names to exclude from scanning.
 	pub excluded_blocks: Vec<String>,
+	/// Whether to include content hashes in file fingerprints for cache validation.
+	pub cache_verify_hash: bool,
 }
 
 impl Default for ScanOptions {
@@ -61,6 +66,7 @@ impl Default for ScanOptions {
 			disable_gitignore: false,
 			markdown_codeblocks: CodeBlockFilter::default(),
 			excluded_blocks: Vec::new(),
+			cache_verify_hash: false,
 		}
 	}
 }
@@ -84,6 +90,7 @@ impl ScanOptions {
 			.map(|c| c.exclude.markdown_codeblocks.clone())
 			.unwrap_or_default();
 		let excluded_blocks = config.map(|c| c.exclude.blocks.clone()).unwrap_or_default();
+		let cache_verify_hash = std::env::var_os("MDT_CACHE_VERIFY_HASH").is_some();
 		let include_set = build_glob_set(include_patterns);
 
 		Self {
@@ -94,6 +101,7 @@ impl ScanOptions {
 			disable_gitignore,
 			markdown_codeblocks,
 			excluded_blocks,
+			cache_verify_hash,
 		}
 	}
 }
@@ -290,13 +298,14 @@ fn build_project_cache_key(options: &ScanOptions) -> String {
 
 	format!(
 		"index-v2|max={}|disable_gitignore={}|markdown={:?\
-		 }|exclude={}|templates={}|excluded_blocks={}",
+		 }|exclude={}|templates={}|excluded_blocks={}|cache_verify_hash={}",
 		options.max_file_size,
 		options.disable_gitignore,
 		options.markdown_codeblocks,
 		exclude_patterns.join("\u{1f}"),
 		template_paths.join("\u{1f}"),
 		excluded_blocks.join("\u{1f}"),
+		options.cache_verify_hash,
 	)
 }
 
@@ -304,6 +313,7 @@ fn collect_file_fingerprints(
 	root: &Path,
 	files: &[PathBuf],
 	max_file_size: u64,
+	verify_hash: bool,
 ) -> MdtResult<BTreeMap<String, FileFingerprint>> {
 	let mut fingerprints = BTreeMap::new();
 
@@ -317,13 +327,26 @@ fn collect_file_fingerprints(
 			});
 		}
 
+		let content_hash = if verify_hash {
+			Some(hash_file_contents(file)?)
+		} else {
+			None
+		};
+
 		fingerprints.insert(
 			index_cache::relative_file_key(root, file),
-			index_cache::build_file_fingerprint(&metadata),
+			index_cache::build_file_fingerprint(&metadata, content_hash),
 		);
 	}
 
 	Ok(fingerprints)
+}
+
+fn hash_file_contents(path: &Path) -> MdtResult<u64> {
+	let bytes = std::fs::read(path)?;
+	let mut hasher = DefaultHasher::new();
+	bytes.hash(&mut hasher);
+	Ok(hasher.finish())
 }
 
 fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDiagnostic {
@@ -531,7 +554,12 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 	}
 
 	let project_key = build_project_cache_key(options);
-	let file_fingerprints = collect_file_fingerprints(root, &files, options.max_file_size)?;
+	let file_fingerprints = collect_file_fingerprints(
+		root,
+		&files,
+		options.max_file_size,
+		options.cache_verify_hash,
+	)?;
 	let cache = index_cache::load(root, &project_key);
 
 	if let Some(cached) = &cache {
