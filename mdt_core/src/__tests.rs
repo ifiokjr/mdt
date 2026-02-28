@@ -562,8 +562,8 @@ fn compute_updates_replaces_inline_content_in_markdown_table() -> MdtResult<()> 
 		.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("readme.md"),
-		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- \
-		 {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
+		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- {~version:\"{{ \
+		 pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -590,14 +590,13 @@ fn compute_updates_inline_with_script_data_source() -> MdtResult<()> {
 	std::fs::write(tmp.path().join("VERSION"), "2.4.6\n").unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[data]\nrelease = { command = \"cat VERSION\", format = \"text\", watch = \
-		 [\"VERSION\"] }\n",
+		"[data]\nrelease = { command = \"cat VERSION\", format = \"text\", watch = [\"VERSION\"] \
+		 }\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("readme.md"),
-		"Release <!-- {~releaseValue:\"{{ release | trim }}\"} -->0.0.0<!-- {/releaseValue} \
-		 -->\n",
+		"Release <!-- {~releaseValue:\"{{ release | trim }}\"} -->0.0.0<!-- {/releaseValue} -->\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 

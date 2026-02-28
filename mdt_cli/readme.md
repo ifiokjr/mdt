@@ -75,8 +75,8 @@ Current version: <!-- {~version:"{{ package.version }}"} -->0.0.0<!-- {/version}
 ```
 
 ```markdown
-| Artifact | Version |
-| -------- | ------- |
+| Artifact | Version                                                                   |
+| -------- | ------------------------------------------------------------------------- |
 | mdt_cli  | <!-- {~cliVersion:"{{ package.version }}"} -->0.0.0<!-- {/cliVersion} --> |
 ```
 

@@ -73,8 +73,8 @@ Install version <!-- {~releaseVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/releas
 ### Inline value in a table cell
 
 ```markdown
-| Package | Version |
-| ------- | ------- |
+| Package | Version                                                               |
+| ------- | --------------------------------------------------------------------- |
 | mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/mdtVersion} --> |
 ```
 
