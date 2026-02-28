@@ -30,13 +30,15 @@ exit_code: 0
     "namespaces": [
       {
         "namespace": "meta",
-        "path": "meta.toml",
+        "location": "meta.toml",
+        "kind": "file",
         "format": "toml",
         "explicit_format": false
       },
       {
         "namespace": "pkg",
-        "path": "package.json",
+        "location": "package.json",
+        "kind": "file",
         "format": "json",
         "explicit_format": false
       }

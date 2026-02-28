@@ -1,8 +1,12 @@
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
+use std::time::UNIX_EPOCH;
 
 use serde::Deserialize;
+use serde::Serialize;
 
 use crate::MdtError;
 use crate::MdtResult;
@@ -29,28 +33,56 @@ pub const CONFIG_FILE_CANDIDATES: [&str; 3] = ["mdt.toml", ".mdt.toml", ".config
 /// [data]
 /// release = { path = "release-info", format = "json" }
 /// ```
+///
+/// Script-backed entries can execute commands and optionally cache output
+/// based on watched files:
+///
+/// ```toml
+/// [data]
+/// version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+/// ```
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 #[serde(untagged)]
 #[non_exhaustive]
 pub enum DataSource {
 	Path(PathBuf),
 	Typed(TypedDataSource),
+	Script(ScriptDataSource),
 }
 
 impl DataSource {
-	/// Returns the configured relative path for this data source.
-	pub fn path(&self) -> &Path {
+	/// Returns the configured relative path for file-backed sources.
+	pub fn path(&self) -> Option<&Path> {
 		match self {
-			Self::Path(path) => path.as_path(),
-			Self::Typed(typed) => typed.path.as_path(),
+			Self::Path(path) => Some(path.as_path()),
+			Self::Typed(typed) => Some(typed.path.as_path()),
+			Self::Script(_) => None,
 		}
 	}
 
-	/// Returns the explicit format override (if configured).
+	/// Returns the explicit format override (if configured) for typed or script
+	/// entries.
 	pub fn format(&self) -> Option<&str> {
 		match self {
 			Self::Path(_) => None,
 			Self::Typed(typed) => Some(typed.format.as_str()),
+			Self::Script(script) => script.format.as_deref(),
+		}
+	}
+
+	/// Returns the configured command for script-backed sources.
+	pub fn command(&self) -> Option<&str> {
+		match self {
+			Self::Script(script) => Some(script.command.as_str()),
+			_ => None,
+		}
+	}
+
+	/// Returns watched files for script-backed sources.
+	pub fn watch(&self) -> Option<&[PathBuf]> {
+		match self {
+			Self::Script(script) => Some(script.watch.as_slice()),
+			_ => None,
 		}
 	}
 }
@@ -60,6 +92,16 @@ impl DataSource {
 pub struct TypedDataSource {
 	pub path: PathBuf,
 	pub format: String,
+}
+
+/// Script-backed data source configuration for `[data]` entries.
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+pub struct ScriptDataSource {
+	pub command: String,
+	#[serde(default)]
+	pub format: Option<String>,
+	#[serde(default)]
+	pub watch: Vec<PathBuf>,
 }
 
 /// Configuration loaded from an `mdt.toml` file.
@@ -179,6 +221,116 @@ pub struct PaddingConfig {
 
 fn default_max_file_size() -> u64 {
 	DEFAULT_MAX_FILE_SIZE
+}
+
+const DATA_CACHE_SCHEMA_VERSION: u32 = 1;
+const DATA_CACHE_FILE_NAME: &str = "data-v1.json";
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct DataScriptCache {
+	schema_version: u32,
+	entries: BTreeMap<String, ScriptCacheEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ScriptCacheEntry {
+	command: String,
+	format: String,
+	watch: Vec<String>,
+	watch_fingerprints: BTreeMap<String, WatchFingerprint>,
+	value: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct WatchFingerprint {
+	exists: bool,
+	size: u64,
+	modified_unix_ms: u64,
+}
+
+fn data_cache_path(root: &Path) -> PathBuf {
+	root.join(".mdt").join("cache").join(DATA_CACHE_FILE_NAME)
+}
+
+fn load_script_cache(root: &Path) -> DataScriptCache {
+	let cache_path = data_cache_path(root);
+	let Ok(bytes) = std::fs::read(cache_path) else {
+		return DataScriptCache {
+			schema_version: DATA_CACHE_SCHEMA_VERSION,
+			entries: BTreeMap::new(),
+		};
+	};
+
+	let Ok(cache) = serde_json::from_slice::<DataScriptCache>(&bytes) else {
+		return DataScriptCache {
+			schema_version: DATA_CACHE_SCHEMA_VERSION,
+			entries: BTreeMap::new(),
+		};
+	};
+
+	if cache.schema_version != DATA_CACHE_SCHEMA_VERSION {
+		return DataScriptCache {
+			schema_version: DATA_CACHE_SCHEMA_VERSION,
+			entries: BTreeMap::new(),
+		};
+	}
+
+	cache
+}
+
+fn save_script_cache(root: &Path, cache: &DataScriptCache) {
+	let cache_path = data_cache_path(root);
+	let Some(cache_dir) = cache_path.parent() else {
+		return;
+	};
+
+	if std::fs::create_dir_all(cache_dir).is_err() {
+		return;
+	}
+
+	let Ok(payload) = serde_json::to_vec_pretty(cache) else {
+		return;
+	};
+
+	let temp_path = cache_path.with_extension(format!(
+		"json.tmp-{}-{}",
+		std::process::id(),
+		std::time::SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.map_or(0, |duration| duration.as_nanos())
+	));
+
+	if std::fs::write(&temp_path, payload).is_err() {
+		return;
+	}
+
+	if std::fs::rename(&temp_path, &cache_path).is_err() {
+		let _ = std::fs::remove_file(temp_path);
+	}
+}
+
+fn normalize_path_key(path: &Path) -> String {
+	path.to_string_lossy().replace('\\', "/")
+}
+
+fn watch_fingerprint(path: &Path) -> WatchFingerprint {
+	match std::fs::metadata(path) {
+		Ok(metadata) => WatchFingerprint {
+			exists: true,
+			size: metadata.len(),
+			modified_unix_ms: metadata
+				.modified()
+				.ok()
+				.and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+				.and_then(|duration| duration.as_millis().try_into().ok())
+				.unwrap_or(0),
+		},
+		Err(_) => WatchFingerprint {
+			exists: false,
+			size: 0,
+			modified_unix_ms: 0,
+		},
+	}
 }
 
 /// Controls filtering of mdt tags inside fenced code blocks in source files.
@@ -305,6 +457,9 @@ impl MdtConfig {
 	/// namespace.
 	pub fn load_data(&self, root: &Path) -> MdtResult<HashMap<String, serde_json::Value>> {
 		let mut data = HashMap::new();
+		let mut script_cache = load_script_cache(root);
+		script_cache.schema_version = DATA_CACHE_SCHEMA_VERSION;
+		let mut touched_script_cache = false;
 
 		let mut namespaces: Vec<_> = self.data.keys().cloned().collect();
 		namespaces.sort();
@@ -314,33 +469,145 @@ impl MdtConfig {
 				.data
 				.get(&namespace)
 				.unwrap_or_else(|| panic!("missing namespace `{namespace}`"));
-			let rel_path = source.path();
-			let abs_path = root.join(rel_path);
-			let content = std::fs::read_to_string(&abs_path).map_err(|e| MdtError::DataFile {
-				path: rel_path.display().to_string(),
-				reason: e.to_string(),
-			})?;
-
-			let format = source
-				.format()
-				.map(str::trim)
-				.filter(|value| !value.is_empty())
-				.map(str::to_ascii_lowercase)
-				.unwrap_or_else(|| {
-					abs_path
+			let value = match source {
+				DataSource::Path(rel_path) => {
+					let abs_path = root.join(rel_path);
+					let content =
+						std::fs::read_to_string(&abs_path).map_err(|e| MdtError::DataFile {
+							path: rel_path.display().to_string(),
+							reason: e.to_string(),
+						})?;
+					let format = abs_path
 						.extension()
 						.and_then(|e| e.to_str())
 						.unwrap_or("")
-						.to_ascii_lowercase()
-				});
+						.to_ascii_lowercase();
+					parse_data_file(&content, format.as_str(), &rel_path.display().to_string())?
+				}
+				DataSource::Typed(typed) => {
+					let rel_path = typed.path.as_path();
+					let abs_path = root.join(rel_path);
+					let content =
+						std::fs::read_to_string(&abs_path).map_err(|e| MdtError::DataFile {
+							path: rel_path.display().to_string(),
+							reason: e.to_string(),
+						})?;
+					let format = typed.format.trim().to_ascii_lowercase();
+					parse_data_file(&content, format.as_str(), &rel_path.display().to_string())?
+				}
+				DataSource::Script(script) => {
+					touched_script_cache = true;
+					load_script_data_source(root, &namespace, script, &mut script_cache)?
+				}
+			};
 
-			let value =
-				parse_data_file(&content, format.as_str(), &rel_path.display().to_string())?;
 			data.insert(namespace, value);
+		}
+
+		if touched_script_cache {
+			save_script_cache(root, &script_cache);
 		}
 
 		Ok(data)
 	}
+}
+
+fn load_script_data_source(
+	root: &Path,
+	namespace: &str,
+	script: &ScriptDataSource,
+	cache: &mut DataScriptCache,
+) -> MdtResult<serde_json::Value> {
+	let format = script
+		.format
+		.as_deref()
+		.map(str::trim)
+		.filter(|value| !value.is_empty())
+		.map(str::to_ascii_lowercase)
+		.unwrap_or_else(|| "text".to_string());
+
+	let mut watch: Vec<String> = script
+		.watch
+		.iter()
+		.map(|path| normalize_path_key(path))
+		.collect();
+	watch.sort();
+	watch.dedup();
+
+	let watch_fingerprints: BTreeMap<String, WatchFingerprint> = watch
+		.iter()
+		.map(|watch_path| {
+			let abs_watch = root.join(watch_path);
+			(watch_path.clone(), watch_fingerprint(&abs_watch))
+		})
+		.collect();
+
+	// Only use cache when explicit watch files are configured.
+	if !watch.is_empty() {
+		if let Some(cached) = cache.entries.get(namespace) {
+			if cached.command == script.command
+				&& cached.format == format
+				&& cached.watch == watch
+				&& cached.watch_fingerprints == watch_fingerprints
+			{
+				return Ok(cached.value.clone());
+			}
+		}
+	}
+
+	let stdout = execute_script(root, namespace, &script.command)?;
+	let value = parse_data_file(&stdout, &format, namespace)?;
+
+	cache.entries.insert(
+		namespace.to_string(),
+		ScriptCacheEntry {
+			command: script.command.clone(),
+			format,
+			watch,
+			watch_fingerprints,
+			value: value.clone(),
+		},
+	);
+
+	Ok(value)
+}
+
+fn execute_script(root: &Path, namespace: &str, command: &str) -> MdtResult<String> {
+	let output = if cfg!(windows) {
+		Command::new("cmd")
+			.arg("/C")
+			.arg(command)
+			.current_dir(root)
+			.output()?
+	} else {
+		Command::new("sh")
+			.arg("-c")
+			.arg(command)
+			.current_dir(root)
+			.output()?
+	};
+
+	if !output.status.success() {
+		let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+		let reason = if stderr.is_empty() {
+			format!(
+				"command exited with status {}",
+				output
+					.status
+					.code()
+					.map_or_else(|| "unknown".to_string(), |code| code.to_string())
+			)
+		} else {
+			stderr
+		};
+
+		return Err(MdtError::DataScript {
+			namespace: namespace.to_string(),
+			reason,
+		});
+	}
+
+	Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 /// Parse a data file's content into a `serde_json::Value` based on its
@@ -351,6 +618,7 @@ fn parse_data_file(
 	path_display: &str,
 ) -> MdtResult<serde_json::Value> {
 	match format {
+		"text" | "string" | "raw" | "txt" => Ok(serde_json::Value::String(content.to_string())),
 		"json" => serde_json::from_str(content).map_err(|e| MdtError::DataFile {
 			path: path_display.to_string(),
 			reason: e.to_string(),

@@ -8768,6 +8768,92 @@ fn config_load_data_typed_entry_explicit_json_format() -> MdtResult<()> {
 }
 
 #[test]
+fn config_load_data_script_text_entry() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nversion = { command = \"printf 1.2.3\", format = \"text\", watch = \
+		 [\"VERSION\"] }\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("VERSION"), "1.2.3\n").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	assert_eq!(
+		config.data.get("version"),
+		Some(&DataSource::Script(ScriptDataSource {
+			command: "printf 1.2.3".to_string(),
+			format: Some("text".to_string()),
+			watch: vec![PathBuf::from("VERSION")],
+		}))
+	);
+
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(data["version"].as_str().unwrap_or("").trim(), "1.2.3");
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("VERSION"), "1.0.0\n").unwrap_or_else(|e| panic!("write: {e}"));
+	let command = "count=$(cat .run_count 2>/dev/null || echo 0); count=$((count+1)); echo \
+	               \"$count\" > .run_count; cat VERSION";
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!(
+			"[data]\nversion = {{ command = {:?}, format = \"text\", watch = [\"VERSION\"] }}\n",
+			command
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+
+	let data1 = config.load_data(tmp.path())?;
+	assert_eq!(data1["version"].as_str().unwrap_or(""), "1.0.0\n");
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1"
+	);
+
+	let data2 = config.load_data(tmp.path())?;
+	assert_eq!(data2["version"].as_str().unwrap_or(""), "1.0.0\n");
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1",
+		"script should not rerun while watch files are unchanged"
+	);
+
+	std::fs::write(tmp.path().join("VERSION"), "2.0.0-beta\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	let data3 = config.load_data(tmp.path())?;
+	assert_eq!(data3["version"].as_str().unwrap_or(""), "2.0.0-beta\n");
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"2",
+		"script should rerun after watched file changes"
+	);
+
+	Ok(())
+}
+
+#[test]
 fn config_load_resolves_dot_mdt_toml() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(

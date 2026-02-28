@@ -10,12 +10,14 @@ Add a `[data]` section to your `mdt.toml`:
 [data]
 package = "package.json"
 release = { path = "release-info", format = "json" }
+version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
 This maps the file `package.json` to the namespace `package`.
 
 - String values are backward-compatible and infer format from extension.
 - Typed values (`{ path, format }`) let you explicitly declare a format for files without extensions.
+- Script values (`{ command, format, watch }`) execute commands and optionally cache stdout based on watched files.
 
 If your `package.json` contains:
 
@@ -55,6 +57,7 @@ A great library.
 
 | Format / Extension | Parser |
 | ------------------ | ------ |
+| `text`, `.txt`     | Raw text string |
 | `json`, `.json`    | JSON   |
 | `toml`, `.toml`    | TOML   |
 | `yaml`, `.yaml`    | YAML   |
@@ -63,6 +66,32 @@ A great library.
 | `ini`, `.ini`      | INI    |
 
 All formats are converted to a common structure internally. You access values using dot notation regardless of the source format.
+
+## Script-backed data sources
+
+<!-- {=mdtScriptDataSourcesGuide|trim} -->
+`[data]` entries can run shell commands and use stdout as template data. This
+is useful for values that come from tooling (for example Nix, git metadata,
+or generated version files).
+
+```toml
+[data]
+release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+```
+
+- `command`: shell command executed from the project root.
+- `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
+- `watch`: files that control cache invalidation.
+
+When `watch` files are unchanged, mdt reuses cached script output from
+`.mdt/cache/data-v1.json` instead of re-running the command.
+<!-- {/mdtScriptDataSourcesGuide} -->
+
+<!-- {=mdtScriptDataSourcesNotes|trim} -->
+- Script outputs are cached per namespace, command, format, and watch list.
+- If `watch` is empty, mdt re-runs the script every load (no cache hit).
+- A non-zero script exit status fails data loading with an explicit error.
+<!-- {/mdtScriptDataSourcesNotes} -->
 
 ### TOML example
 
