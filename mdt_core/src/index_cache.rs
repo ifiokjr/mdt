@@ -7,10 +7,13 @@ use std::time::UNIX_EPOCH;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::project::ConsumerEntry;
 use crate::project::Project;
+use crate::project::ProjectDiagnostic;
+use crate::project::ProviderEntry;
 
-pub(crate) const CACHE_SCHEMA_VERSION: u32 = 1;
-const CACHE_FILE_NAME: &str = "index-v1.json";
+pub(crate) const CACHE_SCHEMA_VERSION: u32 = 2;
+const CACHE_FILE_NAME: &str = "index-v2.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct FileFingerprint {
@@ -19,10 +22,18 @@ pub(crate) struct FileFingerprint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CachedFileData {
+	pub providers: Vec<ProviderEntry>,
+	pub consumers: Vec<ConsumerEntry>,
+	pub diagnostics: Vec<ProjectDiagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ProjectIndexCache {
 	pub schema_version: u32,
 	pub project_key: String,
 	pub files: BTreeMap<String, FileFingerprint>,
+	pub file_data: BTreeMap<String, CachedFileData>,
 	pub project: Project,
 }
 
@@ -30,12 +41,14 @@ impl ProjectIndexCache {
 	pub(crate) fn new(
 		project_key: String,
 		files: BTreeMap<String, FileFingerprint>,
+		file_data: BTreeMap<String, CachedFileData>,
 		project: Project,
 	) -> Self {
 		Self {
 			schema_version: CACHE_SCHEMA_VERSION,
 			project_key,
 			files,
+			file_data,
 			project,
 		}
 	}
