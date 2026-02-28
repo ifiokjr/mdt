@@ -301,8 +301,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					render_errors.push(RenderError {
 						file: consumer.file.clone(),
 						block_name: consumer.block.name.clone(),
-						message: "inline block requires one template argument, e.g. \
-						          <!-- {~name:\"{{ pkg.version }}\"} -->"
+						message: "inline block requires one template argument, e.g. <!-- \
+						          {~name:\"{{ pkg.version }}\"} -->"
 							.to_string(),
 						line: consumer.block.opening.start.line,
 						column: consumer.block.opening.start.column,
@@ -792,17 +792,21 @@ fn pad_content_with_config(
 }
 
 fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {
-	args.get(index).map(|arg| match arg {
-		Argument::String(s) => s.clone(),
-		Argument::Number(n) => n.to_string(),
-		Argument::Boolean(b) => b.to_string(),
+	args.get(index).map(|arg| {
+		match arg {
+			Argument::String(s) => s.clone(),
+			Argument::Number(n) => n.to_string(),
+			Argument::Boolean(b) => b.to_string(),
+		}
 	})
 }
 
 fn get_bool_arg(args: &[Argument], index: usize) -> Option<bool> {
-	args.get(index).map(|arg| match arg {
-		Argument::Boolean(b) => *b,
-		Argument::String(s) => s == "true",
-		Argument::Number(n) => n.0 != 0.0,
+	args.get(index).map(|arg| {
+		match arg {
+			Argument::Boolean(b) => *b,
+			Argument::String(s) => s == "true",
+			Argument::Number(n) => n.0 != 0.0,
+		}
 	})
 }

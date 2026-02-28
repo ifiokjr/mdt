@@ -150,12 +150,12 @@ pub fn group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 
 pub fn optional_many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 	let method = many_group(matchers);
-	Box::new(
-		move |token_group: &TokenGroup, index: usize| match method(token_group, index) {
+	Box::new(move |token_group: &TokenGroup, index: usize| {
+		match method(token_group, index) {
 			Ok(index) => Ok(index),
 			Err(_) => Ok(index),
-		},
-	)
+		}
+	})
 }
 
 pub fn many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
@@ -187,12 +187,12 @@ pub fn one(tokens: Vec<Token>) -> PatternMatcher {
 
 pub fn optional_many(tokens: Vec<Token>) -> PatternMatcher {
 	let method = many(tokens);
-	Box::new(
-		move |token_group: &TokenGroup, index: usize| match method(token_group, index) {
+	Box::new(move |token_group: &TokenGroup, index: usize| {
+		match method(token_group, index) {
 			Ok(index) => Ok(index),
 			Err(_) => Ok(index),
-		},
-	)
+		}
+	})
 }
 
 pub fn many(tokens: Vec<Token>) -> PatternMatcher {

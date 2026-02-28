@@ -22,6 +22,12 @@
 - **`mdt_preview`** — Preview the result of applying transformers to a block.
 - **`mdt_init`** — Initialize a new mdt project with a sample template file.
 
+### Agent Workflow
+
+- Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new provider block.
+- Keep provider names global and unique in the project to avoid collisions.
+- After edits, run `mdt_check` (and optionally `mdt_update`) so consumer blocks stay synchronized.
+
 ### Usage
 
 Start the MCP server via the CLI:

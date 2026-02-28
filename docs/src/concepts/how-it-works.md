@@ -38,9 +38,9 @@ A tag has three parts:
 
 mdt determines how to treat files based on their names:
 
-| Pattern                              | Role                                                           |
-| ------------------------------------ | -------------------------------------------------------------- |
-| `*.t.md`                             | **Template files** — only these can contain provider blocks    |
+| Pattern                              | Role                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `*.t.md`                             | **Template files** — only these can contain provider blocks               |
 | `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for consumer and inline blocks               |
 | `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for consumer and inline blocks inside comments |
 

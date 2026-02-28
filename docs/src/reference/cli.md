@@ -142,10 +142,10 @@ Consumers:
 
 **Status indicators:**
 
-| Status     | Meaning                                      |
-| ---------- | -------------------------------------------- |
-| `[linked]` | Consumer has a matching provider.            |
-| `[orphan]` | Consumer references a non-existent provider. |
+| Status     | Meaning                                              |
+| ---------- | ---------------------------------------------------- |
+| `[linked]` | Consumer has a matching provider.                    |
+| `[orphan]` | Consumer references a non-existent provider.         |
 | `[inline]` | Inline block renders from its own template argument. |
 
 Transformers are shown after the file path when present.
@@ -157,6 +157,7 @@ Print a human-readable diagnostics summary for the current project.
 ```sh
 mdt info
 mdt info --path ./my-project
+mdt info --format json
 ```
 
 Includes:

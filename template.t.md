@@ -16,6 +16,12 @@
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
 - `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
 
+### Diagnostics Workflow
+
+- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
+- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
+- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
+
 <!-- {/mdtCliUsage} -->
 
 <!-- {@mdtTemplateSyntax} -->
@@ -46,7 +52,9 @@ This content gets replaced
 
 ```markdown
 <!-- {~version:"{{ "{{" }} package.version {{ "}}" }}"} -->
+
 0.0.0
+
 <!-- {/version} -->
 ```
 
@@ -87,9 +95,7 @@ Because inline blocks are provider-free, they are ideal for one-off values that 
 
 <!-- {@mdtScriptDataSourcesGuide} -->
 
-`[data]` entries can run shell commands and use stdout as template data. This
-is useful for values that come from tooling (for example Nix, git metadata,
-or generated version files).
+`[data]` entries can run shell commands and use stdout as template data. This is useful for values that come from tooling (for example Nix, git metadata, or generated version files).
 
 ```toml
 [data]
@@ -100,8 +106,7 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 - `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
 - `watch`: files that control cache invalidation.
 
-When `watch` files are unchanged, mdt reuses cached script output from
-`.mdt/cache/data-v1.json` instead of re-running the command.
+When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json` instead of re-running the command.
 
 <!-- {/mdtScriptDataSourcesGuide} -->
 
@@ -153,6 +158,12 @@ The server communicates over stdin/stdout using the Language Server Protocol.
 - **`mdt_get_block`** — Get the content of a specific block by name.
 - **`mdt_preview`** — Preview the result of applying transformers to a block.
 - **`mdt_init`** — Initialize a new mdt project with a sample template file.
+
+### Agent Workflow
+
+- Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new provider block.
+- Keep provider names global and unique in the project to avoid collisions.
+- After edits, run `mdt_check` (and optionally `mdt_update`) so consumer blocks stay synchronized.
 
 ### Usage
 
@@ -270,8 +281,7 @@ cargo = "Cargo.toml"
 
 Then in provider blocks: `{{ "{{" }} pkg.version {{ "}}" }}` or `{{ "{{" }} cargo.package.edition {{ "}}" }}`.
 
-Supported sources: files and script commands. Supported formats: text, JSON,
-TOML, YAML, KDL, and INI.
+Supported sources: files and script commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
 
 ## Quick Start
 

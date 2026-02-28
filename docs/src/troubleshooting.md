@@ -111,6 +111,36 @@ Dry run: would update 3 block(s) in 2 file(s):
   src/lib.rs
 ```
 
+## Cache observability and diagnostics
+
+If cache behavior looks suspicious (unexpected reparses, stale cache artifact, inconsistent local vs CI behavior), use:
+
+```sh
+mdt info
+mdt doctor
+```
+
+`mdt info` shows cache telemetry:
+
+- Artifact path and schema support
+- Hash verification mode
+- Cumulative reused vs reparsed file totals
+- Last scan summary (`full cache hit` vs `incremental reuse`)
+
+`mdt doctor` adds cache health checks:
+
+- `Cache Artifact` validates readability/schema/key compatibility
+- `Cache Hash Mode` explains current fingerprint mode and troubleshooting toggle
+- `Cache Efficiency` warns when reparses dominate over time
+
+For strict cache-key validation during investigation:
+
+```sh
+MDT_CACHE_VERIFY_HASH=1 mdt check
+```
+
+This includes content hashes in cache fingerprints (in addition to size/mtime). Disable it again for baseline behavior comparisons.
+
 ## Formatter interference
 
 Code formatters like dprint, Prettier, and rustfmt can reformat content inside template tags, causing mdt to see the blocks as stale even when the provider hasn't changed.

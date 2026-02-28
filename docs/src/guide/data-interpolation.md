@@ -55,24 +55,23 @@ A great library.
 
 ## Supported data formats
 
-| Format / Extension | Parser |
-| ------------------ | ------ |
+| Format / Extension | Parser          |
+| ------------------ | --------------- |
 | `text`, `.txt`     | Raw text string |
-| `json`, `.json`    | JSON   |
-| `toml`, `.toml`    | TOML   |
-| `yaml`, `.yaml`    | YAML   |
-| `yml`, `.yml`      | YAML   |
-| `kdl`, `.kdl`      | KDL    |
-| `ini`, `.ini`      | INI    |
+| `json`, `.json`    | JSON            |
+| `toml`, `.toml`    | TOML            |
+| `yaml`, `.yaml`    | YAML            |
+| `yml`, `.yml`      | YAML            |
+| `kdl`, `.kdl`      | KDL             |
+| `ini`, `.ini`      | INI             |
 
 All formats are converted to a common structure internally. You access values using dot notation regardless of the source format.
 
 ## Script-backed data sources
 
-<!-- {=mdtScriptDataSourcesGuide|trim} -->
-`[data]` entries can run shell commands and use stdout as template data. This
-is useful for values that come from tooling (for example Nix, git metadata,
-or generated version files).
+<!-- {=mdtScriptDataSourcesGuide} -->
+
+`[data]` entries can run shell commands and use stdout as template data. This is useful for values that come from tooling (for example Nix, git metadata, or generated version files).
 
 ```toml
 [data]
@@ -83,14 +82,16 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 - `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
 - `watch`: files that control cache invalidation.
 
-When `watch` files are unchanged, mdt reuses cached script output from
-`.mdt/cache/data-v1.json` instead of re-running the command.
+When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json` instead of re-running the command.
+
 <!-- {/mdtScriptDataSourcesGuide} -->
 
-<!-- {=mdtScriptDataSourcesNotes|trim} -->
+<!-- {=mdtScriptDataSourcesNotes} -->
+
 - Script outputs are cached per namespace, command, format, and watch list.
 - If `watch` is empty, mdt re-runs the script every load (no cache hit).
 - A non-zero script exit status fails data loading with an explicit error.
+
 <!-- {/mdtScriptDataSourcesNotes} -->
 
 ### TOML example
