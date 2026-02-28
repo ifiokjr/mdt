@@ -56,7 +56,7 @@ The scanner automatically ignores:
 - Directories with their own `mdt.toml` (treated as separate projects)
 - Files matching gitignore-style patterns in the `[exclude]` config section
 - Blocks whose names appear in `[exclude] blocks`
-- Tags inside fenced code blocks when `[exclude] markdown_codeblocks` is configured
+- Tags inside fenced code blocks in source-file comments when `[exclude] markdown_codeblocks` is configured
 
 ## Matching rules
 

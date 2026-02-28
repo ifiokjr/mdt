@@ -131,6 +131,8 @@ markdown_codeblocks = "ignore"
 markdown_codeblocks = ["ignore", "example", "no-sync"]
 ```
 
+Markdown fenced code blocks are not treated as live tags by markdown parsing, so this option is specifically for source-file comment scanning.
+
 **`blocks`:** Array of block names to exclude. Any block (provider or consumer) whose name is in this list is completely ignored during scanning and updating.
 
 ```toml

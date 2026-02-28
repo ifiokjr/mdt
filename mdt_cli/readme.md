@@ -71,11 +71,13 @@ This content gets replaced
 **Inline tag** (provider-free interpolation using configured data):
 
 ```markdown
-<!-- {~version:"{{ package.version }}"} -->
+Current version: <!-- {~version:"{{ package.version }}"} -->0.0.0<!-- {/version} -->
+```
 
-0.0.0
-
-<!-- {/version} -->
+```markdown
+| Artifact | Version |
+| -------- | ------- |
+| mdt_cli  | <!-- {~cliVersion:"{{ package.version }}"} -->0.0.0<!-- {/cliVersion} --> |
 ```
 
 **Filters and pipes:** Template values support pipe-delimited transformers:
