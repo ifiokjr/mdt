@@ -273,8 +273,8 @@ fn update_inline_table_cell_with_data() -> AnyEmptyResult {
 	)?;
 	std::fs::write(
 		tmp.path().join("readme.md"),
-		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- \
-		 {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
+		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- {~version:\"{{ \
+		 pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
 	)?;
 
 	let mut cmd = common::mdt_cmd();
