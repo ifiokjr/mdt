@@ -114,8 +114,9 @@ pub enum Commands {
 	/// Print a diagnostic summary of the current project.
 	///
 	/// Shows discovered providers/consumers, orphan and unused counts,
-	/// data namespaces from config, template file overview, and diagnostic
-	/// totals (errors, warnings, and missing providers).
+	/// data namespaces from config, template file overview, diagnostic
+	/// totals (errors, warnings, and missing providers), and cache
+	/// observability metrics.
 	Info {
 		/// Output format for info results. Use `text` for human-readable
 		/// output or `json` for programmatic consumption.
@@ -125,8 +126,9 @@ pub enum Commands {
 	/// Run project health checks with actionable remediation hints.
 	///
 	/// Evaluates config discovery, data loading, provider/consumer linkage,
-	/// template directory conventions, and parser diagnostics. Exits with a
-	/// non-zero code when failing checks are present.
+	/// template directory conventions, parser diagnostics, and cache
+	/// effectiveness trends. Exits with a non-zero code when failing checks
+	/// are present.
 	Doctor {
 		/// Output format for doctor results. Use `text` for human-readable
 		/// output or `json` for programmatic consumption.

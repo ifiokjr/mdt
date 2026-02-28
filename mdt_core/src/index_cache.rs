@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs::Metadata;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use serde::Deserialize;
@@ -29,12 +30,62 @@ pub(crate) struct CachedFileData {
 	pub diagnostics: Vec<ProjectDiagnostic>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub(crate) struct LastScanTelemetry {
+	pub timestamp_unix_ms: u64,
+	pub full_project_hit: bool,
+	pub reused_files: u64,
+	pub reparsed_files: u64,
+	pub total_files: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub(crate) struct CacheTelemetry {
+	pub scan_count: u64,
+	pub full_project_hit_count: u64,
+	pub reused_file_count_total: u64,
+	pub reparsed_file_count_total: u64,
+	pub last_scan: Option<LastScanTelemetry>,
+}
+
+impl CacheTelemetry {
+	pub(crate) fn record_scan(
+		&mut self,
+		full_project_hit: bool,
+		reused_files: usize,
+		reparsed_files: usize,
+		total_files: usize,
+	) {
+		let reused_files = u64::try_from(reused_files).unwrap_or(u64::MAX);
+		let reparsed_files = u64::try_from(reparsed_files).unwrap_or(u64::MAX);
+		let total_files = u64::try_from(total_files).unwrap_or(u64::MAX);
+
+		self.scan_count = self.scan_count.saturating_add(1);
+		if full_project_hit {
+			self.full_project_hit_count = self.full_project_hit_count.saturating_add(1);
+		}
+		self.reused_file_count_total = self.reused_file_count_total.saturating_add(reused_files);
+		self.reparsed_file_count_total = self
+			.reparsed_file_count_total
+			.saturating_add(reparsed_files);
+		self.last_scan = Some(LastScanTelemetry {
+			timestamp_unix_ms: now_unix_ms(),
+			full_project_hit,
+			reused_files,
+			reparsed_files,
+			total_files,
+		});
+	}
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ProjectIndexCache {
 	pub schema_version: u32,
 	pub project_key: String,
 	pub files: BTreeMap<String, FileFingerprint>,
 	pub file_data: BTreeMap<String, CachedFileData>,
+	#[serde(default)]
+	pub telemetry: CacheTelemetry,
 	pub project: Project,
 }
 
@@ -50,9 +101,18 @@ impl ProjectIndexCache {
 			project_key,
 			files,
 			file_data,
+			telemetry: CacheTelemetry::default(),
 			project,
 		}
 	}
+}
+
+fn now_unix_ms() -> u64 {
+	SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.map_or(0, |duration| {
+			duration.as_millis().try_into().unwrap_or(u64::MAX)
+		})
 }
 
 pub(crate) fn cache_path(root: &Path) -> PathBuf {
@@ -117,7 +177,7 @@ pub(crate) fn save(root: &Path, cache: &ProjectIndexCache) {
 	let temp_path = cache_path.with_extension(format!(
 		"json.tmp-{}-{}",
 		std::process::id(),
-		std::time::SystemTime::now()
+		SystemTime::now()
 			.duration_since(UNIX_EPOCH)
 			.map_or(0, |duration| duration.as_nanos())
 	));

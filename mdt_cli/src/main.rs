@@ -23,7 +23,9 @@ use mdt_core::project::DiagnosticKind;
 use mdt_core::project::ProjectContext;
 use mdt_core::project::ProjectDiagnostic;
 use mdt_core::project::ProviderEntry;
+use mdt_core::project::ScanOptions;
 use mdt_core::project::ValidationOptions;
+use mdt_core::project::inspect_project_cache;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::write_updates;
 use owo_colors::OwoColorize;
@@ -136,6 +138,26 @@ fn print_section(title: &str) {
 
 fn print_field(label: &str, value: impl std::fmt::Display) {
 	println!("{label:<28} {value}");
+}
+
+fn ratio_percent_string(numerator: u64, denominator: u64) -> String {
+	if denominator == 0 {
+		return "n/a".to_string();
+	}
+
+	let ratio = (numerator as f64 / denominator as f64) * 100.0;
+	format!("{ratio:.1}%")
+}
+
+fn cache_hash_mode_hint(hash_verification_enabled: bool) -> String {
+	if hash_verification_enabled {
+		"unset `MDT_CACHE_VERIFY_HASH` to compare performance if cache reparses look too high"
+			.to_string()
+	} else {
+		"set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while \
+		 troubleshooting"
+			.to_string()
+	}
 }
 
 fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
@@ -816,17 +838,48 @@ struct InfoDiagnosticsSection {
 }
 
 #[derive(serde::Serialize)]
+struct InfoCacheLastScanSection {
+	timestamp_unix_ms: u64,
+	full_project_hit: bool,
+	reused_files: u64,
+	reparsed_files: u64,
+	total_files: u64,
+}
+
+#[derive(serde::Serialize)]
+struct InfoCacheSection {
+	path: String,
+	exists: bool,
+	readable: bool,
+	valid: bool,
+	schema_version: Option<u32>,
+	schema_supported: bool,
+	project_key_matches: bool,
+	hash_verification_enabled: bool,
+	scan_count: u64,
+	full_project_hit_count: u64,
+	full_project_hit_rate: String,
+	reused_file_count_total: u64,
+	reparsed_file_count_total: u64,
+	file_reuse_rate: String,
+	last_scan: Option<InfoCacheLastScanSection>,
+}
+
+#[derive(serde::Serialize)]
 struct InfoReport {
 	project: InfoProjectSection,
 	blocks: InfoBlocksSection,
 	data: InfoDataSection,
 	templates: InfoTemplatesSection,
 	diagnostics: InfoDiagnosticsSection,
+	cache: InfoCacheSection,
 }
 
 fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
 	let root = resolve_root(args);
 	let config = load_config_summary(&root)?;
+	let loaded_config = MdtConfig::load(&root)?;
+	let scan_options = ScanOptions::from_config(loaded_config.as_ref());
 	let ctx = scan_project_with_config(&root)?;
 	let options = validation_options(args);
 
@@ -857,6 +910,30 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 
 	let mut missing_providers = ctx.find_missing_providers();
 	missing_providers.sort();
+
+	let cache_inspection = inspect_project_cache(&root, &scan_options);
+	let telemetry = cache_inspection.telemetry.as_ref();
+	let scan_count = telemetry.map_or(0, |metrics| metrics.scan_count);
+	let full_project_hit_count = telemetry.map_or(0, |metrics| metrics.full_project_hit_count);
+	let reused_file_count_total = telemetry.map_or(0, |metrics| metrics.reused_file_count_total);
+	let reparsed_file_count_total =
+		telemetry.map_or(0, |metrics| metrics.reparsed_file_count_total);
+	let full_project_hit_rate = ratio_percent_string(full_project_hit_count, scan_count);
+	let file_reuse_rate = ratio_percent_string(
+		reused_file_count_total,
+		reused_file_count_total.saturating_add(reparsed_file_count_total),
+	);
+	let last_scan = telemetry.and_then(|metrics| {
+		metrics.last_scan.as_ref().map(|scan| {
+			InfoCacheLastScanSection {
+				timestamp_unix_ms: scan.timestamp_unix_ms,
+				full_project_hit: scan.full_project_hit,
+				reused_files: scan.reused_files,
+				reparsed_files: scan.reparsed_files,
+				total_files: scan.total_files,
+			}
+		})
+	});
 
 	let template_hints = template_directory_hints(&config.template_dirs);
 	let configured_template_dirs: Vec<String> = config
@@ -913,6 +990,23 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			warnings: diagnostics_warnings,
 			missing_provider_count: missing_providers.len(),
 			missing_provider_names: missing_providers,
+		},
+		cache: InfoCacheSection {
+			path: cache_inspection.path.display().to_string(),
+			exists: cache_inspection.exists,
+			readable: cache_inspection.readable,
+			valid: cache_inspection.valid,
+			schema_version: cache_inspection.schema_version,
+			schema_supported: cache_inspection.schema_supported,
+			project_key_matches: cache_inspection.project_key_matches,
+			hash_verification_enabled: cache_inspection.hash_verification_enabled,
+			scan_count,
+			full_project_hit_count,
+			full_project_hit_rate,
+			reused_file_count_total,
+			reparsed_file_count_total,
+			file_reuse_rate,
+			last_scan,
 		},
 	};
 
@@ -973,6 +1067,83 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 					"Missing names",
 					report.diagnostics.missing_provider_names.join(", "),
 				);
+			}
+
+			print_section("Cache");
+			print_field("Artifact path", &report.cache.path);
+			let cache_status = if !report.cache.exists {
+				"missing".to_string()
+			} else if !report.cache.readable {
+				"unreadable".to_string()
+			} else if !report.cache.valid {
+				"invalid".to_string()
+			} else {
+				"ok".to_string()
+			};
+			print_field("Artifact status", cache_status);
+			let schema_display = report.cache.schema_version.map_or_else(
+				|| "unknown".to_string(),
+				|schema| {
+					if report.cache.schema_supported {
+						format!("{schema} (supported)")
+					} else {
+						format!("{schema} (unsupported)")
+					}
+				},
+			);
+			print_field("Schema version", schema_display);
+			print_field(
+				"Project key match",
+				if report.cache.project_key_matches {
+					"yes"
+				} else {
+					"no"
+				},
+			);
+			print_field(
+				"Hash verification",
+				if report.cache.hash_verification_enabled {
+					"enabled"
+				} else {
+					"disabled"
+				},
+			);
+			print_field("Scans recorded", report.cache.scan_count);
+			print_field(
+				"Full project hits",
+				format!(
+					"{} ({})",
+					report.cache.full_project_hit_count, report.cache.full_project_hit_rate
+				),
+			);
+			print_field(
+				"File reuse totals",
+				format!(
+					"{} reused / {} reparsed ({})",
+					report.cache.reused_file_count_total,
+					report.cache.reparsed_file_count_total,
+					report.cache.file_reuse_rate
+				),
+			);
+			if let Some(last_scan) = &report.cache.last_scan {
+				print_field(
+					"Last scan mode",
+					if last_scan.full_project_hit {
+						"full cache hit"
+					} else {
+						"incremental reuse"
+					},
+				);
+				print_field(
+					"Last scan files",
+					format!(
+						"{} reused / {} reparsed / {} total",
+						last_scan.reused_files, last_scan.reparsed_files, last_scan.total_files
+					),
+				);
+				print_field("Last scan unix ms", last_scan.timestamp_unix_ms);
+			} else {
+				print_field("Last scan", "none");
 			}
 		}
 	}
@@ -1213,6 +1384,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		);
 	}
 
+	let scan_options = ScanOptions::from_config(config.as_ref());
 	let scan_result = scan_project_with_config(&root);
 	match scan_result {
 		Ok(ctx) => {
@@ -1399,6 +1571,149 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				);
 			}
 		}
+	}
+
+	let cache = inspect_project_cache(&root, &scan_options);
+	if !cache.exists {
+		add_doctor_check(
+			&mut checks,
+			"cache_artifact",
+			"Cache Artifact",
+			DoctorStatus::Warn,
+			format!("cache artifact not found at {}", cache.path.display()),
+			Some(
+				"run `mdt check` or `mdt info` to trigger a scan and write the cache artifact"
+					.to_string(),
+			),
+		);
+	} else if !cache.readable {
+		add_doctor_check(
+			&mut checks,
+			"cache_artifact",
+			"Cache Artifact",
+			DoctorStatus::Fail,
+			format!(
+				"cache artifact exists but is not readable: {}",
+				cache.path.display()
+			),
+			Some("verify filesystem permissions for `.mdt/cache/`".to_string()),
+		);
+	} else if !cache.valid {
+		let schema = cache
+			.schema_version
+			.map_or_else(|| "unknown".to_string(), |version| version.to_string());
+		add_doctor_check(
+			&mut checks,
+			"cache_artifact",
+			"Cache Artifact",
+			DoctorStatus::Fail,
+			format!("cache artifact is invalid for current schema (found version {schema})"),
+			Some(
+				"remove `.mdt/cache/index-v2.json` and rerun `mdt check` to rebuild clean cache \
+				 metadata"
+					.to_string(),
+			),
+		);
+	} else if !cache.project_key_matches {
+		add_doctor_check(
+			&mut checks,
+			"cache_artifact",
+			"Cache Artifact",
+			DoctorStatus::Warn,
+			"cache artifact is readable but keyed for different scan options".to_string(),
+			Some(
+				"this is normal after config changes; rerun scans with stable options to rebuild \
+				 cache history"
+					.to_string(),
+			),
+		);
+	} else {
+		add_doctor_check(
+			&mut checks,
+			"cache_artifact",
+			"Cache Artifact",
+			DoctorStatus::Pass,
+			format!(
+				"cache artifact is readable and valid at {}",
+				cache.path.display()
+			),
+			None,
+		);
+	}
+
+	let hash_mode_message = if cache.hash_verification_enabled {
+		"content-hash verification enabled (`MDT_CACHE_VERIFY_HASH` set)".to_string()
+	} else {
+		"content-hash verification disabled (mtime + size fingerprints only)".to_string()
+	};
+	add_doctor_check(
+		&mut checks,
+		"cache_hash_mode",
+		"Cache Hash Mode",
+		DoctorStatus::Pass,
+		hash_mode_message,
+		Some(cache_hash_mode_hint(cache.hash_verification_enabled)),
+	);
+
+	if let Some(telemetry) = &cache.telemetry {
+		let total_files = telemetry
+			.reused_file_count_total
+			.saturating_add(telemetry.reparsed_file_count_total);
+		if telemetry.scan_count < 3 || total_files == 0 {
+			add_doctor_check(
+				&mut checks,
+				"cache_efficiency",
+				"Cache Efficiency",
+				DoctorStatus::Skip,
+				"insufficient history for trend analysis (need at least 3 scans)".to_string(),
+				None,
+			);
+		} else {
+			let reparse_rate =
+				ratio_percent_string(telemetry.reparsed_file_count_total, total_files);
+			if telemetry.reparsed_file_count_total
+				> telemetry.reused_file_count_total.saturating_mul(3)
+			{
+				add_doctor_check(
+					&mut checks,
+					"cache_efficiency",
+					"Cache Efficiency",
+					DoctorStatus::Warn,
+					format!(
+						"high reparse trend: {} reparsed vs {} reused ({reparse_rate} reparsed)",
+						telemetry.reparsed_file_count_total, telemetry.reused_file_count_total
+					),
+					Some(cache_hash_mode_hint(cache.hash_verification_enabled)),
+				);
+			} else {
+				let reuse_rate =
+					ratio_percent_string(telemetry.reused_file_count_total, total_files);
+				add_doctor_check(
+					&mut checks,
+					"cache_efficiency",
+					"Cache Efficiency",
+					DoctorStatus::Pass,
+					format!(
+						"healthy cache trend: {} reused vs {} reparsed ({reuse_rate} reused)",
+						telemetry.reused_file_count_total, telemetry.reparsed_file_count_total
+					),
+					None,
+				);
+			}
+		}
+	} else {
+		add_doctor_check(
+			&mut checks,
+			"cache_efficiency",
+			"Cache Efficiency",
+			DoctorStatus::Skip,
+			"cache telemetry unavailable".to_string(),
+			Some(
+				"ensure cache artifact is valid, then run `mdt info` or `mdt check` a few times \
+				 to gather telemetry"
+					.to_string(),
+			),
+		);
 	}
 
 	let mut summary = DoctorSummary::default();

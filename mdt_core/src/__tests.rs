@@ -9220,3 +9220,137 @@ fn scan_project_hash_mismatch_invalidates_cache() -> MdtResult<()> {
 
 	Ok(())
 }
+
+#[test]
+fn scan_project_cache_telemetry_tracks_full_cache_hit() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let options = ScanOptions::default();
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache = inspect_project_cache(tmp.path(), &options);
+	assert!(cache.valid, "expected valid cache inspection");
+	let telemetry = cache
+		.telemetry
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected cache telemetry"));
+	assert_eq!(telemetry.scan_count, 2);
+	assert_eq!(telemetry.full_project_hit_count, 1);
+	assert_eq!(telemetry.reused_file_count_total, 2);
+	assert_eq!(telemetry.reparsed_file_count_total, 2);
+	let last_scan = telemetry
+		.last_scan
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected last scan telemetry"));
+	assert!(last_scan.full_project_hit);
+	assert_eq!(last_scan.reused_files, 2);
+	assert_eq!(last_scan.reparsed_files, 0);
+	assert_eq!(last_scan.total_files, 2);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_cache_telemetry_tracks_incremental_reuse() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let alpha_template = tmp.path().join("alpha.t.md");
+	let beta_template = tmp.path().join("beta.t.md");
+	std::fs::write(
+		&alpha_template,
+		"<!-- {@alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write alpha provider: {e}"));
+	std::fs::write(
+		&beta_template,
+		"<!-- {@beta} -->\n\nBeta from disk.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write beta provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=alpha} -->\n\nAlpha from disk.\n\n<!-- {/alpha} -->\n\n<!-- {=beta} -->\n\nBeta \
+		 from disk.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let options = ScanOptions::default();
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+	std::fs::write(
+		&beta_template,
+		"<!-- {@beta} -->\n\nBeta changed on disk.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("rewrite beta provider: {e}"));
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache = inspect_project_cache(tmp.path(), &options);
+	let telemetry = cache
+		.telemetry
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected cache telemetry"));
+	assert_eq!(telemetry.scan_count, 2);
+	assert_eq!(telemetry.full_project_hit_count, 0);
+	assert_eq!(telemetry.reused_file_count_total, 2);
+	assert_eq!(telemetry.reparsed_file_count_total, 4);
+	let last_scan = telemetry
+		.last_scan
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected last scan telemetry"));
+	assert!(!last_scan.full_project_hit);
+	assert_eq!(last_scan.reused_files, 2);
+	assert_eq!(last_scan.reparsed_files, 1);
+	assert_eq!(last_scan.total_files, 3);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_cache_telemetry_resets_after_cold_cache_rebuild() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let options = ScanOptions::default();
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache_path = project_cache_path(tmp.path());
+	std::fs::remove_file(cache_path).unwrap_or_else(|e| panic!("remove cache: {e}"));
+	let _ = scan_project_with_options(tmp.path(), &options)?;
+
+	let cache = inspect_project_cache(tmp.path(), &options);
+	let telemetry = cache
+		.telemetry
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected cache telemetry"));
+	assert_eq!(telemetry.scan_count, 1);
+	assert_eq!(telemetry.full_project_hit_count, 0);
+	assert_eq!(telemetry.reused_file_count_total, 0);
+	assert_eq!(telemetry.reparsed_file_count_total, 2);
+	let last_scan = telemetry
+		.last_scan
+		.as_ref()
+		.unwrap_or_else(|| panic!("expected last scan telemetry"));
+	assert!(!last_scan.full_project_hit);
+	assert_eq!(last_scan.reused_files, 0);
+	assert_eq!(last_scan.reparsed_files, 2);
+	assert_eq!(last_scan.total_files, 2);
+
+	Ok(())
+}

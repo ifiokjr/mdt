@@ -69,6 +69,14 @@ fn with_redacted_paths(tmp_path: &Path, f: impl FnOnce()) {
 	}
 	let mut settings = insta::Settings::clone_current();
 	settings.add_filter(&escaped, "[TEMP_DIR]");
+	settings.add_filter(
+		r#""timestamp_unix_ms": \d+"#,
+		r#""timestamp_unix_ms": [UNIX_MS]"#,
+	);
+	settings.add_filter(
+		r"Last scan unix ms\s+\d+",
+		"Last scan unix ms            [UNIX_MS]",
+	);
 	settings.bind(f);
 }
 
