@@ -19,6 +19,7 @@ const CACHE_FILE_NAME: &str = "index-v2.json";
 pub(crate) struct FileFingerprint {
 	pub size: u64,
 	pub modified_unix_ms: u64,
+	pub content_hash: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +66,10 @@ pub(crate) fn relative_file_key(root: &Path, file: &Path) -> String {
 		.replace('\\', "/")
 }
 
-pub(crate) fn build_file_fingerprint(metadata: &Metadata) -> FileFingerprint {
+pub(crate) fn build_file_fingerprint(
+	metadata: &Metadata,
+	content_hash: Option<u64>,
+) -> FileFingerprint {
 	let modified_unix_ms = metadata
 		.modified()
 		.ok()
@@ -76,6 +80,7 @@ pub(crate) fn build_file_fingerprint(metadata: &Metadata) -> FileFingerprint {
 	FileFingerprint {
 		size: metadata.len(),
 		modified_unix_ms,
+		content_hash,
 	}
 }
 
