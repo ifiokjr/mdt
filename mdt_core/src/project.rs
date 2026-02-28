@@ -25,6 +25,7 @@ use crate::engine::validate_transformers;
 use crate::index_cache;
 use crate::index_cache::FileFingerprint;
 use crate::index_cache::ProjectIndexCache;
+use crate::parser::ParseDiagnostic;
 use crate::parser::parse_with_diagnostics;
 use crate::source_scanner::parse_source_with_diagnostics;
 
@@ -288,7 +289,7 @@ fn build_project_cache_key(options: &ScanOptions) -> String {
 	excluded_blocks.sort();
 
 	format!(
-		"index-v1|max={}|disable_gitignore={}|markdown={:?\
+		"index-v2|max={}|disable_gitignore={}|markdown={:?\
 		 }|exclude={}|templates={}|excluded_blocks={}",
 		options.max_file_size,
 		options.disable_gitignore,
@@ -325,14 +326,181 @@ fn collect_file_fingerprints(
 	Ok(fingerprints)
 }
 
-/// Scan a directory with the given [`ScanOptions`].
-pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
-	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
+fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDiagnostic {
+	match diag {
+		ParseDiagnostic::UnclosedBlock { name, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::UnclosedBlock { name },
+				line,
+				column,
+			}
+		}
+		ParseDiagnostic::UnknownTransformer { name, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::UnknownTransformer { name },
+				line,
+				column,
+			}
+		}
+		ParseDiagnostic::InvalidTransformerArgs {
+			name,
+			expected,
+			got,
+			line,
+			column,
+		} => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::InvalidTransformerArgs {
+					name,
+					expected,
+					got,
+				},
+				line,
+				column,
+			}
+		}
+	}
+}
+
+fn parse_file_for_scan(
+	file: &Path,
+	options: &ScanOptions,
+) -> MdtResult<index_cache::CachedFileData> {
+	let raw_content = std::fs::read_to_string(file)?;
+	let content = normalize_line_endings(&raw_content);
+	let (blocks, parse_diagnostics) = if is_markdown_file(file) {
+		parse_with_diagnostics(&content)?
+	} else {
+		parse_source_with_diagnostics(&content, &options.markdown_codeblocks)?
+	};
+
+	let mut diagnostics: Vec<ProjectDiagnostic> = parse_diagnostics
+		.into_iter()
+		.map(|diag| parse_diagnostic_to_project(file, diag))
+		.collect();
+	let mut providers = Vec::new();
 	let mut consumers = Vec::new();
 
+	let is_template = file
+		.file_name()
+		.and_then(|name| name.to_str())
+		.is_some_and(|name| name.ends_with(".t.md"));
+
+	for block in &blocks {
+		if let Err(MdtError::InvalidTransformerArgs {
+			name,
+			expected,
+			got,
+		}) = validate_transformers(&block.transformers)
+		{
+			diagnostics.push(ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::InvalidTransformerArgs {
+					name,
+					expected,
+					got,
+				},
+				line: block.opening.start.line,
+				column: block.opening.start.column,
+			});
+		}
+	}
+
+	for block in blocks {
+		if options
+			.excluded_blocks
+			.iter()
+			.any(|name| name == &block.name)
+		{
+			continue;
+		}
+
+		let block_content = extract_content_between_tags(&content, &block);
+
+		match block.r#type {
+			BlockType::Provider => {
+				if !is_template {
+					continue;
+				}
+				providers.push(ProviderEntry {
+					block,
+					file: file.to_path_buf(),
+					content: block_content,
+				});
+			}
+			BlockType::Consumer => {
+				consumers.push(ConsumerEntry {
+					block,
+					file: file.to_path_buf(),
+					content: block_content,
+				});
+			}
+		}
+	}
+
+	Ok(index_cache::CachedFileData {
+		providers,
+		consumers,
+		diagnostics,
+	})
+}
+
+fn build_project_from_file_data(
+	root: &Path,
+	files: &[PathBuf],
+	file_data: &BTreeMap<String, index_cache::CachedFileData>,
+) -> MdtResult<Project> {
+	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
+	let mut consumers = Vec::new();
+	let mut diagnostics = Vec::new();
+
+	for file in files {
+		let file_key = index_cache::relative_file_key(root, file);
+		let Some(entry) = file_data.get(&file_key) else {
+			continue;
+		};
+
+		diagnostics.extend(entry.diagnostics.iter().cloned());
+		for provider in &entry.providers {
+			if let Some(existing) = providers.get(&provider.block.name) {
+				return Err(MdtError::DuplicateProvider {
+					name: provider.block.name.clone(),
+					first_file: existing.file.display().to_string(),
+					second_file: provider.file.display().to_string(),
+				});
+			}
+
+			providers.insert(provider.block.name.clone(), provider.clone());
+		}
+		consumers.extend(entry.consumers.iter().cloned());
+	}
+
+	let referenced_names: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
+	for (name, entry) in &providers {
+		if !referenced_names.contains(name.as_str()) {
+			diagnostics.push(ProjectDiagnostic {
+				file: entry.file.clone(),
+				kind: DiagnosticKind::UnusedProvider { name: name.clone() },
+				line: entry.block.opening.start.line,
+				column: entry.block.opening.start.column,
+			});
+		}
+	}
+
+	Ok(Project {
+		providers,
+		consumers,
+		diagnostics,
+	})
+}
+
+/// Scan a directory with the given [`ScanOptions`].
+pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
 	let mut files = collect_files(root, &options.exclude_patterns, options.disable_gitignore)?;
 
-	// Collect files from additional template directories.
 	for template_dir in &options.template_paths {
 		let abs_dir = root.join(template_dir);
 		if abs_dir.is_dir() {
@@ -349,10 +517,8 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		}
 	}
 
-	// Build exclude matcher for include filtering.
 	let custom_exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
 
-	// Collect files matching include patterns.
 	if !options.include_set.is_empty() {
 		collect_included_files(
 			root,
@@ -366,155 +532,42 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 
 	let project_key = build_project_cache_key(options);
 	let file_fingerprints = collect_file_fingerprints(root, &files, options.max_file_size)?;
+	let cache = index_cache::load(root, &project_key);
 
-	if let Some(cache) = index_cache::load(root, &project_key) {
-		if cache.files == file_fingerprints {
-			return Ok(cache.project);
+	if let Some(cached) = &cache {
+		if cached.files == file_fingerprints {
+			return Ok(cached.project.clone());
 		}
 	}
 
-	let mut diagnostics: Vec<ProjectDiagnostic> = Vec::new();
-
+	let mut merged_file_data = BTreeMap::new();
 	for file in &files {
-		let raw_content = std::fs::read_to_string(file)?;
-		let content = normalize_line_endings(&raw_content);
-		let (blocks, parse_diagnostics) = if is_markdown_file(file) {
-			parse_with_diagnostics(&content)?
+		let file_key = index_cache::relative_file_key(root, file);
+		let fingerprint = file_fingerprints.get(&file_key);
+		let cached_entry = cache.as_ref().and_then(|cached| {
+			if cached.files.get(&file_key) == fingerprint {
+				return cached.file_data.get(&file_key).cloned();
+			}
+
+			None
+		});
+
+		let entry = if let Some(entry) = cached_entry {
+			entry
 		} else {
-			parse_source_with_diagnostics(&content, &options.markdown_codeblocks)?
+			parse_file_for_scan(file, options)?
 		};
 
-		// Convert parse diagnostics to project diagnostics.
-		for diag in parse_diagnostics {
-			let project_diag = match diag {
-				crate::parser::ParseDiagnostic::UnclosedBlock { name, line, column } => {
-					ProjectDiagnostic {
-						file: file.clone(),
-						kind: DiagnosticKind::UnclosedBlock { name },
-						line,
-						column,
-					}
-				}
-				crate::parser::ParseDiagnostic::UnknownTransformer { name, line, column } => {
-					ProjectDiagnostic {
-						file: file.clone(),
-						kind: DiagnosticKind::UnknownTransformer { name },
-						line,
-						column,
-					}
-				}
-				crate::parser::ParseDiagnostic::InvalidTransformerArgs {
-					name,
-					expected,
-					got,
-					line,
-					column,
-				} => {
-					ProjectDiagnostic {
-						file: file.clone(),
-						kind: DiagnosticKind::InvalidTransformerArgs {
-							name,
-							expected,
-							got,
-						},
-						line,
-						column,
-					}
-				}
-			};
-			diagnostics.push(project_diag);
-		}
-
-		let is_template = file
-			.file_name()
-			.and_then(|name| name.to_str())
-			.is_some_and(|name| name.ends_with(".t.md"));
-
-		for block in &blocks {
-			// Validate transformer arguments.
-			if let Err(MdtError::InvalidTransformerArgs {
-				name,
-				expected,
-				got,
-			}) = validate_transformers(&block.transformers)
-			{
-				diagnostics.push(ProjectDiagnostic {
-					file: file.clone(),
-					kind: DiagnosticKind::InvalidTransformerArgs {
-						name,
-						expected,
-						got,
-					},
-					line: block.opening.start.line,
-					column: block.opening.start.column,
-				});
-			}
-		}
-
-		for block in blocks {
-			// Skip blocks whose names are in the excluded_blocks list.
-			if options
-				.excluded_blocks
-				.iter()
-				.any(|name| name == &block.name)
-			{
-				continue;
-			}
-
-			let block_content = extract_content_between_tags(&content, &block);
-
-			match block.r#type {
-				BlockType::Provider => {
-					if !is_template {
-						continue;
-					}
-					if let Some(existing) = providers.get(&block.name) {
-						return Err(MdtError::DuplicateProvider {
-							name: block.name.clone(),
-							first_file: existing.file.display().to_string(),
-							second_file: file.display().to_string(),
-						});
-					}
-					providers.insert(
-						block.name.clone(),
-						ProviderEntry {
-							block,
-							file: file.clone(),
-							content: block_content,
-						},
-					);
-				}
-				BlockType::Consumer => {
-					consumers.push(ConsumerEntry {
-						block,
-						file: file.clone(),
-						content: block_content,
-					});
-				}
-			}
-		}
+		merged_file_data.insert(file_key, entry);
 	}
 
-	// Check for unused providers.
-	let referenced_names: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
-	for (name, entry) in &providers {
-		if !referenced_names.contains(name.as_str()) {
-			diagnostics.push(ProjectDiagnostic {
-				file: entry.file.clone(),
-				kind: DiagnosticKind::UnusedProvider { name: name.clone() },
-				line: entry.block.opening.start.line,
-				column: entry.block.opening.start.column,
-			});
-		}
-	}
-
-	let project = Project {
-		providers,
-		consumers,
-		diagnostics,
-	};
-
-	let cache = ProjectIndexCache::new(project_key, file_fingerprints, project.clone());
+	let project = build_project_from_file_data(root, &files, &merged_file_data)?;
+	let cache = ProjectIndexCache::new(
+		project_key,
+		file_fingerprints,
+		merged_file_data,
+		project.clone(),
+	);
 	index_cache::save(root, &cache);
 
 	Ok(project)
