@@ -74,6 +74,7 @@ pub mod config;
 mod engine;
 #[allow(unused_assignments)]
 mod error;
+mod index_cache;
 pub(crate) mod lexer;
 mod parser;
 pub(crate) mod patterns;
