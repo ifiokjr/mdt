@@ -12,6 +12,7 @@ use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
+use mdt_core::BlockType;
 use mdt_core::MdtConfig;
 use mdt_core::MdtError;
 use mdt_core::TemplateWarning;
@@ -174,8 +175,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if config_exists {
 		// Skip silently if config already exists.
 	} else {
-		let sample_config =
-			"# mdt configuration\n# See \
+		let sample_config = "# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
 			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
@@ -314,6 +314,7 @@ fn count_orphan_consumers(
 ) -> usize {
 	consumers
 		.iter()
+		.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 		.filter(|consumer| !providers.contains_key(&consumer.block.name))
 		.count()
 }
@@ -322,7 +323,11 @@ fn count_unused_providers(
 	providers: &std::collections::HashMap<String, ProviderEntry>,
 	consumers: &[ConsumerEntry],
 ) -> usize {
-	let referenced: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
+	let referenced: HashSet<&str> = consumers
+		.iter()
+		.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
+		.map(|consumer| consumer.block.name.as_str())
+		.collect();
 	providers
 		.keys()
 		.filter(|name| !referenced.contains(name.as_str()))
@@ -712,6 +717,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 				.project
 				.consumers
 				.iter()
+				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 				.filter(|c| c.block.name == *name)
 				.count();
 			println!("  @{name} {rel} ({consumer_count} consumer(s))");
@@ -726,8 +732,16 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		println!("{}", colored!("Consumers:", bold));
 		for consumer in &ctx.project.consumers {
 			let rel = make_relative(&consumer.file, &root);
-			let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
-			let status = if has_provider { "linked" } else { "orphan" };
+			let (sigil, status) = match consumer.block.r#type {
+				BlockType::Consumer => {
+					let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
+					let status = if has_provider { "linked" } else { "orphan" };
+					("=", status)
+				}
+				BlockType::Inline => ("~", "inline"),
+				BlockType::Provider => ("@", "provider"),
+				_ => ("?", "unknown"),
+			};
 			let transformers = if consumer.block.transformers.is_empty() {
 				String::new()
 			} else {
@@ -739,7 +753,10 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 					.collect();
 				format!(" |{}", names.join("|"))
 			};
-			println!("  ={} {rel}{transformers} [{status}]", consumer.block.name);
+			println!(
+				"  {sigil}{} {rel}{transformers} [{status}]",
+				consumer.block.name
+			);
 		}
 	}
 
@@ -861,13 +878,11 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
 		.iter()
-		.map(|source| {
-			InfoDataSourceSection {
-				namespace: source.namespace.clone(),
-				path: source.path.display().to_string(),
-				format: source.format.clone(),
-				explicit_format: source.explicit_format,
-			}
+		.map(|source| InfoDataSourceSection {
+			namespace: source.namespace.clone(),
+			path: source.path.display().to_string(),
+			format: source.format.clone(),
+			explicit_format: source.explicit_format,
 		})
 		.collect();
 
@@ -1100,34 +1115,32 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				None,
 			);
 		}
-		Some(config) => {
-			match config.load_data(&root) {
-				Ok(loaded_data) => {
-					add_doctor_check(
-						&mut checks,
-						"data_sources",
-						"Data Sources",
-						DoctorStatus::Pass,
-						format!("loaded {} namespace(s) successfully", loaded_data.len()),
-						None,
-					);
-				}
-				Err(error) => {
-					add_doctor_check(
-						&mut checks,
-						"data_sources",
-						"Data Sources",
-						DoctorStatus::Fail,
-						format!("failed to load configured data sources: {error}"),
-						Some(
-							"verify data file paths, formats, and parse validity for each [data] \
-							 namespace"
-								.to_string(),
-						),
-					);
-				}
+		Some(config) => match config.load_data(&root) {
+			Ok(loaded_data) => {
+				add_doctor_check(
+					&mut checks,
+					"data_sources",
+					"Data Sources",
+					DoctorStatus::Pass,
+					format!("loaded {} namespace(s) successfully", loaded_data.len()),
+					None,
+				);
 			}
-		}
+			Err(error) => {
+				add_doctor_check(
+					&mut checks,
+					"data_sources",
+					"Data Sources",
+					DoctorStatus::Fail,
+					format!("failed to load configured data sources: {error}"),
+					Some(
+						"verify data file paths, formats, and parse validity for each [data] \
+							 namespace"
+							.to_string(),
+					),
+				);
+			}
+		},
 		None => {
 			add_doctor_check(
 				&mut checks,

@@ -19,6 +19,8 @@ enum RawToken {
 	ConsumerTag,
 	#[token("{@")]
 	ProviderTag,
+	#[token("{~")]
+	InlineTag,
 	#[token("{/")]
 	CloseTag,
 	#[token("}")]
@@ -233,37 +235,39 @@ impl<'a> TokenWalker<'a> {
 						}
 					}
 				}
-				Some(LexerContext::HtmlComment) => {
-					match raw {
-						RawToken::HtmlCommentClose => {
-							self.stack.pop();
-							self.push_token(Token::HtmlCommentClose, false);
-							self.push_token_group();
-						}
-						RawToken::ConsumerTag => {
-							self.stack.push(LexerContext::Tag);
-							self.push_token(Token::ConsumerTag, false);
-						}
-						RawToken::ProviderTag => {
-							self.stack.push(LexerContext::Tag);
-							self.push_token(Token::ProviderTag, false);
-						}
-						RawToken::CloseTag => {
-							self.stack.push(LexerContext::Tag);
-							self.push_token(Token::CloseTag, false);
-						}
-						RawToken::Newline => {
-							self.push_token(Token::Newline, false);
-						}
-						RawToken::Whitespace => {
-							let byte = self.current_slice().as_bytes()[0];
-							self.push_token(Token::Whitespace(byte), false);
-						}
-						_ => {
-							self.exit_comment_block();
-						}
+				Some(LexerContext::HtmlComment) => match raw {
+					RawToken::HtmlCommentClose => {
+						self.stack.pop();
+						self.push_token(Token::HtmlCommentClose, false);
+						self.push_token_group();
 					}
-				}
+					RawToken::ConsumerTag => {
+						self.stack.push(LexerContext::Tag);
+						self.push_token(Token::ConsumerTag, false);
+					}
+					RawToken::ProviderTag => {
+						self.stack.push(LexerContext::Tag);
+						self.push_token(Token::ProviderTag, false);
+					}
+					RawToken::InlineTag => {
+						self.stack.push(LexerContext::Tag);
+						self.push_token(Token::InlineTag, false);
+					}
+					RawToken::CloseTag => {
+						self.stack.push(LexerContext::Tag);
+						self.push_token(Token::CloseTag, false);
+					}
+					RawToken::Newline => {
+						self.push_token(Token::Newline, false);
+					}
+					RawToken::Whitespace => {
+						let byte = self.current_slice().as_bytes()[0];
+						self.push_token(Token::Whitespace(byte), false);
+					}
+					_ => {
+						self.exit_comment_block();
+					}
+				},
 				Some(LexerContext::Tag) => {
 					match raw {
 						RawToken::BraceClose => {

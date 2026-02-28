@@ -25,6 +25,7 @@
 
 - [Monorepo & Multi-Project Setups](./advanced/monorepos.md)
 - [Block Arguments](./advanced/block-arguments.md)
+- [Inline Blocks](./advanced/inline-blocks.md)
 
 # Reference
 

@@ -58,6 +58,45 @@ pub fn consumer_pattern() -> Vec<PatternMatcher> {
 	]
 }
 
+pub fn inline_pattern() -> Vec<PatternMatcher> {
+	vec![
+		one(vec![Token::HtmlCommentOpen]),
+		optional_many(vec![Token::whitespace(), Token::Newline]),
+		one(vec![Token::InlineTag]),
+		optional_many(vec![Token::whitespace()]),
+		one(vec![Token::any()]),
+		optional_many(vec![Token::whitespace()]),
+		// Optional positional block arguments (e.g., :"arg1":"arg2")
+		optional_many_group(vec![
+			one(vec![Token::ArgumentDelimiter]),
+			optional_many(vec![Token::whitespace()]),
+			one(vec![Token::string()]),
+			optional_many(vec![Token::whitespace()]),
+		]),
+		optional_many_group(vec![
+			one(vec![Token::Pipe]),
+			optional_many(vec![Token::whitespace()]),
+			one(vec![Token::any()]),
+			optional_many(vec![Token::whitespace()]),
+			optional_many_group(vec![
+				one(vec![Token::ArgumentDelimiter]),
+				optional_many(vec![Token::whitespace()]),
+				one(vec![
+					Token::string(),
+					Token::r#true(),
+					Token::r#false(),
+					Token::int(),
+					Token::float(),
+				]),
+				optional_many(vec![Token::whitespace()]),
+			]),
+		]),
+		one(vec![Token::BraceClose]),
+		optional_many(vec![Token::whitespace(), Token::Newline]),
+		one(vec![Token::HtmlCommentClose]),
+	]
+}
+
 pub fn provider_pattern() -> Vec<PatternMatcher> {
 	vec![
 		one(vec![Token::HtmlCommentOpen]),
@@ -111,12 +150,12 @@ pub fn group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 
 pub fn optional_many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
 	let method = many_group(matchers);
-	Box::new(move |token_group: &TokenGroup, index: usize| {
-		match method(token_group, index) {
+	Box::new(
+		move |token_group: &TokenGroup, index: usize| match method(token_group, index) {
 			Ok(index) => Ok(index),
 			Err(_) => Ok(index),
-		}
-	})
+		},
+	)
 }
 
 pub fn many_group(matchers: Vec<PatternMatcher>) -> PatternMatcher {
@@ -148,12 +187,12 @@ pub fn one(tokens: Vec<Token>) -> PatternMatcher {
 
 pub fn optional_many(tokens: Vec<Token>) -> PatternMatcher {
 	let method = many(tokens);
-	Box::new(move |token_group: &TokenGroup, index: usize| {
-		match method(token_group, index) {
+	Box::new(
+		move |token_group: &TokenGroup, index: usize| match method(token_group, index) {
 			Ok(index) => Ok(index),
 			Err(_) => Ok(index),
-		}
-	})
+		},
+	)
 }
 
 pub fn many(tokens: Vec<Token>) -> PatternMatcher {
@@ -195,7 +234,12 @@ impl TokenGroup {
 	}
 
 	pub fn is_valid(&self) -> bool {
-		let patterns = vec![closing_pattern(), provider_pattern(), consumer_pattern()];
+		let patterns = vec![
+			closing_pattern(),
+			provider_pattern(),
+			consumer_pattern(),
+			inline_pattern(),
+		];
 
 		for pattern in patterns {
 			let Some(result) = self.matches_pattern(&pattern).ok() else {

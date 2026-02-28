@@ -36,6 +36,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+use mdt_core::BlockType;
 use mdt_core::apply_transformers;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
@@ -355,6 +356,7 @@ impl MdtMcpServer {
 					.project
 					.consumers
 					.iter()
+					.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 					.filter(|c| c.block.name == *name)
 					.count();
 				ProviderInfo {
@@ -438,6 +440,7 @@ impl MdtMcpServer {
 					.project
 					.consumers
 					.iter()
+					.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 					.filter(|consumer| consumer.block.name == *name)
 					.collect();
 
@@ -520,12 +523,14 @@ impl MdtMcpServer {
 				.project
 				.consumers
 				.iter()
+				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 				.filter(|c| c.block.name == params.block_name)
 				.count();
 			let consumer_files: Vec<String> = ctx
 				.project
 				.consumers
 				.iter()
+				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 				.filter(|c| c.block.name == params.block_name)
 				.map(|c| make_relative(&c.file, &root))
 				.collect();

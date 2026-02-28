@@ -351,40 +351,34 @@ fn hash_file_contents(path: &Path) -> MdtResult<u64> {
 
 fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDiagnostic {
 	match diag {
-		ParseDiagnostic::UnclosedBlock { name, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::UnclosedBlock { name },
-				line,
-				column,
-			}
-		}
-		ParseDiagnostic::UnknownTransformer { name, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::UnknownTransformer { name },
-				line,
-				column,
-			}
-		}
+		ParseDiagnostic::UnclosedBlock { name, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::UnclosedBlock { name },
+			line,
+			column,
+		},
+		ParseDiagnostic::UnknownTransformer { name, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::UnknownTransformer { name },
+			line,
+			column,
+		},
 		ParseDiagnostic::InvalidTransformerArgs {
 			name,
 			expected,
 			got,
 			line,
 			column,
-		} => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::InvalidTransformerArgs {
-					name,
-					expected,
-					got,
-				},
-				line,
-				column,
-			}
-		}
+		} => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::InvalidTransformerArgs {
+				name,
+				expected,
+				got,
+			},
+			line,
+			column,
+		},
 	}
 }
 
@@ -454,7 +448,7 @@ fn parse_file_for_scan(
 					content: block_content,
 				});
 			}
-			BlockType::Consumer => {
+			BlockType::Consumer | BlockType::Inline => {
 				consumers.push(ConsumerEntry {
 					block,
 					file: file.to_path_buf(),
@@ -501,7 +495,11 @@ fn build_project_from_file_data(
 		consumers.extend(entry.consumers.iter().cloned());
 	}
 
-	let referenced_names: HashSet<&str> = consumers.iter().map(|c| c.block.name.as_str()).collect();
+	let referenced_names: HashSet<&str> = consumers
+		.iter()
+		.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
+		.map(|consumer| consumer.block.name.as_str())
+		.collect();
 	for (name, entry) in &providers {
 		if !referenced_names.contains(name.as_str()) {
 			diagnostics.push(ProjectDiagnostic {
@@ -853,6 +851,9 @@ pub fn is_template_file(path: &Path) -> bool {
 pub fn find_missing_providers(project: &Project) -> Vec<String> {
 	let mut missing = Vec::new();
 	for consumer in &project.consumers {
+		if consumer.block.r#type != BlockType::Consumer {
+			continue;
+		}
 		if !project.providers.contains_key(&consumer.block.name)
 			&& !missing.contains(&consumer.block.name)
 		{

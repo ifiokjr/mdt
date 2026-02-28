@@ -15,12 +15,12 @@
 ### Capabilities
 
 - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
-- **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+- **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
 - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
 - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
-- **References** — finds all provider and consumer blocks sharing the same name.
+- **References** — finds all provider, consumer, and inline blocks sharing the same name.
 - **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
-- **Document symbols** — lists all provider and consumer blocks in the outline/symbol view.
+- **Document symbols** — lists provider, consumer, and inline blocks in the outline/symbol view.
 - **Code actions** — offers a quick-fix to update stale consumer blocks in place.
 
 ### Usage

@@ -40,6 +40,14 @@ This content gets replaced
 <!-- {/blockName} -->
 ```
 
+**Inline tag** (provider-free interpolation using configured data):
+
+```markdown
+<!-- {~version:"{{ "{{" }} package.version {{ "}}" }}"} -->
+0.0.0
+<!-- {/version} -->
+```
+
 **Filters and pipes:** Template values support pipe-delimited transformers:
 
 ```markdown
@@ -50,6 +58,31 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 <!-- {/mdtTemplateSyntax} -->
 
+<!-- {@mdtInlineBlocksGuide} -->
+
+Inline blocks are useful when you need dynamic content in-place without creating a separate provider. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
+
+Inline blocks render minijinja template content from the block's first argument:
+
+```markdown
+<!-- {~version:"{{ "{{" }} pkg.version {{ "}}" }}"} -->0.0.0<!-- {/version} -->
+```
+
+During `mdt update`, mdt evaluates the template argument with your configured `[data]` context, then replaces the content between the opening and closing tags.
+
+Because inline blocks are provider-free, they are ideal for one-off values that still need to stay synchronized.
+
+<!-- {/mdtInlineBlocksGuide} -->
+
+<!-- {@mdtInlineBlocksLimits} -->
+
+- Inline blocks must include a first argument that is the template string to render.
+- Inline blocks do not resolve provider content; everything comes from the inline template argument and current data context.
+- Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
+- Inline blocks are scanned where mdt scans HTML comment tags (markdown and supported source comments), and follow the same code-block filtering rules configured for source scanning.
+
+<!-- {/mdtInlineBlocksLimits} -->
+
 <!-- {@mdtLspOverview} -->
 
 `mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
@@ -57,12 +90,12 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 ### Capabilities
 
 - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
-- **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+- **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
 - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
 - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
-- **References** — finds all provider and consumer blocks sharing the same name.
+- **References** — finds all provider, consumer, and inline blocks sharing the same name.
 - **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
-- **Document symbols** — lists all provider and consumer blocks in the outline/symbol view.
+- **Document symbols** — lists provider, consumer, and inline blocks in the outline/symbol view.
 - **Code actions** — offers a quick-fix to update stale consumer blocks in place.
 
 ### Usage

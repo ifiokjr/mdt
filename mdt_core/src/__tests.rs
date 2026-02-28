@@ -22,6 +22,7 @@ use crate::tokens::TokenGroup;
 #[rstest]
 #[case::consumer(consumer_token_group(), patterns::consumer_pattern())]
 #[case::provider(provider_token_group(), patterns::provider_pattern())]
+#[case::inline(inline_token_group_with_argument(), patterns::inline_pattern())]
 #[case::closing(closing_token_group(), patterns::closing_pattern())]
 fn matches_tokens(
 	#[case] group: TokenGroup,
@@ -40,6 +41,7 @@ fn matches_tokens(
 #[case::multi_invalid_html_comment(r"<!-- abcd --> <!-- abcd -->", vec![])]
 #[case::consumer(r"<!-- {=exampleName} -->", vec![consumer_token_group()])]
 #[case::provider(r"<!-- {@exampleProvider} -->", vec![provider_token_group()])]
+#[case::inline(r#"<!-- {~version:"{{ pkg.version }}"} -->"#, vec![inline_token_group_with_argument()])]
 #[case::closing(r"<!-- {/example} -->", vec![closing_token_group()])]
 #[case::closing_whitespace(" <!--\n{/example}--> ", vec![closing_token_group_no_whitespace()])]
 #[case::consumer(r#"<!-- {=exampleName|trim|indent:"/// "} -->"#, vec![consumer_token_group_with_arguments()])]
@@ -98,6 +100,18 @@ content
 	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Trim);
 	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Indent);
 	assert_eq!(blocks[0].transformers[1].args.len(), 1);
+
+	Ok(())
+}
+
+#[test]
+fn parse_inline_block_with_template_argument() -> MdtResult<()> {
+	let input = r#"<!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "version");
+	assert_eq!(blocks[0].r#type, BlockType::Inline);
+	assert_eq!(blocks[0].arguments, vec!["{{ pkg.version }}".to_string()]);
 
 	Ok(())
 }
@@ -424,6 +438,32 @@ fn check_project_detects_stale() -> MdtResult<()> {
 }
 
 #[test]
+fn check_project_detects_stale_inline_block() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {~version:\"{{ pkg.version }}\"} -->\n\n0.0.0\n\n<!-- {/version} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(!result.is_ok());
+	assert_eq!(result.stale.len(), 1);
+	assert_eq!(result.stale[0].block_name, "version");
+	assert_eq!(result.render_errors.len(), 0);
+
+	Ok(())
+}
+
+#[test]
 fn compute_updates_replaces_content() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
@@ -450,6 +490,36 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 	});
 	assert!(content.contains("Updated info."));
 	assert!(!content.contains("Old info."));
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_replaces_inline_content() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {~version:\"{{ pkg.version }}\"} -->\n\n0.0.0\n\n<!-- {/version} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content,
+		"<!-- {~version:\"{{ pkg.version }}\"} -->1.2.3<!-- {/version} -->\n"
+	);
 
 	Ok(())
 }
@@ -4722,6 +4792,7 @@ fn scan_with_template_paths() -> MdtResult<()> {
 fn block_type_display() {
 	assert_eq!(format!("{}", BlockType::Provider), "provider");
 	assert_eq!(format!("{}", BlockType::Consumer), "consumer");
+	assert_eq!(format!("{}", BlockType::Inline), "inline");
 }
 
 // --- parser.rs: TransformerType::Display ---

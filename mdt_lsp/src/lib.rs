@@ -4,12 +4,12 @@
 //! ### Capabilities
 //!
 //! - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
-//! - **Completions** — suggests block names after `{=`, `{@`, and `{/` tags, and transformer names after `|`.
+//! - **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
 //! - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
 //! - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
-//! - **References** — finds all provider and consumer blocks sharing the same name.
+//! - **References** — finds all provider, consumer, and inline blocks sharing the same name.
 //! - **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
-//! - **Document symbols** — lists all provider and consumer blocks in the outline/symbol view.
+//! - **Document symbols** — lists provider, consumer, and inline blocks in the outline/symbol view.
 //! - **Code actions** — offers a quick-fix to update stale consumer blocks in place.
 //!
 //! ### Usage
@@ -29,7 +29,7 @@ use std::path::PathBuf;
 use mdt_core::Block;
 use mdt_core::BlockType;
 use mdt_core::ParseDiagnostic;
-use mdt_core::apply_transformers;
+use mdt_core::apply_transformers_with_data;
 use mdt_core::parse_source_with_diagnostics;
 use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
@@ -122,7 +122,7 @@ impl WorkspaceState {
 		// Update consumers for this file: remove existing then re-add.
 		self.consumers.retain(|c| c.file != file_path);
 		for block in &doc.blocks {
-			if block.r#type == BlockType::Consumer {
+			if matches!(block.r#type, BlockType::Consumer | BlockType::Inline) {
 				let block_content = extract_content_between_tags(&doc.content, block);
 				self.consumers.push(ConsumerEntry {
 					block: block.clone(),
@@ -684,7 +684,11 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 					let render_data = merge_block_args(&state.data, &provider.block, block);
 					let rendered = render_template(&provider.content, &render_data)
 						.unwrap_or_else(|_| provider.content.clone());
-					let expected = apply_transformers(&rendered, &block.transformers);
+					let expected = apply_transformers_with_data(
+						&rendered,
+						&block.transformers,
+						Some(&render_data),
+					);
 
 					if consumer_content != expected {
 						diagnostics.push(Diagnostic {
@@ -726,6 +730,59 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 					});
 				}
 			}
+			BlockType::Inline => {
+				let consumer_content = extract_content_between_tags(&doc.content, block);
+				let Some(template) = block.arguments.first() else {
+					diagnostics.push(Diagnostic {
+						range: to_lsp_range(&block.opening),
+						severity: Some(DiagnosticSeverity::ERROR),
+						source: Some("mdt".to_string()),
+						message: format!(
+							"Inline block `{}` requires a template argument, e.g. \
+							 <!-- {{~{}:\"{{{{ pkg.version }}}}\"}} -->",
+							block.name, block.name
+						),
+						..Default::default()
+					});
+					continue;
+				};
+
+				match render_template(template, &state.data) {
+					Ok(rendered) => {
+						let expected = apply_transformers_with_data(
+							&rendered,
+							&block.transformers,
+							Some(&state.data),
+						);
+						if consumer_content != expected {
+							diagnostics.push(Diagnostic {
+								range: to_lsp_range(&block.opening),
+								severity: Some(DiagnosticSeverity::WARNING),
+								source: Some("mdt".to_string()),
+								message: format!("Inline block `{}` is out of date", block.name),
+								data: Some(serde_json::json!({
+									"kind": "stale",
+									"block_name": block.name,
+									"expected_content": expected,
+								})),
+								..Default::default()
+							});
+						}
+					}
+					Err(err) => {
+						diagnostics.push(Diagnostic {
+							range: to_lsp_range(&block.opening),
+							severity: Some(DiagnosticSeverity::ERROR),
+							source: Some("mdt".to_string()),
+							message: format!(
+								"Inline block `{}` failed to render: {err}",
+								block.name
+							),
+							..Default::default()
+						});
+					}
+				}
+			}
 			BlockType::Provider => {
 				if is_template {
 					let (current_count, other_files) =
@@ -758,7 +815,10 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 
 					// Check for unused providers (no consumers reference this
 					// block).
-					let has_consumers = state.consumers.iter().any(|c| c.block.name == block.name);
+					let has_consumers = state.consumers.iter().any(|consumer| {
+						consumer.block.r#type == BlockType::Consumer
+							&& consumer.block.name == block.name
+					});
 					if !has_consumers {
 						diagnostics.push(Diagnostic {
 							range: to_lsp_range(&block.opening),
@@ -831,7 +891,11 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 				let render_data = merge_block_args(&state.data, &provider.block, block);
 				let rendered = render_template(&provider.content, &render_data)
 					.unwrap_or_else(|_| provider.content.clone());
-				let expected = apply_transformers(&rendered, &block.transformers);
+				let expected = apply_transformers_with_data(
+					&rendered,
+					&block.transformers,
+					Some(&render_data),
+				);
 
 				parts.push(format!(
 					"\n**Provider source:** `{}`",
@@ -850,6 +914,39 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 				parts.push(format!("\n---\n\n```\n{}\n```", expected.trim()));
 			} else {
 				parts.push("\n*No matching provider found*".to_string());
+			}
+
+			parts.join("")
+		}
+		BlockType::Inline => {
+			let mut parts = Vec::new();
+			parts.push(format!("**Inline block:** `{}`", block.name));
+
+			if let Some(template) = block.arguments.first() {
+				parts.push(format!("\n**Template:** `{template}`"));
+				match render_template(template, &state.data) {
+					Ok(rendered) => {
+						let expected = apply_transformers_with_data(
+							&rendered,
+							&block.transformers,
+							Some(&state.data),
+						);
+						if !block.transformers.is_empty() {
+							let names: Vec<String> = block
+								.transformers
+								.iter()
+								.map(|t| t.r#type.to_string())
+								.collect();
+							parts.push(format!("\n**Transformers:** {}", names.join(" | ")));
+						}
+						parts.push(format!("\n---\n\n```\n{}\n```", expected.trim()));
+					}
+					Err(err) => {
+						parts.push(format!("\n*Failed to render inline template:* `{err}`"));
+					}
+				}
+			} else {
+				parts.push("\n*Missing inline template argument*".to_string());
 			}
 
 			parts.join("")
@@ -929,6 +1026,7 @@ fn compute_completions(
 	// after `{=`, `{@`, or `{/`
 	let in_tag_context = before_cursor.contains("{=")
 		|| before_cursor.contains("{@")
+		|| before_cursor.contains("{~")
 		|| before_cursor.contains("{/");
 
 	// Check if we're after a pipe for transformer completion.
@@ -958,17 +1056,15 @@ fn block_name_completions(state: &WorkspaceState) -> Vec<CompletionItem> {
 	state
 		.providers
 		.iter()
-		.map(|(name, entry)| {
-			CompletionItem {
-				label: name.clone(),
-				kind: Some(CompletionItemKind::REFERENCE),
-				detail: Some(format!("Provider from {}", entry.file.display())),
-				documentation: Some(Documentation::MarkupContent(MarkupContent {
-					kind: MarkupKind::Markdown,
-					value: format!("```\n{}\n```", entry.content.trim()),
-				})),
-				..Default::default()
-			}
+		.map(|(name, entry)| CompletionItem {
+			label: name.clone(),
+			kind: Some(CompletionItemKind::REFERENCE),
+			detail: Some(format!("Provider from {}", entry.file.display())),
+			documentation: Some(Documentation::MarkupContent(MarkupContent {
+				kind: MarkupKind::Markdown,
+				value: format!("```\n{}\n```", entry.content.trim()),
+			})),
+			..Default::default()
 		})
 		.collect()
 }
@@ -1019,14 +1115,12 @@ fn transformer_completions() -> Vec<CompletionItem> {
 	transformers
 		.iter()
 		.enumerate()
-		.map(|(i, (name, desc))| {
-			CompletionItem {
-				label: (*name).to_string(),
-				kind: Some(CompletionItemKind::FUNCTION),
-				detail: Some((*desc).to_string()),
-				sort_text: Some(format!("{i:02}")),
-				..Default::default()
-			}
+		.map(|(i, (name, desc))| CompletionItem {
+			label: (*name).to_string(),
+			kind: Some(CompletionItemKind::FUNCTION),
+			detail: Some((*desc).to_string()),
+			sort_text: Some(format!("{i:02}")),
+			..Default::default()
 		})
 		.collect()
 }
@@ -1106,6 +1200,7 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSy
 			let prefix = match block.r#type {
 				BlockType::Provider => "@",
 				BlockType::Consumer => "=",
+				BlockType::Inline => "~",
 				_ => "?",
 			};
 			let full_range = Range {
@@ -1147,7 +1242,7 @@ fn compute_code_actions(
 	let mut actions = Vec::new();
 
 	for block in &doc.blocks {
-		if block.r#type != BlockType::Consumer {
+		if !matches!(block.r#type, BlockType::Consumer | BlockType::Inline) {
 			continue;
 		}
 
@@ -1163,14 +1258,35 @@ fn compute_code_actions(
 			continue;
 		}
 
-		let Some(provider) = state.providers.get(&block.name) else {
-			continue;
+		let (expected, diagnostic_message) = match block.r#type {
+			BlockType::Consumer => {
+				let Some(provider) = state.providers.get(&block.name) else {
+					continue;
+				};
+				let render_data = merge_block_args(&state.data, &provider.block, block);
+				let rendered = render_template(&provider.content, &render_data)
+					.unwrap_or_else(|_| provider.content.clone());
+				(
+					apply_transformers_with_data(
+						&rendered,
+						&block.transformers,
+						Some(&render_data),
+					),
+					format!("Consumer block `{}` is out of date", block.name),
+				)
+			}
+			BlockType::Inline => {
+				let Some(template) = block.arguments.first() else {
+					continue;
+				};
+				let rendered = render_template(template, &state.data).unwrap_or_default();
+				(
+					apply_transformers_with_data(&rendered, &block.transformers, Some(&state.data)),
+					format!("Inline block `{}` is out of date", block.name),
+				)
+			}
+			_ => continue,
 		};
-
-		let render_data = merge_block_args(&state.data, &provider.block, block);
-		let rendered = render_template(&provider.content, &render_data)
-			.unwrap_or_else(|_| provider.content.clone());
-		let expected = apply_transformers(&rendered, &block.transformers);
 		let current = extract_content_between_tags(&doc.content, block);
 
 		if current == expected {
@@ -1199,7 +1315,7 @@ fn compute_code_actions(
 				range: opening_range,
 				severity: Some(DiagnosticSeverity::WARNING),
 				source: Some("mdt".to_string()),
-				message: format!("Consumer block `{}` is out of date", block.name),
+				message: diagnostic_message,
 				..Default::default()
 			}]),
 			edit: Some(WorkspaceEdit {
@@ -1241,24 +1357,41 @@ fn compute_references(
 
 	let mut locations = Vec::new();
 
-	// Include the provider location if it exists.
-	if let Some(provider) = state.providers.get(name) {
-		if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
-			locations.push(Location {
-				uri: provider_uri,
-				range: to_lsp_range(&provider.block.opening),
-			});
+	match block.r#type {
+		BlockType::Inline => {
+			// Inline blocks only reference other inline blocks of the same name.
+			for consumer in &state.consumers {
+				if consumer.block.r#type == BlockType::Inline && consumer.block.name == *name {
+					if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+						locations.push(Location {
+							uri: consumer_uri,
+							range: to_lsp_range(&consumer.block.opening),
+						});
+					}
+				}
+			}
 		}
-	}
+		_ => {
+			// Include the provider location if it exists.
+			if let Some(provider) = state.providers.get(name) {
+				if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+					locations.push(Location {
+						uri: provider_uri,
+						range: to_lsp_range(&provider.block.opening),
+					});
+				}
+			}
 
-	// Include all consumer locations.
-	for consumer in &state.consumers {
-		if consumer.block.name == *name {
-			if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
-				locations.push(Location {
-					uri: consumer_uri,
-					range: to_lsp_range(&consumer.block.opening),
-				});
+			// Include all consumer locations.
+			for consumer in &state.consumers {
+				if consumer.block.r#type == BlockType::Consumer && consumer.block.name == *name {
+					if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+						locations.push(Location {
+							uri: consumer_uri,
+							range: to_lsp_range(&consumer.block.opening),
+						});
+					}
+				}
 			}
 		}
 	}
@@ -1275,13 +1408,14 @@ fn compute_references(
 // ---------------------------------------------------------------------------
 
 /// Find the range of the block name within a tag, given the tag text and
-/// the tag's starting LSP position. The name appears after `{@`, `{=`, or
+/// the tag's starting LSP position. The name appears after `{@`, `{=`, `{~`, or
 /// `{/` in the tag text.
 fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Option<Range> {
 	// Tags have the form: `<!-- ` + open/close marker + name + ` -->`.
-	// Open markers: `{@` (provider), `{=` (consumer). Close marker: `{/`.
-	// We find `{@`, `{=`, or `{/`, then look for the name immediately after.
-	let tag_prefix_patterns = ["{@", "{=", "{/"];
+	// Open markers: `{@` (provider), `{=` (consumer), `{~` (inline).
+	// Close marker: `{/`.
+	// We find one of these markers, then look for the name immediately after.
+	let tag_prefix_patterns = ["{@", "{=", "{~", "{/"];
 	let mut search_start = 0;
 
 	for pattern in &tag_prefix_patterns {

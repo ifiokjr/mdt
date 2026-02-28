@@ -134,9 +134,10 @@ Consumers:
   =installGuide crates/my-lib/readme.md [linked]
   =apiDocs readme.md [linked]
   =apiDocs src/lib.rs |trim|indent [linked]
+  ~version readme.md [inline]
   =orphanBlock docs/old.md [orphan]
 
-2 provider(s), 5 consumer(s)
+2 provider(s), 6 consumer(s)
 ```
 
 **Status indicators:**
@@ -145,6 +146,7 @@ Consumers:
 | ---------- | -------------------------------------------- |
 | `[linked]` | Consumer has a matching provider.            |
 | `[orphan]` | Consumer references a non-existent provider. |
+| `[inline]` | Inline block renders from its own template argument. |
 
 Transformers are shown after the file path when present.
 
