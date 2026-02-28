@@ -58,7 +58,7 @@ These patterns are checked relative to the project root. In addition to your exp
 
 #### `markdown_codeblocks` — Skip tags in code blocks
 
-Controls whether mdt tags inside fenced code blocks are processed. This is useful when your markdown files contain code examples that show mdt tag syntax but should not be treated as real tags.
+Controls whether mdt tags inside fenced code blocks in **source-file comments** are processed. This is useful when doc comments contain fenced examples that show mdt tag syntax but should not be treated as real tags.
 
 ```toml
 [exclude]
@@ -72,7 +72,7 @@ markdown_codeblocks = "ignore"
 markdown_codeblocks = ["ignore", "example"]
 ```
 
-The default is `false`, meaning tags in code blocks are processed normally.
+The default is `false`, meaning tags in fenced source-comment code blocks are processed normally.
 
 #### `blocks` — Exclude specific block names
 
@@ -188,6 +188,7 @@ cargo = "crates/my-lib/Cargo.toml"
 [exclude]
 patterns = ["vendor/", "dist/", "*.generated.md"]
 blocks = ["draft-section"]
+# Applies to fenced code blocks inside source-file comments.
 markdown_codeblocks = true
 
 [include]

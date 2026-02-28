@@ -260,6 +260,41 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 }
 
 #[test]
+fn update_inline_table_cell_with_data() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("package.json"),
+		r#"{"name": "mdt", "version": "3.1.4"}"#,
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- \
+		 {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env("NO_COLOR", "1")
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success()
+		.stdout(predicates::str::contains("Updated"));
+
+	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	assert!(content.contains(
+		"| mdt     | <!-- {~version:\"{{ pkg.version }}\"} -->3.1.4<!-- {/version} --> |"
+	));
+
+	Ok(())
+}
+
+#[test]
 fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 

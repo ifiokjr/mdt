@@ -54,9 +54,50 @@ Because inline blocks are provider-free, they are ideal for one-off values that 
 - Inline blocks must include a first argument that is the template string to render.
 - Inline blocks do not resolve provider content; everything comes from the inline template argument and current data context.
 - Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
-- Inline blocks are scanned where mdt scans HTML comment tags (markdown and supported source comments), and follow the same code-block filtering rules configured for source scanning.
+- In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
+- Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
+- In source files, inline tags follow source scanning rules and respect `[exclude] markdown_codeblocks` filtering.
 
 <!-- {/mdtInlineBlocksLimits} -->
+
+#### Practical examples
+
+<!-- {=mdtInlineBlocksExamples} -->
+
+### Inline value in prose
+
+```markdown
+Install version <!-- {~releaseVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/releaseVersion} --> today.
+```
+
+### Inline value in a table cell
+
+```markdown
+| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/mdtVersion} --> |
+```
+
+### Inline value with a transformer
+
+```markdown
+CLI version: <!-- {~cliVersionCode:"{{ pkg.version }}"|code} -->`0.0.0`<!-- {/cliVersionCode} -->
+```
+
+### Inline value from a script-backed data source
+
+```toml
+[data]
+release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+```
+
+```markdown
+Release: <!-- {~releaseValue:"{{ release }}"} -->0.0.0<!-- {/releaseValue} -->
+```
+
+When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+
+<!-- {/mdtInlineBlocksExamples} -->
 
 ### Close tag
 

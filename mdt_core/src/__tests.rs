@@ -117,6 +117,32 @@ fn parse_inline_block_with_template_argument() -> MdtResult<()> {
 }
 
 #[test]
+fn parse_inline_block_inside_markdown_table_cell() -> MdtResult<()> {
+	let input = r#"| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} --> |
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "version");
+	assert_eq!(blocks[0].r#type, BlockType::Inline);
+	assert_eq!(blocks[0].arguments, vec!["{{ pkg.version }}".to_string()]);
+
+	Ok(())
+}
+
+#[test]
+fn parse_inline_block_inside_markdown_fence_is_ignored() -> MdtResult<()> {
+	let input = r#"```markdown
+<!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->
+```"#;
+	let blocks = parse(input)?;
+	assert!(blocks.is_empty());
+
+	Ok(())
+}
+
+#[test]
 fn parse_missing_close_tag_errors() {
 	let input = "<!-- {@openBlock} -->\n\nContent without close tag.\n";
 	let result = parse(input);
@@ -520,6 +546,70 @@ fn compute_updates_replaces_inline_content() -> MdtResult<()> {
 		content,
 		"<!-- {~version:\"{{ pkg.version }}\"} -->1.2.3<!-- {/version} -->\n"
 	);
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_replaces_inline_content_in_markdown_table() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- \
+		 {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains(
+		"| mdt     | <!-- {~version:\"{{ pkg.version }}\"} -->1.2.3<!-- {/version} --> |"
+	));
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_inline_with_script_data_source() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("VERSION"), "2.4.6\n").unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nrelease = { command = \"cat VERSION\", format = \"text\", watch = \
+		 [\"VERSION\"] }\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"Release <!-- {~releaseValue:\"{{ release | trim }}\"} -->0.0.0<!-- {/releaseValue} \
+		 -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains(
+		"Release <!-- {~releaseValue:\"{{ release | trim }}\"} -->2.4.6<!-- {/releaseValue} -->"
+	));
 
 	Ok(())
 }

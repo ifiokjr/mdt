@@ -94,6 +94,47 @@ When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cac
 
 <!-- {/mdtScriptDataSourcesNotes} -->
 
+## Inline interpolation patterns
+
+Inline blocks are useful when you need one local value from your data scope without creating a reusable provider.
+
+<!-- {=mdtInlineBlocksExamples} -->
+
+### Inline value in prose
+
+```markdown
+Install version <!-- {~releaseVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/releaseVersion} --> today.
+```
+
+### Inline value in a table cell
+
+```markdown
+| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/mdtVersion} --> |
+```
+
+### Inline value with a transformer
+
+```markdown
+CLI version: <!-- {~cliVersionCode:"{{ pkg.version }}"|code} -->`0.0.0`<!-- {/cliVersionCode} -->
+```
+
+### Inline value from a script-backed data source
+
+```toml
+[data]
+release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+```
+
+```markdown
+Release: <!-- {~releaseValue:"{{ release }}"} -->0.0.0<!-- {/releaseValue} -->
+```
+
+When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+
+<!-- {/mdtInlineBlocksExamples} -->
+
 ### TOML example
 
 ```toml
