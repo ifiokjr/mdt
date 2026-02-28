@@ -26,8 +26,8 @@ Unused providers             1
 
 Data
 Namespaces                   2
-source                       meta -> meta.toml
-source                       pkg -> package.json
+source                       meta [file] -> meta.toml
+source                       pkg [file] -> package.json
 
 Templates
 Template files               2

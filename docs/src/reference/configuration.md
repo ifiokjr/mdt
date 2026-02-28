@@ -23,6 +23,7 @@ cargo = "Cargo.toml"
 config = "settings.yaml"
 metadata = "data.kdl"
 release = { path = "release-info", format = "json" }
+version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
 **Keys:** Any valid TOML key. Used as the namespace prefix in templates (`{{ key.field }}`).
@@ -31,8 +32,35 @@ release = { path = "release-info", format = "json" }
 
 - String path (backward-compatible): `pkg = "package.json"`
 - Typed entry with explicit format: `release = { path = "release-info", format = "json" }`
+- Script entry: `version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }`
 
 String paths infer format from file extension. Typed entries use `format` and are useful for files without extensions.
+
+### Script-backed data sources
+
+<!-- {=mdtScriptDataSourcesGuide|trim} -->
+`[data]` entries can run shell commands and use stdout as template data. This
+is useful for values that come from tooling (for example Nix, git metadata,
+or generated version files).
+
+```toml
+[data]
+release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+```
+
+- `command`: shell command executed from the project root.
+- `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
+- `watch`: files that control cache invalidation.
+
+When `watch` files are unchanged, mdt reuses cached script output from
+`.mdt/cache/data-v1.json` instead of re-running the command.
+<!-- {/mdtScriptDataSourcesGuide} -->
+
+<!-- {=mdtScriptDataSourcesNotes|trim} -->
+- Script outputs are cached per namespace, command, format, and watch list.
+- If `watch` is empty, mdt re-runs the script every load (no cache hit).
+- A non-zero script exit status fails data loading with an explicit error.
+<!-- {/mdtScriptDataSourcesNotes} -->
 
 **Supported formats:**
 
@@ -49,7 +77,7 @@ Other formats produce an error:
 
 ```
 error: unsupported data file format: `xml`
-  help: supported formats: .json, .toml, .yaml, .yml, .kdl, .ini
+  help: supported formats: text, json, toml, yaml, yml, kdl, ini
 ```
 
 If a referenced file doesn't exist, mdt produces an error:

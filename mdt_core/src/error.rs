@@ -48,10 +48,14 @@ pub enum MdtError {
 	#[diagnostic(code(mdt::data_file))]
 	DataFile { path: String, reason: String },
 
+	#[error("failed to execute data script for `{namespace}`: {reason}")]
+	#[diagnostic(code(mdt::data_script))]
+	DataScript { namespace: String, reason: String },
+
 	#[error("unsupported data file format: `{0}`")]
 	#[diagnostic(
 		code(mdt::unsupported_format),
-		help("supported formats: .json, .toml, .yaml, .yml, .kdl, .ini")
+		help("supported formats: text, json, toml, yaml, yml, kdl, ini")
 	)]
 	UnsupportedDataFormat(String),
 

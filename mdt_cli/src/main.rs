@@ -201,7 +201,8 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
 			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
-			 = \"Cargo.toml\"\n\n# Control blank lines between tags and content in source \
+			 = \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch \
+			 = [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
 			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
 			 [padding]\n# before = 0\n# after = 0\n";
 
@@ -244,7 +245,8 @@ struct ConfigSummary {
 #[derive(Debug)]
 struct DataSourceSummary {
 	namespace: String,
-	path: PathBuf,
+	location: String,
+	kind: String,
 	format: String,
 	explicit_format: bool,
 }
@@ -258,14 +260,41 @@ fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
 		return (explicit.to_ascii_lowercase(), true);
 	}
 
-	let inferred = source
-		.path()
-		.extension()
-		.and_then(|ext| ext.to_str())
-		.unwrap_or("unknown")
-		.to_ascii_lowercase();
+	let inferred = match source {
+		mdt_core::DataSource::Path(path) => path
+			.extension()
+			.and_then(|ext| ext.to_str())
+			.unwrap_or("unknown")
+			.to_ascii_lowercase(),
+		mdt_core::DataSource::Typed(typed) => typed
+			.path
+			.extension()
+			.and_then(|ext| ext.to_str())
+			.unwrap_or("unknown")
+			.to_ascii_lowercase(),
+		mdt_core::DataSource::Script(_) => "text".to_string(),
+		_ => "unknown".to_string(),
+	};
 
 	(inferred, false)
+}
+
+fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String) {
+	match source {
+		mdt_core::DataSource::Path(path) => (path.display().to_string(), "file".to_string()),
+		mdt_core::DataSource::Typed(typed) => {
+			(typed.path.display().to_string(), "file".to_string())
+		}
+		mdt_core::DataSource::Script(script) => (
+			format!("script: {}", script.command),
+			if script.watch.is_empty() {
+				"script".to_string()
+			} else {
+				format!("script (watch: {})", script.watch.len())
+			},
+		),
+		_ => ("unknown".to_string(), "unknown".to_string()),
+	}
 }
 
 fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error::Error>> {
@@ -281,9 +310,11 @@ fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error:
 		.into_iter()
 		.map(|(namespace, source)| {
 			let (format, explicit_format) = data_source_format(&source);
+			let (location, kind) = data_source_summary_fields(&source);
 			DataSourceSummary {
 				namespace,
-				path: source.path().to_path_buf(),
+				location,
+				kind,
 				format,
 				explicit_format,
 			}
@@ -292,7 +323,7 @@ fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error:
 	data_sources.sort_by(|a, b| {
 		a.namespace
 			.cmp(&b.namespace)
-			.then_with(|| a.path.cmp(&b.path))
+			.then_with(|| a.location.cmp(&b.location))
 	});
 
 	let mut template_dirs = config.templates.paths;
@@ -809,7 +840,8 @@ struct InfoBlocksSection {
 #[derive(serde::Serialize)]
 struct InfoDataSourceSection {
 	namespace: String,
-	path: String,
+	location: String,
+	kind: String,
 	format: String,
 	explicit_format: bool,
 }
@@ -957,7 +989,8 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 		.iter()
 		.map(|source| InfoDataSourceSection {
 			namespace: source.namespace.clone(),
-			path: source.path.display().to_string(),
+			location: source.location.clone(),
+			kind: source.kind.clone(),
 			format: source.format.clone(),
 			explicit_format: source.explicit_format,
 		})
@@ -1033,7 +1066,10 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 				print_field("Source files", "none");
 			} else {
 				for source in &report.data.namespaces {
-					println!("{:<28} {} -> {}", "source", source.namespace, source.path);
+					println!(
+						"{:<28} {} [{}] -> {}",
+						"source", source.namespace, source.kind, source.location
+					);
 				}
 			}
 
@@ -1305,8 +1341,8 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 					DoctorStatus::Fail,
 					format!("failed to load configured data sources: {error}"),
 					Some(
-						"verify data file paths, formats, and parse validity for each [data] \
-							 namespace"
+						"verify data file paths, script commands, formats, and parse validity \
+							 for each [data] namespace"
 							.to_string(),
 					),
 				);
