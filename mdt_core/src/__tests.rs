@@ -8898,7 +8898,8 @@ fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		format!(
-			"[data]\nversion = {{ command = {command:?}, format = \"text\", watch = [\"VERSION\"] }}\n"
+			"[data]\nversion = {{ command = {command:?}, format = \"text\", watch = [\"VERSION\"] \
+			 }}\n"
 		),
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
