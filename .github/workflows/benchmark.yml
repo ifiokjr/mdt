@@ -59,7 +59,8 @@ jobs:
           candidate_ref="$(git rev-parse HEAD)"
 
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            git fetch --no-tags --prune --depth=1 origin main
+            # Keep main history available so merge-base can resolve reliably.
+            git fetch --no-tags --prune --depth=0 origin main
             baseline_ref="$(git merge-base "${candidate_ref}" origin/main)"
           else
             if git rev-parse "${candidate_ref}^" >/dev/null 2>&1; then
