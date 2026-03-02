@@ -251,27 +251,73 @@ pub struct ProjectCacheTelemetry {
 	pub last_scan: Option<ProjectCacheLastScan>,
 }
 
-/// Read-only inspection of the on-disk project index cache artifact.
+/// Readability and validity of the cache artifact itself.
 #[derive(Debug, Clone, Serialize)]
-pub struct ProjectCacheInspection {
-	/// Absolute path to the cache artifact.
-	pub path: PathBuf,
+pub struct ProjectCacheArtifactState {
 	/// Whether a cache artifact file exists at the expected path.
 	pub exists: bool,
 	/// Whether the artifact could be read from disk.
 	pub readable: bool,
 	/// Whether the artifact parsed and matched the supported schema.
 	pub valid: bool,
-	/// Schema version read from the artifact, if present.
-	pub schema_version: Option<u32>,
+}
+
+/// Compatibility details for the current scan mode vs cached metadata.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectCacheCompatibilityState {
 	/// Whether the artifact schema matches the current implementation.
 	pub schema_supported: bool,
 	/// Whether the artifact key matches current scan options.
 	pub project_key_matches: bool,
 	/// Whether content-hash cache verification is enabled for this scan mode.
 	pub hash_verification_enabled: bool,
+}
+
+/// Read-only inspection of the on-disk project index cache artifact.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectCacheInspection {
+	/// Absolute path to the cache artifact.
+	pub path: PathBuf,
+	/// Readability and validity details for the artifact.
+	pub artifact: ProjectCacheArtifactState,
+	/// Schema version read from the artifact, if present.
+	pub schema_version: Option<u32>,
+	/// Compatibility details for current scan options.
+	pub compatibility: ProjectCacheCompatibilityState,
 	/// Persisted telemetry metrics if the artifact parsed successfully.
 	pub telemetry: Option<ProjectCacheTelemetry>,
+}
+
+impl ProjectCacheInspection {
+	/// True when a cache artifact exists.
+	pub fn exists(&self) -> bool {
+		self.artifact.exists
+	}
+
+	/// True when the cache artifact can be read from disk.
+	pub fn readable(&self) -> bool {
+		self.artifact.readable
+	}
+
+	/// True when the cache artifact parsed and matched supported schema.
+	pub fn valid(&self) -> bool {
+		self.artifact.valid
+	}
+
+	/// True when cache schema version is supported.
+	pub fn schema_supported(&self) -> bool {
+		self.compatibility.schema_supported
+	}
+
+	/// True when cache key matches current scan options.
+	pub fn project_key_matches(&self) -> bool {
+		self.compatibility.project_key_matches
+	}
+
+	/// True when content-hash verification mode is enabled.
+	pub fn hash_verification_enabled(&self) -> bool {
+		self.compatibility.hash_verification_enabled
+	}
 }
 
 impl From<index_cache::LastScanTelemetry> for ProjectCacheLastScan {
@@ -399,24 +445,28 @@ pub fn inspect_project_cache(root: &Path, options: &ScanOptions) -> ProjectCache
 	let path = project_cache_path(root);
 	let mut inspection = ProjectCacheInspection {
 		path: path.clone(),
-		exists: path.is_file(),
-		readable: false,
-		valid: false,
+		artifact: ProjectCacheArtifactState {
+			exists: path.is_file(),
+			readable: false,
+			valid: false,
+		},
 		schema_version: None,
-		schema_supported: false,
-		project_key_matches: false,
-		hash_verification_enabled: options.cache_verify_hash,
+		compatibility: ProjectCacheCompatibilityState {
+			schema_supported: false,
+			project_key_matches: false,
+			hash_verification_enabled: options.cache_verify_hash,
+		},
 		telemetry: None,
 	};
 
-	if !inspection.exists {
+	if !inspection.artifact.exists {
 		return inspection;
 	}
 
 	let Ok(bytes) = std::fs::read(&path) else {
 		return inspection;
 	};
-	inspection.readable = true;
+	inspection.artifact.readable = true;
 
 	let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
 		return inspection;
@@ -427,10 +477,11 @@ pub fn inspect_project_cache(root: &Path, options: &ScanOptions) -> ProjectCache
 		.and_then(serde_json::Value::as_u64)
 		.and_then(|version| u32::try_from(version).ok());
 	inspection.schema_version = schema_version;
-	inspection.schema_supported = schema_version == Some(index_cache::CACHE_SCHEMA_VERSION);
+	inspection.compatibility.schema_supported =
+		schema_version == Some(index_cache::CACHE_SCHEMA_VERSION);
 
 	let expected_project_key = build_project_cache_key(options);
-	inspection.project_key_matches = value
+	inspection.compatibility.project_key_matches = value
 		.get("project_key")
 		.and_then(serde_json::Value::as_str)
 		.is_some_and(|key| key == expected_project_key);
@@ -439,7 +490,7 @@ pub fn inspect_project_cache(root: &Path, options: &ScanOptions) -> ProjectCache
 		return inspection;
 	};
 
-	inspection.valid = inspection.schema_supported;
+	inspection.artifact.valid = inspection.compatibility.schema_supported;
 	inspection.telemetry = Some(cache.telemetry.into());
 	inspection
 }

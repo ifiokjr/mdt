@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::hash::BuildHasher;
 use std::path::PathBuf;
 
 use crate::Argument;
@@ -203,11 +204,11 @@ fn has_template_syntax(content: &str) -> bool {
 /// variables.
 /// Build a data context that merges base project data with block-specific
 /// positional arguments. Returns `None` if the argument count doesn't match.
-pub fn build_render_context(
-	base_data: &HashMap<String, serde_json::Value>,
+pub fn build_render_context<S: BuildHasher + Clone>(
+	base_data: &HashMap<String, serde_json::Value, S>,
 	provider: &ProviderEntry,
 	consumer: &ConsumerEntry,
-) -> Option<HashMap<String, serde_json::Value>> {
+) -> Option<HashMap<String, serde_json::Value, S>> {
 	let param_count = provider.block.arguments.len();
 	let arg_count = consumer.block.arguments.len();
 

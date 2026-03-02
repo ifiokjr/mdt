@@ -9415,7 +9415,7 @@ fn scan_project_cache_telemetry_tracks_full_cache_hit() -> MdtResult<()> {
 	let _ = scan_project_with_options(tmp.path(), &options)?;
 
 	let cache = inspect_project_cache(tmp.path(), &options);
-	assert!(cache.valid, "expected valid cache inspection");
+	assert!(cache.valid(), "expected valid cache inspection");
 	let telemetry = cache
 		.telemetry
 		.as_ref()
