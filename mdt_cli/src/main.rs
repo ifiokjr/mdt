@@ -885,15 +885,27 @@ struct InfoCacheLastScanSection {
 }
 
 #[derive(serde::Serialize)]
-struct InfoCacheSection {
-	path: String,
+struct InfoCacheArtifactStateSection {
 	exists: bool,
 	readable: bool,
 	valid: bool,
-	schema_version: Option<u32>,
+}
+
+#[derive(serde::Serialize)]
+struct InfoCacheCompatibilityStateSection {
 	schema_supported: bool,
 	project_key_matches: bool,
 	hash_verification_enabled: bool,
+}
+
+#[derive(serde::Serialize)]
+struct InfoCacheSection {
+	path: String,
+	#[serde(flatten)]
+	artifact: InfoCacheArtifactStateSection,
+	schema_version: Option<u32>,
+	#[serde(flatten)]
+	compatibility: InfoCacheCompatibilityStateSection,
 	scan_count: u64,
 	full_project_hit_count: u64,
 	full_project_hit_rate: String,
@@ -1034,13 +1046,17 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 		},
 		cache: InfoCacheSection {
 			path: cache_inspection.path.display().to_string(),
-			exists: cache_inspection.exists,
-			readable: cache_inspection.readable,
-			valid: cache_inspection.valid,
+			artifact: InfoCacheArtifactStateSection {
+				exists: cache_inspection.artifact.exists,
+				readable: cache_inspection.artifact.readable,
+				valid: cache_inspection.artifact.valid,
+			},
 			schema_version: cache_inspection.schema_version,
-			schema_supported: cache_inspection.schema_supported,
-			project_key_matches: cache_inspection.project_key_matches,
-			hash_verification_enabled: cache_inspection.hash_verification_enabled,
+			compatibility: InfoCacheCompatibilityStateSection {
+				schema_supported: cache_inspection.compatibility.schema_supported,
+				project_key_matches: cache_inspection.compatibility.project_key_matches,
+				hash_verification_enabled: cache_inspection.compatibility.hash_verification_enabled,
+			},
 			scan_count,
 			full_project_hit_count,
 			full_project_hit_rate,
@@ -1115,11 +1131,11 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 
 			print_section("Cache");
 			print_field("Artifact path", &report.cache.path);
-			let cache_status = if !report.cache.exists {
+			let cache_status = if !report.cache.artifact.exists {
 				"missing".to_string()
-			} else if !report.cache.readable {
+			} else if !report.cache.artifact.readable {
 				"unreadable".to_string()
-			} else if !report.cache.valid {
+			} else if !report.cache.artifact.valid {
 				"invalid".to_string()
 			} else {
 				"ok".to_string()
@@ -1128,7 +1144,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			let schema_display = report.cache.schema_version.map_or_else(
 				|| "unknown".to_string(),
 				|schema| {
-					if report.cache.schema_supported {
+					if report.cache.compatibility.schema_supported {
 						format!("{schema} (supported)")
 					} else {
 						format!("{schema} (unsupported)")
@@ -1138,7 +1154,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			print_field("Schema version", schema_display);
 			print_field(
 				"Project key match",
-				if report.cache.project_key_matches {
+				if report.cache.compatibility.project_key_matches {
 					"yes"
 				} else {
 					"no"
@@ -1146,7 +1162,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			);
 			print_field(
 				"Hash verification",
-				if report.cache.hash_verification_enabled {
+				if report.cache.compatibility.hash_verification_enabled {
 					"enabled"
 				} else {
 					"disabled"
@@ -1620,7 +1636,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	}
 
 	let cache = inspect_project_cache(&root, &scan_options);
-	if !cache.exists {
+	if !cache.artifact.exists {
 		add_doctor_check(
 			&mut checks,
 			"cache_artifact",
@@ -1632,7 +1648,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 					.to_string(),
 			),
 		);
-	} else if !cache.readable {
+	} else if !cache.artifact.readable {
 		add_doctor_check(
 			&mut checks,
 			"cache_artifact",
@@ -1644,7 +1660,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			),
 			Some("verify filesystem permissions for `.mdt/cache/`".to_string()),
 		);
-	} else if !cache.valid {
+	} else if !cache.artifact.valid {
 		let schema = cache
 			.schema_version
 			.map_or_else(|| "unknown".to_string(), |version| version.to_string());
@@ -1660,7 +1676,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 					.to_string(),
 			),
 		);
-	} else if !cache.project_key_matches {
+	} else if !cache.compatibility.project_key_matches {
 		add_doctor_check(
 			&mut checks,
 			"cache_artifact",
@@ -1687,7 +1703,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		);
 	}
 
-	let hash_mode_message = if cache.hash_verification_enabled {
+	let hash_mode_message = if cache.compatibility.hash_verification_enabled {
 		"content-hash verification enabled (`MDT_CACHE_VERIFY_HASH` set)".to_string()
 	} else {
 		"content-hash verification disabled (mtime + size fingerprints only)".to_string()
@@ -1698,7 +1714,9 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		"Cache Hash Mode",
 		DoctorStatus::Pass,
 		hash_mode_message,
-		Some(cache_hash_mode_hint(cache.hash_verification_enabled)),
+		Some(cache_hash_mode_hint(
+			cache.compatibility.hash_verification_enabled,
+		)),
 	);
 
 	if let Some(telemetry) = &cache.telemetry {
@@ -1729,7 +1747,9 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 						"high reparse trend: {} reparsed vs {} reused ({reparse_rate} reparsed)",
 						telemetry.reparsed_file_count_total, telemetry.reused_file_count_total
 					),
-					Some(cache_hash_mode_hint(cache.hash_verification_enabled)),
+					Some(cache_hash_mode_hint(
+						cache.compatibility.hash_verification_enabled,
+					)),
 				);
 			} else {
 				let reuse_rate =
