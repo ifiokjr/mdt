@@ -1,7 +1,5 @@
 ---
 default: minor
-mdt_core: minor
-mdt_cli: minor
 ---
 
 Add cache observability across core and CLI diagnostics.

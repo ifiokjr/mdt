@@ -1,6 +1,5 @@
 ---
 default: major
-mdt_core: major
 ---
 
 Expand config and data-source capabilities in `mdt_core`:

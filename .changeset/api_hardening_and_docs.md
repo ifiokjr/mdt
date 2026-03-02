@@ -1,9 +1,5 @@
 ---
 default: major
-mdt_core: major
-mdt_cli: patch
-mdt_lsp: minor
-mdt_mcp: minor
 ---
 
 Harden public API and improve crate documentation.

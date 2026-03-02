@@ -1,6 +1,5 @@
 ---
 default: major
-mdt_cli: major
 ---
 
 Add a new public `Commands::Info` variant to `mdt_cli` and improve human-readable CLI output formatting (`mdt check` and new `mdt info`).
