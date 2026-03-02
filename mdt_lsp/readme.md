@@ -41,7 +41,7 @@ The server communicates over stdin/stdout using the Language Server Protocol.
 
 ```toml
 [dependencies]
-mdt_lsp = "0.6.0"
+mdt_lsp = "0.7.0"
 ```
 
 <!-- {/mdtLspInstall} -->
