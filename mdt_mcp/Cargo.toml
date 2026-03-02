@@ -7,7 +7,7 @@ edition = { workspace = true }
 include = { workspace = true }
 keywords = ["markdown", "templates", "mcp"]
 license = { workspace = true }
-readme = { workspace = true }
+readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
 description = "MCP server for mdt (manage markdown templates)"

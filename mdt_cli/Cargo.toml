@@ -4,10 +4,10 @@ version = { workspace = true }
 categories = { workspace = true }
 documentation = "https://docs.rs/mdt_cli"
 edition = { workspace = true }
-include = { workspace = true }
+include = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "readme.md"]
 keywords = ["markdown", "templates", "cli"]
 license = { workspace = true }
-readme = { workspace = true }
+readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
 description = "the cli which updates markdown content anywhere using comments as template tags"
