@@ -7879,7 +7879,7 @@ fn build_render_context_preserves_base_data() {
 			arguments: vec!["name".to_string()],
 		},
 		file: PathBuf::from("template.t.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 	let consumer = ConsumerEntry {
 		block: Block {
@@ -7891,7 +7891,7 @@ fn build_render_context_preserves_base_data() {
 			arguments: vec!["my-lib".to_string()],
 		},
 		file: PathBuf::from("readme.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 
 	let result = build_render_context(&base_data, &provider, &consumer);
@@ -7918,7 +7918,7 @@ fn build_render_context_returns_none_on_count_mismatch() {
 			arguments: vec!["a".to_string(), "b".to_string()],
 		},
 		file: PathBuf::from("template.t.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 	let consumer = ConsumerEntry {
 		block: Block {
@@ -7930,7 +7930,7 @@ fn build_render_context_returns_none_on_count_mismatch() {
 			arguments: vec!["x".to_string()],
 		},
 		file: PathBuf::from("readme.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 
 	let result = build_render_context(&HashMap::new(), &provider, &consumer);
@@ -7952,7 +7952,7 @@ fn build_render_context_no_args_returns_base_data() {
 			arguments: vec![],
 		},
 		file: PathBuf::from("template.t.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 	let consumer = ConsumerEntry {
 		block: Block {
@@ -7964,7 +7964,7 @@ fn build_render_context_no_args_returns_base_data() {
 			arguments: vec![],
 		},
 		file: PathBuf::from("readme.md"),
-		content: "".to_string(),
+		content: String::new(),
 	};
 
 	let result = build_render_context(&base_data, &provider, &consumer);
@@ -8531,17 +8531,16 @@ fn transformer_if_top_level_key() {
 }
 
 #[test]
-fn transformer_if_validates_requires_one_arg() -> MdtResult<()> {
+fn transformer_if_validates_requires_one_arg() {
 	let result = validate_transformers(&[Transformer {
 		r#type: TransformerType::If,
 		args: vec![],
 	}]);
 	assert!(result.is_err());
-	Ok(())
 }
 
 #[test]
-fn transformer_if_validates_rejects_extra_args() -> MdtResult<()> {
+fn transformer_if_validates_rejects_extra_args() {
 	let result = validate_transformers(&[Transformer {
 		r#type: TransformerType::If,
 		args: vec![
@@ -8550,7 +8549,6 @@ fn transformer_if_validates_rejects_extra_args() -> MdtResult<()> {
 		],
 	}]);
 	assert!(result.is_err());
-	Ok(())
 }
 
 #[test]
@@ -8651,50 +8649,50 @@ old content
 	let updates = compute_updates(&ctx)?;
 
 	let readme_path = tmp.path().join("readme.md");
-	let updated = updates
+	let updated_content = updates
 		.updated_files
 		.get(&readme_path)
 		.unwrap_or_else(|| panic!("readme.md should be in updated files"));
 
 	// Every link definition should be on its own line
 	assert!(
-		updated.contains("\n[crate-image]:"),
+		updated_content.contains("\n[crate-image]:"),
 		"crate-image should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[crate-link]:"),
+		updated_content.contains("\n[crate-link]:"),
 		"crate-link should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[docs-image]:"),
+		updated_content.contains("\n[docs-image]:"),
 		"docs-image should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[docs-link]:"),
+		updated_content.contains("\n[docs-link]:"),
 		"docs-link should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[ci-status-image]:"),
+		updated_content.contains("\n[ci-status-image]:"),
 		"ci-status-image should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[ci-status-link]:"),
+		updated_content.contains("\n[ci-status-link]:"),
 		"ci-status-link should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[coverage-image]:"),
+		updated_content.contains("\n[coverage-image]:"),
 		"coverage-image should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[coverage-link]:"),
+		updated_content.contains("\n[coverage-link]:"),
 		"coverage-link should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[unlicense-image]:"),
+		updated_content.contains("\n[unlicense-image]:"),
 		"unlicense-image should be on its own line"
 	);
 	assert!(
-		updated.contains("\n[unlicense-link]:"),
+		updated_content.contains("\n[unlicense-link]:"),
 		"unlicense-link should be on its own line"
 	);
 
@@ -8752,22 +8750,22 @@ fn update_idempotent_multiline_link_definitions() -> MdtResult<()> {
 fn update_preserves_newlines_with_valid_link_definitions() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	// Template with NO template variables — all URLs are valid
-	let template_content = r#"<!-- {@links} -->
+	let template_content = r"<!-- {@links} -->
 
 [repo]: https://github.com/example/repo
 [docs]: https://docs.example.com
 [ci]: https://ci.example.com/badge.svg
 
 <!-- {/links} -->
-"#;
-	let consumer_content = r#"# Readme
+";
+	let consumer_content = r"# Readme
 
 <!-- {=links} -->
 
 old content
 
 <!-- {/links} -->
-"#;
+";
 	std::fs::write(tmp.path().join("template.t.md"), template_content)
 		.unwrap_or_else(|e| panic!("write template: {e}"));
 	std::fs::write(tmp.path().join("readme.md"), consumer_content)
@@ -8779,18 +8777,18 @@ old content
 	write_updates(&updates)?;
 
 	// Read back the updated content
-	let updated = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let updated_content = std::fs::read_to_string(tmp.path().join("readme.md"))
 		.unwrap_or_else(|e| panic!("read: {e}"));
 	assert!(
-		updated.contains("\n[repo]:"),
+		updated_content.contains("\n[repo]:"),
 		"[repo] should be on its own line after first update"
 	);
 	assert!(
-		updated.contains("\n[docs]:"),
+		updated_content.contains("\n[docs]:"),
 		"[docs] should be on its own line after first update"
 	);
 	assert!(
-		updated.contains("\n[ci]:"),
+		updated_content.contains("\n[ci]:"),
 		"[ci] should be on its own line after first update"
 	);
 
@@ -8900,8 +8898,7 @@ fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		format!(
-			"[data]\nversion = {{ command = {:?}, format = \"text\", watch = [\"VERSION\"] }}\n",
-			command
+			"[data]\nversion = {{ command = {command:?}, format = \"text\", watch = [\"VERSION\"] }}\n"
 		),
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
