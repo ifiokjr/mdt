@@ -369,14 +369,14 @@ old
 fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	let template = r#"<!-- {@links} -->
+	let template = r"<!-- {@links} -->
 
 [repo]: https://github.com/example/repo
 [docs]: https://docs.example.com
 [ci]: https://ci.example.com/badge.svg
 
 <!-- {/links} -->
-"#;
+";
 	std::fs::write(tmp.path().join("template.t.md"), template)?;
 	std::fs::write(
 		tmp.path().join("readme.md"),

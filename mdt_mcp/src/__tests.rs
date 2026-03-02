@@ -1469,20 +1469,17 @@ fn scan_ctx_on_nonexistent_path_returns_default_context() {
 	// scan_project_with_config gracefully handles nonexistent paths by
 	// returning an empty project context (no providers, no consumers).
 	let result = scan_ctx(Path::new("/tmp/nonexistent_mdt_test_dir_12345"));
-	match result {
-		Ok(ctx) => {
-			assert!(
-				ctx.project.providers.is_empty(),
-				"nonexistent path should have no providers"
-			);
-			assert!(
-				ctx.project.consumers.is_empty(),
-				"nonexistent path should have no consumers"
-			);
-		}
-		Err(_) => {
-			// Some platforms may return an error for nonexistent paths, that's OK too.
-		}
+	if let Ok(ctx) = result {
+		assert!(
+			ctx.project.providers.is_empty(),
+			"nonexistent path should have no providers"
+		);
+		assert!(
+			ctx.project.consumers.is_empty(),
+			"nonexistent path should have no consumers"
+		);
+	} else {
+		// Some platforms may return an error for nonexistent paths, that's OK too.
 	}
 }
 
