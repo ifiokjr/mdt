@@ -1,4 +1,5 @@
 ---
+default: major
 mdt_cli: major
 ---
 

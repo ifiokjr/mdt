@@ -1,4 +1,5 @@
 ---
+default: minor
 mdt_cli: minor
 ---
 

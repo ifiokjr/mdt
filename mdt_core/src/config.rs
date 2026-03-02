@@ -529,8 +529,7 @@ fn load_script_data_source(
 		.as_deref()
 		.map(str::trim)
 		.filter(|value| !value.is_empty())
-		.map(str::to_ascii_lowercase)
-		.unwrap_or_else(|| "text".to_string());
+		.map_or_else(|| "text".to_string(), str::to_ascii_lowercase);
 
 	let mut watch: Vec<String> = script
 		.watch

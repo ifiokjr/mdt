@@ -1,4 +1,5 @@
 ---
+default: patch
 mdt_core: patch
 mdt_cli: patch
 ---

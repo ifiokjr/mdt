@@ -1361,40 +1361,37 @@ fn compute_references(
 
 	let mut locations = Vec::new();
 
-	match block.r#type {
-		BlockType::Inline => {
-			// Inline blocks only reference other inline blocks of the same name.
-			for consumer in &state.consumers {
-				if consumer.block.r#type == BlockType::Inline && consumer.block.name == *name {
-					if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
-						locations.push(Location {
-							uri: consumer_uri,
-							range: to_lsp_range(&consumer.block.opening),
-						});
-					}
-				}
-			}
-		}
-		_ => {
-			// Include the provider location if it exists.
-			if let Some(provider) = state.providers.get(name) {
-				if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+	if block.r#type == BlockType::Inline {
+		// Inline blocks only reference other inline blocks of the same name.
+		for consumer in &state.consumers {
+			if consumer.block.r#type == BlockType::Inline && consumer.block.name == *name {
+				if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
 					locations.push(Location {
-						uri: provider_uri,
-						range: to_lsp_range(&provider.block.opening),
+						uri: consumer_uri,
+						range: to_lsp_range(&consumer.block.opening),
 					});
 				}
 			}
+		}
+	} else {
+		// Include the provider location if it exists.
+		if let Some(provider) = state.providers.get(name) {
+			if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+				locations.push(Location {
+					uri: provider_uri,
+					range: to_lsp_range(&provider.block.opening),
+				});
+			}
+		}
 
-			// Include all consumer locations.
-			for consumer in &state.consumers {
-				if consumer.block.r#type == BlockType::Consumer && consumer.block.name == *name {
-					if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
-						locations.push(Location {
-							uri: consumer_uri,
-							range: to_lsp_range(&consumer.block.opening),
-						});
-					}
+		// Include all consumer locations.
+		for consumer in &state.consumers {
+			if consumer.block.r#type == BlockType::Consumer && consumer.block.name == *name {
+				if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+					locations.push(Location {
+						uri: consumer_uri,
+						range: to_lsp_range(&consumer.block.opening),
+					});
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 ---
+default: patch
 mdt_lsp: patch
 ---
 

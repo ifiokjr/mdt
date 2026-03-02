@@ -1,4 +1,5 @@
 ---
+default: docs
 mdt_core: docs
 mdt_cli: docs
 mdt_lsp: docs
