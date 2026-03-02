@@ -7,7 +7,7 @@ edition = { workspace = true }
 include = { workspace = true }
 keywords = ["markdown", "templates", "lsp"]
 license = { workspace = true }
-readme = { workspace = true }
+readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
 description = "LSP server for mdt (manage markdown templates)"
