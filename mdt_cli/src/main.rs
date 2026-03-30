@@ -70,70 +70,70 @@ fn detect_color(stream: supports_color::Stream) -> bool {
 
 /// Apply ANSI styles only when the target stream supports color.
 macro_rules! styled {
-	(stdout, $text:expr, bold) => {
+	(stdout, $text:expr,bold) => {
 		if color_enabled(ColorStream::Stdout) {
 			format!("{}", $text.bold())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stdout, $text:expr, red_bold) => {
+	(stdout, $text:expr,red_bold) => {
 		if color_enabled(ColorStream::Stdout) {
 			format!("{}", $text.red().bold())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stdout, $text:expr, green_bold) => {
+	(stdout, $text:expr,green_bold) => {
 		if color_enabled(ColorStream::Stdout) {
 			format!("{}", $text.green().bold())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stdout, $text:expr, yellow_bold) => {
+	(stdout, $text:expr,yellow_bold) => {
 		if color_enabled(ColorStream::Stdout) {
 			format!("{}", $text.yellow().bold())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, red) => {
+	(stderr, $text:expr,red) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.red())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, green) => {
+	(stderr, $text:expr,green) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.green())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, yellow) => {
+	(stderr, $text:expr,yellow) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.yellow())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, cyan) => {
+	(stderr, $text:expr,cyan) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.cyan())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, red_bold) => {
+	(stderr, $text:expr,red_bold) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.red().bold())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	(stderr, $text:expr, yellow_bold) => {
+	(stderr, $text:expr,yellow_bold) => {
 		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.yellow().bold())
 		} else {
@@ -189,10 +189,7 @@ fn main() {
 				eprintln!("{report:?}");
 			}
 			Err(e) => {
-				eprintln!(
-					"{} {e}",
-					styled!(stderr, "error:", red_bold)
-				);
+				eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 			}
 		}
 		process::exit(2);
@@ -563,10 +560,7 @@ fn run_check(
 
 		println!("\nFile change detected, checking...");
 		if let Err(e) = run_check_once(args, show_diff, format) {
-			eprintln!(
-				"{} {e}",
-				styled!(stderr, "error:", red_bold)
-			);
+			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
 	}
 }
@@ -597,7 +591,11 @@ fn run_check_once(
 			OutputFormat::Text => {
 				println!(
 					"{}",
-					styled!(stdout, "Check passed: all consumer blocks are up to date.", green_bold)
+					styled!(
+						stdout,
+						"Check passed: all consumer blocks are up to date.",
+						green_bold
+					)
 				);
 			}
 		}
@@ -658,10 +656,7 @@ fn run_check_once(
 			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
-			eprintln!(
-				"{}",
-				styled!(stderr, "Check failed.", red_bold)
-			);
+			eprintln!("{}", styled!(stderr, "Check failed.", red_bold));
 			eprintln!(
 				"  {} {}",
 				styled!(stderr, "render errors:", red_bold),
@@ -676,10 +671,7 @@ fn run_check_once(
 			let sorted_errors = sorted_render_errors(&result, &root);
 			if !sorted_errors.is_empty() {
 				eprintln!();
-				eprintln!(
-					"{}",
-					styled!(stderr, "Render errors:", red_bold)
-				);
+				eprintln!("{}", styled!(stderr, "Render errors:", red_bold));
 				for err in sorted_errors {
 					let rel = relative_display_path(&err.file, &root);
 					eprintln!(
@@ -696,10 +688,7 @@ fn run_check_once(
 			let sorted_stale = sorted_stale_entries(&result, &root);
 			if !sorted_stale.is_empty() {
 				eprintln!();
-				eprintln!(
-					"{}",
-					styled!(stderr, "Stale consumers:", yellow_bold)
-				);
+				eprintln!("{}", styled!(stderr, "Stale consumers:", yellow_bold));
 				for entry in sorted_stale {
 					let rel = relative_display_path(&entry.file, &root);
 					eprintln!(
@@ -804,10 +793,7 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 
 		println!("\nFile change detected, updating...");
 		if let Err(e) = run_update_once(args, false) {
-			eprintln!(
-				"{} {e}",
-				styled!(stderr, "error:", red_bold)
-			);
+			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
 	}
 }
