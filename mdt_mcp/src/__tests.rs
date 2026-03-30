@@ -199,16 +199,28 @@ async fn init_creates_template_file() {
 		"expected creation message, got: {text}"
 	);
 	assert!(
-		tmp.path().join("template.t.md").exists(),
-		"template.t.md should exist"
+		text.contains("Created mdt.toml"),
+		"expected config creation message, got: {text}"
+	);
+	assert!(
+		tmp.path().join(".templates/template.t.md").exists(),
+		".templates/template.t.md should exist"
+	);
+	assert!(
+		tmp.path().join("mdt.toml").exists(),
+		"mdt.toml should exist"
 	);
 }
 
 #[tokio::test]
 async fn init_reports_existing_template() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("template.t.md"), "existing content")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".templates")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".templates/template.t.md"),
+		"existing content",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let server = MdtMcpServer::new();
 	let result = server
@@ -222,6 +234,14 @@ async fn init_reports_existing_template() {
 	assert!(
 		text.contains("already exists"),
 		"expected 'already exists' message, got: {text}"
+	);
+	assert!(
+		text.contains("Created mdt.toml"),
+		"expected config creation message, got: {text}"
+	);
+	assert!(
+		tmp.path().join("mdt.toml").exists(),
+		"mdt.toml should exist"
 	);
 }
 
@@ -1072,7 +1092,7 @@ async fn init_creates_file_with_provider_block() {
 		.await
 		.unwrap_or_else(|e| panic!("init: {e:?}"));
 
-	let content = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let content = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))
 		.unwrap_or_else(|e| panic!("read template: {e}"));
 	assert!(
 		content.contains("{@greeting}"),
@@ -2041,8 +2061,12 @@ async fn init_in_nested_directory() {
 		"expected creation message, got: {text}"
 	);
 	assert!(
-		nested.join("template.t.md").exists(),
+		nested.join(".templates/template.t.md").exists(),
 		"template should be created in nested dir"
+	);
+	assert!(
+		nested.join("mdt.toml").exists(),
+		"mdt.toml should be created"
 	);
 }
 

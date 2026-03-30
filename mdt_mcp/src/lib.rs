@@ -9,7 +9,7 @@
 //! - **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
 //! - **`mdt_get_block`** — Get the content of a specific block by name.
 //! - **`mdt_preview`** — Preview the result of applying transformers to a block.
-//! - **`mdt_init`** — Initialize a new mdt project with a sample template file.
+//! - **`mdt_init`** — Initialize a new mdt project with a sample `.templates/template.t.md` file and starter `mdt.toml`.
 //!
 //! ### Agent Workflow
 //!
@@ -43,6 +43,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use mdt_core::BlockType;
+use mdt_core::MdtConfig;
 use mdt_core::apply_transformers;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
@@ -664,34 +665,86 @@ impl MdtMcpServer {
 
 	#[tool(
 		name = "mdt_init",
-		description = "Initialize mdt in a project by creating a sample template.t.md file."
+		description = "Initialize mdt in a project by creating a sample \
+		               `.templates/template.t.md` file and starter `mdt.toml`."
 	)]
 	async fn init(
 		&self,
 		Parameters(params): Parameters<InitParam>,
 	) -> Result<CallToolResult, McpError> {
 		let root = resolve_root(params.path.as_deref());
-		let template_path = root.join("template.t.md");
+		let canonical_template_path = root.join(".templates/template.t.md");
+		let legacy_template_paths = [
+			root.join("template.t.md"),
+			root.join("templates/template.t.md"),
+		];
+		let template_path = if canonical_template_path.exists() {
+			canonical_template_path.clone()
+		} else {
+			legacy_template_paths
+				.iter()
+				.find(|path| path.exists())
+				.cloned()
+				.unwrap_or_else(|| canonical_template_path.clone())
+		};
+		let template_exists = template_path.exists();
 
-		if template_path.exists() {
-			return Ok(CallToolResult::success(vec![Content::text(format!(
-				"Template file already exists: {}",
-				template_path.display()
-			))]));
-		}
-
+		let config_path = root.join("mdt.toml");
+		let config_exists = MdtConfig::resolve_path(&root).is_some();
 		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
 		                      block.\n\n<!-- {/greeting} -->\n";
+		let sample_config =
+			"# mdt configuration\n# See \
+			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
+			 Map data files to template namespaces.\n# Values from these files are available in \
+			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
+			 = \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch \
+			 = [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
+			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
+			 [padding]\n# before = 0\n# after = 0\n";
 
-		std::fs::write(&template_path, sample_content)
-			.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+		let mut parts = Vec::new();
 
-		Ok(CallToolResult::success(vec![Content::text(format!(
-			"Created template file: {}\n\nNext steps:\n1. Edit the template to define your \
-			 blocks\n2. Add consumer tags in your files: <!-- {{=greeting}} --> <!-- \
-			 {{/greeting}} -->\n3. Run mdt_update to sync content",
-			template_path.display()
-		))]))
+		if template_exists {
+			parts.push(format!(
+				"Template file already exists: {}",
+				template_path.display()
+			));
+		} else {
+			if let Some(parent) = template_path.parent() {
+				std::fs::create_dir_all(parent)
+					.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			}
+			std::fs::write(&template_path, sample_content)
+				.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			parts.push(format!(
+				"Created template file: {}",
+				template_path.display()
+			));
+		}
+
+		if !config_exists {
+			std::fs::write(&config_path, sample_config)
+				.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			parts.push("Created mdt.toml".to_string());
+		}
+
+		if !template_exists {
+			parts.push(String::new());
+			parts.push("Next steps:".to_string());
+			parts.push(format!(
+				"1. Edit {} to define your template blocks",
+				template_path.display()
+			));
+			parts.push("2. Add consumer tags in your markdown files:".to_string());
+			parts.push("   <!-- {=greeting} -->".to_string());
+			parts.push("   <!-- {/greeting} -->".to_string());
+			parts.push("3. Run `mdt_update` to sync content".to_string());
+		}
+
+		Ok(CallToolResult::success(vec![Content::text(
+			parts.join("\n"),
+		)]))
 	}
 }
 

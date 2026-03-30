@@ -54,11 +54,12 @@ pub struct MdtCli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-	/// Initialize mdt in a project by creating a sample template file.
+	/// Initialize mdt in a project by creating sample starter files.
 	///
-	/// Creates a `template.t.md` file in the project root with example provider
-	/// blocks and usage instructions. If the file already exists, this command
-	/// is a no-op and exits successfully.
+	/// Creates a `.templates/template.t.md` file in the project root with an
+	/// example provider block, plus an `mdt.toml` starter config when one does
+	/// not already exist. If the template file already exists, the command is a
+	/// no-op for that file and exits successfully.
 	Init,
 	/// Check that all consumer blocks are up to date.
 	///

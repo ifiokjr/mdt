@@ -126,8 +126,8 @@ Output:
 
 ```
 Providers:
-  @installGuide template.t.md (2 consumer(s))
-  @apiDocs template.t.md (3 consumer(s))
+  @installGuide .templates/template.t.md (2 consumer(s))
+  @apiDocs .templates/template.t.md (3 consumer(s))
 
 Consumers:
   =installGuide readme.md [linked]
