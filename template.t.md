@@ -204,6 +204,8 @@ The server communicates over stdin/stdout using the Language Server Protocol.
 ### Agent Workflow
 
 - Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new provider block.
+- Use the JSON-first tool responses as the source of truth. The MCP server returns structured payloads so agents can inspect results without parsing prose.
+- Use `mdt_preview` as an authoring workflow: inspect the provider template plus each consumer's rendered output before deciding whether to reuse, edit, or sync.
 - Keep provider names global and unique in the project to avoid collisions.
 - After edits, run `mdt_check` (and optionally `mdt_update`) so consumer blocks stay synchronized.
 
