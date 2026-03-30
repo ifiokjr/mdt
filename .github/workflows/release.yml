@@ -88,3 +88,24 @@ jobs:
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
           checksum: sha256,sha512
+
+  npm_publish_metadata:
+    needs: upload_assets
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      startsWith(inputs.tag || github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: write release tag metadata
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-publish-metadata"
+          printf '%s\n' "$RELEASE_TAG" > "$RUNNER_TEMP/npm-publish-metadata/release-tag.txt"
+
+      - name: upload npm publish metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-publish-metadata
+          path: ${{ runner.temp }}/npm-publish-metadata/release-tag.txt

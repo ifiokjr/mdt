@@ -18,7 +18,19 @@
 
 <!-- {=mdtCliInstall} -->
 
-- Download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
+- Install with npm:
+
+```sh
+npm install -g @ifi/mdt
+```
+
+- Or run it without installing:
+
+```sh
+npx @ifi/mdt --help
+```
+
+- Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
 - Or install with Cargo:
 
 ```sh

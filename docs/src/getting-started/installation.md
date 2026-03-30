@@ -1,10 +1,28 @@
 # Installation
 
-## Recommended for most users
+## Recommended for Node.js users
+
+Install the CLI from npm:
+
+```sh
+npm install -g @ifi/mdt
+```
+
+This installs the `mdt` command and pulls in the prebuilt binary package that matches your platform.
+
+You can also run it without a global install:
+
+```sh
+npx @ifi/mdt --help
+```
+
+This path is ideal for JavaScript and TypeScript projects that already use npm and do not want to install the Rust toolchain.
+
+## Recommended for most non-Rust users
 
 Download the prebuilt binary for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and place the `mdt` binary somewhere on your `PATH`.
 
-This is the easiest option if you want to use mdt in a JavaScript, Python, Go, or other non-Rust project without installing the Rust toolchain first.
+This is the simplest option if you want to use mdt in a Python, Go, or other non-Rust project without installing the Rust toolchain first.
 
 ## If you already use Cargo
 
@@ -41,4 +59,4 @@ mdt_core = "0.7.0"
 mdt --help
 ```
 
-You should see the available commands: `init`, `check`, `update`, `list`, `info`, `doctor`, `lsp`, and `mcp`.
+You should see the available commands: `init`, `check`, `update`, `list`, `info`, `doctor`, `assist`, `lsp`, and `mcp`.

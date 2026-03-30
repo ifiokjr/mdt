@@ -46,14 +46,23 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
 
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: setup
         uses: ./.github/actions/devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: run tests
+      - name: run rust tests
         run: test:all
         shell: devenv shell -c -- bash -e {0}
+
+      - name: run npm integration tests
+        run: |
+          node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
 
   build:
     timeout-minutes: 60
