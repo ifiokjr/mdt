@@ -8,20 +8,23 @@ When mdt scans a directory tree, it stops descending into any subdirectory that 
 
 ```
 my-monorepo/
-  mdt.toml              # root project
-  template.t.md         # root providers
-  readme.md             # root consumers
+  mdt.toml                    # root project
+  .templates/
+    template.t.md             # root providers
+  readme.md                   # root consumers
   packages/
     lib-a/
-      mdt.toml          # lib-a is a separate project
-      template.t.md     # lib-a providers
-      readme.md         # lib-a consumers
+      mdt.toml                # lib-a is a separate project
+      .templates/
+        template.t.md         # lib-a providers
+      readme.md               # lib-a consumers
     lib-b/
-      mdt.toml          # lib-b is a separate project
-      template.t.md     # lib-b providers
-      readme.md         # lib-b consumers
+      mdt.toml                # lib-b is a separate project
+      .templates/
+        template.t.md         # lib-b providers
+      readme.md               # lib-b consumers
     lib-c/
-      readme.md         # NO mdt.toml — belongs to root project
+      readme.md               # NO mdt.toml — belongs to root project
 ```
 
 Running `mdt update` from the monorepo root updates consumers in `readme.md` and `packages/lib-c/readme.md`, but **not** in `packages/lib-a/` or `packages/lib-b/`. Those are separate projects.
@@ -55,7 +58,7 @@ cargo = "Cargo.toml"
 Each sub-project has its own `*.t.md` files with its own provider blocks:
 
 ```
-<!-- packages/lib-a/template.t.md -->
+<!-- packages/lib-a/.templates/template.t.md -->
 
 <!-- {@install} -->
 
@@ -65,7 +68,7 @@ cargo add lib-a
 ```
 
 ```
-<!-- packages/lib-b/template.t.md -->
+<!-- packages/lib-b/.templates/template.t.md -->
 
 <!-- {@install} -->
 
@@ -98,7 +101,7 @@ done
 
 ## Shared templates across packages
 
-Sub-project boundaries are strict. A provider in the root `template.t.md` is **not visible** to consumers inside `packages/lib-a/`. Each scope is fully isolated.
+Sub-project boundaries are strict. A provider in the root `.templates/template.t.md` is **not visible** to consumers inside `packages/lib-a/`. Each scope is fully isolated.
 
 If you need shared content across packages, you have a few options:
 

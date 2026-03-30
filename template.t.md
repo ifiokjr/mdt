@@ -8,7 +8,7 @@
 
 ### CLI Commands
 
-- `mdt init [--path <dir>]` — Create a sample `template.t.md` file with getting-started instructions.
+- `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
 - `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
@@ -198,7 +198,7 @@ The server communicates over stdin/stdout using the Language Server Protocol.
 - **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
 - **`mdt_get_block`** — Get the content of a specific block by name.
 - **`mdt_preview`** — Preview the result of applying transformers to a block.
-- **`mdt_init`** — Initialize a new mdt project with a sample template file.
+- **`mdt_init`** — Initialize a new mdt project with a sample `.templates/template.t.md` file and starter `mdt.toml`.
 
 ### Agent Workflow
 

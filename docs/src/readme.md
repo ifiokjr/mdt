@@ -20,7 +20,7 @@ Manual synchronization doesn't scale. Copy-pasting is error-prone. The more plac
 mdt uses HTML comments as invisible template tags. You define content once in a **provider** block inside a template file. Then you place **consumer** tags wherever that content should appear. Running `mdt update` replaces the content between consumer tags with the provider's content.
 
 ```markdown
-<!-- In template.t.md (the provider) -->
+<!-- In .templates/template.t.md (the provider) -->
 <!-- {@install} -->
 
 npm install my-lib

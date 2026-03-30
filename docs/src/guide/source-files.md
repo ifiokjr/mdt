@@ -137,7 +137,7 @@ Source files can only contain **consumer** blocks. Even if you write `{@name}` i
 
 Consider a TypeScript library where you want the README, JSDoc, and mdbook docs to stay in sync.
 
-**`template.t.md`** defines the content:
+**`.templates/template.t.md`** defines the content:
 
 ```
 <!-- {@apiDocs} -->

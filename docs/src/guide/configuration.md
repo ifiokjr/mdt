@@ -155,15 +155,18 @@ If mdt encounters a directory containing its own `mdt.toml`, it treats that dire
 
 ```
 my-monorepo/
-  mdt.toml              # root project config
-  template.t.md
+  mdt.toml                    # root project config
+  .templates/
+    template.t.md
   packages/
     lib-a/
-      mdt.toml          # lib-a is a separate mdt project
-      template.t.md
+      mdt.toml                # lib-a is a separate mdt project
+      .templates/
+        template.t.md
     lib-b/
-      mdt.toml          # lib-b is a separate mdt project
-      template.t.md
+      mdt.toml                # lib-b is a separate mdt project
+      .templates/
+        template.t.md
 ```
 
 Running `mdt update` from the root updates only the root project's consumers. Each sub-project is managed independently.

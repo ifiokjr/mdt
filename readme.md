@@ -82,7 +82,7 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 ### CLI Commands
 
-- `mdt init [--path <dir>]` — Create a sample `template.t.md` file with getting-started instructions.
+- `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
 - `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
 - `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.

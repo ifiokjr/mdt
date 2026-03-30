@@ -58,7 +58,7 @@ The `/` sigil closes the block. The name must match the opening tag.
 ## How content flows
 
 ```
-template.t.md                    readme.md                     src/lib.rs
+.templates/template.t.md         readme.md                     src/lib.rs
 ┌─────────────────┐             ┌──────────────────┐          ┌──────────────────┐
 │ <!-- {@docs} -->│             │ <!-- {=docs} --> │          │ // <!-- {=docs|  │
 │                 │──────┬─────→│                  │          │ //  trim|indent: │
@@ -75,7 +75,7 @@ The same provider content feeds multiple consumers. Each consumer can apply its 
 
 ## A complete example
 
-**`template.t.md`** — the single source of truth:
+**`.templates/template.t.md`** — the single source of truth:
 
 ```
 <!-- {@projectDescription} -->
