@@ -944,6 +944,7 @@ dependencies = [
  "serde_json",
  "similar",
  "similar-asserts",
+ "supports-color 3.0.2",
  "tempfile",
  "tokio",
 ]

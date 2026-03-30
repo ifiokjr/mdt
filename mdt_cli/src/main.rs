@@ -36,38 +36,106 @@ use owo_colors::OwoColorize;
 use similar::ChangeTag;
 use similar::TextDiff;
 
-static USE_COLOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static USE_STDOUT_COLOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static USE_STDERR_COLOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-fn color_enabled() -> bool {
-	USE_COLOR.load(std::sync::atomic::Ordering::Relaxed)
+#[derive(Clone, Copy)]
+enum ColorStream {
+	Stdout,
+	Stderr,
 }
 
-/// Apply ANSI color codes only when color is enabled.
-macro_rules! colored {
-	($text:expr,red) => {
-		if color_enabled() {
+fn color_enabled(stream: ColorStream) -> bool {
+	match stream {
+		ColorStream::Stdout => USE_STDOUT_COLOR.load(std::sync::atomic::Ordering::Relaxed),
+		ColorStream::Stderr => USE_STDERR_COLOR.load(std::sync::atomic::Ordering::Relaxed),
+	}
+}
+
+fn detect_color(stream: supports_color::Stream) -> bool {
+	if let Some(force) = std::env::var_os("CLICOLOR_FORCE") {
+		return force != "0";
+	}
+
+	if std::env::var_os("NO_COLOR").is_some() {
+		return false;
+	}
+
+	if std::env::var_os("CLICOLOR").as_deref() == Some(std::ffi::OsStr::new("0")) {
+		return false;
+	}
+
+	supports_color::on(stream).is_some()
+}
+
+/// Apply ANSI styles only when the target stream supports color.
+macro_rules! styled {
+	(stdout, $text:expr, bold) => {
+		if color_enabled(ColorStream::Stdout) {
+			format!("{}", $text.bold())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stdout, $text:expr, red_bold) => {
+		if color_enabled(ColorStream::Stdout) {
+			format!("{}", $text.red().bold())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stdout, $text:expr, green_bold) => {
+		if color_enabled(ColorStream::Stdout) {
+			format!("{}", $text.green().bold())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stdout, $text:expr, yellow_bold) => {
+		if color_enabled(ColorStream::Stdout) {
+			format!("{}", $text.yellow().bold())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stderr, $text:expr, red) => {
+		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.red())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	($text:expr,green) => {
-		if color_enabled() {
+	(stderr, $text:expr, green) => {
+		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.green())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	($text:expr,yellow) => {
-		if color_enabled() {
+	(stderr, $text:expr, yellow) => {
+		if color_enabled(ColorStream::Stderr) {
 			format!("{}", $text.yellow())
 		} else {
 			format!("{}", $text)
 		}
 	};
-	($text:expr,bold) => {
-		if color_enabled() {
-			format!("{}", $text.bold())
+	(stderr, $text:expr, cyan) => {
+		if color_enabled(ColorStream::Stderr) {
+			format!("{}", $text.cyan())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stderr, $text:expr, red_bold) => {
+		if color_enabled(ColorStream::Stderr) {
+			format!("{}", $text.red().bold())
+		} else {
+			format!("{}", $text)
+		}
+	};
+	(stderr, $text:expr, yellow_bold) => {
+		if color_enabled(ColorStream::Stderr) {
+			format!("{}", $text.yellow().bold())
 		} else {
 			format!("{}", $text)
 		}
@@ -77,20 +145,18 @@ macro_rules! colored {
 fn main() {
 	let args = MdtCli::parse();
 
-	// Respect NO_COLOR env var and --no-color flag.
-	let use_color = !args.no_color && std::env::var_os("NO_COLOR").is_none();
-	if !use_color {
-		USE_COLOR.store(false, std::sync::atomic::Ordering::Relaxed);
-	}
+	let stdout_color = !args.no_color && detect_color(supports_color::Stream::Stdout);
+	let stderr_color = !args.no_color && detect_color(supports_color::Stream::Stderr);
+	USE_STDOUT_COLOR.store(stdout_color, std::sync::atomic::Ordering::Relaxed);
+	USE_STDERR_COLOR.store(stderr_color, std::sync::atomic::Ordering::Relaxed);
 
-	// Install miette's fancy handler for rich error diagnostics.
+	let disable_miette_color = !stderr_color;
 	miette::set_hook(Box::new(move |_| {
-		Box::new(
-			miette::MietteHandlerOpts::new()
-				.color(use_color)
-				.unicode(use_color)
-				.build(),
-		)
+		let mut opts = miette::MietteHandlerOpts::new();
+		if disable_miette_color {
+			opts = opts.color(false).unicode(false);
+		}
+		Box::new(opts.build())
 	}))
 	.ok();
 
@@ -123,7 +189,10 @@ fn main() {
 				eprintln!("{report:?}");
 			}
 			Err(e) => {
-				eprintln!("{} {e}", colored!("error:", red));
+				eprintln!(
+					"{} {e}",
+					styled!(stderr, "error:", red_bold)
+				);
 			}
 		}
 		process::exit(2);
@@ -132,7 +201,7 @@ fn main() {
 
 fn print_section(title: &str) {
 	println!();
-	println!("{}", colored!(title, bold));
+	println!("{}", styled!(stdout, title, bold));
 }
 
 fn resolve_root(args: &MdtCli) -> PathBuf {
@@ -443,7 +512,7 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 	for name in missing_providers {
 		eprintln!(
 			"{} consumer block `{name}` has no matching provider",
-			colored!("warning:", yellow)
+			styled!(stderr, "warning:", yellow_bold)
 		);
 	}
 
@@ -494,7 +563,10 @@ fn run_check(
 
 		println!("\nFile change detected, checking...");
 		if let Err(e) = run_check_once(args, show_diff, format) {
-			eprintln!("{} {e}", colored!("error:", red));
+			eprintln!(
+				"{} {e}",
+				styled!(stderr, "error:", red_bold)
+			);
 		}
 	}
 }
@@ -523,7 +595,10 @@ fn run_check_once(
 				println!("All consumer blocks are up to date.");
 			}
 			OutputFormat::Text => {
-				println!("Check passed: all consumer blocks are up to date.");
+				println!(
+					"{}",
+					styled!(stdout, "Check passed: all consumer blocks are up to date.", green_bold)
+				);
 			}
 		}
 		return Ok(false);
@@ -583,19 +658,37 @@ fn run_check_once(
 			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
-			eprintln!("Check failed.");
-			eprintln!("  render errors: {}", result.render_errors.len());
-			eprintln!("  stale consumers: {}", result.stale.len());
+			eprintln!(
+				"{}",
+				styled!(stderr, "Check failed.", red_bold)
+			);
+			eprintln!(
+				"  {} {}",
+				styled!(stderr, "render errors:", red_bold),
+				styled!(stderr, result.render_errors.len().to_string(), red)
+			);
+			eprintln!(
+				"  {} {}",
+				styled!(stderr, "stale consumers:", yellow_bold),
+				styled!(stderr, result.stale.len().to_string(), yellow)
+			);
 
 			let sorted_errors = sorted_render_errors(&result, &root);
 			if !sorted_errors.is_empty() {
 				eprintln!();
-				eprintln!("Render errors:");
+				eprintln!(
+					"{}",
+					styled!(stderr, "Render errors:", red_bold)
+				);
 				for err in sorted_errors {
 					let rel = relative_display_path(&err.file, &root);
 					eprintln!(
-						"  block `{}` at {rel}:{}:{}: {}",
-						err.block_name, err.line, err.column, err.message
+						"  block {} at {}:{}:{}: {}",
+						styled!(stderr, format!("`{}`", err.block_name), yellow),
+						styled!(stderr, rel, cyan),
+						err.line,
+						err.column,
+						styled!(stderr, &err.message, red)
 					);
 				}
 			}
@@ -603,12 +696,18 @@ fn run_check_once(
 			let sorted_stale = sorted_stale_entries(&result, &root);
 			if !sorted_stale.is_empty() {
 				eprintln!();
-				eprintln!("Stale consumers:");
+				eprintln!(
+					"{}",
+					styled!(stderr, "Stale consumers:", yellow_bold)
+				);
 				for entry in sorted_stale {
 					let rel = relative_display_path(&entry.file, &root);
 					eprintln!(
-						"  block `{}` at {rel}:{}:{}",
-						entry.block_name, entry.line, entry.column
+						"  block {} at {}:{}:{}",
+						styled!(stderr, format!("`{}`", entry.block_name), yellow),
+						styled!(stderr, rel, cyan),
+						entry.line,
+						entry.column
 					);
 
 					if show_diff {
@@ -705,7 +804,10 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 
 		println!("\nFile change detected, updating...");
 		if let Err(e) = run_update_once(args, false) {
-			eprintln!("{} {e}", colored!("error:", red));
+			eprintln!(
+				"{} {e}",
+				styled!(stderr, "error:", red_bold)
+			);
 		}
 	}
 }
@@ -769,7 +871,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 	// Providers
 	if !ctx.project.providers.is_empty() {
-		println!("{}", colored!("Providers:", bold));
+		println!("{}", styled!(stdout, "Providers:", bold));
 		let mut names: Vec<_> = ctx.project.providers.keys().collect();
 		names.sort();
 		for name in names {
@@ -791,7 +893,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		if !ctx.project.providers.is_empty() {
 			println!();
 		}
-		println!("{}", colored!("Consumers:", bold));
+		println!("{}", styled!(stdout, "Consumers:", bold));
 		for consumer in &ctx.project.consumers {
 			let rel = relative_display_path(&consumer.file, &root);
 			let (sigil, status) = match consumer.block.r#type {
@@ -1075,7 +1177,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			println!("{}", serde_json::to_string_pretty(&report)?);
 		}
 		InfoOutputFormat::Text => {
-			println!("{}", colored!("mdt info", bold));
+			println!("{}", styled!(stdout, "mdt info", bold));
 
 			print_section("Project");
 			print_field("Project root", &report.project.root);
@@ -1235,9 +1337,9 @@ impl DoctorStatus {
 
 	fn colored_tag(self) -> String {
 		match self {
-			Self::Pass => colored!(self.tag(), green),
-			Self::Warn => colored!(self.tag(), yellow),
-			Self::Fail => colored!(self.tag(), red),
+			Self::Pass => styled!(stdout, self.tag(), green_bold),
+			Self::Warn => styled!(stdout, self.tag(), yellow_bold),
+			Self::Fail => styled!(stdout, self.tag(), red_bold),
 			Self::Skip => self.tag().to_string(),
 		}
 	}
@@ -1806,7 +1908,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			println!("{}", serde_json::to_string_pretty(&report)?);
 		}
 		DoctorOutputFormat::Text => {
-			println!("{}", colored!("mdt doctor", bold));
+			println!("{}", styled!(stdout, "mdt doctor", bold));
 			for check in &report.checks {
 				println!(
 					"[{}] {:<22} {}",
@@ -1943,7 +2045,7 @@ fn run_assist(
 		}
 		AssistOutputFormat::Text => {
 			let mcp_config = serde_json::to_string_pretty(&payload["mcp_config"])?;
-			println!("{}", colored!("mdt assist", bold));
+			println!("{}", styled!(stdout, "mdt assist", bold));
 			println!();
 			println!(
 				"Assistant                 {}",
@@ -1992,7 +2094,7 @@ fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 		let vars = undefined_vars.join(", ");
 		eprintln!(
 			"{} provider block `{}` in {rel} references undefined variable(s): {vars}",
-			colored!("warning:", yellow),
+			styled!(stderr, "warning:", yellow_bold),
 			warning.block_name,
 		);
 	}
@@ -2004,10 +2106,10 @@ fn print_diff(current: &str, expected: &str) {
 	for change in diff.iter_all_changes() {
 		match change.tag() {
 			ChangeTag::Delete => {
-				eprint!("  {}", colored!(format!("-{change}"), red));
+				eprint!("  {}", styled!(stderr, format!("-{change}"), red));
 			}
 			ChangeTag::Insert => {
-				eprint!("  {}", colored!(format!("+{change}"), green));
+				eprint!("  {}", styled!(stderr, format!("+{change}"), green));
 			}
 			ChangeTag::Equal => {
 				eprint!("   {change}");

@@ -6,13 +6,13 @@
 mdt [OPTIONS] [COMMAND]
 ```
 
-| Option            | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--path <DIR>`    | Set the project root directory. Defaults to the current directory.         |
-| `--verbose`       | Enable verbose output (show provider/consumer counts, file lists).         |
-| `--no-color`      | Disable colored output. Also respects the `NO_COLOR` environment variable. |
-| `-h`, `--help`    | Print help.                                                                |
-| `-V`, `--version` | Print version.                                                             |
+| Option            | Description                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `--path <DIR>`    | Set the project root directory. Defaults to the current directory.                                       |
+| `--verbose`       | Enable verbose output (show provider/consumer counts, file lists).                                       |
+| `--no-color`      | Disable colored output. Also overrides terminal color detection and color-related environment variables. |
+| `-h`, `--help`    | Print help.                                                                                              |
+| `-V`, `--version` | Print version.                                                                                           |
 
 ## Commands
 
@@ -62,7 +62,7 @@ mdt check --format github
 
 **Output formats:**
 
-- **`text`** — Human-readable output. Lists stale blocks with file paths. Includes diff when `--diff` is set.
+- **`text`** — Human-readable output. Lists stale blocks with file paths, colored headings, and colored diagnostics when the terminal supports color. Includes diff when `--diff` is set.
 - **`json`** — Machine-readable JSON. Fields: `ok` (boolean), `stale` (array of `{file, block}`).
 - **`github`** — GitHub Actions `::warning` annotations. Produces inline warnings on PR diffs.
 
@@ -252,4 +252,6 @@ Use this command when you want an AI assistant to query template providers, cons
 | Variable                | Effect                                                                                                             |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `NO_COLOR`              | When set (to any value), disables colored output. Same as `--no-color`.                                            |
+| `CLICOLOR`              | When set to `0`, disables colored output when color is otherwise auto-detected.                                    |
+| `CLICOLOR_FORCE`        | When set to a non-zero value, forces colored output even when stdout/stderr are not attached to a color terminal.  |
 | `MDT_CACHE_VERIFY_HASH` | When set (to any value), cache fingerprints include content hashes (in addition to size/mtime) for stricter reuse. |

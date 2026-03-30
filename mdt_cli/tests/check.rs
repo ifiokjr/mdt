@@ -10,6 +10,8 @@ use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
 use serde_json::Value;
 
+const ANSI_ESCAPE: &str = "\u{1b}[";
+
 #[test]
 fn check_passes_when_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
@@ -215,6 +217,135 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 		.assert()
 		.failure()
 		.stderr(predicates::str::contains("2 consumer block(s)"));
+
+	Ok(())
+}
+
+#[test]
+fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env_remove("NO_COLOR")
+		.env("CLICOLOR_FORCE", "1")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.failure()
+		.stderr(predicates::str::contains("Check failed."))
+		.stderr(predicates::str::contains(ANSI_ESCAPE));
+
+	Ok(())
+}
+
+#[test]
+fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env_remove("NO_COLOR")
+		.env("CLICOLOR_FORCE", "1")
+		.arg("--no-color")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.failure()
+		.stderr(predicates::str::contains("Check failed."))
+		.stderr(predicates::str::contains(ANSI_ESCAPE).not());
+
+	Ok(())
+}
+
+#[test]
+fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env_remove("NO_COLOR")
+		.env("CLICOLOR", "0")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.failure()
+		.stderr(predicates::str::contains("Check failed."))
+		.stderr(predicates::str::contains(ANSI_ESCAPE).not());
+
+	Ok(())
+}
+
+#[test]
+fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting|wat} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env_remove("NO_COLOR")
+		.env("CLICOLOR_FORCE", "1")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.failure()
+		.stderr(predicates::str::contains("unknown transformer `wat`"))
+		.stderr(predicates::str::contains(ANSI_ESCAPE));
+
+	Ok(())
+}
+
+#[test]
+fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting|wat} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
+	)?;
+
+	let mut cmd = common::mdt_cmd();
+	cmd.env_remove("NO_COLOR")
+		.env("CLICOLOR_FORCE", "1")
+		.arg("--no-color")
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.failure()
+		.stderr(predicates::str::contains("unknown transformer `wat`"))
+		.stderr(predicates::str::contains(ANSI_ESCAPE).not());
 
 	Ok(())
 }
