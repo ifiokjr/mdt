@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::path::PathBuf;
 
 use rmcp::handler::server::wrapper::Parameters;
 
@@ -96,49 +95,6 @@ Old farewell content.
 	std::fs::write(root.join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write template: {e}"));
 	std::fs::write(root.join("readme.md"), readme).unwrap_or_else(|e| panic!("write readme: {e}"));
-}
-
-// ===========================================================================
-// resolve_root
-// ===========================================================================
-
-#[test]
-fn resolve_root_with_some_path() {
-	let result = resolve_root(Some("/tmp/test_project"));
-	assert_eq!(result, PathBuf::from("/tmp/test_project"));
-}
-
-#[test]
-fn resolve_root_with_none_falls_back_to_cwd() {
-	let result = resolve_root(None);
-	let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-	assert_eq!(result, cwd);
-}
-
-// ===========================================================================
-// make_relative
-// ===========================================================================
-
-#[test]
-fn make_relative_inside_root() {
-	let root = Path::new("/home/user/project");
-	let full = Path::new("/home/user/project/src/main.rs");
-	assert_eq!(make_relative(full, root), "src/main.rs");
-}
-
-#[test]
-fn make_relative_outside_root_returns_full_path() {
-	let root = Path::new("/home/user/project");
-	let full = Path::new("/other/path/file.md");
-	assert_eq!(make_relative(full, root), "/other/path/file.md");
-}
-
-#[test]
-fn make_relative_same_as_root() {
-	let root = Path::new("/home/user/project");
-	let full = Path::new("/home/user/project");
-	// strip_prefix on equal paths gives ""
-	assert_eq!(make_relative(full, root), "");
 }
 
 // ===========================================================================
@@ -1315,20 +1271,6 @@ async fn list_with_stale_and_synced_consumers() {
 	assert_eq!(
 		farewell_consumer["is_stale"], true,
 		"farewell should be stale"
-	);
-}
-
-// ===========================================================================
-// resolve_root with None
-// ===========================================================================
-
-#[test]
-fn resolve_root_none_returns_cwd() {
-	let result = resolve_root(None);
-	// Should fall back to current directory
-	assert!(
-		result.is_absolute() || result.as_path() == Path::new("."),
-		"resolve_root(None) should return an absolute path or '.', got: {result:?}"
 	);
 }
 

@@ -221,6 +221,34 @@ impl ProjectContext {
 	}
 }
 
+/// Resolve an optional project root path.
+///
+/// If `path` is `None`, falls back to the current working directory and uses
+/// `.` if the current directory cannot be determined.
+pub fn resolve_root(path: Option<&Path>) -> PathBuf {
+	path.map_or_else(
+		|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+		PathBuf::from,
+	)
+}
+
+/// Render a path relative to the project root for user-facing display.
+///
+/// If `path` is outside `root`, the full path is returned unchanged.
+pub fn relative_display_path(path: &Path, root: &Path) -> String {
+	path.strip_prefix(root)
+		.unwrap_or(path)
+		.display()
+		.to_string()
+}
+
+/// Returns true if the path uses a markdown-style extension supported by mdt.
+pub fn is_markdown_path(path: &Path) -> bool {
+	path.extension()
+		.and_then(|ext| ext.to_str())
+		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"))
+}
+
 /// Metrics for the most recent cache-assisted project scan.
 #[derive(Debug, Clone, Serialize)]
 pub struct ProjectCacheLastScan {
@@ -1067,6 +1095,54 @@ pub fn find_missing_providers(project: &Project) -> Vec<String> {
 		}
 	}
 	missing
+}
+
+/// Compute the Levenshtein edit distance between two strings.
+pub fn levenshtein_distance(a: &str, b: &str) -> usize {
+	let a_len = a.len();
+	let b_len = b.len();
+
+	if a_len == 0 {
+		return b_len;
+	}
+	if b_len == 0 {
+		return a_len;
+	}
+
+	let mut prev_row: Vec<usize> = (0..=b_len).collect();
+	let mut curr_row = vec![0; b_len + 1];
+
+	for (i, a_char) in a.chars().enumerate() {
+		curr_row[0] = i + 1;
+		for (j, b_char) in b.chars().enumerate() {
+			let cost = usize::from(a_char != b_char);
+			curr_row[j + 1] = (prev_row[j + 1] + 1)
+				.min(curr_row[j] + 1)
+				.min(prev_row[j] + cost);
+		}
+		std::mem::swap(&mut prev_row, &mut curr_row);
+	}
+
+	prev_row[b_len]
+}
+
+/// Suggest up to three similar provider names for a missing consumer reference.
+pub fn suggest_similar_provider_names<'a>(
+	name: &str,
+	provider_names: impl IntoIterator<Item = &'a str>,
+) -> Vec<&'a str> {
+	let max_distance = (name.len() / 2).max(2);
+	let mut candidates: Vec<(&'a str, usize)> = provider_names
+		.into_iter()
+		.map(|provider_name| (provider_name, levenshtein_distance(name, provider_name)))
+		.filter(|(_, distance)| *distance <= max_distance && *distance > 0)
+		.collect();
+	candidates.sort_by_key(|(_, distance)| *distance);
+	candidates.truncate(3);
+	candidates
+		.into_iter()
+		.map(|(provider_name, _)| provider_name)
+		.collect()
 }
 
 /// Validate that all consumer blocks have matching providers.

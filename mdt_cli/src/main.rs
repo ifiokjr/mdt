@@ -28,6 +28,8 @@ use mdt_core::project::ProviderEntry;
 use mdt_core::project::ScanOptions;
 use mdt_core::project::ValidationOptions;
 use mdt_core::project::inspect_project_cache;
+use mdt_core::project::relative_display_path;
+use mdt_core::project::resolve_root as resolve_root_path;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::write_updates;
 use owo_colors::OwoColorize;
@@ -128,15 +130,13 @@ fn main() {
 	}
 }
 
-fn resolve_root(args: &MdtCli) -> PathBuf {
-	args.path
-		.clone()
-		.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
-}
-
 fn print_section(title: &str) {
 	println!();
 	println!("{}", colored!(title, bold));
+}
+
+fn resolve_root(args: &MdtCli) -> PathBuf {
+	resolve_root_path(args.path.as_deref())
 }
 
 fn print_field(label: &str, value: impl std::fmt::Display) {
@@ -422,7 +422,7 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 	// Report diagnostics
 	let mut has_errors = false;
 	for diag in &ctx.project.diagnostics {
-		let rel = make_relative(&diag.file, &root);
+		let rel = relative_display_path(&diag.file, &root);
 		if diag.is_error(&options) {
 			let report = diagnostic_to_report(diag, &rel, true);
 			eprintln!("{report:?}");
@@ -535,7 +535,7 @@ fn run_check_once(
 				.stale
 				.iter()
 				.map(|entry| {
-					let rel = make_relative(&entry.file, &root);
+					let rel = relative_display_path(&entry.file, &root);
 					serde_json::json!({
 						"file": rel,
 						"block": entry.block_name,
@@ -548,7 +548,7 @@ fn run_check_once(
 				.render_errors
 				.iter()
 				.map(|err| {
-					let rel = make_relative(&err.file, &root);
+					let rel = relative_display_path(&err.file, &root);
 					serde_json::json!({
 						"file": rel,
 						"block": err.block_name,
@@ -567,14 +567,14 @@ fn run_check_once(
 		}
 		OutputFormat::Github => {
 			for err in &result.render_errors {
-				let rel = make_relative(&err.file, &root);
+				let rel = relative_display_path(&err.file, &root);
 				println!(
 					"::error file={rel},line={},col={}::Template render failed for block `{}`: {}",
 					err.line, err.column, err.block_name, err.message
 				);
 			}
 			for entry in &result.stale {
-				let rel = make_relative(&entry.file, &root);
+				let rel = relative_display_path(&entry.file, &root);
 				println!(
 					"::warning file={rel},line={},col={}::Consumer block `{}` is out of date",
 					entry.line, entry.column, entry.block_name
@@ -592,7 +592,7 @@ fn run_check_once(
 				eprintln!();
 				eprintln!("Render errors:");
 				for err in sorted_errors {
-					let rel = make_relative(&err.file, &root);
+					let rel = relative_display_path(&err.file, &root);
 					eprintln!(
 						"  block `{}` at {rel}:{}:{}: {}",
 						err.block_name, err.line, err.column, err.message
@@ -605,7 +605,7 @@ fn run_check_once(
 				eprintln!();
 				eprintln!("Stale consumers:");
 				for entry in sorted_stale {
-					let rel = make_relative(&entry.file, &root);
+					let rel = relative_display_path(&entry.file, &root);
 					eprintln!(
 						"  block `{}` at {rel}:{}:{}",
 						entry.block_name, entry.line, entry.column
@@ -645,8 +645,8 @@ fn sorted_stale_entries<'a>(
 ) -> Vec<&'a mdt_core::StaleEntry> {
 	let mut stale_entries: Vec<_> = result.stale.iter().collect();
 	stale_entries.sort_by(|a, b| {
-		make_relative(&a.file, root)
-			.cmp(&make_relative(&b.file, root))
+		relative_display_path(&a.file, root)
+			.cmp(&relative_display_path(&b.file, root))
 			.then_with(|| a.line.cmp(&b.line))
 			.then_with(|| a.column.cmp(&b.column))
 			.then_with(|| a.block_name.cmp(&b.block_name))
@@ -660,8 +660,8 @@ fn sorted_render_errors<'a>(
 ) -> Vec<&'a mdt_core::RenderError> {
 	let mut render_errors: Vec<_> = result.render_errors.iter().collect();
 	render_errors.sort_by(|a, b| {
-		make_relative(&a.file, root)
-			.cmp(&make_relative(&b.file, root))
+		relative_display_path(&a.file, root)
+			.cmp(&relative_display_path(&b.file, root))
 			.then_with(|| a.line.cmp(&b.line))
 			.then_with(|| a.column.cmp(&b.column))
 			.then_with(|| a.block_name.cmp(&b.block_name))
@@ -734,7 +734,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 		let mut paths: Vec<_> = updates.updated_files.keys().collect();
 		paths.sort();
 		for path in paths {
-			let rel = make_relative(path, &root);
+			let rel = relative_display_path(path, &root);
 			println!("  {rel}");
 		}
 	} else {
@@ -749,7 +749,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 			let mut paths: Vec<_> = updates.updated_files.keys().collect();
 			paths.sort();
 			for path in paths {
-				let rel = make_relative(path, &root);
+				let rel = relative_display_path(path, &root);
 				println!("  {rel}");
 			}
 		}
@@ -774,7 +774,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		names.sort();
 		for name in names {
 			let entry = &ctx.project.providers[name];
-			let rel = make_relative(&entry.file, &root);
+			let rel = relative_display_path(&entry.file, &root);
 			let consumer_count = ctx
 				.project
 				.consumers
@@ -793,7 +793,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		}
 		println!("{}", colored!("Consumers:", bold));
 		for consumer in &ctx.project.consumers {
-			let rel = make_relative(&consumer.file, &root);
+			let rel = relative_display_path(&consumer.file, &root);
 			let (sigil, status) = match consumer.block.r#type {
 				BlockType::Consumer => {
 					let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
@@ -947,7 +947,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 		.project
 		.providers
 		.values()
-		.map(|entry| make_relative(&entry.file, &root))
+		.map(|entry| relative_display_path(&entry.file, &root))
 		.collect::<BTreeSet<_>>()
 		.into_iter()
 		.collect();
@@ -1980,13 +1980,13 @@ fn run_assist(
 fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 	let mut sorted_warnings: Vec<_> = warnings.iter().collect();
 	sorted_warnings.sort_by(|a, b| {
-		make_relative(&a.provider_file, root)
-			.cmp(&make_relative(&b.provider_file, root))
+		relative_display_path(&a.provider_file, root)
+			.cmp(&relative_display_path(&b.provider_file, root))
 			.then_with(|| a.block_name.cmp(&b.block_name))
 	});
 
 	for warning in sorted_warnings {
-		let rel = make_relative(&warning.provider_file, root);
+		let rel = relative_display_path(&warning.provider_file, root);
 		let mut undefined_vars = warning.undefined_variables.clone();
 		undefined_vars.sort();
 		let vars = undefined_vars.join(", ");
@@ -2014,14 +2014,6 @@ fn print_diff(current: &str, expected: &str) {
 			}
 		}
 	}
-}
-
-/// Make a path relative to root for display purposes.
-fn make_relative(path: &Path, root: &Path) -> String {
-	path.strip_prefix(root)
-		.unwrap_or(path)
-		.display()
-		.to_string()
 }
 
 /// Convert a `ProjectDiagnostic` into a `miette::Report` with appropriate

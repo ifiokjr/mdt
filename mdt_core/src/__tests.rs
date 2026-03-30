@@ -15,7 +15,11 @@ use crate::patterns::PatternMatcher;
 use crate::project;
 use crate::project::ProjectContext;
 use crate::project::ScanOptions;
+use crate::project::is_markdown_path;
+use crate::project::levenshtein_distance;
+use crate::project::resolve_root;
 use crate::project::scan_project_with_options;
+use crate::project::suggest_similar_provider_names;
 use crate::tokens::GetDynamicRange;
 use crate::tokens::TokenGroup;
 
@@ -191,6 +195,82 @@ old
 	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Indent);
 
 	Ok(())
+}
+
+#[test]
+fn resolve_root_with_some_path() {
+	let result = resolve_root(Some(std::path::Path::new("/tmp/test_project")));
+	assert_eq!(result, PathBuf::from("/tmp/test_project"));
+}
+
+#[test]
+fn resolve_root_with_none_falls_back_to_cwd() {
+	let result = resolve_root(None);
+	let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+	assert_eq!(result, cwd);
+}
+
+#[test]
+fn relative_display_path_inside_root() {
+	let root = std::path::Path::new("/home/user/project");
+	let full = std::path::Path::new("/home/user/project/src/main.rs");
+	assert_eq!(relative_display_path(full, root), "src/main.rs");
+}
+
+#[test]
+fn relative_display_path_outside_root_returns_full_path() {
+	let root = std::path::Path::new("/home/user/project");
+	let full = std::path::Path::new("/other/path/file.md");
+	assert_eq!(relative_display_path(full, root), "/other/path/file.md");
+}
+
+#[test]
+fn relative_display_path_same_as_root() {
+	let root = std::path::Path::new("/home/user/project");
+	let full = std::path::Path::new("/home/user/project");
+	assert_eq!(relative_display_path(full, root), "");
+}
+
+#[test]
+fn is_markdown_path_matches_supported_extensions() {
+	assert!(is_markdown_path(std::path::Path::new("/tmp/readme.md")));
+	assert!(is_markdown_path(std::path::Path::new("/tmp/page.mdx")));
+	assert!(is_markdown_path(std::path::Path::new(
+		"/tmp/guide.markdown"
+	)));
+}
+
+#[test]
+fn is_markdown_path_rejects_non_markdown_extensions() {
+	assert!(!is_markdown_path(std::path::Path::new("/tmp/main.rs")));
+	assert!(!is_markdown_path(std::path::Path::new("/tmp/readme")));
+}
+
+#[test]
+fn shared_levenshtein_distance_handles_common_cases() {
+	assert_eq!(levenshtein_distance("hello", "hello"), 0);
+	assert_eq!(levenshtein_distance("", "hello"), 5);
+	assert_eq!(levenshtein_distance("kitten", "sitting"), 3);
+}
+
+#[test]
+fn shared_provider_name_suggestions_filter_and_rank_matches() {
+	let provider_names = ["greeting", "greeter", "installation", "greating"];
+
+	let suggestions = suggest_similar_provider_names("greetng", provider_names);
+
+	assert_eq!(suggestions, vec!["greeting", "greeter", "greating"]);
+}
+
+#[test]
+fn shared_provider_name_suggestions_skip_identical_and_distant_names() {
+	let provider_names = ["greeting", "installation", "deploy"];
+
+	let suggestions = suggest_similar_provider_names("greeting", provider_names);
+	assert!(suggestions.is_empty());
+
+	let suggestions = suggest_similar_provider_names("xyz", ["greeting", "installation"]);
+	assert!(suggestions.is_empty());
 }
 
 // --- Transformer tests ---
