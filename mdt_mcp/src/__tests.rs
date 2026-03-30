@@ -17,6 +17,14 @@ fn extract_text(result: &CallToolResult) -> &str {
 		.as_str()
 }
 
+fn extract_json(result: &CallToolResult) -> serde_json::Value {
+	if let Some(value) = result.structured_content.clone() {
+		return value;
+	}
+	serde_json::from_str(extract_text(result))
+		.unwrap_or_else(|e| panic!("invalid JSON result: {e}"))
+}
+
 // ---------------------------------------------------------------------------
 // Helper: create a minimal mdt project in a temp directory
 // ---------------------------------------------------------------------------
@@ -97,6 +105,26 @@ Old farewell content.
 	std::fs::write(root.join("readme.md"), readme).unwrap_or_else(|e| panic!("write readme: {e}"));
 }
 
+fn create_warning_project(root: &Path) {
+	std::fs::write(root.join("mdt.toml"), "[data]\npkg = \"package.json\"\n")
+		.unwrap_or_else(|e| panic!("write config: {e}"));
+	std::fs::write(
+		root.join("package.json"),
+		r#"{"name": "my-lib", "version": "1.0.0"}"#,
+	)
+	.unwrap_or_else(|e| panic!("write package: {e}"));
+	std::fs::write(
+		root.join("template.t.md"),
+		"<!-- {@install} -->\n\nnpm install {{ pkgg.name }}\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		root.join("readme.md"),
+		"<!-- {=install} -->\n\nnpm install \n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write readme: {e}"));
+}
+
 // ===========================================================================
 // scan_ctx
 // ===========================================================================
@@ -149,15 +177,11 @@ async fn init_creates_template_file() {
 		.await
 		.unwrap_or_else(|e| panic!("init: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("Created template file"),
-		"expected creation message, got: {text}"
-	);
-	assert!(
-		text.contains("Created mdt.toml"),
-		"expected config creation message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "init");
+	assert_eq!(json["template_created"], true);
+	assert_eq!(json["config_created"], true);
 	assert!(
 		tmp.path().join(".templates/template.t.md").exists(),
 		".templates/template.t.md should exist"
@@ -186,14 +210,15 @@ async fn init_reports_existing_template() {
 		.await
 		.unwrap_or_else(|e| panic!("init: {e:?}"));
 
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["template_created"], false);
+	assert_eq!(json["config_created"], true);
 	assert!(
-		text.contains("already exists"),
-		"expected 'already exists' message, got: {text}"
-	);
-	assert!(
-		text.contains("Created mdt.toml"),
-		"expected config creation message, got: {text}"
+		json["summary"]
+			.as_str()
+			.is_some_and(|summary| summary.contains("already exists")),
+		"expected 'already exists' summary, got: {json}"
 	);
 	assert!(
 		tmp.path().join("mdt.toml").exists(),
@@ -217,11 +242,11 @@ async fn check_on_empty_project_reports_up_to_date() {
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("up to date"),
-		"expected up-to-date message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "check");
+	assert_eq!(json["stale"], serde_json::json!([]));
+	assert_eq!(json["render_errors"], serde_json::json!([]));
 }
 
 #[tokio::test]
@@ -237,11 +262,10 @@ async fn check_on_synced_project_reports_up_to_date() {
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("up to date"),
-		"expected up-to-date message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["stale"], serde_json::json!([]));
+	assert_eq!(json["render_errors"], serde_json::json!([]));
 }
 
 #[tokio::test]
@@ -257,15 +281,11 @@ async fn check_on_stale_project_reports_stale_blocks() {
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("stale"),
-		"expected stale message, got: {text}"
-	);
-	assert!(
-		text.contains("greeting"),
-		"expected block name in message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["action"], "check");
+	assert_eq!(json["stale"][0]["block_name"], "greeting");
+	assert_eq!(json["stale"][0]["file"], "readme.md");
 }
 
 // ===========================================================================
@@ -286,11 +306,11 @@ async fn update_on_up_to_date_project_reports_no_changes() {
 		.await
 		.unwrap_or_else(|e| panic!("update: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("already up to date"),
-		"expected no-changes message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "update");
+	assert_eq!(json["updated_count"], 0);
+	assert_eq!(json["dry_run"], false);
 }
 
 #[tokio::test]
@@ -307,11 +327,11 @@ async fn update_on_stale_project_applies_changes() {
 		.await
 		.unwrap_or_else(|e| panic!("update: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("Updated"),
-		"expected update confirmation, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "update");
+	assert_eq!(json["updated_count"], 1);
+	assert_eq!(json["updated_files"][0], "readme.md");
 
 	// Verify the file was actually written
 	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
@@ -340,11 +360,11 @@ async fn update_dry_run_does_not_write() {
 		.await
 		.unwrap_or_else(|e| panic!("update: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("Dry run"),
-		"expected dry-run message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "update");
+	assert_eq!(json["dry_run"], true);
+	assert_eq!(json["updated_count"], 1);
 
 	// Verify the file was NOT modified
 	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
@@ -369,11 +389,27 @@ async fn update_dry_run_lists_affected_files() {
 		.await
 		.unwrap_or_else(|e| panic!("update: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("readme.md"),
-		"dry run should list the affected file, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["updated_files"][0], "readme.md");
+}
+
+#[tokio::test]
+async fn update_includes_template_warnings_in_json() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_warning_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: true,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["warnings"][0]["block_name"], "install");
+	assert_eq!(json["warnings"][0]["undefined_variables"][0], "pkgg.name");
 }
 
 // ===========================================================================
@@ -758,11 +794,13 @@ async fn get_block_for_nonexistent_returns_error() {
 		Some(true),
 		"result should be marked as error"
 	);
-
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
 	assert!(
-		text.contains("No block named"),
-		"expected 'No block named' message, got: {text}"
+		json["summary"]
+			.as_str()
+			.is_some_and(|summary| summary.contains("No block named")),
+		"expected 'No block named' message, got: {json}"
 	);
 }
 
@@ -784,14 +822,15 @@ async fn preview_for_existing_provider_returns_rendered_content() {
 		.await
 		.unwrap_or_else(|e| panic!("preview: {e:?}"));
 
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["action"], "preview");
+	assert_eq!(json["provider"]["name"], "greeting");
 	assert!(
-		text.contains("Provider `greeting`"),
-		"expected provider heading, got: {text}"
-	);
-	assert!(
-		text.contains("Hello from mdt!"),
-		"expected rendered content, got: {text}"
+		json["provider"]["rendered_with_project_data"]
+			.as_str()
+			.is_some_and(|value| value.contains("Hello from mdt!")),
+		"expected rendered provider content, got: {json}"
 	);
 }
 
@@ -809,14 +848,14 @@ async fn preview_shows_consumer_info() {
 		.await
 		.unwrap_or_else(|e| panic!("preview: {e:?}"));
 
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["consumers"][0]["file"], "readme.md");
+	assert_eq!(json["consumers"][0]["is_stale"], true);
 	assert!(
-		text.contains("consumer(s)"),
-		"expected consumer section, got: {text}"
-	);
-	assert!(
-		text.contains("readme.md"),
-		"expected consumer file listed, got: {text}"
+		json["consumers"][0]["rendered_content"]
+			.as_str()
+			.is_some_and(|value| value.contains("Hello from mdt!")),
+		"expected rendered consumer preview, got: {json}"
 	);
 }
 
@@ -838,11 +877,13 @@ async fn preview_for_nonexistent_provider_returns_error() {
 		Some(true),
 		"result should be marked as error"
 	);
-
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
 	assert!(
-		text.contains("No provider named"),
-		"expected 'No provider named' message, got: {text}"
+		json["summary"]
+			.as_str()
+			.is_some_and(|summary| summary.contains("No provider named")),
+		"expected missing-provider error, got: {json}"
 	);
 }
 
@@ -870,15 +911,9 @@ Nobody references me.
 		.await
 		.unwrap_or_else(|e| panic!("preview: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("Provider `lonely`"),
-		"expected provider heading, got: {text}"
-	);
-	assert!(
-		!text.contains("consumer(s)"),
-		"should not contain consumer section when there are no consumers"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["provider"]["name"], "lonely");
+	assert_eq!(json["consumers"], serde_json::json!([]));
 }
 
 // ===========================================================================
@@ -917,15 +952,27 @@ placeholder
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("missing providers"),
-		"expected missing providers message, got: {text}"
-	);
-	assert!(
-		text.contains("missing_block"),
-		"expected missing block name in message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["missing_provider_names"][0], "missing_block");
+}
+
+#[tokio::test]
+async fn check_includes_template_warnings_in_json() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_warning_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["warnings"][0]["block_name"], "install");
+	assert_eq!(json["warnings"][0]["undefined_variables"][0], "pkgg.name");
 }
 
 // ===========================================================================
@@ -1132,21 +1179,10 @@ placeholder
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
-	// Should mention stale blocks
-	assert!(
-		text.contains("stale"),
-		"expected stale message, got: {text}"
-	);
-	// Should mention missing providers
-	assert!(
-		text.contains("missing providers"),
-		"expected missing providers message, got: {text}"
-	);
-	assert!(
-		text.contains("nonexistent"),
-		"expected nonexistent in message, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["stale"][0]["block_name"], "greeting");
+	assert_eq!(json["missing_provider_names"][0], "nonexistent");
 }
 
 // ===========================================================================
@@ -1886,15 +1922,8 @@ Hello from mdt!
 		.await
 		.unwrap_or_else(|e| panic!("preview: {e:?}"));
 
-	let text = extract_text(&result);
-	assert!(
-		text.contains("Transformers:"),
-		"preview should list transformers, got: {text}"
-	);
-	assert!(
-		text.contains("trim"),
-		"preview should show trim transformer, got: {text}"
-	);
+	let json = extract_json(&result);
+	assert_eq!(json["consumers"][0]["transformers"][0], "trim");
 }
 
 // ===========================================================================
@@ -1914,18 +1943,14 @@ async fn check_stale_project_reports_block_name_and_file() {
 		.await
 		.unwrap_or_else(|e| panic!("check: {e:?}"));
 
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["stale"][0]["block_name"], "greeting");
+	assert_eq!(json["stale"][0]["file"], "readme.md");
 	assert!(
-		text.contains("greeting"),
-		"check output should include block name, got: {text}"
-	);
-	assert!(
-		text.contains("readme.md"),
-		"check output should include file name, got: {text}"
-	);
-	assert!(
-		text.contains("mdt_update"),
-		"check output should mention mdt_update, got: {text}"
+		json["summary"]
+			.as_str()
+			.is_some_and(|summary| summary.contains("stale consumer block")),
+		"check output should include summary, got: {json}"
 	);
 }
 
@@ -2650,21 +2675,13 @@ async fn preview_with_block_arguments_shows_provider_template() {
 		.await
 		.unwrap_or_else(|e| panic!("preview: {e:?}"));
 
-	let text = extract_text(&result);
+	let json = extract_json(&result);
+	assert_eq!(json["provider"]["name"], "badges");
+	assert_eq!(json["consumers"][0]["file"], "readme.md");
 	assert!(
-		text.contains("Provider `badges`"),
-		"expected provider heading, got: {text}"
-	);
-	// The preview shows the provider template.  Since provider has a
-	// parameter `crate_name` without base data, the raw template variable
-	// may or may not be present depending on render behaviour.  At minimum
-	// the consumer section should list the consumer file.
-	assert!(
-		text.contains("consumer(s)"),
-		"expected consumer section, got: {text}"
-	);
-	assert!(
-		text.contains("readme.md"),
-		"expected consumer file listed, got: {text}"
+		json["consumers"][0]["rendered_content"]
+			.as_str()
+			.is_some_and(|value| value.contains("mdt_core")),
+		"expected argument-aware consumer preview, got: {json}"
 	);
 }
