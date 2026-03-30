@@ -1,19 +1,19 @@
 # Introduction
 
-**mdt** (manage **m**ark**d**own **t**emplates) is a tool that keeps documentation synchronized across your project. Define content once in a template file, reference it from anywhere — READMEs, code comments, mdbook docs — and mdt keeps everything in sync.
+**mdt** (manage **m**ark**d**own **t**emplates) helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized. Define content once in a template file, reference it from anywhere — READMEs, code comments, mdbook docs — and mdt keeps everything in sync.
 
 ## The Problem
 
-Documentation gets duplicated. Your README has installation instructions. Your library's doc comment has the same instructions. Your mdbook repeats them again. When something changes, you update one place and forget the others. They drift apart. Users find conflicting information.
+Documentation gets duplicated. Your README has installation instructions. Your library's doc comment has the same instructions. Your mdbook repeats them again. When something changes, you update one place and forget the others. The docs drift apart, and users find conflicting information.
 
-This happens constantly in real projects:
+This happens constantly for library and tool maintainers:
 
-- A CLI usage section repeated in the root README and the crate README
-- API documentation duplicated between doc comments and a docs site
-- Version numbers, package names, or install commands scattered across multiple files
-- Code examples that appear in both documentation and source files
+- install instructions repeated in a root README, crate README, and package docs
+- usage snippets duplicated between source-doc comments and a docs site
+- version numbers, package names, and commands scattered across multiple files
+- examples copied between markdown docs and source files
 
-Manual synchronization doesn't scale. Copy-pasting is error-prone. The larger the project, the worse it gets.
+Manual synchronization doesn't scale. Copy-pasting is error-prone. The more places the same content lives, the more likely it is to drift.
 
 ## The Solution
 
@@ -45,11 +45,11 @@ After running `mdt update`, every consumer named `install` has identical content
 ## Key Features
 
 - **Comment-based tags** — HTML comments are invisible in rendered markdown, so your docs look clean
-- **Data interpolation** — Pull values from `package.json`, `Cargo.toml`, or any data file into your templates using `{{ variable }}` syntax
 - **Source file support** — Consumer tags work inside code comments too (Rust, TypeScript, Python, Go, and more)
-- **Transformers** — Pipe content through filters like `trim`, `indent`, `prefix`, `codeBlock` to adapt it for each context
+- **Data interpolation** — Pull values from `package.json`, `Cargo.toml`, or any data file into your templates using `{{ variable }}` syntax
+- **Transformers** — Pipe content through filters like `trim`, `indent`, `prefix`, `codeBlock` to adapt shared content for each context
 - **CI-friendly** — `mdt check` exits non-zero when docs are stale, with JSON and GitHub Actions output formats
 - **Project diagnostics** — `mdt info` and `mdt doctor` provide project health, cache observability, and actionable remediation hints
 - **Watch mode** — `mdt update --watch` auto-syncs on file changes during development
-- **LSP support** — Language server for editor integration with diagnostics, completions, and hover
-- **MCP support** — `mdt mcp` exposes template data to AI assistants via the Model Context Protocol
+- **Human-first editor support** — `mdt lsp` adds diagnostics, completions, hover, and code actions in your editor
+- **Agent-friendly automation** — `mdt mcp` exposes the same documentation graph to AI assistants via the Model Context Protocol
