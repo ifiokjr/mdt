@@ -129,6 +129,8 @@ Consumers:
 
 ## Next steps
 
+- Read [Proof of Value](./proof-of-value.md) to see how this repository uses mdt across READMEs, Rust source docs, and mdBook pages
+- Follow the [Migration Walkthrough](./migration-walkthrough.md) to convert repeated docs into a provider-plus-consumer workflow
 - Learn about [providers and consumers](../concepts/providers-and-consumers.md) in depth
 - Add [data interpolation](../guide/data-interpolation.md) to pull values from project files
 - Use [transformers](../guide/transformers.md) to adapt content for different contexts

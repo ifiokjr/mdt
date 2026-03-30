@@ -24,6 +24,11 @@ cargo install mdt_cli@0.7.0
 
 <!-- {/mdtCliInstall} -->
 
+## See It in Practice
+
+- [Proof of Value](./docs/src/getting-started/proof-of-value.md) shows how this repository already syncs README content, Rust source docs, and mdBook pages from shared providers.
+- [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md) shows a before/after adoption path for moving repeated docs onto `mdt`.
+
 <!-- {=mdtTemplateSyntax} -->
 
 ### Template Syntax

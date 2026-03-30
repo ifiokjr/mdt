@@ -42,6 +42,13 @@ This content gets replaced automatically.
 
 After running `mdt update`, every consumer named `install` has identical content — sourced from the single provider definition.
 
+## See It in Practice
+
+If you want concrete adoption examples instead of abstract syntax:
+
+- read [Proof of Value](./getting-started/proof-of-value.md) to see how this repository already keeps README content, Rust source docs, and mdBook pages synchronized
+- read [Migration Walkthrough](./getting-started/migration-walkthrough.md) for a before/after adoption path you can copy into your own project
+
 ## Key Features
 
 - **Comment-based tags** — HTML comments are invisible in rendered markdown, so your docs look clean
