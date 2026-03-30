@@ -1,0 +1,101 @@
+name: "npm-publish"
+
+on:
+  workflow_run:
+    workflows: ["release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish to npm (for example `v0.7.0`)."
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  publish_npm:
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      (
+        github.event_name != 'workflow_run' ||
+        github.event.workflow_run.conclusion == 'success'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: resolve release tag
+        id: release_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG='${{ inputs.tag }}'
+          else
+            mkdir -p "$RUNNER_TEMP/release-metadata"
+            gh run download "$WORKFLOW_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name npm-publish-metadata \
+              --dir "$RUNNER_TEMP/release-metadata"
+            TAG=$(cat "$RUNNER_TEMP/release-metadata/release-tag.txt")
+          fi
+
+          case "$TAG" in
+            v*) ;;
+            *)
+              echo "expected a v-prefixed tag, got: $TAG" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved release tag: $TAG"
+
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release_tag.outputs.tag }}
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          scope: "@ifi"
+
+      - name: download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "mdt-*-${RELEASE_TAG}.tar.gz" \
+            --pattern "mdt-*-${RELEASE_TAG}.zip" \
+            --dir "$RUNNER_TEMP/release-assets"
+
+      - name: build npm packages
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          node scripts/npm/build-packages.mjs \
+            --version "$VERSION" \
+            --release-tag "$RELEASE_TAG" \
+            --assets-dir "$RUNNER_TEMP/release-assets" \
+            --out-dir "$RUNNER_TEMP/npm-packages"
+
+      - name: publish npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node scripts/npm/publish-packages.mjs \
+            --packages-dir "$RUNNER_TEMP/npm-packages"

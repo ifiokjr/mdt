@@ -39,3 +39,15 @@ dprint fmt .changeset/* --allow-no-files
 
 - Use detailed, concrete changeset descriptions.
 - Conventional commit scopes should match the affected package when possible.
+
+## npm publishing
+
+npm publishing is handled by a separate `npm-publish` workflow when `NPM_TOKEN` is configured.
+
+- The `release` workflow builds and uploads the GitHub release binaries, then publishes a small metadata artifact containing the release tag.
+- The `npm-publish` workflow runs after the `release` workflow completes successfully, downloads that metadata artifact, then repackages the exact release binaries into npm packages.
+- The top-level package is `@ifi/mdt`.
+- Platform packages are published first (for Linux, macOS, and Windows targets).
+- The top-level package is published last and depends on those platform packages through `optionalDependencies`.
+- The `npm-publish` workflow can also be run manually with a `tag` input to republish or recover a specific release.
+- Re-running npm publish is safe: packages that are already published at the target version are skipped.
