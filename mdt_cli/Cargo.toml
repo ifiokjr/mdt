@@ -27,6 +27,7 @@ owo-colors = { workspace = true, features = ["supports-colors"], default-feature
 serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
 similar = { workspace = true, default-features = true }
+supports-color = { workspace = true, default-features = true }
 tokio = { workspace = true, features = ["rt-multi-thread"], default-features = true }
 
 [dev-dependencies]

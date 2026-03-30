@@ -42,6 +42,7 @@ serde_yaml_ng = { default-features = false, version = "^0.10" }
 similar = { default-features = false, version = "^2" }
 similar-asserts = { default-features = false, version = "^1" }
 snailquote = { default-features = false, version = "^0.3" }
+supports-color = { default-features = false, version = "^3" }
 tempfile = { default-features = false, version = "^3" }
 thiserror = { default-features = false, version = "^2" }
 tokio = { default-features = false, version = "^1" }
