@@ -274,8 +274,11 @@ mdt_mcp = "{{ cargo.workspace.package.version }}"
 
 <!-- {@mdtCliInstall} -->
 
+- Download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
+- Or install with Cargo:
+
 ```sh
-cargo install mdt_cli@{{ cargo.workspace.package.version }}
+cargo install mdt_cli
 ```
 
 <!-- {/mdtCliInstall} -->

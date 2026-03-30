@@ -1,17 +1,22 @@
 # Quick Start
 
-This walkthrough creates a small project that uses mdt to keep a README in sync with a template.
+This walkthrough creates a small project that uses mdt to keep a README section and a Rust doc comment in sync from one provider.
 
 ## 1. Initialize a project
 
-Create a new directory and generate a starter template:
+Create a new directory and generate the starter files:
 
 ```sh
 mkdir my-project && cd my-project
 mdt init
 ```
 
-This creates `.templates/template.t.md` with a sample provider block:
+This creates:
+
+- `.templates/template.t.md` — your starter provider file
+- `mdt.toml` — a starter config with commented examples
+
+The starter template contains:
 
 ```markdown
 <!-- {@greeting} -->
@@ -21,7 +26,7 @@ Hello from mdt! This is a provider block.
 <!-- {/greeting} -->
 ```
 
-## 2. Add a consumer
+## 2. Add a README consumer
 
 Create a `readme.md` that references the provider:
 
@@ -37,9 +42,27 @@ This will be replaced by mdt.
 <!-- {/greeting} -->
 ```
 
-The `{=greeting}` tag marks this as a **consumer** of the `greeting` provider. The content between the opening and closing tags will be replaced.
+The `{=greeting}` tag marks this as a **consumer** of the `greeting` provider.
 
-## 3. Update
+## 3. Add a source-doc consumer
+
+Create `src/lib.rs` with a doc comment consumer that reuses the same provider:
+
+```rust
+//! <!-- {=greeting|trim|linePrefix:"//! "} -->
+//!
+//! This will be replaced by mdt.
+//!
+//! <!-- {/greeting} -->
+
+pub fn hello() {}
+```
+
+The `linePrefix:"//! "` transformer adapts the provider content so it becomes valid Rust doc comments.
+
+> Not using Rust? The same pattern works in other source files too — use a comment style and transformers that match your language.
+
+## 4. Update
 
 Run the update command:
 
@@ -50,10 +73,12 @@ mdt update
 Output:
 
 ```
-Updated 1 block(s) in 1 file(s).
+Updated 2 block(s) in 2 file(s).
 ```
 
-Now `readme.md` contains:
+Now both files are synchronized from the same provider.
+
+`readme.md` contains:
 
 ```markdown
 # My Project
@@ -67,9 +92,19 @@ Hello from mdt! This is a provider block.
 <!-- {/greeting} -->
 ```
 
-The content between the consumer tags has been replaced with the provider's content.
+And `src/lib.rs` contains:
 
-## 4. Check for staleness
+```rust
+//! <!-- {=greeting|trim|linePrefix:"//! "} -->
+//!
+//! Hello from mdt! This is a provider block.
+//!
+//! <!-- {/greeting} -->
+
+pub fn hello() {}
+```
+
+## 5. Check for staleness
 
 Edit the provider in `.templates/template.t.md`:
 
@@ -90,14 +125,20 @@ mdt check
 Output:
 
 ```
-Stale: block `greeting` in readme.md
+Check failed.
+  render errors: 0
+  stale consumers: 2
 
-1 consumer block(s) are out of date. Run `mdt update` to fix.
+Stale consumers:
+  block `greeting` at readme.md:5:1
+  block `greeting` at src/lib.rs:1:5
+
+2 consumer block(s) are out of date. Run `mdt update` to fix.
 ```
 
 The check command exits with a non-zero status code when blocks are stale, making it useful in CI pipelines.
 
-## 5. See what changed
+## 6. See what changed
 
 Use the `--diff` flag to see exactly what's different:
 
@@ -107,7 +148,7 @@ mdt check --diff
 
 This shows a colorized unified diff between the current consumer content and what the provider would produce.
 
-## 6. List all blocks
+## 7. List all blocks
 
 See all providers and consumers in the project:
 
@@ -119,12 +160,13 @@ Output:
 
 ```
 Providers:
-  @greeting .templates/template.t.md (1 consumer(s))
+  @greeting .templates/template.t.md (2 consumer(s))
 
 Consumers:
   =greeting readme.md [linked]
+  =greeting src/lib.rs |trim|linePrefix [linked]
 
-1 provider(s), 1 consumer(s)
+1 provider(s), 2 consumer(s)
 ```
 
 ## Next steps

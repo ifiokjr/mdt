@@ -18,8 +18,11 @@
 
 <!-- {=mdtCliInstall} -->
 
+- Download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
+- Or install with Cargo:
+
 ```sh
-cargo install mdt_cli@0.7.0
+cargo install mdt_cli
 ```
 
 <!-- {/mdtCliInstall} -->
