@@ -35,7 +35,9 @@ use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
+use mdt_core::project::is_markdown_path;
 use mdt_core::project::scan_project_with_config;
+use mdt_core::project::suggest_similar_provider_names;
 use mdt_core::render_template;
 use serde_json::Value;
 use tokio::sync::RwLock;
@@ -153,68 +155,13 @@ impl WorkspaceState {
 /// Returns both parsed blocks and any parse diagnostics (unclosed blocks,
 /// unknown transformers, etc.).
 fn parse_document_content(uri: &Uri, content: &str) -> (Vec<Block>, Vec<ParseDiagnostic>) {
-	let is_markdown = uri
-		.path()
-		.as_str()
-		.rsplit('.')
-		.next()
-		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"));
-
-	let result = if is_markdown {
+	let result = if is_markdown_path(std::path::Path::new(uri.path().as_str())) {
 		parse_with_diagnostics(content)
 	} else {
 		parse_source_with_diagnostics(content, &mdt_core::CodeBlockFilter::default())
 	};
 
 	result.unwrap_or_default()
-}
-
-/// Compute the Levenshtein edit distance between two strings.
-/// Used for suggesting similar block names when a provider is missing.
-fn levenshtein_distance(a: &str, b: &str) -> usize {
-	let a_len = a.len();
-	let b_len = b.len();
-
-	if a_len == 0 {
-		return b_len;
-	}
-	if b_len == 0 {
-		return a_len;
-	}
-
-	let mut prev_row: Vec<usize> = (0..=b_len).collect();
-	let mut curr_row = vec![0; b_len + 1];
-
-	for (i, a_char) in a.chars().enumerate() {
-		curr_row[0] = i + 1;
-		for (j, b_char) in b.chars().enumerate() {
-			let cost = usize::from(a_char != b_char);
-			curr_row[j + 1] = (prev_row[j + 1] + 1)
-				.min(curr_row[j] + 1)
-				.min(prev_row[j] + cost);
-		}
-		std::mem::swap(&mut prev_row, &mut curr_row);
-	}
-
-	prev_row[b_len]
-}
-
-/// Find the most similar provider names for a given consumer name.
-/// Returns up to 3 suggestions with a maximum edit distance threshold.
-fn suggest_similar_names<'a>(
-	name: &str,
-	providers: &'a HashMap<String, ProviderEntry>,
-) -> Vec<&'a str> {
-	// Use a threshold based on name length: allow roughly 40% character changes.
-	let max_distance = (name.len() / 2).max(2);
-	let mut candidates: Vec<(&str, usize)> = providers
-		.keys()
-		.map(|p| (p.as_str(), levenshtein_distance(name, p)))
-		.filter(|(_, d)| *d <= max_distance && *d > 0)
-		.collect();
-	candidates.sort_by_key(|(_, d)| *d);
-	candidates.truncate(3);
-	candidates.into_iter().map(|(name, _)| name).collect()
 }
 
 /// Count provider definitions for `name` in the current document and collect
@@ -261,23 +208,6 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 	}
 
 	(current_count, other_files)
-}
-
-/// Merge provider parameter names with consumer argument values into a data
-/// context for template rendering.
-fn merge_block_args(
-	base_data: &HashMap<String, Value>,
-	provider: &Block,
-	consumer: &Block,
-) -> HashMap<String, Value> {
-	if provider.arguments.is_empty() {
-		return base_data.clone();
-	}
-	let mut data = base_data.clone();
-	for (name, value) in provider.arguments.iter().zip(consumer.arguments.iter()) {
-		data.insert(name.clone(), Value::String(value.clone()));
-	}
-	data
 }
 
 /// Convert an mdt `Point` (1-indexed line, 1-indexed column) to an LSP
@@ -681,7 +611,16 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 
 				if let Some(provider) = state.providers.get(&block.name) {
 					// Check if the consumer is stale.
-					let render_data = merge_block_args(&state.data, &provider.block, block);
+					let render_data = mdt_core::build_render_context(
+						&state.data,
+						provider,
+						&ConsumerEntry {
+							block: block.clone(),
+							file: PathBuf::new(),
+							content: String::new(),
+						},
+					)
+					.unwrap_or_else(|| state.data.clone());
 					let rendered = render_template(&provider.content, &render_data)
 						.unwrap_or_else(|_| provider.content.clone());
 					let expected = apply_transformers_with_data(
@@ -706,7 +645,10 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 					}
 				} else {
 					// Missing provider — suggest similar names.
-					let suggestions = suggest_similar_names(&block.name, &state.providers);
+					let suggestions = suggest_similar_provider_names(
+						&block.name,
+						state.providers.keys().map(String::as_str),
+					);
 					let message = if suggestions.is_empty() {
 						format!("No provider found for consumer block `{}`", block.name)
 					} else {
@@ -888,7 +830,16 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 			parts.push(format!("**Consumer block:** `{}`", block.name));
 
 			if let Some(provider) = state.providers.get(&block.name) {
-				let render_data = merge_block_args(&state.data, &provider.block, block);
+				let render_data = mdt_core::build_render_context(
+					&state.data,
+					provider,
+					&ConsumerEntry {
+						block: block.clone(),
+						file: PathBuf::new(),
+						content: String::new(),
+					},
+				)
+				.unwrap_or_else(|| state.data.clone());
 				let rendered = render_template(&provider.content, &render_data)
 					.unwrap_or_else(|_| provider.content.clone());
 				let expected = apply_transformers_with_data(
@@ -1267,7 +1218,16 @@ fn compute_code_actions(
 				let Some(provider) = state.providers.get(&block.name) else {
 					continue;
 				};
-				let render_data = merge_block_args(&state.data, &provider.block, block);
+				let render_data = mdt_core::build_render_context(
+					&state.data,
+					provider,
+					&ConsumerEntry {
+						block: block.clone(),
+						file: PathBuf::new(),
+						content: String::new(),
+					},
+				)
+				.unwrap_or_else(|| state.data.clone());
 				let rendered = render_template(&provider.content, &render_data)
 					.unwrap_or_else(|_| provider.content.clone());
 				(

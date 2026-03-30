@@ -40,7 +40,6 @@
 //! <!-- {/mdtMcpOverview} -->
 
 use std::path::Path;
-use std::path::PathBuf;
 
 use mdt_core::BlockType;
 use mdt_core::MdtConfig;
@@ -48,6 +47,10 @@ use mdt_core::apply_transformers;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::project::ProjectContext;
+use mdt_core::project::is_markdown_path;
+use mdt_core::project::levenshtein_distance;
+use mdt_core::project::relative_display_path;
+use mdt_core::project::resolve_root;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::render_template;
 use mdt_core::write_updates;
@@ -164,56 +167,8 @@ impl ServerHandler for MdtMcpServer {
 	}
 }
 
-fn resolve_root(path: Option<&str>) -> PathBuf {
-	path.map_or_else(
-		|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-		PathBuf::from,
-	)
-}
-
 fn default_reuse_limit() -> usize {
 	5
-}
-
-fn is_markdown_path(path: &Path) -> bool {
-	path.extension()
-		.and_then(|ext| ext.to_str())
-		.is_some_and(|ext| matches!(ext, "md" | "mdx" | "markdown"))
-}
-
-fn levenshtein_distance(a: &str, b: &str) -> usize {
-	let a_len = a.len();
-	let b_len = b.len();
-
-	if a_len == 0 {
-		return b_len;
-	}
-	if b_len == 0 {
-		return a_len;
-	}
-
-	let mut prev_row: Vec<usize> = (0..=b_len).collect();
-	let mut curr_row = vec![0; b_len + 1];
-
-	for (i, a_char) in a.chars().enumerate() {
-		curr_row[0] = i + 1;
-		for (j, b_char) in b.chars().enumerate() {
-			let cost = usize::from(a_char != b_char);
-			curr_row[j + 1] = (prev_row[j + 1] + 1)
-				.min(curr_row[j] + 1)
-				.min(prev_row[j] + cost);
-		}
-		std::mem::swap(&mut prev_row, &mut curr_row);
-	}
-
-	prev_row[b_len]
-}
-
-fn make_relative(path: &Path, root: &Path) -> String {
-	path.strip_prefix(root)
-		.unwrap_or(path)
-		.display()
-		.to_string()
 }
 
 fn scan_ctx(root: &Path) -> Result<ProjectContext, McpError> {
@@ -237,7 +192,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<PathParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 
 		let missing = ctx.find_missing_providers();
@@ -258,7 +213,7 @@ impl MdtMcpServer {
 				result.render_errors.len()
 			));
 			for err in &result.render_errors {
-				let rel = make_relative(&err.file, &root);
+				let rel = relative_display_path(&err.file, &root);
 				parts.push(format!(
 					"  - `{}` in {rel}: {}",
 					err.block_name, err.message
@@ -272,7 +227,7 @@ impl MdtMcpServer {
 				result.stale.len()
 			));
 			for entry in &result.stale {
-				let rel = make_relative(&entry.file, &root);
+				let rel = relative_display_path(&entry.file, &root);
 				parts.push(format!("  - `{}` in {rel}", entry.block_name));
 			}
 			parts.push(String::new());
@@ -301,7 +256,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<UpdateParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 		let updates =
 			compute_updates(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -316,7 +271,7 @@ impl MdtMcpServer {
 			let files: Vec<String> = updates
 				.updated_files
 				.keys()
-				.map(|p| format!("  - {}", make_relative(p, &root)))
+				.map(|p| format!("  - {}", relative_display_path(p, &root)))
 				.collect();
 			let msg = format!(
 				"Dry run: would update {} block(s) in {} file(s):\n{}",
@@ -332,7 +287,7 @@ impl MdtMcpServer {
 		let files: Vec<String> = updates
 			.updated_files
 			.keys()
-			.map(|p| make_relative(p, &root))
+			.map(|p| relative_display_path(p, &root))
 			.collect();
 		let msg = format!(
 			"Updated {} block(s) in {} file(s): {}",
@@ -352,7 +307,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<PathParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 
 		let mut providers: Vec<ProviderInfo> = ctx
@@ -369,7 +324,7 @@ impl MdtMcpServer {
 					.count();
 				ProviderInfo {
 					name: name.clone(),
-					file: make_relative(&entry.file, &root),
+					file: relative_display_path(&entry.file, &root),
 					content: entry.content.trim().to_string(),
 					consumer_count,
 				}
@@ -392,7 +347,7 @@ impl MdtMcpServer {
 				});
 				ConsumerInfo {
 					name: c.block.name.clone(),
-					file: make_relative(&c.file, &root),
+					file: relative_display_path(&c.file, &root),
 					transformers: c
 						.block
 						.transformers
@@ -430,7 +385,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<ReuseParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 		let limit = params.limit.clamp(1, 20);
 		let query = params
@@ -455,7 +410,7 @@ impl MdtMcpServer {
 				let mut markdown_files = Vec::new();
 				let mut code_files = Vec::new();
 				for consumer in &consumers {
-					let rel = make_relative(&consumer.file, &root);
+					let rel = relative_display_path(&consumer.file, &root);
 					if is_markdown_path(&consumer.file) {
 						markdown_files.push(rel);
 					} else {
@@ -469,7 +424,7 @@ impl MdtMcpServer {
 
 				ReuseCandidate {
 					name: name.clone(),
-					file: make_relative(&entry.file, &root),
+					file: relative_display_path(&entry.file, &root),
 					consumer_count: consumers.len(),
 					markdown_files,
 					code_files,
@@ -521,7 +476,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<BlockParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 
 		if let Some(provider) = ctx.project.providers.get(&params.block_name) {
@@ -540,13 +495,13 @@ impl MdtMcpServer {
 				.iter()
 				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 				.filter(|c| c.block.name == params.block_name)
-				.map(|c| make_relative(&c.file, &root))
+				.map(|c| relative_display_path(&c.file, &root))
 				.collect();
 
 			let output = serde_json::json!({
 				"type": "provider",
 				"name": params.block_name,
-				"file": make_relative(&provider.file, &root),
+				"file": relative_display_path(&provider.file, &root),
 				"raw_content": provider.content,
 				"rendered_content": rendered,
 				"consumer_count": consumer_count,
@@ -586,7 +541,7 @@ impl MdtMcpServer {
 			entries.push(serde_json::json!({
 				"type": "consumer",
 				"name": c.block.name,
-				"file": make_relative(&c.file, &root),
+				"file": relative_display_path(&c.file, &root),
 				"content": c.content,
 				"transformers": c.block.transformers.iter().map(|t| t.r#type.to_string()).collect::<Vec<_>>(),
 				"is_stale": is_stale,
@@ -608,7 +563,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<BlockParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let ctx = scan_ctx(&root)?;
 
 		let Some(provider) = ctx.project.providers.get(&params.block_name) else {
@@ -639,7 +594,7 @@ impl MdtMcpServer {
 			parts.push(format!("\n## {} consumer(s):", consumers.len()));
 			for c in &consumers {
 				let transformed = apply_transformers(&rendered, &c.block.transformers);
-				let rel = make_relative(&c.file, &root);
+				let rel = relative_display_path(&c.file, &root);
 				let tf_names: Vec<String> = c
 					.block
 					.transformers
@@ -672,7 +627,7 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<InitParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref());
+		let root = resolve_root(params.path.as_deref().map(Path::new));
 		let canonical_template_path = root.join(".templates/template.t.md");
 		let legacy_template_paths = [
 			root.join("template.t.md"),
