@@ -1,5 +1,7 @@
 mod common;
 
+use mdt_cli::AssistOutputFormat;
+use mdt_cli::Assistant;
 use mdt_cli::Commands;
 use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
@@ -381,6 +383,29 @@ fn doctor_command_is_accepted_by_cli_parser() {
 			assert!(matches!(format, DoctorOutputFormat::Json));
 		}
 		_ => panic!("expected Doctor command"),
+	}
+}
+
+#[test]
+fn assist_command_is_accepted_by_cli_parser() {
+	use clap::Parser;
+
+	let cli = MdtCli::parse_from(["mdt", "assist", "claude"]);
+	match cli.command {
+		Some(Commands::Assist { assistant, format }) => {
+			assert!(matches!(assistant, Assistant::Claude));
+			assert!(matches!(format, AssistOutputFormat::Text));
+		}
+		_ => panic!("expected Assist command"),
+	}
+
+	let cli = MdtCli::parse_from(["mdt", "assist", "pi", "--format", "json"]);
+	match cli.command {
+		Some(Commands::Assist { assistant, format }) => {
+			assert!(matches!(assistant, Assistant::Pi));
+			assert!(matches!(format, AssistOutputFormat::Json));
+		}
+		_ => panic!("expected Assist command"),
 	}
 }
 

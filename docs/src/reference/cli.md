@@ -192,6 +192,34 @@ Checks include:
 
 Text output prints one line per check with a status tag (`PASS`, `WARN`, `FAIL`, `SKIP`) and optional hints. JSON output includes `ok`, `summary`, and a detailed `checks` array.
 
+### `mdt assist`
+
+Print an official assistant setup profile. This first slice focuses on practical presets: mdt prints MCP configuration snippets and repo-local guidance rather than introducing a plugin marketplace.
+
+```sh
+mdt assist claude
+mdt assist cursor
+mdt assist pi --format json
+```
+
+Supported assistants:
+
+- `generic`
+- `claude`
+- `cursor`
+- `copilot`
+- `pi`
+
+`text` output includes:
+
+- a ready-to-copy MCP config snippet
+- suggested repo-local guidance for your assistant instructions
+- assistant-specific notes for the chosen profile
+
+`json` output returns the same setup information in a machine-readable shape, including `mcp_config`, `repo_guidance`, and `notes`.
+
+Use this command when you want a quick, official starting point for wiring `mdt mcp` into an assistant workflow.
+
 ### `mdt lsp`
 
 Start the language server for editor integration. Communicates over stdin/stdout using the Language Server Protocol.

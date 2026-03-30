@@ -6,6 +6,7 @@
 
 - [Installation](./getting-started/installation.md)
 - [Quick Start](./getting-started/quick-start.md)
+- [Assistant Setup](./getting-started/assistant-setup.md)
 - [Proof of Value](./getting-started/proof-of-value.md)
 - [Migration Walkthrough](./getting-started/migration-walkthrough.md)
 
