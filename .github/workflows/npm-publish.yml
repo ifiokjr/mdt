@@ -58,10 +58,10 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Resolved release tag: $TAG"
 
-      - name: checkout
+      - name: checkout repository tools
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.release_tag.outputs.tag }}
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: setup node
         uses: actions/setup-node@v4
