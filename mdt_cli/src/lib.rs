@@ -15,7 +15,8 @@ use clap::ValueEnum;
 	              markdown files, code comments, READMEs, and more.\n\nQuick start:\n  mdt init    \
 	              Create a template file\n  mdt update  Sync all consumer blocks\n  mdt check   \
 	              Verify everything is up to date\n  mdt info    Inspect project diagnostics\n  \
-	              mdt doctor  Run project health checks"
+	              mdt doctor  Run project health checks\n  mdt assist  Print assistant setup \
+	              snippets"
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
@@ -136,6 +137,21 @@ pub enum Commands {
 		#[arg(long, value_enum, default_value_t = DoctorOutputFormat::Text)]
 		format: DoctorOutputFormat,
 	},
+	/// Print an official assistant setup profile.
+	///
+	/// This command prints a ready-to-copy MCP configuration snippet plus
+	/// repo-local guidance for an assistant workflow. The first slice is
+	/// intentionally lightweight: mdt ships presets and guidance, not a
+	/// marketplace or plugin system.
+	Assist {
+		/// Which assistant profile to print.
+		#[arg(value_enum)]
+		assistant: Assistant,
+
+		/// Output format for the setup profile.
+		#[arg(long, value_enum, default_value_t = AssistOutputFormat::Text)]
+		format: AssistOutputFormat,
+	},
 	/// Start the mdt language server (LSP).
 	///
 	/// Communicates over stdin/stdout using the Language Server Protocol.
@@ -180,6 +196,28 @@ pub enum InfoOutputFormat {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum DoctorOutputFormat {
 	/// Human-readable text output with colors and formatting.
+	Text,
+	/// JSON output for programmatic consumption.
+	Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum Assistant {
+	/// Generic MCP client configuration.
+	Generic,
+	/// Anthropic Claude / Claude Code style setup.
+	Claude,
+	/// Cursor editor MCP setup.
+	Cursor,
+	/// GitHub Copilot / VS Code MCP-style setup.
+	Copilot,
+	/// Pi coding agent setup.
+	Pi,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AssistOutputFormat {
+	/// Human-readable setup instructions.
 	Text,
 	/// JSON output for programmatic consumption.
 	Json,

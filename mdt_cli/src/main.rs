@@ -7,6 +7,8 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use clap::Parser;
+use mdt_cli::AssistOutputFormat;
+use mdt_cli::Assistant;
 use mdt_cli::Commands;
 use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
@@ -101,6 +103,7 @@ fn main() {
 		Some(Commands::List) => run_list(&args),
 		Some(Commands::Info { format }) => run_info(&args, format),
 		Some(Commands::Doctor { format }) => run_doctor(&args, format),
+		Some(Commands::Assist { assistant, format }) => run_assist(assistant, format),
 		Some(Commands::Lsp) => run_lsp(),
 		Some(Commands::Mcp) => run_mcp(),
 		None => {
@@ -1835,6 +1838,141 @@ fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
 	rt.block_on(mdt_mcp::run_server());
+	Ok(())
+}
+
+fn assistant_display_name(assistant: Assistant) -> &'static str {
+	match assistant {
+		Assistant::Generic => "Generic MCP client",
+		Assistant::Claude => "Claude",
+		Assistant::Cursor => "Cursor",
+		Assistant::Copilot => "GitHub Copilot",
+		Assistant::Pi => "Pi",
+	}
+}
+
+fn assistant_setup_payload(assistant: Assistant) -> serde_json::Value {
+	let mcp_config = serde_json::json!({
+		"mcpServers": {
+			"mdt": {
+				"command": "mdt",
+				"args": ["mcp"]
+			}
+		}
+	});
+	let guidance = vec![
+		"Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a \
+		 new provider block."
+			.to_string(),
+		"Use `.templates/` as the canonical location for template files.".to_string(),
+		"Run `mdt_check` after documentation edits and `mdt_update` when consumers are stale."
+			.to_string(),
+		"Use `mdt_preview` to inspect provider and consumer output before syncing changes."
+			.to_string(),
+	];
+	let notes = match assistant {
+		Assistant::Generic => {
+			vec![
+				"Add the MCP snippet to any client that supports stdio MCP servers.".to_string(),
+				"Store the repo-local guidance in your assistant instructions so it follows the \
+				 same mdt workflow every time."
+					.to_string(),
+			]
+		}
+		Assistant::Claude => {
+			vec![
+				"Add the MCP snippet to Claude's MCP server configuration.".to_string(),
+				"Keep the repo-local guidance in your project instructions so Claude reuses \
+				 providers before creating new ones."
+					.to_string(),
+			]
+		}
+		Assistant::Cursor => {
+			vec![
+				"Add the MCP snippet to Cursor's MCP settings for the workspace or user profile."
+					.to_string(),
+				"Pair the MCP server with repo-local guidance so Cursor agents run `mdt_check` \
+				 after edits."
+					.to_string(),
+			]
+		}
+		Assistant::Copilot => {
+			vec![
+				"Use this MCP snippet in Copilot or VS Code environments that support \
+				 MCP-compatible server configuration."
+					.to_string(),
+				"Keep the repo-local guidance in workspace instructions so Copilot reuses \
+				 providers and respects `.templates/`."
+					.to_string(),
+			]
+		}
+		Assistant::Pi => {
+			vec![
+				"Configure Pi to run `mdt mcp` so agents can inspect and synchronize providers \
+				 and consumers."
+					.to_string(),
+				"Add the repo-local guidance to your agent instructions so Pi follows the same \
+				 reuse-and-check workflow."
+					.to_string(),
+			]
+		}
+	};
+
+	serde_json::json!({
+		"assistant": assistant_display_name(assistant),
+		"strategy": {
+			"type": "official-profile",
+			"scope": "config-snippets-and-guidance",
+			"summary": "mdt ships assistant setup presets and repo-local guidance, not a plugin marketplace."
+		},
+		"mcp_config": mcp_config,
+		"repo_guidance": guidance,
+		"notes": notes,
+	})
+}
+
+fn run_assist(
+	assistant: Assistant,
+	format: AssistOutputFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let payload = assistant_setup_payload(assistant);
+
+	match format {
+		AssistOutputFormat::Json => {
+			println!("{}", serde_json::to_string_pretty(&payload)?);
+		}
+		AssistOutputFormat::Text => {
+			let mcp_config = serde_json::to_string_pretty(&payload["mcp_config"])?;
+			println!("{}", colored!("mdt assist", bold));
+			println!();
+			println!(
+				"Assistant                 {}",
+				payload["assistant"].as_str().unwrap_or_default()
+			);
+			println!(
+				"Strategy                  {}",
+				payload["strategy"]["summary"].as_str().unwrap_or_default()
+			);
+			println!();
+			println!("MCP config snippet:");
+			println!("{mcp_config}");
+			println!();
+			println!("Suggested repo-local guidance:");
+			for item in payload["repo_guidance"].as_array().into_iter().flatten() {
+				if let Some(text) = item.as_str() {
+					println!("- {text}");
+				}
+			}
+			println!();
+			println!("Notes for {}:", assistant_display_name(assistant));
+			for item in payload["notes"].as_array().into_iter().flatten() {
+				if let Some(text) = item.as_str() {
+					println!("- {text}");
+				}
+			}
+		}
+	}
+
 	Ok(())
 }
 
