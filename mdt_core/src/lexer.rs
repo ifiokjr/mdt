@@ -9,7 +9,6 @@ use crate::tokens::TokenGroup;
 
 /// Raw tokens produced by logos for flat tokenization of HTML node content.
 #[derive(Logos, Debug, PartialEq)]
-#[logos(skip r"")]
 enum RawToken {
 	#[token("<!--")]
 	HtmlCommentOpen,
