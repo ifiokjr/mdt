@@ -199,15 +199,14 @@ pub struct MdtMcpServer {
 impl ServerHandler for MdtMcpServer {
 	fn get_info(&self) -> ServerInfo {
 		ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
-			"mdt (manage markdown templates) keeps documentation synchronized across your \
-			 project using comment-based template tags. MCP tool responses are JSON-first and \
-			 include structured content for agent use. Use these tools to check, update, \
-			 list, preview, and find reusable blocks. Before creating a new provider, run \
-			 mdt_find_reuse or mdt_list to discover similar block names and existing \
-			 markdown/source consumers. Use mdt_preview as an authoring workflow to inspect \
-			 provider templates plus per-consumer rendered output. Prefer reuse over new \
-			 provider names when possible, then run mdt_check (and mdt_update if needed) to \
-			 keep consumers synchronized.",
+			"mdt (manage markdown templates) keeps documentation synchronized across your project \
+			 using comment-based template tags. MCP tool responses are JSON-first and include \
+			 structured content for agent use. Use these tools to check, update, list, preview, \
+			 and find reusable blocks. Before creating a new provider, run mdt_find_reuse or \
+			 mdt_list to discover similar block names and existing markdown/source consumers. Use \
+			 mdt_preview as an authoring workflow to inspect provider templates plus per-consumer \
+			 rendered output. Prefer reuse over new provider names when possible, then run \
+			 mdt_check (and mdt_update if needed) to keep consumers synchronized.",
 		)
 	}
 }
