@@ -8,6 +8,7 @@ use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
+use serde_json::Value as JsonValue;
 use tempfile::tempdir;
 #[allow(unused_imports)]
 use tower_lsp_server::LanguageServer;
@@ -82,6 +83,52 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 
 fn test_uri(path: &std::path::Path) -> Uri {
 	Uri::from_file_path(path).unwrap_or_else(|| panic!("expected file path URI"))
+}
+
+fn make_inline_test_state(
+	template_argument: Option<&str>,
+	consumer_content: &str,
+	data: HashMap<String, JsonValue>,
+) -> (WorkspaceState, Uri) {
+	let opening_tag = template_argument.map_or_else(
+		|| "<!-- {~version} -->".to_string(),
+		|arg| format!("<!-- {{~version:\"{arg}\"}} -->"),
+	);
+	let inline_doc = format!("{opening_tag}{consumer_content}<!-- {{/version}} -->\n");
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(&inline_doc).unwrap_or_default();
+	let consumer_uri = test_uri(std::path::Path::new("/tmp/test/readme.md"));
+
+	let mut consumers = Vec::new();
+	for block in &blocks {
+		if block.r#type == BlockType::Inline {
+			consumers.push(ConsumerEntry {
+				block: block.clone(),
+				file: PathBuf::from("/tmp/test/readme.md"),
+				content: extract_content_between_tags(&inline_doc, block),
+			});
+		}
+	}
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		consumer_uri.clone(),
+		DocumentState {
+			content: inline_doc,
+			blocks,
+			parse_diagnostics,
+		},
+	);
+
+	(
+		WorkspaceState {
+			root: Some(PathBuf::from("/tmp/test")),
+			documents,
+			providers: HashMap::new(),
+			consumers,
+			data,
+		},
+		consumer_uri,
+	)
 }
 
 // ---- Diagnostics tests ----
@@ -6017,4 +6064,651 @@ async fn language_server_shutdown_returns_ok() {
 		.shutdown()
 		.await
 		.unwrap_or_else(|e| panic!("shutdown: {e:?}"));
+}
+
+#[test]
+fn diagnostics_inline_block_requires_template_argument() {
+	let (state, uri) = make_inline_test_state(None, "0.0.0", HashMap::new());
+	let diagnostics = compute_diagnostics(&state, &uri);
+
+	assert_eq!(diagnostics.len(), 1);
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
+	assert!(diagnostics[0].message.contains("requires a template argument"));
+}
+
+#[test]
+fn diagnostics_inline_block_reports_stale_rendered_content() {
+	let (state, uri) = make_inline_test_state(
+		Some("{{ pkg.version }}"),
+		"0.0.0",
+		HashMap::from([(
+			"pkg".to_string(),
+			serde_json::json!({"version": "1.2.3"}),
+		)]),
+	);
+	let diagnostics = compute_diagnostics(&state, &uri);
+
+	assert_eq!(diagnostics.len(), 1);
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
+	assert!(diagnostics[0].message.contains("Inline block `version` is out of date"));
+	assert_eq!(diagnostics[0].data.as_ref().unwrap()["expected_content"], "1.2.3");
+}
+
+#[test]
+fn diagnostics_inline_block_reports_render_errors() {
+	let (state, uri) = make_inline_test_state(
+		Some("{% if true %}"),
+		"0.0.0",
+		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
+	);
+	let diagnostics = compute_diagnostics(&state, &uri);
+
+	assert_eq!(diagnostics.len(), 1);
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
+	assert!(diagnostics[0].message.contains("failed to render"));
+}
+
+#[test]
+fn hover_inline_block_shows_rendered_content() {
+	let (state, uri) = make_inline_test_state(
+		Some("{{ pkg.version }}"),
+		"0.0.0",
+		HashMap::from([(
+			"pkg".to_string(),
+			serde_json::json!({"version": "1.2.3"}),
+		)]),
+	);
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|block| block.r#type == BlockType::Inline)
+		.unwrap_or_else(|| panic!("expected inline block"));
+	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
+		.unwrap_or_else(|| panic!("expected hover result"));
+	let HoverContents::Markup(markup) = hover.contents else {
+		panic!("expected markdown hover");
+	};
+
+	assert!(markup.value.contains("**Inline block:** `version`"));
+	assert!(markup.value.contains("**Template:** `{{ pkg.version }}`"));
+	assert!(markup.value.contains("1.2.3"));
+}
+
+#[test]
+fn hover_inline_block_reports_missing_template_argument() {
+	let (state, uri) = make_inline_test_state(None, "0.0.0", HashMap::new());
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|block| block.r#type == BlockType::Inline)
+		.unwrap_or_else(|| panic!("expected inline block"));
+	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
+		.unwrap_or_else(|| panic!("expected hover result"));
+	let HoverContents::Markup(markup) = hover.contents else {
+		panic!("expected markdown hover");
+	};
+
+	assert!(markup.value.contains("Missing inline template argument"));
+}
+
+#[test]
+fn hover_inline_block_lists_transformers() {
+	let inline_doc = "<!-- {~version:\"{{ pkg.version }}\"|trim} --> 1.2.3 <!-- {/version} -->\n";
+	let uri = test_uri(std::path::Path::new("/tmp/test/inline.md"));
+	let (blocks, parse_diagnostics) = parse_with_diagnostics(inline_doc).unwrap_or_default();
+	let block = blocks[0].clone();
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents: HashMap::from([(
+			uri.clone(),
+			DocumentState {
+				content: inline_doc.to_string(),
+				blocks,
+				parse_diagnostics,
+			},
+		)]),
+		providers: HashMap::new(),
+		consumers: vec![ConsumerEntry {
+			block: block.clone(),
+			file: PathBuf::from("/tmp/test/inline.md"),
+			content: extract_content_between_tags(inline_doc, &block),
+		}],
+		data: HashMap::from([(
+			"pkg".to_string(),
+			serde_json::json!({"version": " 1.2.3 "}),
+		)]),
+	};
+	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
+		.unwrap_or_else(|| panic!("expected hover result"));
+	let HoverContents::Markup(markup) = hover.contents else {
+		panic!("expected markdown hover");
+	};
+
+	assert!(markup.value.contains("**Transformers:** trim"));
+}
+
+#[test]
+fn hover_inline_block_reports_render_errors() {
+	let (state, uri) = make_inline_test_state(
+		Some("{% if true %}"),
+		"0.0.0",
+		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
+	);
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|block| block.r#type == BlockType::Inline)
+		.unwrap_or_else(|| panic!("expected inline block"));
+	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
+		.unwrap_or_else(|| panic!("expected hover result"));
+	let HoverContents::Markup(markup) = hover.contents else {
+		panic!("expected markdown hover");
+	};
+
+	assert!(markup.value.contains("Failed to render inline template"));
+}
+
+#[test]
+fn code_action_for_stale_inline_block_updates_rendered_content() {
+	let (state, uri) = make_inline_test_state(
+		Some("{{ pkg.version }}"),
+		"0.0.0",
+		HashMap::from([(
+			"pkg".to_string(),
+			serde_json::json!({"version": "1.2.3"}),
+		)]),
+	);
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|block| block.r#type == BlockType::Inline)
+		.unwrap_or_else(|| panic!("expected inline block"));
+	let range = Range {
+		start: to_lsp_position(&block.opening.start),
+		end: to_lsp_position(&block.closing.end),
+	};
+
+	let actions = compute_code_actions(&state, &uri, range);
+	assert_eq!(actions.len(), 1);
+	let CodeActionOrCommand::CodeAction(action) = &actions[0] else {
+		panic!("expected inline code action");
+	};
+	let edit = action.edit.as_ref().unwrap_or_else(|| panic!("missing edit"));
+	let changes = edit
+		.changes
+		.as_ref()
+		.unwrap_or_else(|| panic!("missing workspace changes"));
+	let new_text = &changes[&uri][0].new_text;
+	assert_eq!(new_text, "1.2.3");
+}
+
+#[test]
+fn references_from_inline_returns_other_inline_blocks() {
+	let uri_a = test_uri(std::path::Path::new("/tmp/test/readme.md"));
+	let uri_b = test_uri(std::path::Path::new("/tmp/test/docs.md"));
+	let doc_a = "<!-- {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} -->\n";
+	let doc_b = "<!-- {~version:\"{{ pkg.version }}\"} -->1.0.0<!-- {/version} -->\n";
+	let (blocks_a, diagnostics_a) = parse_with_diagnostics(doc_a).unwrap_or_default();
+	let (blocks_b, diagnostics_b) = parse_with_diagnostics(doc_b).unwrap_or_default();
+	let inline_a = blocks_a[0].clone();
+	let inline_b = blocks_b[0].clone();
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents: HashMap::from([
+			(
+				uri_a.clone(),
+				DocumentState {
+					content: doc_a.to_string(),
+					blocks: blocks_a,
+					parse_diagnostics: diagnostics_a,
+				},
+			),
+			(
+				uri_b.clone(),
+				DocumentState {
+					content: doc_b.to_string(),
+					blocks: blocks_b,
+					parse_diagnostics: diagnostics_b,
+				},
+			),
+		]),
+		providers: HashMap::new(),
+		consumers: vec![
+			ConsumerEntry {
+				block: inline_a.clone(),
+				file: PathBuf::from("/tmp/test/readme.md"),
+				content: extract_content_between_tags(doc_a, &inline_a),
+			},
+			ConsumerEntry {
+				block: inline_b.clone(),
+				file: PathBuf::from("/tmp/test/docs.md"),
+				content: extract_content_between_tags(doc_b, &inline_b),
+			},
+		],
+		data: HashMap::from([(
+			"pkg".to_string(),
+			serde_json::json!({"version": "1.2.3"}),
+		)]),
+	};
+
+	let locations = compute_references(&state, &uri_a, to_lsp_position(&inline_a.opening.start))
+		.unwrap_or_else(|| panic!("expected references"));
+	assert_eq!(locations.len(), 2);
+	assert!(locations.iter().any(|location| location.uri == uri_a));
+	assert!(locations.iter().any(|location| location.uri == uri_b));
+}
+
+#[test]
+fn rename_reads_unopened_provider_and_consumer_files_from_disk() {
+	let tmp = tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let provider_path = tmp.path().join("template.t.md");
+	let consumer_path = tmp.path().join("readme.md");
+	let extra_consumer_path = tmp.path().join("docs.md");
+	let provider_doc = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
+	std::fs::write(&provider_path, provider_doc).unwrap_or_else(|e| panic!("write provider: {e}"));
+	std::fs::write(&consumer_path, consumer_doc).unwrap_or_else(|e| panic!("write consumer: {e}"));
+	std::fs::write(&extra_consumer_path, consumer_doc)
+		.unwrap_or_else(|e| panic!("write extra consumer: {e}"));
+
+	let provider_blocks = parse(provider_doc).unwrap_or_default();
+	let consumer_blocks = parse(consumer_doc).unwrap_or_default();
+	let provider_block = provider_blocks[0].clone();
+	let consumer_block = consumer_blocks[0].clone();
+	let provider_uri = test_uri(&provider_path);
+	let consumer_uri = test_uri(&consumer_path);
+	let extra_consumer_uri = test_uri(&extra_consumer_path);
+
+	let state = WorkspaceState {
+		root: Some(tmp.path().to_path_buf()),
+		documents: HashMap::from([(
+			consumer_uri.clone(),
+			DocumentState {
+				content: consumer_doc.to_string(),
+				blocks: consumer_blocks.clone(),
+				parse_diagnostics: Vec::new(),
+			},
+		)]),
+		providers: HashMap::from([(
+			"greeting".to_string(),
+			ProviderEntry {
+				block: provider_block.clone(),
+				file: provider_path.clone(),
+				content: extract_content_between_tags(provider_doc, &provider_block),
+			},
+		)]),
+		consumers: vec![
+			ConsumerEntry {
+				block: consumer_block.clone(),
+				file: consumer_path.clone(),
+				content: extract_content_between_tags(consumer_doc, &consumer_block),
+			},
+			ConsumerEntry {
+				block: consumer_block.clone(),
+				file: extra_consumer_path.clone(),
+				content: extract_content_between_tags(consumer_doc, &consumer_block),
+			},
+		],
+		data: HashMap::new(),
+	};
+
+	let edit = compute_rename(
+		&state,
+		&consumer_uri,
+		to_lsp_position(&consumer_block.opening.start),
+		"salutation",
+	)
+	.unwrap_or_else(|| panic!("expected rename edit"));
+	let changes = edit.changes.unwrap_or_else(|| panic!("missing changes"));
+	assert!(changes.contains_key(&consumer_uri));
+	assert!(changes.contains_key(&provider_uri));
+	assert!(changes.contains_key(&extra_consumer_uri));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_initialize_falls_back_to_root_uri() {
+	let tmp = tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let root_uri = test_uri(tmp.path());
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	service
+		.inner()
+		.initialize(InitializeParams {
+			#[allow(deprecated)]
+			root_uri: Some(root_uri),
+			..Default::default()
+		})
+		.await
+		.unwrap_or_else(|e| panic!("initialize with root_uri: {e:?}"));
+
+	assert_eq!(
+		service.inner().state.read().await.root,
+		Some(tmp.path().to_path_buf())
+	);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_initialized_completes_without_error() {
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	service.inner().initialized(InitializedParams {}).await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_change_applies_incremental_edits() {
+	let doc_path = PathBuf::from("/tmp/lsp-change-tracked/readme.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	service
+		.inner()
+		.did_open(DidOpenTextDocumentParams {
+			text_document: TextDocumentItem {
+				uri: uri.clone(),
+				language_id: "markdown".to_string(),
+				version: 1,
+				text: "<!-- {=greeting} -->\n\nhello\n\n<!-- {/greeting} -->\n".to_string(),
+			},
+		})
+		.await;
+	service
+		.inner()
+		.did_change(DidChangeTextDocumentParams {
+			text_document: VersionedTextDocumentIdentifier {
+				uri: uri.clone(),
+				version: 2,
+			},
+			content_changes: vec![TextDocumentContentChangeEvent {
+				range: Some(Range {
+					start: Position {
+						line: 2,
+						character: 0,
+					},
+					end: Position {
+						line: 2,
+						character: 5,
+					},
+				}),
+				range_length: None,
+				text: "updated".to_string(),
+			}],
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	assert!(doc.content.contains("updated"));
+	assert!(!doc.content.contains("\n\nhello\n\n"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_change_full_replaces_tracked_document() {
+	let doc_path = PathBuf::from("/tmp/lsp-change-full/readme.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	service
+		.inner()
+		.did_open(DidOpenTextDocumentParams {
+			text_document: TextDocumentItem {
+				uri: uri.clone(),
+				language_id: "markdown".to_string(),
+				version: 1,
+				text: "<!-- {=greeting} -->\n\nhello\n\n<!-- {/greeting} -->\n".to_string(),
+			},
+		})
+		.await;
+	service
+		.inner()
+		.did_change(DidChangeTextDocumentParams {
+			text_document: VersionedTextDocumentIdentifier {
+				uri: uri.clone(),
+				version: 2,
+			},
+			content_changes: vec![TextDocumentContentChangeEvent {
+				range: None,
+				range_length: None,
+				text: "<!-- {=greeting} -->\n\nreplacement\n\n<!-- {/greeting} -->\n"
+					.to_string(),
+			}],
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	assert!(doc.content.contains("replacement"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_save_updates_template_provider_state() {
+	let doc_path = PathBuf::from("/tmp/lsp-save-template/template.t.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	let content = "<!-- {@greeting} -->\n\nhello\n\n<!-- {/greeting} -->\n".to_string();
+
+	service
+		.inner()
+		.did_open(DidOpenTextDocumentParams {
+			text_document: TextDocumentItem {
+				uri: uri.clone(),
+				language_id: "markdown".to_string(),
+				version: 1,
+				text: content,
+			},
+		})
+		.await;
+	service
+		.inner()
+		.did_save(DidSaveTextDocumentParams {
+			text_document: TextDocumentIdentifier { uri: uri.clone() },
+			text: None,
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	assert!(state.providers.contains_key("greeting"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_save_rescans_when_config_changes() {
+	let tmp = tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write readme: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "")
+		.unwrap_or_else(|e| panic!("write config: {e}"));
+	let config_uri = test_uri(&tmp.path().join("mdt.toml"));
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	service.inner().state.write().await.root = Some(tmp.path().to_path_buf());
+
+	service
+		.inner()
+		.did_save(DidSaveTextDocumentParams {
+			text_document: TextDocumentIdentifier { uri: config_uri },
+			text: None,
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	assert!(state.providers.contains_key("greeting"));
+	assert_eq!(state.consumers.len(), 1);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_request_wrappers_delegate_to_core_handlers() {
+	let (state, uri) = make_test_state("Hello world!", "Old content");
+	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let block = doc
+		.blocks
+		.iter()
+		.find(|block| block.r#type == BlockType::Consumer)
+		.unwrap_or_else(|| panic!("expected consumer block"))
+		.clone();
+	let position = to_lsp_position(&block.opening.start);
+	let range = Range {
+		start: position,
+		end: to_lsp_position(&block.closing.end),
+	};
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	*service.inner().state.write().await = state;
+
+	assert!(
+		service
+			.inner()
+			.hover(HoverParams {
+				text_document_position_params: TextDocumentPositionParams {
+					text_document: TextDocumentIdentifier { uri: uri.clone() },
+					position,
+				},
+				work_done_progress_params: WorkDoneProgressParams::default(),
+			})
+			.await
+			.unwrap_or_else(|e| panic!("hover: {e:?}"))
+			.is_some()
+	);
+
+	let completion_uri = test_uri(std::path::Path::new("/tmp/test/completion.md"));
+	let completion_state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents: HashMap::from([(
+			completion_uri.clone(),
+			DocumentState {
+				content: "<!-- {=gre".to_string(),
+				blocks: Vec::new(),
+				parse_diagnostics: Vec::new(),
+			},
+		)]),
+		providers: service.inner().state.read().await.providers.clone(),
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+	*service.inner().state.write().await = completion_state;
+	assert!(matches!(
+		service
+			.inner()
+			.completion(CompletionParams {
+				text_document_position: TextDocumentPositionParams {
+					text_document: TextDocumentIdentifier {
+						uri: completion_uri.clone(),
+					},
+					position: Position {
+						line: 0,
+						character: 9,
+					},
+				},
+				work_done_progress_params: WorkDoneProgressParams::default(),
+				partial_result_params: PartialResultParams::default(),
+				context: None,
+			})
+			.await
+			.unwrap_or_else(|e| panic!("completion: {e:?}")),
+		Some(CompletionResponse::Array(_))
+	));
+	*service.inner().state.write().await = make_test_state("Hello world!", "Old content").0;
+
+	assert!(
+		service
+			.inner()
+			.goto_definition(GotoDefinitionParams {
+				text_document_position_params: TextDocumentPositionParams {
+					text_document: TextDocumentIdentifier { uri: uri.clone() },
+					position,
+				},
+				work_done_progress_params: WorkDoneProgressParams::default(),
+				partial_result_params: PartialResultParams::default(),
+			})
+			.await
+			.unwrap_or_else(|e| panic!("goto_definition: {e:?}"))
+			.is_some()
+	);
+
+	assert!(matches!(
+		service
+			.inner()
+			.document_symbol(DocumentSymbolParams {
+				text_document: TextDocumentIdentifier { uri: uri.clone() },
+				work_done_progress_params: WorkDoneProgressParams::default(),
+				partial_result_params: PartialResultParams::default(),
+			})
+			.await
+			.unwrap_or_else(|e| panic!("document_symbol: {e:?}")),
+		Some(DocumentSymbolResponse::Nested(_))
+	));
+
+	assert!(
+		service
+			.inner()
+			.code_action(CodeActionParams {
+				text_document: TextDocumentIdentifier { uri: uri.clone() },
+				range,
+				context: CodeActionContext {
+					diagnostics: Vec::new(),
+					only: None,
+					trigger_kind: None,
+				},
+				work_done_progress_params: WorkDoneProgressParams::default(),
+				partial_result_params: PartialResultParams::default(),
+			})
+			.await
+			.unwrap_or_else(|e| panic!("code_action: {e:?}"))
+			.is_some()
+	);
+
+	assert!(
+		service
+			.inner()
+			.references(ReferenceParams {
+				text_document_position: TextDocumentPositionParams {
+					text_document: TextDocumentIdentifier { uri: uri.clone() },
+					position,
+				},
+				work_done_progress_params: WorkDoneProgressParams::default(),
+				partial_result_params: PartialResultParams::default(),
+				context: ReferenceContext {
+					include_declaration: true,
+				},
+			})
+			.await
+			.unwrap_or_else(|e| panic!("references: {e:?}"))
+			.is_some()
+	);
+
+	assert!(
+		service
+			.inner()
+			.prepare_rename(TextDocumentPositionParams {
+				text_document: TextDocumentIdentifier { uri: uri.clone() },
+				position,
+			})
+			.await
+			.unwrap_or_else(|e| panic!("prepare_rename: {e:?}"))
+			.is_some()
+	);
+
+	assert!(
+		service
+			.inner()
+			.rename(RenameParams {
+				text_document_position: TextDocumentPositionParams {
+					text_document: TextDocumentIdentifier { uri: uri.clone() },
+					position,
+				},
+				new_name: "salutation".to_string(),
+				work_done_progress_params: WorkDoneProgressParams::default(),
+			})
+			.await
+			.unwrap_or_else(|e| panic!("rename: {e:?}"))
+			.is_some()
+	);
 }
