@@ -1,14 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-	cpSync,
-	mkdirSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import test from "node:test";
 
 const launcherPath = join(process.cwd(), "npm/bin/mdt.js");
@@ -32,16 +26,15 @@ function makeTempDir(name) {
 	return join(tmpdir(), `mdt-npm-test-${name}-${process.pid}-${Date.now()}`);
 }
 
-function setupLauncherRoot(name) {
+function setupNodePath(name) {
 	const root = makeTempDir(name);
-	mkdirSync(join(root, "bin"), { recursive: true });
-	mkdirSync(join(root, "node_modules"), { recursive: true });
-	cpSync(launcherPath, join(root, "bin", "mdt.js"));
-	return root;
+	const nodeModulesDir = join(root, "node_modules");
+	mkdirSync(nodeModulesDir, { recursive: true });
+	return { root, nodeModulesDir };
 }
 
-function createPackage(root, pkgName, binaryContent) {
-	const packageDir = join(root, "node_modules", ...pkgName.split("/"));
+function createPackage(nodeModulesDir, pkgName, binaryContent) {
+	const packageDir = join(nodeModulesDir, ...pkgName.split("/"));
 	const binDir = join(packageDir, "bin");
 	mkdirSync(binDir, { recursive: true });
 	writeFileSync(
@@ -56,10 +49,14 @@ function createPackage(root, pkgName, binaryContent) {
 	}
 }
 
-function runLauncher(root, args) {
-	return spawnSync("node", [join(root, "bin", "mdt.js"), ...args], {
-		cwd: root,
+function runLauncher(nodeModulesDir, args) {
+	return spawnSync("node", [launcherPath, ...args], {
+		cwd: process.cwd(),
 		encoding: "utf8",
+		env: {
+			...process.env,
+			NODE_PATH: nodeModulesDir,
+		},
 	});
 }
 
@@ -68,16 +65,16 @@ function currentCandidates() {
 }
 
 test("launcher executes the installed platform binary", () => {
-	const root = setupLauncherRoot("run");
+	const { root, nodeModulesDir } = setupNodePath("run");
 	try {
 		const [pkgName] = currentCandidates();
 		assert.ok(pkgName, "expected a package mapping for the current platform");
 		const binary = process.platform === "win32"
 			? "@echo off\r\necho launcher-ok %*\r\n"
 			: '#!/bin/sh\necho launcher-ok "$@"\n';
-		createPackage(root, pkgName, binary);
+		createPackage(nodeModulesDir, pkgName, binary);
 
-		const result = runLauncher(root, ["check", "--verbose"]);
+		const result = runLauncher(nodeModulesDir, ["check", "--verbose"]);
 		assert.equal(result.status, 0, result.stderr);
 		assert.match(result.stdout, /launcher-ok/);
 		assert.match(result.stdout, /check/);
@@ -88,12 +85,42 @@ test("launcher executes the installed platform binary", () => {
 });
 
 test("launcher shows a helpful error when no platform package is installed", () => {
-	const root = setupLauncherRoot("missing");
+	const { root, nodeModulesDir } = setupNodePath("missing");
 	try {
-		const result = runLauncher(root, ["--help"]);
+		const result = runLauncher(nodeModulesDir, ["--help"]);
 		assert.notEqual(result.status, 0);
 		assert.match(result.stderr, /Unable to find a compatible mdt binary/);
 		assert.match(result.stderr, /Reinstall with `npm install -g @ifi\/mdt`/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("launcher reports unsupported platforms before attempting resolution", {
+	skip: currentCandidates().length === 0,
+}, () => {
+	const { root, nodeModulesDir } = setupNodePath("unsupported");
+	try {
+		const result = spawnSync(
+			"node",
+			[
+				"-e",
+				`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${
+					JSON.stringify(launcherPath)
+				});`,
+			],
+			{
+				cwd: process.cwd(),
+				encoding: "utf8",
+				env: {
+					...process.env,
+					NODE_PATH: nodeModulesDir,
+				},
+			},
+		);
+		assert.notEqual(result.status, 0);
+		assert.match(result.stderr, /does not currently publish npm binaries/);
+		assert.match(result.stderr, /sunos\/x64/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -105,13 +132,17 @@ test(
 		skip: process.platform !== "linux" || currentCandidates().length < 2,
 	},
 	() => {
-		const root = setupLauncherRoot("fallback");
+		const { root, nodeModulesDir } = setupNodePath("fallback");
 		try {
 			const [firstPackage, secondPackage] = currentCandidates();
-			createPackage(root, firstPackage, "#!/missing/interpreter\n");
-			createPackage(root, secondPackage, '#!/bin/sh\necho fallback-ok "$@"\n');
+			createPackage(nodeModulesDir, firstPackage, "#!/missing/interpreter\n");
+			createPackage(
+				nodeModulesDir,
+				secondPackage,
+				'#!/bin/sh\necho fallback-ok "$@"\n',
+			);
 
-			const result = runLauncher(root, ["doctor"]);
+			const result = runLauncher(nodeModulesDir, ["doctor"]);
 			assert.equal(result.status, 0, result.stderr);
 			assert.match(result.stdout, /fallback-ok/);
 			assert.match(result.stdout, /doctor/);
