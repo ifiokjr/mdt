@@ -2980,17 +2980,19 @@ fn completion_returns_all_provider_names() {
 		},
 	);
 
-	let make_provider = |name: &str| ProviderEntry {
-		block: Block {
-			name: name.to_string(),
-			r#type: BlockType::Provider,
-			opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
-			closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
-			transformers: Vec::new(),
-			arguments: vec![],
-		},
-		file: PathBuf::from("/tmp/test/template.t.md"),
-		content: "\n\ncontent\n\n".to_string(),
+	let make_provider = |name: &str| {
+		ProviderEntry {
+			block: Block {
+				name: name.to_string(),
+				r#type: BlockType::Provider,
+				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+				transformers: Vec::new(),
+				arguments: vec![],
+			},
+			file: PathBuf::from("/tmp/test/template.t.md"),
+			content: "\n\ncontent\n\n".to_string(),
+		}
 	};
 
 	let mut providers = HashMap::new();
@@ -3507,9 +3509,11 @@ Old farewell
 
 	let titles: Vec<String> = actions
 		.iter()
-		.map(|a| match a {
-			CodeActionOrCommand::CodeAction(ca) => ca.title.clone(),
-			CodeActionOrCommand::Command(cmd) => cmd.title.clone(),
+		.map(|a| {
+			match a {
+				CodeActionOrCommand::CodeAction(ca) => ca.title.clone(),
+				CodeActionOrCommand::Command(cmd) => cmd.title.clone(),
+			}
 		})
 		.collect();
 	assert!(
@@ -4895,7 +4899,8 @@ fn document_symbols_multiple_blocks_correct_ranges() {
 /// consumer that passes an argument value.  The provider template uses
 /// `{{ crate_name }}` which should be replaced by the consumer's argument.
 fn make_args_test_state(consumer_arg: &str, consumer_body: &str) -> (WorkspaceState, Uri) {
-	let provider_template = "<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
+	let provider_template =
+		"<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
 		 crate_name }})]\n\n<!-- {/badges} -->\n";
 	let consumer_doc = format!(
 		"# Readme\n\n<!-- {{=badges:\"{consumer_arg}\"}} -->\n\n{consumer_body}\n\n<!-- \
