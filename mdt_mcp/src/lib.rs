@@ -198,22 +198,16 @@ pub struct MdtMcpServer {
 #[tool_handler]
 impl ServerHandler for MdtMcpServer {
 	fn get_info(&self) -> ServerInfo {
-		ServerInfo {
-			instructions: Some(
-				"mdt (manage markdown templates) keeps documentation synchronized across your \
-				 project using comment-based template tags. MCP tool responses are JSON-first and \
-				 include structured content for agent use. Use these tools to check, update, \
-				 list, preview, and find reusable blocks. Before creating a new provider, run \
-				 mdt_find_reuse or mdt_list to discover similar block names and existing \
-				 markdown/source consumers. Use mdt_preview as an authoring workflow to inspect \
-				 provider templates plus per-consumer rendered output. Prefer reuse over new \
-				 provider names when possible, then run mdt_check (and mdt_update if needed) to \
-				 keep consumers synchronized."
-					.into(),
-			),
-			capabilities: ServerCapabilities::builder().enable_tools().build(),
-			..Default::default()
-		}
+		ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
+			"mdt (manage markdown templates) keeps documentation synchronized across your project \
+			 using comment-based template tags. MCP tool responses are JSON-first and include \
+			 structured content for agent use. Use these tools to check, update, list, preview, \
+			 and find reusable blocks. Before creating a new provider, run mdt_find_reuse or \
+			 mdt_list to discover similar block names and existing markdown/source consumers. Use \
+			 mdt_preview as an authoring workflow to inspect provider templates plus per-consumer \
+			 rendered output. Prefer reuse over new provider names when possible, then run \
+			 mdt_check (and mdt_update if needed) to keep consumers synchronized.",
+		)
 	}
 }
 
@@ -228,23 +222,17 @@ fn scan_ctx(root: &Path) -> Result<ProjectContext, McpError> {
 fn json_result(value: serde_json::Value) -> CallToolResult {
 	let text = serde_json::to_string_pretty(&value)
 		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	CallToolResult {
-		content: vec![Content::text(text)],
-		structured_content: Some(value),
-		is_error: Some(false),
-		meta: None,
-	}
+	let mut result = CallToolResult::success(vec![Content::text(text)]);
+	result.structured_content = Some(value);
+	result
 }
 
 fn json_error_result(value: serde_json::Value) -> CallToolResult {
 	let text = serde_json::to_string_pretty(&value)
 		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	CallToolResult {
-		content: vec![Content::text(text)],
-		structured_content: Some(value),
-		is_error: Some(true),
-		meta: None,
-	}
+	let mut result = CallToolResult::error(vec![Content::text(text)]);
+	result.structured_content = Some(value);
+	result
 }
 
 fn warning_info(warning: &mdt_core::TemplateWarning, root: &Path) -> TemplateWarningInfo {
