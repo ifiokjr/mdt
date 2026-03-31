@@ -130,3 +130,51 @@ test("build-packages generates root and platform npm packages from release archi
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
 });
+
+test("build-packages requires the expected command line arguments", () => {
+	const result = spawnSync("node", [scriptPath], {
+		cwd: process.cwd(),
+		encoding: "utf8",
+	});
+	assert.notEqual(result.status, 0);
+	assert.match(
+		result.stderr,
+		/usage: build-packages\.mjs --version <x\.y\.z> --release-tag <vX\.Y\.Z>/,
+	);
+});
+
+test("build-packages reports missing release assets", () => {
+	const tempRoot = join(
+		tmpdir(),
+		`mdt-build-packages-missing-${process.pid}-${Date.now()}`,
+	);
+	const assetsDir = join(tempRoot, "assets");
+	const outDir = join(tempRoot, "out");
+	mkdirSync(assetsDir, { recursive: true });
+
+	const result = spawnSync(
+		"node",
+		[
+			scriptPath,
+			"--version",
+			"1.2.3",
+			"--release-tag",
+			"v1.2.3",
+			"--assets-dir",
+			assetsDir,
+			"--out-dir",
+			outDir,
+		],
+		{ encoding: "utf8" },
+	);
+
+	try {
+		assert.notEqual(result.status, 0);
+		assert.match(
+			result.stderr,
+			/missing release asset: mdt-aarch64-unknown-linux-gnu-v1.2.3.tar.gz/,
+		);
+	} finally {
+		rmSync(tempRoot, { recursive: true, force: true });
+	}
+});

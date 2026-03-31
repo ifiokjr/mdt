@@ -8,6 +8,11 @@ use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
+use tempfile::tempdir;
+#[allow(unused_imports)]
+use tower_lsp_server::LanguageServer;
+#[allow(unused_imports)]
+use tower_lsp_server::LspService;
 #[allow(unused_imports)]
 use tower_lsp_server::ls_types::*;
 
@@ -73,6 +78,10 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 	};
 
 	(state, consumer_uri)
+}
+
+fn test_uri(path: &std::path::Path) -> Uri {
+	Uri::from_file_path(path).unwrap_or_else(|| panic!("expected file path URI"))
 }
 
 // ---- Diagnostics tests ----
@@ -3641,7 +3650,7 @@ fn code_action_skips_provider_blocks() {
 
 #[test]
 fn rescan_project_with_valid_project_populates_state() {
-	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
+	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
 	let root = dir.path();
 
 	// Create a minimal project: a template file with a provider block.
@@ -3685,7 +3694,7 @@ fn rescan_project_with_valid_project_populates_state() {
 
 #[test]
 fn rescan_project_with_invalid_config_prints_error_but_does_not_panic() {
-	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
+	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
 	let root = dir.path();
 
 	// Create an invalid mdt.toml that will cause scan_project_with_config to fail.
@@ -3710,7 +3719,7 @@ fn rescan_project_with_invalid_config_prints_error_but_does_not_panic() {
 
 #[test]
 fn rescan_project_with_data_from_config() {
-	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
+	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
 	let root = dir.path();
 
 	// Create a config that references a JSON data file.
@@ -5874,4 +5883,138 @@ fn incremental_multiple_sequential_changes() {
 		lsp_position_to_offset(&content, range2.end).unwrap_or_else(|| panic!("invalid position"));
 	content.replace_range(start2..end2, "");
 	assert_eq!(content, "acXdef");
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_initialize_sets_workspace_root_and_capabilities() {
+	let tmp = tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let root_uri = test_uri(tmp.path());
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	let result = service
+		.inner()
+		.initialize(InitializeParams {
+			workspace_folders: Some(vec![WorkspaceFolder {
+				uri: root_uri.clone(),
+				name: "tmp".to_string(),
+			}]),
+			..Default::default()
+		})
+		.await
+		.unwrap_or_else(|e| panic!("initialize: {e:?}"));
+
+	assert_eq!(
+		result
+			.capabilities
+			.text_document_sync,
+		Some(TextDocumentSyncCapability::Kind(
+			TextDocumentSyncKind::INCREMENTAL,
+		))
+	);
+	assert_eq!(
+		service.inner().state.read().await.root,
+		Some(tmp.path().to_path_buf())
+	);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_open_tracks_document_state() {
+	let doc_path = PathBuf::from("/tmp/lsp-open-test/readme.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	let content = "<!-- {=greeting} -->\n\nhello\n\n<!-- {/greeting} -->\n".to_string();
+
+	service
+		.inner()
+		.did_open(DidOpenTextDocumentParams {
+			text_document: TextDocumentItem {
+				uri: uri.clone(),
+				language_id: "markdown".to_string(),
+				version: 1,
+				text: content.clone(),
+			},
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("document should be tracked after open"));
+	assert_eq!(doc.content, content);
+	assert_eq!(doc.blocks.len(), 1);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_change_uses_last_change_for_untracked_documents() {
+	let doc_path = PathBuf::from("/tmp/lsp-change-test/readme.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	service
+		.inner()
+		.did_change(DidChangeTextDocumentParams {
+			text_document: VersionedTextDocumentIdentifier {
+				uri: uri.clone(),
+				version: 2,
+			},
+			content_changes: vec![
+				TextDocumentContentChangeEvent {
+					range: None,
+					range_length: None,
+					text: "ignored".to_string(),
+				},
+				TextDocumentContentChangeEvent {
+					range: None,
+					range_length: None,
+					text: "<!-- {=greeting} -->\n\nupdated\n\n<!-- {/greeting} -->\n"
+						.to_string(),
+				},
+			],
+		})
+		.await;
+
+	let state = service.inner().state.read().await;
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("document should be created from did_change"));
+	assert!(doc.content.contains("updated"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_did_close_removes_document_state() {
+	let doc_path = PathBuf::from("/tmp/lsp-close-test/readme.md");
+	let uri = test_uri(&doc_path);
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+
+	service
+		.inner()
+		.did_open(DidOpenTextDocumentParams {
+			text_document: TextDocumentItem {
+				uri: uri.clone(),
+				language_id: "markdown".to_string(),
+				version: 1,
+				text: "<!-- {=greeting} -->\n\nhello\n\n<!-- {/greeting} -->\n".to_string(),
+			},
+		})
+		.await;
+	service
+		.inner()
+		.did_close(DidCloseTextDocumentParams {
+			text_document: TextDocumentIdentifier { uri: uri.clone() },
+		})
+		.await;
+
+	assert!(!service.inner().state.read().await.documents.contains_key(&uri));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn language_server_shutdown_returns_ok() {
+	let (service, _) = LspService::new(MdtLanguageServer::new);
+	service
+		.inner()
+		.shutdown()
+		.await
+		.unwrap_or_else(|e| panic!("shutdown: {e:?}"));
 }

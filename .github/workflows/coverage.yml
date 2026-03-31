@@ -27,14 +27,40 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
 
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install JavaScript coverage tooling
+        run: npm install --global c8@10
+
       - name: setup
         uses: ./.github/actions/devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: generate coverage report
-        run: coverage:all
+      - name: generate Rust coverage report
+        run: cargo llvm-cov nextest --lcov --output-path rust-lcov.info
         shell: devenv shell -c -- bash -e {0}
+
+      - name: generate JavaScript coverage report
+        run: |
+          rm -rf .node-coverage .node-lcov
+          NODE_V8_COVERAGE=.node-coverage \
+            node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
+          c8 report \
+            --all \
+            --reporter=lcovonly \
+            --report-dir .node-lcov \
+            --temp-directory .node-coverage \
+            --include "npm/bin/*.js" \
+            --include "scripts/npm/*.mjs" \
+            --exclude "**/tests/**"
+          cp .node-lcov/lcov.info js-lcov.info
+
+      - name: combine lcov reports
+        run: cat rust-lcov.info js-lcov.info > lcov.info
 
       - name: upload lcov artifact
         uses: actions/upload-artifact@v4
