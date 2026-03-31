@@ -2980,19 +2980,17 @@ fn completion_returns_all_provider_names() {
 		},
 	);
 
-	let make_provider = |name: &str| {
-		ProviderEntry {
-			block: Block {
-				name: name.to_string(),
-				r#type: BlockType::Provider,
-				opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
-				closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
-				transformers: Vec::new(),
-				arguments: vec![],
-			},
-			file: PathBuf::from("/tmp/test/template.t.md"),
-			content: "\n\ncontent\n\n".to_string(),
-		}
+	let make_provider = |name: &str| ProviderEntry {
+		block: Block {
+			name: name.to_string(),
+			r#type: BlockType::Provider,
+			opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+			closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+			transformers: Vec::new(),
+			arguments: vec![],
+		},
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: "\n\ncontent\n\n".to_string(),
 	};
 
 	let mut providers = HashMap::new();
@@ -3509,11 +3507,9 @@ Old farewell
 
 	let titles: Vec<String> = actions
 		.iter()
-		.map(|a| {
-			match a {
-				CodeActionOrCommand::CodeAction(ca) => ca.title.clone(),
-				CodeActionOrCommand::Command(cmd) => cmd.title.clone(),
-			}
+		.map(|a| match a {
+			CodeActionOrCommand::CodeAction(ca) => ca.title.clone(),
+			CodeActionOrCommand::Command(cmd) => cmd.title.clone(),
 		})
 		.collect();
 	assert!(
@@ -4899,8 +4895,7 @@ fn document_symbols_multiple_blocks_correct_ranges() {
 /// consumer that passes an argument value.  The provider template uses
 /// `{{ crate_name }}` which should be replaced by the consumer's argument.
 fn make_args_test_state(consumer_arg: &str, consumer_body: &str) -> (WorkspaceState, Uri) {
-	let provider_template =
-		"<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
+	let provider_template = "<!-- {@badges:\"crate_name\"} -->\n\n[![crates.io](https://img.shields.io/crates/v/{{ \
 		 crate_name }})]\n\n<!-- {/badges} -->\n";
 	let consumer_doc = format!(
 		"# Readme\n\n<!-- {{=badges:\"{consumer_arg}\"}} -->\n\n{consumer_body}\n\n<!-- \
@@ -5951,9 +5946,7 @@ async fn language_server_initialize_sets_workspace_root_and_capabilities() {
 		.unwrap_or_else(|e| panic!("initialize: {e:?}"));
 
 	assert_eq!(
-		result
-			.capabilities
-			.text_document_sync,
+		result.capabilities.text_document_sync,
 		Some(TextDocumentSyncCapability::Kind(
 			TextDocumentSyncKind::INCREMENTAL,
 		))
@@ -6014,8 +6007,7 @@ async fn language_server_did_change_uses_last_change_for_untracked_documents() {
 				TextDocumentContentChangeEvent {
 					range: None,
 					range_length: None,
-					text: "<!-- {=greeting} -->\n\nupdated\n\n<!-- {/greeting} -->\n"
-						.to_string(),
+					text: "<!-- {=greeting} -->\n\nupdated\n\n<!-- {/greeting} -->\n".to_string(),
 				},
 			],
 		})
@@ -6053,7 +6045,15 @@ async fn language_server_did_close_removes_document_state() {
 		})
 		.await;
 
-	assert!(!service.inner().state.read().await.documents.contains_key(&uri));
+	assert!(
+		!service
+			.inner()
+			.state
+			.read()
+			.await
+			.documents
+			.contains_key(&uri)
+	);
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -6073,7 +6073,11 @@ fn diagnostics_inline_block_requires_template_argument() {
 
 	assert_eq!(diagnostics.len(), 1);
 	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
-	assert!(diagnostics[0].message.contains("requires a template argument"));
+	assert!(
+		diagnostics[0]
+			.message
+			.contains("requires a template argument")
+	);
 }
 
 #[test]
@@ -6081,17 +6085,21 @@ fn diagnostics_inline_block_reports_stale_rendered_content() {
 	let (state, uri) = make_inline_test_state(
 		Some("{{ pkg.version }}"),
 		"0.0.0",
-		HashMap::from([(
-			"pkg".to_string(),
-			serde_json::json!({"version": "1.2.3"}),
-		)]),
+		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
 	);
 	let diagnostics = compute_diagnostics(&state, &uri);
 
 	assert_eq!(diagnostics.len(), 1);
 	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
-	assert!(diagnostics[0].message.contains("Inline block `version` is out of date"));
-	assert_eq!(diagnostics[0].data.as_ref().unwrap()["expected_content"], "1.2.3");
+	assert!(
+		diagnostics[0]
+			.message
+			.contains("Inline block `version` is out of date")
+	);
+	assert_eq!(
+		diagnostics[0].data.as_ref().unwrap()["expected_content"],
+		"1.2.3"
+	);
 }
 
 #[test]
@@ -6113,12 +6121,12 @@ fn hover_inline_block_shows_rendered_content() {
 	let (state, uri) = make_inline_test_state(
 		Some("{{ pkg.version }}"),
 		"0.0.0",
-		HashMap::from([(
-			"pkg".to_string(),
-			serde_json::json!({"version": "1.2.3"}),
-		)]),
+		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
 	);
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	let block = doc
 		.blocks
 		.iter()
@@ -6138,7 +6146,10 @@ fn hover_inline_block_shows_rendered_content() {
 #[test]
 fn hover_inline_block_reports_missing_template_argument() {
 	let (state, uri) = make_inline_test_state(None, "0.0.0", HashMap::new());
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	let block = doc
 		.blocks
 		.iter()
@@ -6175,10 +6186,7 @@ fn hover_inline_block_lists_transformers() {
 			file: PathBuf::from("/tmp/test/inline.md"),
 			content: extract_content_between_tags(inline_doc, &block),
 		}],
-		data: HashMap::from([(
-			"pkg".to_string(),
-			serde_json::json!({"version": " 1.2.3 "}),
-		)]),
+		data: HashMap::from([("pkg".to_string(), serde_json::json!({"version": " 1.2.3 "}))]),
 	};
 	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
 		.unwrap_or_else(|| panic!("expected hover result"));
@@ -6196,7 +6204,10 @@ fn hover_inline_block_reports_render_errors() {
 		"0.0.0",
 		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
 	);
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	let block = doc
 		.blocks
 		.iter()
@@ -6216,12 +6227,12 @@ fn code_action_for_stale_inline_block_updates_rendered_content() {
 	let (state, uri) = make_inline_test_state(
 		Some("{{ pkg.version }}"),
 		"0.0.0",
-		HashMap::from([(
-			"pkg".to_string(),
-			serde_json::json!({"version": "1.2.3"}),
-		)]),
+		HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
 	);
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	let block = doc
 		.blocks
 		.iter()
@@ -6237,7 +6248,10 @@ fn code_action_for_stale_inline_block_updates_rendered_content() {
 	let CodeActionOrCommand::CodeAction(action) = &actions[0] else {
 		panic!("expected inline code action");
 	};
-	let edit = action.edit.as_ref().unwrap_or_else(|| panic!("missing edit"));
+	let edit = action
+		.edit
+		.as_ref()
+		.unwrap_or_else(|| panic!("missing edit"));
 	let changes = edit
 		.changes
 		.as_ref()
@@ -6290,10 +6304,7 @@ fn references_from_inline_returns_other_inline_blocks() {
 				content: extract_content_between_tags(doc_b, &inline_b),
 			},
 		],
-		data: HashMap::from([(
-			"pkg".to_string(),
-			serde_json::json!({"version": "1.2.3"}),
-		)]),
+		data: HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
 	};
 
 	let locations = compute_references(&state, &uri_a, to_lsp_position(&inline_a.opening.start))
@@ -6440,7 +6451,10 @@ async fn language_server_did_change_applies_incremental_edits() {
 		.await;
 
 	let state = service.inner().state.read().await;
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	assert!(doc.content.contains("updated"));
 	assert!(!doc.content.contains("\n\nhello\n\n"));
 }
@@ -6472,14 +6486,16 @@ async fn language_server_did_change_full_replaces_tracked_document() {
 			content_changes: vec![TextDocumentContentChangeEvent {
 				range: None,
 				range_length: None,
-				text: "<!-- {=greeting} -->\n\nreplacement\n\n<!-- {/greeting} -->\n"
-					.to_string(),
+				text: "<!-- {=greeting} -->\n\nreplacement\n\n<!-- {/greeting} -->\n".to_string(),
 			}],
 		})
 		.await;
 
 	let state = service.inner().state.read().await;
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	assert!(doc.content.contains("replacement"));
 }
 
@@ -6526,8 +6542,7 @@ async fn language_server_did_save_rescans_when_config_changes() {
 		"<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n",
 	)
 	.unwrap_or_else(|e| panic!("write readme: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "")
-		.unwrap_or_else(|e| panic!("write config: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), "").unwrap_or_else(|e| panic!("write config: {e}"));
 	let config_uri = test_uri(&tmp.path().join("mdt.toml"));
 	let (service, _) = LspService::new(MdtLanguageServer::new);
 	service.inner().state.write().await.root = Some(tmp.path().to_path_buf());
@@ -6548,7 +6563,10 @@ async fn language_server_did_save_rescans_when_config_changes() {
 #[tokio::test(flavor = "current_thread")]
 async fn language_server_request_wrappers_delegate_to_core_handlers() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
-	let doc = state.documents.get(&uri).unwrap_or_else(|| panic!("missing document"));
+	let doc = state
+		.documents
+		.get(&uri)
+		.unwrap_or_else(|| panic!("missing document"));
 	let block = doc
 		.blocks
 		.iter()
