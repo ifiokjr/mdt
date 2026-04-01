@@ -1,12 +1,12 @@
 # Inline Blocks
 
-Inline blocks add provider-free interpolation for small dynamic values that still need to stay synchronized.
+Inline blocks add source-free interpolation for small dynamic values that still need to stay synchronized.
 
 ## Why this exists
 
 <!-- {=mdtInlineBlocksGuide} -->
 
-Inline blocks are useful when you need dynamic content in-place without creating a separate provider. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
+Inline blocks are useful when you need dynamic content in-place without creating a separate source. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
 
 Inline blocks render minijinja template content from the block's first argument:
 
@@ -16,7 +16,7 @@ Inline blocks render minijinja template content from the block's first argument:
 
 During `mdt update`, mdt evaluates the template argument with your configured `[data]` context, then replaces the content between the opening and closing tags.
 
-Because inline blocks are provider-free, they are ideal for one-off values that still need to stay synchronized.
+Because inline blocks are source-free, they are ideal for one-off values that still need to stay synchronized.
 
 <!-- {/mdtInlineBlocksGuide} -->
 
@@ -25,7 +25,7 @@ Because inline blocks are provider-free, they are ideal for one-off values that 
 <!-- {=mdtInlineBlocksLimits} -->
 
 - Inline blocks must include a first argument that is the template string to render.
-- Inline blocks do not resolve provider content; everything comes from the inline template argument and current data context.
+- Inline blocks do not resolve source content; everything comes from the inline template argument and current data context.
 - Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
 - In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
 - Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
@@ -72,7 +72,7 @@ When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/da
 
 <!-- {/mdtInlineBlocksExamples} -->
 
-## Comparison to providers
+## Comparison to sources
 
 - Use `{@name} ... {/name}` when the same content should be reused in many places.
-- Use `{~name:"..."} ... {/name}` when you need localized dynamic output without a dedicated provider block.
+- Use `{~name:"..."} ... {/name}` when you need localized dynamic output without a dedicated source block.

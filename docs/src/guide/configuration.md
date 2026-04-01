@@ -76,7 +76,7 @@ The default is `false`, meaning tags in fenced source-comment code blocks are pr
 
 #### `blocks` — Exclude specific block names
 
-Array of block names to exclude. Any block (provider or consumer) whose name appears in this list is completely ignored.
+Array of block names to exclude. Any block (source or target) whose name appears in this list is completely ignored.
 
 ```toml
 [exclude]
@@ -107,7 +107,7 @@ When set, only `*.t.md` files within these directories are recognized as templat
 
 ### `[padding]` — Block content padding
 
-Controls blank lines between block tags and their content. This is recommended when using consumer blocks in source code files.
+Controls blank lines between block tags and their content. This is recommended when using target blocks in source code files.
 
 ```toml
 [padding]
@@ -143,7 +143,7 @@ When this option is enabled, mdt scans all files regardless of `.gitignore` rule
 
 **When to use this:**
 
-- **Generated files with mdt blocks** — If your build output or generated files contain consumer blocks that need updating, those files are typically listed in `.gitignore` but still need to be scanned by mdt.
+- **Generated files with mdt blocks** — If your build output or generated files contain target blocks that need updating, those files are typically listed in `.gitignore` but still need to be scanned by mdt.
 - **Working outside a git repository** — If the project is not a git repo, `.gitignore` resolution can cause unnecessary overhead or errors. Disabling it avoids those issues.
 - **Full control over scanning** — When you prefer to manage file inclusion/exclusion entirely through `[exclude]` and `[include]` patterns rather than relying on `.gitignore`.
 
@@ -169,7 +169,7 @@ my-monorepo/
         template.t.md
 ```
 
-Running `mdt update` from the root updates only the root project's consumers. Each sub-project is managed independently.
+Running `mdt update` from the root updates only the root project's targets. Each sub-project is managed independently.
 
 ## Full example
 

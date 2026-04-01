@@ -133,7 +133,7 @@ markdown_codeblocks = ["ignore", "example", "no-sync"]
 
 Markdown fenced code blocks are not treated as live tags by markdown parsing, so this option is specifically for source-file comment scanning.
 
-**`blocks`:** Array of block names to exclude. Any block (provider or consumer) whose name is in this list is completely ignored during scanning and updating.
+**`blocks`:** Array of block names to exclude. Any block (source or target) whose name is in this list is completely ignored during scanning and updating.
 
 ```toml
 [exclude]
@@ -195,7 +195,7 @@ When `[padding]` is present but `before`/`after` are omitted, they default to `1
 
 In source code files with comment prefixes (e.g., `//!`, `///`, `*`), blank lines include the comment prefix to maintain valid syntax.
 
-This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where consumer blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
+This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where target blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
 
 **Example:** `before = 0, after = 0` — content directly on the next line:
 
@@ -251,7 +251,7 @@ disable_gitignore = true
 
 When set to `true`, file filtering is controlled entirely by the `[exclude]` and `[include]` sections. The built-in exclusions (hidden directories, `node_modules/`, `target/`, sub-project boundaries) still apply.
 
-Use this when scanning generated files or build output that contains mdt consumer blocks, when working outside a git repository, or when you want full control over file scanning via `[exclude]` and `[include]` patterns.
+Use this when scanning generated files or build output that contains mdt target blocks, when working outside a git repository, or when you want full control over file scanning via `[exclude]` and `[include]` patterns.
 
 **Type:** `bool`
 

@@ -10,7 +10,7 @@ license = { workspace = true }
 readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "update markdown content anywhere using comments as template tags"
+description = "Core engine for mdt — lexer, parser, scanner, and template engine for markdown synchronization"
 
 [dependencies]
 derive_more = { workspace = true, default-features = true }

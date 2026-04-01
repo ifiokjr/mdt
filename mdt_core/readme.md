@@ -10,7 +10,7 @@
 
 <!-- {=mdtCoreOverview} -->
 
-`mdt_core` is the core library for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides the lexer, parser, project scanner, and template engine for processing markdown template tags. Content defined once in provider blocks can be distributed to consumer blocks across markdown files, code documentation comments, READMEs, and more.
+`mdt_core` is the core library for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides the lexer, parser, project scanner, and template engine for processing markdown template tags. Content defined once in source blocks can be distributed to target blocks across markdown files, code documentation comments, READMEs, and more.
 
 ## Processing Pipeline
 
@@ -19,24 +19,24 @@ Markdown / source file
   → Lexer (tokenizes HTML comments into TokenGroups)
   → Pattern matcher (validates token sequences)
   → Parser (classifies groups, extracts names + transformers, matches open/close into Blocks)
-  → Project scanner (walks directory tree, builds provider→content map + consumer list)
-  → Engine (matches consumers to providers, applies transformers, replaces content)
+  → Project scanner (walks directory tree, builds source→content map + target list)
+  → Engine (matches targets to sources, applies transformers, replaces content)
 ```
 
 ## Modules
 
 - [`config`] — Configuration loading from `mdt.toml`, including data source mappings, exclude/include patterns, and template paths.
-- [`project`] — Project scanning and directory walking. Discovers provider and consumer blocks across all files in a project.
-- [`source_scanner`] — Source file scanning for consumer tags inside code comments (Rust, TypeScript, Python, Go, Java, etc.).
+- [`project`] — Project scanning and directory walking. Discovers provider and target blocks across all files in a project.
+- [`source_scanner`] — Source file scanning for target tags inside code comments (Rust, TypeScript, Python, Go, Java, etc.).
 
 ## Key Types
 
-- [`Block`] — A parsed template block (provider or consumer) with its name, type, position, and transformers.
+- [`Block`] — A parsed template block (source or target) with its name, type, position, and transformers.
 - [`Transformer`] — A pipe-delimited content filter (e.g., `trim`, `indent`, `linePrefix`) applied during injection.
 - [`ProjectContext`] — A scanned project together with its loaded template data, ready for checking or updating.
 - [`MdtConfig`] — Configuration loaded from `mdt.toml`.
-- [`CheckResult`] — Result of checking a project for stale consumers.
-- [`UpdateResult`] — Result of computing updates for consumer blocks.
+- [`CheckResult`] — Result of checking a project for stale targets.
+- [`UpdateResult`] — Result of computing updates for target blocks.
 
 ## Data Interpolation
 
@@ -48,7 +48,7 @@ pkg = "package.json"
 cargo = "Cargo.toml"
 ```
 
-Then in provider blocks: `{{ pkg.version }}` or `{{ cargo.package.edition }}`.
+Then in source blocks: `{{ pkg.version }}` or `{{ cargo.package.edition }}`.
 
 Supported sources: files and script commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
 
@@ -61,13 +61,13 @@ use std::path::Path;
 
 let ctx = scan_project_with_config(Path::new(".")).unwrap();
 
-// Check for stale consumers
+// Check for stale targets
 let result = check_project(&ctx).unwrap();
 if !result.is_ok() {
-    eprintln!("{} stale consumer(s) found", result.stale.len());
+    eprintln!("{} stale target(s) found", result.stale.len());
 }
 
-// Update all consumer blocks
+// Update all target blocks
 let updates = compute_updates(&ctx).unwrap();
 write_updates(&updates).unwrap();
 ```

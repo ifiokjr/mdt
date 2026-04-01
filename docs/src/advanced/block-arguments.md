@@ -1,6 +1,6 @@
 # Block Arguments
 
-Block arguments let you create parameterized provider blocks. Instead of defining a separate provider for each variation, you define one provider with parameters and pass different values from each consumer.
+Block arguments let you create parameterized source blocks. Instead of defining a separate source for each variation, you define one provider with parameters and pass different values from each target.
 
 ## Syntax
 
@@ -17,7 +17,7 @@ Add `:"param_name"` after the block name to declare parameters:
 <!-- {/badges} -->
 ```
 
-The parameter name `crate_name` becomes a template variable available in the provider content via `{{ crate_name }}`.
+The parameter name `crate_name` becomes a template variable available in the source content via `{{ crate_name }}`.
 
 ### Consumer: pass values
 
@@ -28,7 +28,7 @@ Consumers pass string values in the same position:
 <!-- {/badges} -->
 ```
 
-When mdt renders this consumer, `{{ crate_name }}` in the provider content is replaced with `mdt_core`.
+When mdt renders this consumer, `{{ crate_name }}` in the source content is replaced with `mdt_core`.
 
 ## Multiple arguments
 
@@ -67,7 +67,7 @@ Arguments and transformers work together. Transformers come after the arguments,
 
 ### With data interpolation
 
-Block arguments and data interpolation variables coexist in the same provider content. Arguments are resolved alongside the data context:
+Block arguments and data interpolation variables coexist in the same source content. Arguments are resolved alongside the data context:
 
 ```toml
 # mdt.toml
@@ -83,7 +83,7 @@ cargo = "Cargo.toml"
 <!-- {/crateInfo} -->
 ```
 
-Here `{{ crate_name }}` comes from the consumer's argument, while `{{ cargo.workspace.package.version }}` comes from the data file.
+Here `{{ crate_name }}` comes from the target's argument, while `{{ cargo.workspace.package.version }}` comes from the data file.
 
 ### With single quotes
 
@@ -150,7 +150,7 @@ then run: {{ toolchain }} build --release
 
 ## Argument count mismatch
 
-The number of consumer arguments must match the number of provider parameters. If they don't match, mdt reports a render error:
+The number of target arguments must match the number of source parameters. If they don't match, mdt reports a render error:
 
 ```
 error: argument count mismatch: provider `badges` declares 1 parameter(s),
@@ -158,11 +158,11 @@ error: argument count mismatch: provider `badges` declares 1 parameter(s),
 ```
 
 - `mdt check` reports the mismatch as an error.
-- `mdt update` skips the mismatched consumer and continues with the rest.
+- `mdt update` skips the mismatched target and continues with the rest.
 
-### Zero arguments on consumer
+### Zero arguments on target
 
-A consumer referencing a parameterized provider without arguments also triggers a mismatch. If the provider declares parameters, every consumer must supply values:
+A target referencing a parameterized source without arguments also triggers a mismatch. If the source declares parameters, every consumer must supply values:
 
 ```
 <!-- Provider expects 1 argument -->
@@ -170,14 +170,14 @@ A consumer referencing a parameterized provider without arguments also triggers 
 Hello, {{ name }}!
 <!-- {/greeting} -->
 
-<!-- This consumer is missing the argument — mdt reports an error -->
+<!-- This target is missing the argument — mdt reports an error -->
 <!-- {=greeting} -->
 <!-- {/greeting} -->
 ```
 
-### Zero parameters on provider
+### Zero parameters on source
 
-If a provider has no parameters, consumers should not pass arguments. Passing arguments to a parameter-less provider is a mismatch:
+If a source has no parameters, consumers should not pass arguments. Passing arguments to a parameter-less provider is a mismatch:
 
 ```
 <!-- Provider has no parameters -->
@@ -185,7 +185,7 @@ If a provider has no parameters, consumers should not pass arguments. Passing ar
 Static content.
 <!-- {/simpleBlock} -->
 
-<!-- This consumer has an unexpected argument — mdt reports an error -->
+<!-- This target has an unexpected argument — mdt reports an error -->
 <!-- {=simpleBlock:"unused"} -->
 <!-- {/simpleBlock} -->
 ```

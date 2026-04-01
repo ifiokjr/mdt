@@ -36,7 +36,7 @@ At first this seems harmless. Then the command changes to `npm install my-lib@la
 
 Now you have three edits to make, and one of them eventually gets missed.
 
-## After: one provider, three consumers
+## After: one source, three targets
 
 ### 1. Initialize `mdt`
 
@@ -46,9 +46,9 @@ mdt init
 
 This creates a starter template file at `.templates/template.t.md`.
 
-### 2. Define one provider
+### 2. Define one source
 
-Add a provider block to `.templates/template.t.md`:
+Add a source block to `.templates/template.t.md`:
 
 ```markdown
 <!-- {@install} -->
@@ -60,7 +60,7 @@ npm install my-lib@latest
 <!-- {/install} -->
 ```
 
-### 3. Replace the README copy with a consumer
+### 3. Replace the README copy with a target
 
 ```markdown
 <!-- {=install} -->
@@ -70,7 +70,7 @@ Old copied content
 <!-- {/install} -->
 ```
 
-### 4. Replace the docs-page copy with a consumer
+### 4. Replace the docs-page copy with a target
 
 ```markdown
 <!-- {=install} -->
@@ -80,7 +80,7 @@ Old copied content
 <!-- {/install} -->
 ```
 
-### 5. Replace the Rust doc comment with a transformed consumer
+### 5. Replace the Rust doc comment with a transformed target
 
 ```rust
 //! <!-- {=install|trim|linePrefix:"//! ":true} -->
@@ -88,7 +88,7 @@ Old copied content
 //! <!-- {/install} -->
 ```
 
-If your project uses source-file consumers heavily, add padding settings in `mdt.toml` so formatters do not collapse content awkwardly:
+If your project uses source-file targets heavily, add padding settings in `mdt.toml` so formatters do not collapse content awkwardly:
 
 ```toml
 [padding]
@@ -102,7 +102,7 @@ after = 0
 mdt update
 ```
 
-After the update, all three places render from the same provider.
+After the update, all three places render from the same source.
 
 ## What changed structurally
 
@@ -114,15 +114,15 @@ After the update, all three places render from the same provider.
 
 ### After
 
-- the provider in `.templates/template.t.md` becomes the source of truth
-- each surface keeps only a consumer tag
-- `mdt check` can fail CI when a consumer is stale
+- the source in `.templates/template.t.md` becomes the source of truth
+- each surface keeps only a target tag
+- `mdt check` can fail CI when a target is stale
 
 ## The day-two workflow
 
 Once the migration is done, the maintenance loop is simple:
 
-1. edit the provider block
+1. edit the source block
 2. run `mdt update`
 3. run `mdt check`
 4. commit the synchronized result
@@ -151,7 +151,7 @@ Good first candidates:
 
 A migration is usually worth it when one of these becomes true:
 
-- you can point to a provider that replaced three or more manual copies
+- you can point to a source that replaced three or more manual copies
 - CI now catches stale docs that previously slipped through
 - README, source docs, and docs pages no longer need separate wording updates
 

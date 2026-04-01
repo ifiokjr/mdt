@@ -1,8 +1,8 @@
 # Template system
 
-## Provider and consumer tags
+## Provider and target tags
 
-### Provider block
+### Source block
 
 ```md
 <!-- {@blockName} -->
@@ -12,7 +12,7 @@ Content to inject
 <!-- {/blockName} -->
 ```
 
-### Consumer block
+### Target block
 
 ```md
 <!-- {=blockName} -->
@@ -55,8 +55,8 @@ Example:
 
 - Use `*.t.md` for template definition files.
 - Providers are only recognized in `*.t.md` files.
-- Other `.md`, `.mdx`, and `.markdown` files may contain consumer blocks.
-- Supported source files may contain consumer blocks inside comments.
+- Other `.md`, `.mdx`, and `.markdown` files may contain target blocks.
+- Supported source files may contain target blocks inside comments.
 
 ## Data interpolation
 
@@ -83,7 +83,7 @@ Supported data formats:
 
 ## Block padding for source files
 
-When using consumer blocks in source files, prefer explicit padding in `mdt.toml`:
+When using target blocks in source files, prefer explicit padding in `mdt.toml`:
 
 ```toml
 [padding]

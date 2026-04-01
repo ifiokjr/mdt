@@ -13,11 +13,12 @@
 # Core Concepts
 
 - [How mdt Works](./concepts/how-it-works.md)
-- [Providers and Consumers](./concepts/providers-and-consumers.md)
+- [Sources and Targets](./concepts/providers-and-consumers.md)
 - [Template Files](./concepts/template-files.md)
 
 # User Guide
 
+- [Why mdt?](./guide/why-mdt.md)
 - [Configuration](./guide/configuration.md)
 - [Data Interpolation](./guide/data-interpolation.md)
 - [Transformers](./guide/transformers.md)

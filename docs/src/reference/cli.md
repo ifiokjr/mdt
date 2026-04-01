@@ -9,7 +9,7 @@ mdt [OPTIONS] [COMMAND]
 | Option            | Description                                                                                              |
 | ----------------- | -------------------------------------------------------------------------------------------------------- |
 | `--path <DIR>`    | Set the project root directory. Defaults to the current directory.                                       |
-| `--verbose`       | Enable verbose output (show provider/consumer counts, file lists).                                       |
+| `--verbose`       | Enable verbose output (show source/target counts, file lists).                                       |
 | `--no-color`      | Disable colored output. Also overrides terminal color detection and color-related environment variables. |
 | `-h`, `--help`    | Print help.                                                                                              |
 | `-V`, `--version` | Print version.                                                                                           |
@@ -32,14 +32,14 @@ Creates a file containing:
 ```markdown
 <!-- {@greeting} -->
 
-Hello from mdt! This is a provider block.
+Hello from mdt! This is a source block.
 
 <!-- {/greeting} -->
 ```
 
 ### `mdt check`
 
-Verify that all consumer blocks are up to date. Exits with code 1 if any are stale.
+Verify that all target blocks are up to date. Exits with code 1 if any are stale.
 
 ```sh
 mdt check
@@ -57,8 +57,8 @@ mdt check --format github
 
 | Code | Meaning                          |
 | ---- | -------------------------------- |
-| 0    | All consumers are up to date.    |
-| 1    | One or more consumers are stale. |
+| 0    | All targets are up to date.    |
+| 1    | One or more targets are stale. |
 
 **Output formats:**
 
@@ -68,7 +68,7 @@ mdt check --format github
 
 ### `mdt update`
 
-Update all consumer blocks with the latest provider content.
+Update all target blocks with the latest source content.
 
 ```sh
 mdt update
@@ -90,7 +90,7 @@ Updated 3 block(s) in 2 file(s).
 If everything is already in sync:
 
 ```
-All consumer blocks are already up to date.
+All target blocks are already up to date.
 ```
 
 **Dry run** shows what would change without modifying files:
@@ -109,14 +109,14 @@ Updated 3 block(s) in 2 file(s).
 Watching for file changes... (press Ctrl+C to stop)
 
 File change detected, updating...
-All consumer blocks are already up to date.
+All target blocks are already up to date.
 ```
 
 Watch mode is not available with `--dry-run`.
 
 ### `mdt list`
 
-Display all provider and consumer blocks in the project.
+Display all provider and target blocks in the project.
 
 ```sh
 mdt list
@@ -125,11 +125,11 @@ mdt list
 Output:
 
 ```
-Providers:
-  @installGuide .templates/template.t.md (2 consumer(s))
-  @apiDocs .templates/template.t.md (3 consumer(s))
+Sources:
+  @installGuide .templates/template.t.md (2 target(s))
+  @apiDocs .templates/template.t.md (3 target(s))
 
-Consumers:
+Targets:
   =installGuide readme.md [linked]
   =installGuide crates/my-lib/readme.md [linked]
   =apiDocs readme.md [linked]
@@ -137,15 +137,15 @@ Consumers:
   ~version readme.md [inline]
   =orphanBlock docs/old.md [orphan]
 
-2 provider(s), 6 consumer(s)
+2 source(s), 6 target(s)
 ```
 
 **Status indicators:**
 
 | Status     | Meaning                                              |
 | ---------- | ---------------------------------------------------- |
-| `[linked]` | Consumer has a matching provider.                    |
-| `[orphan]` | Consumer references a non-existent provider.         |
+| `[linked]` | Consumer has a matching source.                    |
+| `[orphan]` | Consumer references a non-existent source.         |
 | `[inline]` | Inline block renders from its own template argument. |
 
 Transformers are shown after the file path when present.
@@ -163,10 +163,10 @@ mdt info --format json
 Includes:
 
 - Project root and resolved config path (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`; or `none`).
-- Provider/consumer counts, orphan consumers, and unused providers.
+- Provider/consumer counts, orphan targets, and unused sources.
 - Data namespaces and their configured source files.
 - Template file count, discovered template files, and template directory hints.
-- Diagnostic totals (errors/warnings) and missing provider names.
+- Diagnostic totals (errors/warnings) and missing source names.
 - Cache observability details (artifact path/health, schema compatibility, hash verification mode, cumulative reuse/reparse totals, and last scan metrics).
 
 ### `mdt doctor`
@@ -184,7 +184,7 @@ Checks include:
 - Config discovery and config parse status.
 - Data source loading and parse validity.
 - Template layout conventions (`.templates/` preferred).
-- Provider/consumer integrity (duplicates, missing providers, orphan consumers, unused providers).
+- Provider/consumer integrity (duplicates, missing sources, orphan targets, unused sources).
 - Parser diagnostics aggregation.
 - Cache artifact validity and schema compatibility.
 - Cache hash verification mode guidance.
@@ -230,12 +230,12 @@ mdt lsp
 
 The LSP provides:
 
-- **Diagnostics** — Warnings for stale consumers, missing providers, and provider blocks in non-template files.
-- **Completions** — Provider name suggestions inside consumer tags. Transformer name suggestions after `|`.
-- **Hover** — Shows provider content when hovering over consumer tags. Shows consumer count when hovering over provider tags.
-- **Go to definition** — Jump from a consumer tag to its provider definition.
+- **Diagnostics** — Warnings for stale targets, missing sources, and source blocks in non-template files.
+- **Completions** — Source name suggestions inside target tags. Transformer name suggestions after `|`.
+- **Hover** — Shows source content when hovering over target tags. Shows consumer count when hovering over source tags.
+- **Go to definition** — Jump from a target tag to its source definition.
 - **Document symbols** — Lists all blocks in the current file.
-- **Code actions** — Quick-fix to update a stale consumer block in place.
+- **Code actions** — Quick-fix to update a stale target block in place.
 
 ### `mdt mcp`
 
@@ -245,7 +245,7 @@ Start the MCP server for AI integrations. Communicates over stdin/stdout using t
 mdt mcp
 ```
 
-Use this command when you want an AI assistant to query template providers, consumers, and render context directly from your project.
+Use this command when you want an AI assistant to query template sources, targets, and render context directly from your project.
 
 ## Environment variables
 

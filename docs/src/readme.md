@@ -17,30 +17,10 @@ Manual synchronization doesn't scale. Copy-pasting is error-prone. The more plac
 
 ## The Solution
 
-mdt uses HTML comments as invisible template tags. You define content once in a **provider** block inside a template file. Then you place **consumer** tags wherever that content should appear. Running `mdt update` replaces the content between consumer tags with the provider's content.
+mdt uses HTML comments as invisible template tags. You define content once in a **source** block inside a template file (`*.t.md` — the "t" stands for template). Then you place **target** tags wherever that content should appear. Running `mdt update` replaces the content between target tags with the source's content.
 
-```markdown
-<!-- In .templates/template.t.md (the provider) -->
-<!-- {@install} -->
-
-npm install my-lib
-
-<!-- {/install} -->
-```
-
-```markdown
-<!-- In readme.md (a consumer) -->
-
-## Installation
-
-<!-- {=install} -->
-
-This content gets replaced automatically.
-
-<!-- {/install} -->
-```
-
-After running `mdt update`, every consumer named `install` has identical content — sourced from the single provider definition.
+<!-- {=mdtBeforeAfter} -->
+<!-- {/mdtBeforeAfter} -->
 
 ## See It in Practice
 
@@ -52,7 +32,7 @@ If you want concrete adoption examples instead of abstract syntax:
 ## Key Features
 
 - **Comment-based tags** — HTML comments are invisible in rendered markdown, so your docs look clean
-- **Source file support** — Consumer tags work inside code comments too (Rust, TypeScript, Python, Go, and more)
+- **Source file support** — Target tags work inside code comments too (Rust, TypeScript, Python, Go, and more)
 - **Data interpolation** — Pull values from `package.json`, `Cargo.toml`, or any data file into your templates using `{{ variable }}` syntax
 - **Transformers** — Pipe content through filters like `trim`, `indent`, `prefix`, `codeBlock` to adapt shared content for each context
 - **CI-friendly** — `mdt check` exits non-zero when docs are stale, with JSON and GitHub Actions output formats

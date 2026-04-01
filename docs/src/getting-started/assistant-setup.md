@@ -18,7 +18,7 @@ mdt assist claude
 This prints:
 
 - an MCP server configuration snippet that runs `mdt mcp`
-- repo-local guidance such as reusing providers before creating new ones
+- repo-local guidance such as reusing sources before creating new ones
 - assistant-specific notes for the selected profile
 
 ## Why this approach
@@ -35,10 +35,10 @@ The first official profiles focus on:
 
 Regardless of assistant, keep guidance like this close to your project instructions:
 
-- Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a new provider block.
+- Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a new source block.
 - Use `.templates/` as the canonical template location.
-- Use `mdt_preview` to inspect provider and consumer output before syncing changes.
-- Run `mdt_check` after documentation edits and `mdt_update` when consumer blocks are stale.
+- Use `mdt_preview` to inspect source and target output before syncing changes.
+- Run `mdt_check` after documentation edits and `mdt_update` when target blocks are stale.
 
 ## Supported first-slice profiles
 

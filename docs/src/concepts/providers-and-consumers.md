@@ -1,10 +1,10 @@
-# Providers and Consumers
+# Sources and Targets
 
-mdt's template system has two roles: **providers** define content, and **consumers** receive it.
+mdt's template system has two roles: **sources** define content, and **targets** receive it.
 
-## Providers
+## Sources
 
-A provider block defines a named piece of content. Providers live in **template files** (`*.t.md`).
+A source block defines a named piece of content. Providers live in **template files** (`*.t.md`).
 
 ```
 <!-- {@installGuide} -->
@@ -16,17 +16,17 @@ Install the package:
 <!-- {/installGuide} -->
 ```
 
-The `@` sigil marks this as a provider. The name `installGuide` is how consumers reference it.
+The `@` sigil marks this as a source. The name `installGuide` is how consumers reference it.
 
-### Rules for providers
+### Rules for sources
 
 - Providers can **only** appear in `*.t.md` files. A `{@name}` tag in `readme.md` is ignored.
-- Each provider name must be unique across the entire project. Two template files defining `{@installGuide}` produces an error.
-- The content between the opening and closing tags is the provider's content — including the surrounding whitespace.
+- Each source name must be unique across the entire project. Two template files defining `{@installGuide}` produces an error.
+- The content between the opening and closing tags is the source's content — including the surrounding whitespace.
 
-## Consumers
+## Targets
 
-A consumer block marks a location where provider content should be injected. Consumers can appear in any scanned file.
+A target block marks a location where source content should be injected. Consumers can appear in any scanned file.
 
 ```
 <!-- {=installGuide} -->
@@ -36,18 +36,18 @@ Old content here (will be replaced).
 <!-- {/installGuide} -->
 ```
 
-The `=` sigil marks this as a consumer. The name `installGuide` tells mdt which provider to use.
+The `=` sigil marks this as a target. The name `installGuide` tells mdt which provider to use.
 
-### Rules for consumers
+### Rules for targets
 
 - Consumers can appear in any markdown file or source code file.
-- Multiple consumers can reference the same provider. Each gets the same content.
-- If a consumer references a non-existent provider, mdt warns but doesn't fail.
+- Multiple targets can reference the same source. Each gets the same content.
+- If a target references a non-existent source, mdt warns but doesn't fail.
 - Consumers can include [transformers](../guide/transformers.md) to modify the content for their specific context.
 
 ## Close tags
 
-Both providers and consumers share the same close tag syntax:
+Both sources and targets share the same close tag syntax:
 
 ```
 <!-- {/blockName} -->
@@ -71,7 +71,7 @@ The `/` sigil closes the block. The name must match the opening tag.
                                                                 transformers)
 ```
 
-The same provider content feeds multiple consumers. Each consumer can apply its own transformers to adapt the content for its context.
+The same source content feeds multiple targets. Each consumer can apply its own transformers to adapt the content for its context.
 
 ## A complete example
 
@@ -91,7 +91,7 @@ A fast, type-safe HTTP client for Rust.
 <!-- {/usage} -->
 ```
 
-**`readme.md`** — consumers reference providers by name:
+**`readme.md`** — targets reference sources by name:
 
 ```
 # my-http-client

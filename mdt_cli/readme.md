@@ -44,8 +44,8 @@ cargo install mdt_cli
 ### CLI Commands
 
 - `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
-- `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
-- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
+- `mdt check [--path <dir>] [--verbose]` — Verify all target blocks are up-to-date. Exits non-zero if any are stale.
+- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all target blocks with latest source content.
 - `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
 - `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
 - `mdt assist <assistant> [--format text|json]` — Print an official assistant setup profile with MCP config and repo-local guidance.
@@ -64,7 +64,7 @@ cargo install mdt_cli
 
 ### Template Syntax
 
-**Provider tag** (defines a template block in `*.t.md` definition files):
+**Source tag** (defines a template block in `*.t.md` definition files):
 
 ```markdown
 <!-- {@blockName} -->
@@ -74,7 +74,7 @@ Content to inject
 <!-- {/blockName} -->
 ```
 
-**Consumer tag** (marks where content should be injected):
+**Target tag** (marks where content should be injected):
 
 ```markdown
 <!-- {=blockName} -->
@@ -84,7 +84,7 @@ This content gets replaced
 <!-- {/blockName} -->
 ```
 
-**Inline tag** (provider-free interpolation using configured data):
+**Inline tag** (source-free interpolation using configured data):
 
 ```markdown
 Current version: <!-- {~version:"{{ package.version }}"} -->0.0.0<!-- {/version} -->

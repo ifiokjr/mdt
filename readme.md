@@ -1,6 +1,8 @@
 # mdt
 
-> manage **m**ark**d**own **t**emplates across your project
+**Write it once, sync it everywhere. Doc drift is dead.**
+
+Markdown templates that keep your READMEs, doc comments, and docs sites in lockstep — with data interpolation, transformers, and CI verification.
 
 <br />
 
@@ -13,6 +15,9 @@
 `mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more so your docs do not drift.
 
 <!-- {/mdtPackageDocumentation} -->
+
+<!-- {=mdtBeforeAfter} -->
+<!-- {/mdtBeforeAfter} -->
 
 ## Installation
 
@@ -39,77 +44,21 @@ cargo install mdt_cli
 
 <!-- {/mdtCliInstall} -->
 
-## See It in Practice
+## Quick Start
 
-- [Proof of Value](./docs/src/getting-started/proof-of-value.md) shows how this repository already syncs README content, Rust source docs, and mdBook pages from shared providers.
-- [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md) shows a before/after adoption path for moving repeated docs onto `mdt`.
+<!-- {=mdtQuickStart} -->
+<!-- {/mdtQuickStart} -->
 
-<!-- {=mdtTemplateSyntax} -->
+## Learn More
 
-### Template Syntax
-
-**Provider tag** (defines a template block in `*.t.md` definition files):
-
-```markdown
-<!-- {@blockName} -->
-
-Content to inject
-
-<!-- {/blockName} -->
-```
-
-**Consumer tag** (marks where content should be injected):
-
-```markdown
-<!-- {=blockName} -->
-
-This content gets replaced
-
-<!-- {/blockName} -->
-```
-
-**Inline tag** (provider-free interpolation using configured data):
-
-```markdown
-Current version: <!-- {~version:"{{ package.version }}"} -->0.0.0<!-- {/version} -->
-```
-
-```markdown
-| Artifact | Version                                                                   |
-| -------- | ------------------------------------------------------------------------- |
-| mdt_cli  | <!-- {~cliVersion:"{{ package.version }}"} -->0.0.0<!-- {/cliVersion} --> |
-```
-
-**Filters and pipes:** Template values support pipe-delimited transformers:
-
-```markdown
-<!-- {=block|prefix:"\n"|indent:"  "} -->
-```
-
-Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
-
-<!-- {/mdtTemplateSyntax} -->
-
-<!-- {=mdtCliUsage} -->
-
-### CLI Commands
-
-- `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
-- `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
-- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
-- `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
-- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
-- `mdt assist <assistant> [--format text|json]` — Print an official assistant setup profile with MCP config and repo-local guidance.
-- `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
-- `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
-
-### Diagnostics Workflow
-
-- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
-- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
-- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
-
-<!-- {/mdtCliUsage} -->
+- [Template Syntax](./docs/src/reference/template-syntax.md)
+- [CLI Reference](./docs/src/reference/cli.md)
+- [Data Interpolation](./docs/src/guide/data-interpolation.md)
+- [Transformers](./docs/src/reference/transformers.md)
+- [CI Integration](./docs/src/guide/ci-integration.md)
+- [Source File Support](./docs/src/guide/source-files.md)
+- [Proof of Value](./docs/src/getting-started/proof-of-value.md)
+- [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md)
 
 ## Crates
 

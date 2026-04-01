@@ -10,7 +10,7 @@ license = { workspace = true }
 readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "the cli which updates markdown content anywhere using comments as template tags"
+description = "Write docs once, sync everywhere — markdown templates that eliminate doc drift"
 
 [[bin]]
 name = "mdt"

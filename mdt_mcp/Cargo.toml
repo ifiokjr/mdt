@@ -10,7 +10,7 @@ license = { workspace = true }
 readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "MCP server for mdt (manage markdown templates)"
+description = "MCP server for mdt — AI assistant integration for markdown template synchronization"
 
 [dependencies]
 mdt_core = { workspace = true }

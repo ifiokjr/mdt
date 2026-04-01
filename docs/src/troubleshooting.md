@@ -4,20 +4,20 @@ This page covers common errors, debugging techniques, and solutions for issues y
 
 ## Common errors
 
-### Consumer references a missing provider
+### Consumer references a missing source
 
 ```
-warning: consumer `installGuide` in readme.md has no matching provider
+warning: consumer `installGuide` in readme.md has no matching source
 ```
 
-**Cause:** The consumer tag references a provider name that doesn't exist in any `*.t.md` file.
+**Cause:** The target tag references a source name that doesn't exist in any `*.t.md` file.
 
 **Solutions:**
 
 - Check for typos in the block name. Names are case-sensitive — `installGuide` and `installguide` are different.
-- Verify the provider is in a `*.t.md` file. Provider tags in regular `.md` files are ignored.
-- If you're in a monorepo, confirm the provider is in the same project scope. Providers from a parent or sibling project are not visible across `mdt.toml` boundaries. See [Monorepo setups](./advanced/monorepos.md).
-- Run `mdt list` to see all discovered providers and consumers.
+- Verify the source is in a `*.t.md` file. Source tags in regular `.md` files are ignored.
+- If you're in a monorepo, confirm the source is in the same project scope. Providers from a parent or sibling project are not visible across `mdt.toml` boundaries. See [Monorepo setups](./advanced/monorepos.md).
+- Run `mdt list` to see all discovered sources and targets.
 
 ### Argument count mismatch
 
@@ -26,40 +26,40 @@ error: argument count mismatch: provider `badges` declares 1 parameter(s),
        but consumer passes 2 argument(s)
 ```
 
-**Cause:** The consumer passes a different number of arguments than the provider declares.
+**Cause:** The target passes a different number of arguments than the source declares.
 
 **Solutions:**
 
-- Count the `:"value"` segments on both the provider and consumer tags.
-- If the provider declares `<!-- {@badges:"crate_name"} -->` (1 parameter), every consumer must pass exactly 1 argument: `<!-- {=badges:"mdt_core"} -->`.
+- Count the `:"value"` segments on both the source and target tags.
+- If the source declares `<!-- {@badges:"crate_name"} -->` (1 parameter), every consumer must pass exactly 1 argument: `<!-- {=badges:"mdt_core"} -->`.
 - See [Block Arguments](./advanced/block-arguments.md) for details.
 
-### Duplicate provider name
+### Duplicate source name
 
 ```
-error: duplicate provider `install`: defined in `docs.t.md` and `api.t.md`
+error: duplicate source `install`: defined in `docs.t.md` and `api.t.md`
 ```
 
-**Cause:** Two `*.t.md` files define a provider with the same name. Provider names must be unique within a project scope.
+**Cause:** Two `*.t.md` files define a source with the same name. Source names must be unique within a project scope.
 
-**Solution:** Rename one of the providers, or consolidate them into a single template file.
+**Solution:** Rename one of the sources, or consolidate them into a single template file.
 
 ### Stale blocks after editing templates
 
-After editing a provider's content in a template file, all consumers referencing that provider become stale. `mdt check` reports them:
+After editing a source's content in a template file, all targets referencing that provider become stale. `mdt check` reports them:
 
 ```
-Consumer block `install` in readme.md is out of date.
-Consumer block `install` in src/lib.rs is out of date.
+Target block `install` in readme.md is out of date.
+Target block `install` in src/lib.rs is out of date.
 ```
 
-**Solution:** Run `mdt update` to sync all consumers. During development, use `mdt update --watch` to auto-sync on file changes.
+**Solution:** Run `mdt update` to sync all targets. During development, use `mdt update --watch` to auto-sync on file changes.
 
 ## Debugging techniques
 
 ### Use `mdt check --verbose`
 
-Verbose mode shows the full scan results — how many files were scanned, which providers and consumers were found, and which blocks are stale:
+Verbose mode shows the full scan results — how many files were scanned, which sources and targets were found, and which blocks are stale:
 
 ```sh
 mdt check --verbose
@@ -67,25 +67,25 @@ mdt check --verbose
 
 ### Use `mdt list` to see all blocks
 
-`mdt list` displays every provider and consumer in the project, their file locations, and their link status:
+`mdt list` displays every source and target in the project, their file locations, and their link status:
 
 ```sh
 mdt list
 ```
 
 ```
-Providers:
-  @installGuide .templates/template.t.md (2 consumer(s))
-  @apiDocs .templates/template.t.md (3 consumer(s))
+Sources:
+  @installGuide .templates/template.t.md (2 target(s))
+  @apiDocs .templates/template.t.md (3 target(s))
 
-Consumers:
+Targets:
   =installGuide readme.md [linked]
   =installGuide crates/my-lib/readme.md [linked]
   =apiDocs readme.md [linked]
   =orphanBlock docs/old.md [orphan]
 ```
 
-Orphaned consumers (`[orphan]`) indicate missing providers. Providers with `(0 consumer(s))` might be unused.
+Orphaned consumers (`[orphan]`) indicate missing sources. Providers with `(0 target(s))` might be unused.
 
 ### Use `mdt check --diff`
 
@@ -143,13 +143,13 @@ This includes content hashes in cache fingerprints (in addition to size/mtime). 
 
 ## Formatter interference
 
-Code formatters like dprint, Prettier, and rustfmt can reformat content inside template tags, causing mdt to see the blocks as stale even when the provider hasn't changed.
+Code formatters like dprint, Prettier, and rustfmt can reformat content inside template tags, causing mdt to see the blocks as stale even when the source hasn't changed.
 
 ### Symptoms
 
 - `mdt check` reports stale blocks after running a formatter.
 - Running `mdt update` followed by the formatter followed by `mdt check` always shows stale blocks.
-- Whitespace or indentation changes inside consumer blocks.
+- Whitespace or indentation changes inside target blocks.
 
 ### Solutions
 
@@ -171,9 +171,9 @@ Template files (`*.t.md`) contain the source-of-truth content. Formatters should
 *.t.md
 ```
 
-#### Use `<!-- dprint-ignore -->` for consumer blocks
+#### Use `<!-- dprint-ignore -->` for target blocks
 
-If a formatter is reformatting content inside a consumer block in a markdown file, add a dprint ignore comment before the block:
+If a formatter is reformatting content inside a target block in a markdown file, add a dprint ignore comment before the block:
 
 ```markdown
 <!-- dprint-ignore -->
@@ -243,7 +243,7 @@ The `cargo run` approach is slower (it compiles on every run) but avoids install
       fetch-depth: 0
   ```
 
-- **Formatter ran after templates changed.** If CI runs `dprint fmt` before `mdt check`, the formatter might alter consumer content. Run `mdt update` after formatting, or exclude template content from the formatter.
+- **Formatter ran after templates changed.** If CI runs `dprint fmt` before `mdt check`, the formatter might alter target content. Run `mdt update` after formatting, or exclude template content from the formatter.
 
 ### Recommended CI order
 
