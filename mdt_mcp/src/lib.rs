@@ -3,9 +3,9 @@
 //!
 //! ### Tools
 //!
-//! - **`mdt_check`** — Verify all consumer blocks are up-to-date.
-//! - **`mdt_update`** — Update all consumer blocks with latest provider content.
-//! - **`mdt_list`** — List all providers and consumers in the project.
+//! - **`mdt_check`** — Verify all target blocks are up-to-date.
+//! - **`mdt_update`** — Update all target blocks with latest source content.
+//! - **`mdt_list`** — List all sources and targets in the project.
 //! - **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
 //! - **`mdt_get_block`** — Get the content of a specific block by name.
 //! - **`mdt_preview`** — Preview the result of applying transformers to a block.
@@ -13,11 +13,11 @@
 //!
 //! ### Agent Workflow
 //!
-//! - Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new provider block.
+//! - Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new source block.
 //! - Use the JSON-first tool responses as the source of truth. The MCP server returns structured payloads so agents can inspect results without parsing prose.
-//! - Use `mdt_preview` as an authoring workflow: inspect the provider template plus each consumer's rendered output before deciding whether to reuse, edit, or sync.
-//! - Keep provider names global and unique in the project to avoid collisions.
-//! - After edits, run `mdt_check` (and optionally `mdt_update`) so consumer blocks stay synchronized.
+//! - Use `mdt_preview` as an authoring workflow: inspect the source template plus each target's rendered output before deciding whether to reuse, edit, or sync.
+//! - Keep source names global and unique in the project to avoid collisions.
+//! - After edits, run `mdt_check` (and optionally `mdt_update`) so target blocks stay synchronized.
 //!
 //! ### Usage
 //!

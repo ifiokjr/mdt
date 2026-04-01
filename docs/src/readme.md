@@ -20,6 +20,60 @@ Manual synchronization doesn't scale. Copy-pasting is error-prone. The more plac
 mdt uses HTML comments as invisible template tags. You define content once in a **source** block inside a template file (`*.t.md` — the "t" stands for template). Then you place **target** tags wherever that content should appear. Running `mdt update` replaces the content between target tags with the source's content.
 
 <!-- {=mdtBeforeAfter} -->
+
+## The Problem
+
+You have the same install instructions in three places:
+
+**readme.md:**
+
+~~~markdown
+## Installation
+
+npm install my-lib
+~~~
+
+**src/lib.rs:**
+
+~~~rust
+//! ## Installation
+//!
+//! npm install my-lib
+~~~
+
+**docs/getting-started.md:**
+
+~~~markdown
+## Installation
+
+npm install my-lib
+~~~
+
+You update one. The others drift. CI doesn't catch it.
+
+## The Fix
+
+Define it once in a `*.t.md` template file (the "t" stands for template):
+
+~~~markdown
+<!-- {@install} -->
+
+npm install my-lib
+
+<!-- {/install} -->
+~~~
+
+Use it everywhere:
+
+~~~markdown
+<!-- {=install} -->
+(replaced automatically)
+<!-- {/install} -->
+~~~
+
+Run `mdt update` — all three files are in sync.
+Run `mdt check` in CI — drift is caught before merge.
+
 <!-- {/mdtBeforeAfter} -->
 
 ## See It in Practice

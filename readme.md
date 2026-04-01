@@ -17,6 +17,60 @@ Markdown templates that keep your READMEs, doc comments, and docs sites in locks
 <!-- {/mdtPackageDocumentation} -->
 
 <!-- {=mdtBeforeAfter} -->
+
+## The Problem
+
+You have the same install instructions in three places:
+
+**readme.md:**
+
+~~~markdown
+## Installation
+
+npm install my-lib
+~~~
+
+**src/lib.rs:**
+
+~~~rust
+//! ## Installation
+//!
+//! npm install my-lib
+~~~
+
+**docs/getting-started.md:**
+
+~~~markdown
+## Installation
+
+npm install my-lib
+~~~
+
+You update one. The others drift. CI doesn't catch it.
+
+## The Fix
+
+Define it once in a `*.t.md` template file (the "t" stands for template):
+
+~~~markdown
+<!-- {@install} -->
+
+npm install my-lib
+
+<!-- {/install} -->
+~~~
+
+Use it everywhere:
+
+~~~markdown
+<!-- {=install} -->
+(replaced automatically)
+<!-- {/install} -->
+~~~
+
+Run `mdt update` — all three files are in sync.
+Run `mdt check` in CI — drift is caught before merge.
+
 <!-- {/mdtBeforeAfter} -->
 
 ## Installation
@@ -47,6 +101,45 @@ cargo install mdt_cli
 ## Quick Start
 
 <!-- {=mdtQuickStart} -->
+
+### 1. Initialize
+
+~~~sh
+mkdir my-project && cd my-project
+mdt init
+~~~
+
+This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (config).
+
+### 2. Define a source block
+
+In `.templates/template.t.md`:
+
+~~~markdown
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+~~~
+
+### 3. Use it in your README
+
+In `readme.md`:
+
+~~~markdown
+<!-- {=greeting} -->
+<!-- {/greeting} -->
+~~~
+
+### 4. Sync
+
+~~~sh
+mdt update
+~~~
+
+Every target block named `greeting` now has the same content. Run `mdt check` in CI to catch drift.
+
 <!-- {/mdtQuickStart} -->
 
 ## Learn More

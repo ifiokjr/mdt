@@ -4,6 +4,6 @@ expression: template
 ---
 <!-- {@greeting} -->
 
-Hello from mdt! This is a provider block.
+Hello from mdt! This is a source block.
 
 <!-- {/greeting} -->
