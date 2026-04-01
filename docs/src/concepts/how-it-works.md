@@ -38,8 +38,8 @@ A tag has three parts:
 
 mdt determines how to treat files based on their names:
 
-| Pattern                              | Role                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------- |
+| Pattern                              | Role                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------- |
 | `*.t.md`                             | **Template files** — only these can contain source blocks               |
 | `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for target and inline blocks               |
 | `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for target and inline blocks inside comments |

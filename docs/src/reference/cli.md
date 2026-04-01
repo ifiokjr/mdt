@@ -9,7 +9,7 @@ mdt [OPTIONS] [COMMAND]
 | Option            | Description                                                                                              |
 | ----------------- | -------------------------------------------------------------------------------------------------------- |
 | `--path <DIR>`    | Set the project root directory. Defaults to the current directory.                                       |
-| `--verbose`       | Enable verbose output (show source/target counts, file lists).                                       |
+| `--verbose`       | Enable verbose output (show source/target counts, file lists).                                           |
 | `--no-color`      | Disable colored output. Also overrides terminal color detection and color-related environment variables. |
 | `-h`, `--help`    | Print help.                                                                                              |
 | `-V`, `--version` | Print version.                                                                                           |
@@ -55,8 +55,8 @@ mdt check --format github
 
 **Exit codes:**
 
-| Code | Meaning                          |
-| ---- | -------------------------------- |
+| Code | Meaning                        |
+| ---- | ------------------------------ |
 | 0    | All targets are up to date.    |
 | 1    | One or more targets are stale. |
 
@@ -144,8 +144,8 @@ Targets:
 
 | Status     | Meaning                                              |
 | ---------- | ---------------------------------------------------- |
-| `[linked]` | Consumer has a matching source.                    |
-| `[orphan]` | Consumer references a non-existent source.         |
+| `[linked]` | Consumer has a matching source.                      |
+| `[orphan]` | Consumer references a non-existent source.           |
 | `[inline]` | Inline block renders from its own template argument. |
 
 Transformers are shown after the file path when present.

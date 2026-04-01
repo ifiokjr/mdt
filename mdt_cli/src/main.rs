@@ -270,9 +270,9 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			"# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
-			 source blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
-			 = \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch \
-			 = [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
+			 source blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo = \
+			 \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch = \
+			 [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
 			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
 			 [padding]\n# before = 0\n# after = 0\n";
 
@@ -282,13 +282,11 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 	let readme_path = root.join("readme.md");
 	let readme_upper_path = root.join("README.md");
-	let readme_exists =
-		readme_path.exists() || readme_upper_path.exists();
+	let readme_exists = readme_path.exists() || readme_upper_path.exists();
 
 	if !readme_exists && !template_exists {
-		let sample_readme = "# My Project\n\nWelcome to my project.\n\n<!-- \
-		                     {=greeting} -->\n\nThis will be replaced by \
-		                     mdt.\n\n<!-- {/greeting} -->\n";
+		let sample_readme = "# My Project\n\nWelcome to my project.\n\n<!-- {=greeting} \
+		                     -->\n\nThis will be replaced by mdt.\n\n<!-- {/greeting} -->\n";
 		std::fs::write(&readme_path, sample_readme)?;
 		println!("Created readme.md with a sample target block");
 	}
@@ -353,20 +351,17 @@ fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
 	}
 
 	let inferred = match source {
-		mdt_core::DataSource::Path(path) => {
-			path.extension()
-				.and_then(|ext| ext.to_str())
-				.unwrap_or("unknown")
-				.to_ascii_lowercase()
-		}
-		mdt_core::DataSource::Typed(typed) => {
-			typed
-				.path
-				.extension()
-				.and_then(|ext| ext.to_str())
-				.unwrap_or("unknown")
-				.to_ascii_lowercase()
-		}
+		mdt_core::DataSource::Path(path) => path
+			.extension()
+			.and_then(|ext| ext.to_str())
+			.unwrap_or("unknown")
+			.to_ascii_lowercase(),
+		mdt_core::DataSource::Typed(typed) => typed
+			.path
+			.extension()
+			.and_then(|ext| ext.to_str())
+			.unwrap_or("unknown")
+			.to_ascii_lowercase(),
 		mdt_core::DataSource::Script(_) => "text".to_string(),
 		_ => "unknown".to_string(),
 	};
@@ -380,16 +375,14 @@ fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String)
 		mdt_core::DataSource::Typed(typed) => {
 			(typed.path.display().to_string(), "file".to_string())
 		}
-		mdt_core::DataSource::Script(script) => {
-			(
-				format!("script: {}", script.command),
-				if script.watch.is_empty() {
-					"script".to_string()
-				} else {
-					format!("script (watch: {})", script.watch.len())
-				},
-			)
-		}
+		mdt_core::DataSource::Script(script) => (
+			format!("script: {}", script.command),
+			if script.watch.is_empty() {
+				"script".to_string()
+			} else {
+				format!("script (watch: {})", script.watch.len())
+			},
+		),
 		_ => ("unknown".to_string(), "unknown".to_string()),
 	}
 }
@@ -1087,15 +1080,16 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 		reused_file_count_total.saturating_add(reparsed_file_count_total),
 	);
 	let last_scan = telemetry.and_then(|metrics| {
-		metrics.last_scan.as_ref().map(|scan| {
-			InfoCacheLastScanSection {
+		metrics
+			.last_scan
+			.as_ref()
+			.map(|scan| InfoCacheLastScanSection {
 				timestamp_unix_ms: scan.timestamp_unix_ms,
 				full_project_hit: scan.full_project_hit,
 				reused_files: scan.reused_files,
 				reparsed_files: scan.reparsed_files,
 				total_files: scan.total_files,
-			}
-		})
+			})
 	});
 
 	let template_hints = template_directory_hints(&config.template_dirs);
@@ -1118,14 +1112,12 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
 		.iter()
-		.map(|source| {
-			InfoDataSourceSection {
-				namespace: source.namespace.clone(),
-				location: source.location.clone(),
-				kind: source.kind.clone(),
-				format: source.format.clone(),
-				explicit_format: source.explicit_format,
-			}
+		.map(|source| InfoDataSourceSection {
+			namespace: source.namespace.clone(),
+			location: source.location.clone(),
+			kind: source.kind.clone(),
+			format: source.format.clone(),
+			explicit_format: source.explicit_format,
 		})
 		.collect();
 
@@ -1459,34 +1451,32 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				None,
 			);
 		}
-		Some(config) => {
-			match config.load_data(&root) {
-				Ok(loaded_data) => {
-					add_doctor_check(
-						&mut checks,
-						"data_sources",
-						"Data Sources",
-						DoctorStatus::Pass,
-						format!("loaded {} namespace(s) successfully", loaded_data.len()),
-						None,
-					);
-				}
-				Err(error) => {
-					add_doctor_check(
-						&mut checks,
-						"data_sources",
-						"Data Sources",
-						DoctorStatus::Fail,
-						format!("failed to load configured data sources: {error}"),
-						Some(
-							"verify data file paths, script commands, formats, and parse validity \
-							 for each [data] namespace"
-								.to_string(),
-						),
-					);
-				}
+		Some(config) => match config.load_data(&root) {
+			Ok(loaded_data) => {
+				add_doctor_check(
+					&mut checks,
+					"data_sources",
+					"Data Sources",
+					DoctorStatus::Pass,
+					format!("loaded {} namespace(s) successfully", loaded_data.len()),
+					None,
+				);
 			}
-		}
+			Err(error) => {
+				add_doctor_check(
+					&mut checks,
+					"data_sources",
+					"Data Sources",
+					DoctorStatus::Fail,
+					format!("failed to load configured data sources: {error}"),
+					Some(
+						"verify data file paths, script commands, formats, and parse validity \
+							 for each [data] namespace"
+							.to_string(),
+					),
+				);
+			}
+		},
 		None => {
 			add_doctor_check(
 				&mut checks,
