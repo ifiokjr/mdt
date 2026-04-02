@@ -1,6 +1,6 @@
 # Transformers
 
-Transformers modify provider content before it's injected into a consumer. They're specified as pipe-delimited filters on the consumer tag, letting each consumer adapt the same content for its specific context.
+Transformers modify source content before it's injected into a target. They're specified as pipe-delimited filters on the target tag, letting each target adapt the same content for its specific context.
 
 ## Syntax
 
@@ -258,7 +258,7 @@ Provider content as plain text, transformed into `///` doc comments. Use `true` 
 <!-- {/docs} -->
 ```
 
-If the provider contains:
+If the source contains:
 
 ```
 A fast HTTP client.
@@ -266,7 +266,7 @@ A fast HTTP client.
 Supports async and blocking modes.
 ```
 
-The consumer receives:
+The target receives:
 
 ```
 /// A fast HTTP client.

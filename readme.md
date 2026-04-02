@@ -1,6 +1,8 @@
 # mdt
 
-> manage **m**ark**d**own **t**emplates across your project
+**Write it once, sync it everywhere. Doc drift is dead.**
+
+Markdown templates that keep your READMEs, doc comments, and docs sites in lockstep — with data interpolation, transformers, and CI verification.
 
 <br />
 
@@ -13,6 +15,64 @@
 `mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more so your docs do not drift.
 
 <!-- {/mdtPackageDocumentation} -->
+
+<!-- {=mdtBeforeAfter} -->
+
+## The Problem
+
+You have the same install instructions in three places:
+
+**readme.md:**
+
+```markdown
+## Installation
+
+npm install my-lib
+```
+
+**src/lib.rs:**
+
+```rust
+//! ## Installation
+//!
+//! npm install my-lib
+```
+
+**docs/getting-started.md:**
+
+```markdown
+## Installation
+
+npm install my-lib
+```
+
+You update one. The others drift. CI doesn't catch it.
+
+## The Fix
+
+Define it once in a `*.t.md` template file (the "t" stands for template):
+
+```markdown
+<!-- {@install} -->
+
+npm install my-lib
+
+<!-- {/install} -->
+```
+
+Use it everywhere:
+
+```markdown
+<!-- {=install} -->
+
+(replaced automatically)
+
+<!-- {/install} -->
+```
+
+Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
+
+<!-- {/mdtBeforeAfter} -->
 
 ## Installation
 
@@ -39,77 +99,60 @@ cargo install mdt_cli
 
 <!-- {/mdtCliInstall} -->
 
-## See It in Practice
+## Quick Start
 
-- [Proof of Value](./docs/src/getting-started/proof-of-value.md) shows how this repository already syncs README content, Rust source docs, and mdBook pages from shared providers.
-- [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md) shows a before/after adoption path for moving repeated docs onto `mdt`.
+<!-- {=mdtQuickStart} -->
 
-<!-- {=mdtTemplateSyntax} -->
+### 1. Initialize
 
-### Template Syntax
-
-**Provider tag** (defines a template block in `*.t.md` definition files):
-
-```markdown
-<!-- {@blockName} -->
-
-Content to inject
-
-<!-- {/blockName} -->
+```sh
+mkdir my-project && cd my-project
+mdt init
 ```
 
-**Consumer tag** (marks where content should be injected):
+This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (config).
+
+### 2. Define a source block
+
+In `.templates/template.t.md`:
 
 ```markdown
-<!-- {=blockName} -->
+<!-- {@greeting} -->
 
-This content gets replaced
+Hello from mdt!
 
-<!-- {/blockName} -->
+<!-- {/greeting} -->
 ```
 
-**Inline tag** (provider-free interpolation using configured data):
+### 3. Use it in your README
+
+In `readme.md`:
 
 ```markdown
-Current version: <!-- {~version:"{{ package.version }}"} -->0.0.0<!-- {/version} -->
+<!-- {=greeting} -->
+<!-- {/greeting} -->
 ```
 
-```markdown
-| Artifact | Version                                                                   |
-| -------- | ------------------------------------------------------------------------- |
-| mdt_cli  | <!-- {~cliVersion:"{{ package.version }}"} -->0.0.0<!-- {/cliVersion} --> |
+### 4. Sync
+
+```sh
+mdt update
 ```
 
-**Filters and pipes:** Template values support pipe-delimited transformers:
+Every target block named `greeting` now has the same content. Run `mdt check` in CI to catch drift.
 
-```markdown
-<!-- {=block|prefix:"\n"|indent:"  "} -->
-```
+<!-- {/mdtQuickStart} -->
 
-Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
+## Learn More
 
-<!-- {/mdtTemplateSyntax} -->
-
-<!-- {=mdtCliUsage} -->
-
-### CLI Commands
-
-- `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
-- `mdt check [--path <dir>] [--verbose]` — Verify all consumer blocks are up-to-date. Exits non-zero if any are stale.
-- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all consumer blocks with latest provider content.
-- `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
-- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
-- `mdt assist <assistant> [--format text|json]` — Print an official assistant setup profile with MCP config and repo-local guidance.
-- `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
-- `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
-
-### Diagnostics Workflow
-
-- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
-- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
-- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
-
-<!-- {/mdtCliUsage} -->
+- [Template Syntax](./docs/src/reference/template-syntax.md)
+- [CLI Reference](./docs/src/reference/cli.md)
+- [Data Interpolation](./docs/src/guide/data-interpolation.md)
+- [Transformers](./docs/src/reference/transformers.md)
+- [CI Integration](./docs/src/guide/ci-integration.md)
+- [Source File Support](./docs/src/guide/source-files.md)
+- [Proof of Value](./docs/src/getting-started/proof-of-value.md)
+- [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md)
 
 ## Crates
 

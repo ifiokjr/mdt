@@ -253,7 +253,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if template_exists {
 		println!("Template file already exists: {}", template_path.display());
 	} else {
-		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
+		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a source \
 		                      block.\n\n<!-- {/greeting} -->\n";
 
 		if let Some(parent) = template_path.parent() {
@@ -270,9 +270,9 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			"# mdt configuration\n# See \
 			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
 			 Map data files to template namespaces.\n# Values from these files are available in \
-			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
-			 = \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch \
-			 = [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
+			 source blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo = \
+			 \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch = \
+			 [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
 			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
 			 [padding]\n# before = 0\n# after = 0\n";
 
@@ -280,17 +280,37 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		println!("Created mdt.toml");
 	}
 
+	let readme_path = root.join("readme.md");
+	let readme_upper_path = root.join("README.md");
+	let readme_exists = readme_path.exists() || readme_upper_path.exists();
+
+	if !readme_exists && !template_exists {
+		let sample_readme = "# My Project\n\nWelcome to my project.\n\n<!-- {=greeting} \
+		                     -->\n\nThis will be replaced by mdt.\n\n<!-- {/greeting} -->\n";
+		std::fs::write(&readme_path, sample_readme)?;
+		println!("Created readme.md with a sample target block");
+	}
+
 	if !template_exists {
 		println!();
 		println!("Next steps:");
-		println!(
-			"  1. Edit {} to define your template blocks",
-			template_path.display()
-		);
-		println!("  2. Add consumer tags in your markdown files:");
-		println!("     <!-- {{=greeting}} -->");
-		println!("     <!-- {{/greeting}} -->");
-		println!("  3. Run `mdt update` to sync content");
+		if readme_exists {
+			println!(
+				"  1. Edit {} to define your source blocks",
+				template_path.display()
+			);
+			println!("  2. Add target tags in your markdown files:");
+			println!("     <!-- {{=greeting}} -->");
+			println!("     <!-- {{/greeting}} -->");
+			println!("  3. Run `mdt update` to sync content");
+		} else {
+			println!("  1. Run `mdt update` to sync the sample content");
+			println!("  2. Open readme.md to see the result");
+			println!(
+				"  3. Edit {} to change your source blocks",
+				template_path.display()
+			);
+		}
 	}
 
 	Ok(())

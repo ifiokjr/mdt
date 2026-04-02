@@ -43,7 +43,7 @@ Install `{{ package.name }}` version {{ package.version }}:
 <!-- {/install} -->
 ```
 
-After `mdt update`, consumers of `install` will contain:
+After `mdt update`, targets of `install` will contain:
 
 ```
 Install `my-lib` version 1.2.3:
@@ -96,7 +96,7 @@ When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cac
 
 ## Inline interpolation patterns
 
-Inline blocks are useful when you need one local value from your data scope without creating a reusable provider.
+Inline blocks are useful when you need one local value from your data scope without creating a reusable source.
 
 <!-- {=mdtInlineBlocksExamples} -->
 
@@ -262,7 +262,7 @@ Template variables are rendered **before** transformers are applied. The flow is
 Provider content
   → Render {{ variables }} via minijinja
   → Apply |transformers
-  → Replace consumer content
+  → Replace target content
 ```
 
 This means transformers operate on the already-rendered content. For example, if `{{ package.name }}` renders to `my-lib`, then a `|trim` transformer trims the rendered result.

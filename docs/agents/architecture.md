@@ -10,8 +10,8 @@
 
 ## Core concepts
 
-1. Provider blocks define reusable content in `*.t.md` files.
-2. Consumer blocks reference provider content and are updated by `mdt update`.
+1. Source blocks define reusable content in `*.t.md` files.
+2. Target blocks reference source content and are updated by `mdt update`.
 3. Provider content can interpolate project data with `minijinja`.
 4. Consumers can appear in markdown files and source-code comments.
 5. Transformers modify injected content during rendering.
@@ -31,6 +31,6 @@ Markdown source
 ## Project scanning rules
 
 - Providers are recognized only in `*.t.md` files.
-- Consumer blocks are scanned in markdown files and supported source files.
+- Target blocks are scanned in markdown files and supported source files.
 - Hidden directories, `node_modules`, and `target` are skipped.
 - Subdirectories with their own `mdt.toml` become separate project scopes.

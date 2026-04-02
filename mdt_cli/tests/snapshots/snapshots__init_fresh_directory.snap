@@ -15,12 +15,11 @@ exit_code: 0
 ----- stdout -----
 Created template file: [TEMP_DIR]/.templates/template.t.md
 Created mdt.toml
+Created readme.md with a sample target block
 
 Next steps:
-  1. Edit [TEMP_DIR]/.templates/template.t.md to define your template blocks
-  2. Add consumer tags in your markdown files:
-     <!-- {=greeting} -->
-     <!-- {/greeting} -->
-  3. Run `mdt update` to sync content
+  1. Run `mdt update` to sync the sample content
+  2. Open readme.md to see the result
+  3. Edit [TEMP_DIR]/.templates/template.t.md to change your source blocks
 
 ----- stderr -----

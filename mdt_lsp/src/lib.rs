@@ -3,14 +3,14 @@
 //!
 //! ### Capabilities
 //!
-//! - **Diagnostics** — reports stale consumer blocks, missing providers (with name suggestions), duplicate providers, unclosed blocks, unknown transformers, invalid arguments, unused providers, and provider blocks in non-template files.
+//! - **Diagnostics** — reports stale target blocks, missing sources (with name suggestions), duplicate sources, unclosed blocks, unknown transformers, invalid arguments, unused sources, and source blocks in non-template files.
 //! - **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
 //! - **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
-//! - **Go to definition** — navigates from a consumer block to its provider, or from a provider to all of its consumers.
-//! - **References** — finds all provider, consumer, and inline blocks sharing the same name.
-//! - **Rename** — renames a block across all provider and consumer tags (both opening and closing) in the workspace.
-//! - **Document symbols** — lists provider, consumer, and inline blocks in the outline/symbol view.
-//! - **Code actions** — offers a quick-fix to update stale consumer blocks in place.
+//! - **Go to definition** — navigates from a target block to its provider, or from a source to all of its consumers.
+//! - **References** — finds all source, target, and inline blocks sharing the same name.
+//! - **Rename** — renames a block across all provider and target tags (both opening and closing) in the workspace.
+//! - **Document symbols** — lists source, target, and inline blocks in the outline/symbol view.
+//! - **Code actions** — offers a quick-fix to update stale target blocks in place.
 //!
 //! ### Usage
 //!

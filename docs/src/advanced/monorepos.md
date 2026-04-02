@@ -4,30 +4,30 @@ mdt supports monorepos where each package manages its own templates independentl
 
 ## How sub-project boundaries work
 
-When mdt scans a directory tree, it stops descending into any subdirectory that contains an `mdt.toml` file. That subdirectory becomes its own isolated scope with its own providers, consumers, data files, and configuration.
+When mdt scans a directory tree, it stops descending into any subdirectory that contains an `mdt.toml` file. That subdirectory becomes its own isolated scope with its own sources, targets, data files, and configuration.
 
 ```
 my-monorepo/
   mdt.toml                    # root project
   .templates/
-    template.t.md             # root providers
-  readme.md                   # root consumers
+    template.t.md             # root sources
+  readme.md                   # root targets
   packages/
     lib-a/
       mdt.toml                # lib-a is a separate project
       .templates/
-        template.t.md         # lib-a providers
-      readme.md               # lib-a consumers
+        template.t.md         # lib-a sources
+      readme.md               # lib-a targets
     lib-b/
       mdt.toml                # lib-b is a separate project
       .templates/
-        template.t.md         # lib-b providers
-      readme.md               # lib-b consumers
+        template.t.md         # lib-b sources
+      readme.md               # lib-b targets
     lib-c/
       readme.md               # NO mdt.toml — belongs to root project
 ```
 
-Running `mdt update` from the monorepo root updates consumers in `readme.md` and `packages/lib-c/readme.md`, but **not** in `packages/lib-a/` or `packages/lib-b/`. Those are separate projects.
+Running `mdt update` from the monorepo root updates targets in `readme.md` and `packages/lib-c/readme.md`, but **not** in `packages/lib-a/` or `packages/lib-b/`. Those are separate projects.
 
 To update `lib-a`, run `mdt update` from inside `packages/lib-a/`, or use the `--path` flag:
 
@@ -55,7 +55,7 @@ cargo = "Cargo.toml"
 
 ### Step 2: Create template files per package
 
-Each sub-project has its own `*.t.md` files with its own provider blocks:
+Each sub-project has its own `*.t.md` files with its own source blocks:
 
 ```
 <!-- packages/lib-a/.templates/template.t.md -->
@@ -77,7 +77,7 @@ cargo add lib-b
 <!-- {/install} -->
 ```
 
-Provider names only need to be unique **within** a project scope. Both `lib-a` and `lib-b` can have an `{@install}` provider without conflict.
+Source names only need to be unique **within** a project scope. Both `lib-a` and `lib-b` can have an `{@install}` provider without conflict.
 
 ### Step 3: Run updates per package or use a script
 
@@ -101,13 +101,13 @@ done
 
 ## Shared templates across packages
 
-Sub-project boundaries are strict. A provider in the root `.templates/template.t.md` is **not visible** to consumers inside `packages/lib-a/`. Each scope is fully isolated.
+Sub-project boundaries are strict. A source in the root `.templates/template.t.md` is **not visible** to consumers inside `packages/lib-a/`. Each scope is fully isolated.
 
 If you need shared content across packages, you have a few options:
 
 ### Option 1: Use block arguments for parameterized content
 
-Define a parameterized provider at the root level and use it for files that belong to the root scope:
+Define a parameterized source at the root level and use it for files that belong to the root scope:
 
 ```
 <!-- {@badge:"crate_name"} -->
@@ -117,15 +117,15 @@ Define a parameterized provider at the root level and use it for files that belo
 <!-- {/badge} -->
 ```
 
-For sub-projects, duplicate the provider in each sub-project's template file. This is intentional — each project is self-contained.
+For sub-projects, duplicate the source in each sub-project's template file. This is intentional — each project is self-contained.
 
-### Option 2: Duplicate providers where needed
+### Option 2: Duplicate sources where needed
 
-Copy the provider block into each sub-project's template file. While this creates duplication in template files, the consumer blocks throughout each project stay in sync with their local provider — which is mdt's primary guarantee.
+Copy the source block into each sub-project's template file. While this creates duplication in template files, the target blocks throughout each project stay in sync with their local provider — which is mdt's primary guarantee.
 
 ### Option 3: Keep shared content at the root scope
 
-If files consuming shared content don't live inside a sub-project directory, they can all reference the root-level providers. Structure your project so that shared docs live outside sub-project boundaries.
+If files consuming shared content don't live inside a sub-project directory, they can all reference the root-level sources. Structure your project so that shared docs live outside sub-project boundaries.
 
 ## CI checks in a monorepo
 

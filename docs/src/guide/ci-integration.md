@@ -1,6 +1,6 @@
 # CI Integration
 
-mdt's `check` command is designed for CI pipelines. It verifies that all consumer blocks are up to date and exits with a non-zero status code if any are stale.
+mdt's `check` command is designed for CI pipelines. It verifies that all target blocks are up to date and exits with a non-zero status code if any are stale.
 
 ## Basic CI check
 
@@ -11,7 +11,7 @@ Add a step to your CI workflow that runs `mdt check`:
   run: mdt check
 ```
 
-If any consumer blocks are out of date, the step fails and the pipeline reports which blocks need updating.
+If any target blocks are out of date, the step fails and the pipeline reports which blocks need updating.
 
 ## CI diagnostics triage
 
@@ -27,7 +27,7 @@ When `mdt check` fails in CI, add diagnostics commands so logs include root-caus
 This gives you:
 
 - Project/config resolution details (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`)
-- Provider/consumer linkage summary (orphans, missing providers, duplicates)
+- Provider/consumer linkage summary (orphans, missing sources, duplicates)
 - Cache artifact health and reuse/reparse telemetry
 - Actionable doctor hints for config/data/layout/cache issues
 
@@ -66,7 +66,7 @@ Use `--format github` to produce GitHub Actions annotation output. This adds inl
 This produces output like:
 
 ```
-::warning file=readme.md::Consumer block `install` is out of date
+::warning file=readme.md::Target block `install` is out of date
 ```
 
 GitHub renders these as yellow warning annotations directly on the affected lines in the PR diff.

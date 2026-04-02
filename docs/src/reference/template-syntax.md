@@ -4,7 +4,7 @@ All mdt tags are HTML comments. They are invisible when markdown is rendered.
 
 ## Tag types
 
-### Provider tag
+### Source tag
 
 Defines a named block of content in a template file (`*.t.md`).
 
@@ -14,11 +14,11 @@ Defines a named block of content in a template file (`*.t.md`).
 
 - Sigil: `@`
 - Only recognized in `*.t.md` files.
-- The content between the opening and closing tags becomes the provider's content.
+- The content between the opening and closing tags becomes the source's content.
 
-### Consumer tag
+### Target tag
 
-Marks where provider content should be injected.
+Marks where source content should be injected.
 
 ```
 <!-- {=blockName} -->
@@ -33,7 +33,7 @@ Marks where provider content should be injected.
 
 <!-- {=mdtInlineBlocksGuide} -->
 
-Inline blocks are useful when you need dynamic content in-place without creating a separate provider. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
+Inline blocks are useful when you need dynamic content in-place without creating a separate source. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
 
 Inline blocks render minijinja template content from the block's first argument:
 
@@ -43,7 +43,7 @@ Inline blocks render minijinja template content from the block's first argument:
 
 During `mdt update`, mdt evaluates the template argument with your configured `[data]` context, then replaces the content between the opening and closing tags.
 
-Because inline blocks are provider-free, they are ideal for one-off values that still need to stay synchronized.
+Because inline blocks are source-free, they are ideal for one-off values that still need to stay synchronized.
 
 <!-- {/mdtInlineBlocksGuide} -->
 
@@ -52,7 +52,7 @@ Because inline blocks are provider-free, they are ideal for one-off values that 
 <!-- {=mdtInlineBlocksLimits} -->
 
 - Inline blocks must include a first argument that is the template string to render.
-- Inline blocks do not resolve provider content; everything comes from the inline template argument and current data context.
+- Inline blocks do not resolve source content; everything comes from the inline template argument and current data context.
 - Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
 - In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
 - Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
@@ -101,7 +101,7 @@ When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/da
 
 ### Close tag
 
-Closes provider, consumer, and inline blocks.
+Closes source, target, and inline blocks.
 
 ```
 <!-- {/blockName} -->
@@ -176,11 +176,11 @@ This content includes the newlines above and below.
 <!-- {/block} -->
 ```
 
-The provider content here is `\nThis content includes the newlines above and below.\n\n` — note the leading newline after the opening tag and the trailing newline before the closing tag. Use the `trim` transformer on consumers if you want to strip this whitespace.
+The source content here is `\nThis content includes the newlines above and below.\n\n` — note the leading newline after the opening tag and the trailing newline before the closing tag. Use the `trim` transformer on consumers if you want to strip this whitespace.
 
 ## Template variables
 
-Inside provider blocks, minijinja template syntax is available when data files are configured:
+Inside source blocks, minijinja template syntax is available when data files are configured:
 
 ### Variable output
 

@@ -1,6 +1,6 @@
 # Source File Support
 
-mdt isn't limited to markdown files. Consumer tags work inside code comments in any language that supports `<!-- -->` HTML comments within its comment syntax.
+mdt isn't limited to markdown files. Target tags work inside code comments in any language that supports `<!-- -->` HTML comments within its comment syntax.
 
 ## How it works
 
@@ -83,7 +83,7 @@ package mylib
 
 ## Recommended: Enable `[padding]`
 
-When using consumer blocks in source files, add a `[padding]` section to your `mdt.toml`:
+When using target blocks in source files, add a `[padding]` section to your `mdt.toml`:
 
 ```toml
 [padding]
@@ -98,7 +98,7 @@ This ensures content is properly separated from the surrounding tags. The `befor
 - `1` — One blank line between tag and content
 - `2` — Two blank lines, etc.
 
-Without `[padding]`, a consumer with `trim|linePrefix:"//! ":true` could produce:
+Without `[padding]`, a target with `trim|linePrefix:"//! ":true` could produce:
 
 ```rust
 //! <!-- {=docs|trim|linePrefix:"//! ":true} -->//! Content here.<!-- {/docs}
@@ -129,9 +129,9 @@ With `before = 1, after = 1`, blank lines are added between tags and content:
 
 Source file parsing is **lenient**. If an opening tag has no matching close tag, it's silently ignored rather than producing an error. This prevents false positives when HTML comments appear in strings or other non-tag contexts.
 
-### Provider blocks in source files
+### Source blocks in source files
 
-Source files can only contain **consumer** blocks. Even if you write `{@name}` in a source file, it won't be recognized as a provider. Providers must be in `*.t.md` template files.
+Source files can only contain **consumer** blocks. Even if you write `{@name}` in a source file, it won't be recognized as a source. Providers must be in `*.t.md` template files.
 
 ## Real-world example
 
@@ -173,4 +173,4 @@ export function createClient() {
 }
 ```
 
-Running `mdt update` fills both consumers. The readme gets the content as-is. The TypeScript file gets the content trimmed and indented with `*` for JSDoc formatting.
+Running `mdt update` fills both targets. The readme gets the content as-is. The TypeScript file gets the content trimmed and indented with `*` for JSDoc formatting.

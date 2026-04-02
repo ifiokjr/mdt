@@ -670,13 +670,13 @@ impl BlockCreator {
 }
 
 /// <!-- {=mdtBlockDocs|trim|linePrefix:"/// ":true} -->
-/// A parsed template block representing either a provider or consumer.
+/// A parsed template block representing either a source or consumer.
 ///
-/// Provider blocks are defined in `*.t.md` template files using `{@name}...{/name}` tag syntax (wrapped in HTML comments). They supply content that gets distributed to matching consumers.
+/// Source blocks are defined in `*.t.md` template files using `{@name}...{/name}` tag syntax (wrapped in HTML comments). They supply content that gets distributed to matching consumers.
 ///
-/// Consumer blocks appear in any scanned file using `{=name}...{/name}` tag syntax (wrapped in HTML comments). Their content is replaced with the matching provider's content (after applying any transformers) when `mdt update` is run.
+/// Target blocks appear in any scanned file using `{=name}...{/name}` tag syntax (wrapped in HTML comments). Their content is replaced with the matching source's content (after applying any transformers) when `mdt update` is run.
 ///
-/// Each block tracks its [`name`](Block::name) for provider-consumer matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
+/// Each block tracks its [`name`](Block::name) for source-target matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
 /// <!-- {/mdtBlockDocs} -->
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
@@ -698,9 +698,9 @@ pub struct Block {
 }
 
 /// <!-- {=mdtTransformerDocs|trim|linePrefix:"/// ":true} -->
-/// A content transformer applied to provider content during injection into a consumer block.
+/// A content transformer applied to source content during injection into a target block.
 ///
-/// Transformers are specified using pipe-delimited syntax after the block name in a consumer tag:
+/// Transformers are specified using pipe-delimited syntax after the block name in a target tag:
 ///
 /// ```markdown
 /// <!-- {=blockName|trim|indent:"  "|linePrefix:"/// "} -->

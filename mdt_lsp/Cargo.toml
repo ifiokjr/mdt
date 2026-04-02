@@ -10,7 +10,7 @@ license = { workspace = true }
 readme = "readme.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "LSP server for mdt (manage markdown templates)"
+description = "LSP server for mdt — editor diagnostics, completions, and code actions for markdown templates"
 
 [dependencies]
 mdt_core = { workspace = true }
