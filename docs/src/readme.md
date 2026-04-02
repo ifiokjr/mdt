@@ -27,27 +27,27 @@ You have the same install instructions in three places:
 
 **readme.md:**
 
-~~~markdown
+```markdown
 ## Installation
 
 npm install my-lib
-~~~
+```
 
 **src/lib.rs:**
 
-~~~rust
+```rust
 //! ## Installation
 //!
 //! npm install my-lib
-~~~
+```
 
 **docs/getting-started.md:**
 
-~~~markdown
+```markdown
 ## Installation
 
 npm install my-lib
-~~~
+```
 
 You update one. The others drift. CI doesn't catch it.
 
@@ -55,24 +55,25 @@ You update one. The others drift. CI doesn't catch it.
 
 Define it once in a `*.t.md` template file (the "t" stands for template):
 
-~~~markdown
+```markdown
 <!-- {@install} -->
 
 npm install my-lib
 
 <!-- {/install} -->
-~~~
+```
 
 Use it everywhere:
 
-~~~markdown
+```markdown
 <!-- {=install} -->
-(replaced automatically)
-<!-- {/install} -->
-~~~
 
-Run `mdt update` — all three files are in sync.
-Run `mdt check` in CI — drift is caught before merge.
+(replaced automatically)
+
+<!-- {/install} -->
+```
+
+Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
 
 <!-- {/mdtBeforeAfter} -->
 

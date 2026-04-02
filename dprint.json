@@ -48,6 +48,7 @@
 		".bin/",
 		".local-cache/",
 		"**/pkg/",
+		"*.t.md",
 		"**/*.t.md"
 	],
 	"plugins": [

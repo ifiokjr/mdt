@@ -24,27 +24,27 @@ You have the same install instructions in three places:
 
 **readme.md:**
 
-~~~markdown
+```markdown
 ## Installation
 
 npm install my-lib
-~~~
+```
 
 **src/lib.rs:**
 
-~~~rust
+```rust
 //! ## Installation
 //!
 //! npm install my-lib
-~~~
+```
 
 **docs/getting-started.md:**
 
-~~~markdown
+```markdown
 ## Installation
 
 npm install my-lib
-~~~
+```
 
 You update one. The others drift. CI doesn't catch it.
 
@@ -52,24 +52,25 @@ You update one. The others drift. CI doesn't catch it.
 
 Define it once in a `*.t.md` template file (the "t" stands for template):
 
-~~~markdown
+```markdown
 <!-- {@install} -->
 
 npm install my-lib
 
 <!-- {/install} -->
-~~~
+```
 
 Use it everywhere:
 
-~~~markdown
+```markdown
 <!-- {=install} -->
-(replaced automatically)
-<!-- {/install} -->
-~~~
 
-Run `mdt update` — all three files are in sync.
-Run `mdt check` in CI — drift is caught before merge.
+(replaced automatically)
+
+<!-- {/install} -->
+```
+
+Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
 
 <!-- {/mdtBeforeAfter} -->
 
@@ -104,10 +105,10 @@ cargo install mdt_cli
 
 ### 1. Initialize
 
-~~~sh
+```sh
 mkdir my-project && cd my-project
 mdt init
-~~~
+```
 
 This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (config).
 
@@ -115,28 +116,28 @@ This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (con
 
 In `.templates/template.t.md`:
 
-~~~markdown
+```markdown
 <!-- {@greeting} -->
 
 Hello from mdt!
 
 <!-- {/greeting} -->
-~~~
+```
 
 ### 3. Use it in your README
 
 In `readme.md`:
 
-~~~markdown
+```markdown
 <!-- {=greeting} -->
 <!-- {/greeting} -->
-~~~
+```
 
 ### 4. Sync
 
-~~~sh
+```sh
 mdt update
-~~~
+```
 
 Every target block named `greeting` now has the same content. Run `mdt check` in CI to catch drift.
 
