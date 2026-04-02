@@ -40,6 +40,30 @@ Regardless of assistant, keep guidance like this close to your project instructi
 - Use `mdt_preview` to inspect source and target output before syncing changes.
 - Run `mdt_check` after documentation edits and `mdt_update` when target blocks are stale.
 
+## Agent skill package
+
+For [Pi](https://github.com/badlogic/pi) users, install the official mdt skill package to give your agent full knowledge of template syntax, MCP tools, CLI workflows, and configuration:
+
+```sh
+pi install npm:@ifi/mdt-skills
+```
+
+Or try it for a single session:
+
+```sh
+pi -e npm:@ifi/mdt-skills
+```
+
+The skill package teaches agents how to create and manage provider/consumer blocks, apply transformers for source-file doc comments, use MCP tools with best practices, and configure `mdt.toml`.
+
+For project-level adoption, add it to `.pi/settings.json` so every contributor gets the skill automatically:
+
+```json
+{
+	"packages": ["npm:@ifi/mdt-skills"]
+}
+```
+
 ## Supported first-slice profiles
 
 - `generic`

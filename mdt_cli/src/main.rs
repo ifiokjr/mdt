@@ -2022,6 +2022,9 @@ fn assistant_setup_payload(assistant: Assistant) -> serde_json::Value {
 				"Add the repo-local guidance to your agent instructions so Pi follows the same \
 				 reuse-and-check workflow."
 					.to_string(),
+				"Install the official mdt skill for Pi: `pi install npm:@ifi/mdt-skills` — it \
+				 teaches your agent template syntax, MCP tools, and CLI workflows."
+					.to_string(),
 			]
 		}
 	};

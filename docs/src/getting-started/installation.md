@@ -53,6 +53,16 @@ To use the core engine in your own Rust project:
 mdt_core = "0.7.0"
 ```
 
+## Agent skill package
+
+If you use [Pi](https://github.com/badlogic/pi) or another agent harness that supports the [Agent Skills standard](https://agentskills.io), install the official mdt skill package:
+
+```sh
+pi install npm:@ifi/mdt-skills
+```
+
+This teaches your coding agent how to work with mdt template syntax, MCP tools, CLI commands, transformers, and configuration. See [Assistant Setup](./assistant-setup.md) for more details.
+
 ## Verify installation
 
 ```sh

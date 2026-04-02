@@ -154,6 +154,16 @@ Every target block named `greeting` now has the same content. Run `mdt check` in
 - [Proof of Value](./docs/src/getting-started/proof-of-value.md)
 - [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md)
 
+## Agent Skill Package
+
+If you use a coding agent that supports the [Agent Skills standard](https://agentskills.io) (like [Pi](https://github.com/badlogic/pi)), install the official mdt skill:
+
+```sh
+pi install npm:@ifi/mdt-skills
+```
+
+The [`@ifi/mdt-skills`](https://www.npmjs.com/package/@ifi/mdt-skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration — so it can fully manage your project's documentation templates.
+
 ## Crates
 
 | Crate                    | Description                                                                    |
