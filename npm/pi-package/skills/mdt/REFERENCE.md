@@ -16,7 +16,9 @@ All mdt tags live inside HTML comments so they are invisible in rendered markdow
 
 ```markdown
 <!-- {@greeting} -->
+
 Hello from mdt!
+
 <!-- {/greeting} -->
 ```
 
@@ -24,7 +26,9 @@ Hello from mdt!
 
 ```markdown
 <!-- {=greeting} -->
+
 Replaced on `mdt update`.
+
 <!-- {/greeting} -->
 ```
 
@@ -44,21 +48,21 @@ Version: <!-- {~ver:"{{ pkg.version }}"} -->0.0.0<!-- {/ver} -->
 
 Transformers are pipe-delimited filters applied left-to-right on the consumer tag. They modify provider content before injection.
 
-| Transformer | Arguments | Description |
-|-------------|-----------|-------------|
-| `trim` | none | Strip whitespace from both ends |
-| `trimStart` | none | Strip leading whitespace |
-| `trimEnd` | none | Strip trailing whitespace |
-| `indent` | `string` [, `bool`] | Prepend string to each non-empty line. Pass `true` to include empty lines |
-| `prefix` | `string` | Prepend string to entire content |
-| `suffix` | `string` | Append string to entire content |
-| `linePrefix` | `string` [, `bool`] | Prepend string per line. Pass `true` to include empty lines |
-| `lineSuffix` | `string` [, `bool`] | Append string per line. Pass `true` to include empty lines |
-| `wrap` | `string` | Wrap content on both sides with the string |
-| `code` | none | Wrap in inline backticks |
-| `codeBlock` | [`string`] | Wrap in fenced code block with optional language |
-| `replace` | `search`, `replacement` | Replace all occurrences |
-| `if` | `condition` | Include content only when condition is truthy |
+| Transformer  | Arguments               | Description                                                               |
+| ------------ | ----------------------- | ------------------------------------------------------------------------- |
+| `trim`       | none                    | Strip whitespace from both ends                                           |
+| `trimStart`  | none                    | Strip leading whitespace                                                  |
+| `trimEnd`    | none                    | Strip trailing whitespace                                                 |
+| `indent`     | `string` [, `bool`]     | Prepend string to each non-empty line. Pass `true` to include empty lines |
+| `prefix`     | `string`                | Prepend string to entire content                                          |
+| `suffix`     | `string`                | Append string to entire content                                           |
+| `linePrefix` | `string` [, `bool`]     | Prepend string per line. Pass `true` to include empty lines               |
+| `lineSuffix` | `string` [, `bool`]     | Append string per line. Pass `true` to include empty lines                |
+| `wrap`       | `string`                | Wrap content on both sides with the string                                |
+| `code`       | none                    | Wrap in inline backticks                                                  |
+| `codeBlock`  | [`string`]              | Wrap in fenced code block with optional language                          |
+| `replace`    | `search`, `replacement` | Replace all occurrences                                                   |
+| `if`         | `condition`             | Include content only when condition is truthy                             |
 
 All transformers accept both camelCase and snake_case: `linePrefix` / `line_prefix`, `trimStart` / `trim_start`, etc.
 
@@ -122,15 +126,19 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 
 ### Usage in providers
 
-```markdown
+````markdown
 <!-- {@install} -->
+
 Install `{{ pkg.name }}` version {{ pkg.version }}:
+
 ```sh
 npm install {{ pkg.name }}@{{ pkg.version }}
 ```
-<!-- {/install} -->
-```
+````
 
+<!-- {/install} -->
+
+```
 ### Supported formats
 
 | Format | Extensions |
@@ -143,14 +151,11 @@ npm install {{ pkg.name }}@{{ pkg.version }}
 | Text | `.txt` (raw string) |
 
 ### Template features (minijinja)
-
-```
-{{ namespace.key }}                    — Variable
-{{ namespace.key | upper }}            — Built-in filter
-{% if pkg.private %}...{% endif %}     — Conditional
-{% for f in config.features %}...{% endfor %}  — Loop
 ```
 
+{{ namespace.key }} — Variable {{ namespace.key | upper }} — Built-in filter {% if pkg.private %}...{% endif %} — Conditional {% for f in config.features %}...{% endfor %} — Loop
+
+````
 Undefined variables render as empty strings. Template rendering happens **before** transformers are applied.
 
 ### Script data sources
@@ -158,7 +163,7 @@ Undefined variables render as empty strings. Template rendering happens **before
 ```toml
 [data]
 release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
-```
+````
 
 - `command` runs from the project root.
 - `watch` files control cache invalidation.
@@ -175,9 +180,9 @@ Install version <!-- {~v:"{{ pkg.version }}"} -->0.0.0<!-- {/v} --> today.
 In tables:
 
 ```markdown
-| Package | Version |
-|---------|---------|
-| mdt | <!-- {~ver:"{{ pkg.version }}"} -->0.0.0<!-- {/ver} --> |
+| Package | Version                                                 |
+| ------- | ------------------------------------------------------- |
+| mdt     | <!-- {~ver:"{{ pkg.version }}"} -->0.0.0<!-- {/ver} --> |
 ```
 
 With transformers:
@@ -199,13 +204,13 @@ disable_gitignore = false
 package = "package.json"
 
 [padding]
-before = 0   # 0 = next line, 1 = one blank line, false = inline
+before = 0 # 0 = next line, 1 = one blank line, false = inline
 after = 0
 
 [exclude]
 patterns = ["vendor/", "dist/"]
 blocks = ["draft-section"]
-markdown_codeblocks = true   # or "ignore" or ["ignore", "example"]
+markdown_codeblocks = true # or "ignore" or ["ignore", "example"]
 
 [include]
 patterns = ["src/**", "docs/**"]
@@ -230,18 +235,18 @@ A directory with its own `mdt.toml` is treated as a separate mdt project. The pa
 
 Consumer tags work inside code comments in any supported language.
 
-| Language | Extensions |
-|----------|-----------|
-| Rust | `.rs` |
-| TypeScript | `.ts`, `.tsx` |
-| JavaScript | `.js`, `.jsx` |
-| Python | `.py` |
-| Go | `.go` |
-| Java | `.java` |
-| Kotlin | `.kt` |
-| Swift | `.swift` |
-| C/C++ | `.c`, `.cpp`, `.h` |
-| C# | `.cs` |
+| Language   | Extensions         |
+| ---------- | ------------------ |
+| Rust       | `.rs`              |
+| TypeScript | `.ts`, `.tsx`      |
+| JavaScript | `.js`, `.jsx`      |
+| Python     | `.py`              |
+| Go         | `.go`              |
+| Java       | `.java`            |
+| Kotlin     | `.kt`              |
+| Swift      | `.swift`           |
+| C/C++      | `.c`, `.cpp`, `.h` |
+| C#         | `.cs`              |
 
 **Important:**
 
@@ -251,17 +256,17 @@ Consumer tags work inside code comments in any supported language.
 
 ## CLI Commands
 
-| Command | Purpose |
-|---------|---------|
-| `mdt init` | Create starter `.templates/template.t.md` and `mdt.toml` |
-| `mdt check [--diff] [--watch]` | Verify consumers are current. Non-zero exit on stale. |
-| `mdt update [--dry-run] [--watch]` | Sync all consumers with provider content |
-| `mdt list` | List all providers and consumers with status |
-| `mdt info [--format json]` | Project diagnostics and cache telemetry |
-| `mdt doctor [--format json]` | Health checks with actionable hints |
-| `mdt assist <assistant>` | Print MCP config and setup guidance |
-| `mdt lsp` | Start the Language Server Protocol server |
-| `mdt mcp` | Start the Model Context Protocol server |
+| Command                            | Purpose                                                  |
+| ---------------------------------- | -------------------------------------------------------- |
+| `mdt init`                         | Create starter `.templates/template.t.md` and `mdt.toml` |
+| `mdt check [--diff] [--watch]`     | Verify consumers are current. Non-zero exit on stale.    |
+| `mdt update [--dry-run] [--watch]` | Sync all consumers with provider content                 |
+| `mdt list`                         | List all providers and consumers with status             |
+| `mdt info [--format json]`         | Project diagnostics and cache telemetry                  |
+| `mdt doctor [--format json]`       | Health checks with actionable hints                      |
+| `mdt assist <assistant>`           | Print MCP config and setup guidance                      |
+| `mdt lsp`                          | Start the Language Server Protocol server                |
+| `mdt mcp`                          | Start the Model Context Protocol server                  |
 
 ### Common flags
 
@@ -273,15 +278,15 @@ Consumer tags work inside code comments in any supported language.
 
 The MCP server (`mdt mcp`) exposes these tools to AI assistants:
 
-| Tool | Description |
-|------|-------------|
-| `mdt_init` | Initialize a new mdt project |
-| `mdt_check` | Verify all consumer blocks are up-to-date (returns structured JSON) |
-| `mdt_update` | Update all consumer blocks (supports `dry_run`) |
-| `mdt_list` | List all providers and consumers with file locations |
-| `mdt_find_reuse` | Find similar providers and reuse opportunities |
-| `mdt_get_block` | Get a specific block's content by name |
-| `mdt_preview` | Preview rendered provider + consumer output with transformers |
+| Tool             | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| `mdt_init`       | Initialize a new mdt project                                        |
+| `mdt_check`      | Verify all consumer blocks are up-to-date (returns structured JSON) |
+| `mdt_update`     | Update all consumer blocks (supports `dry_run`)                     |
+| `mdt_list`       | List all providers and consumers with file locations                |
+| `mdt_find_reuse` | Find similar providers and reuse opportunities                      |
+| `mdt_get_block`  | Get a specific block's content by name                              |
+| `mdt_preview`    | Preview rendered provider + consumer output with transformers       |
 
 ### Agent best practices
 
@@ -294,14 +299,14 @@ The MCP server (`mdt mcp`) exposes these tools to AI assistants:
 
 ## File Conventions
 
-| Pattern | Role |
-|---------|------|
-| `*.t.md` | Template files — only these contain provider blocks |
-| `*.md`, `*.mdx`, `*.markdown` | Markdown files — scanned for consumer and inline blocks |
-| `*.rs`, `*.ts`, `*.py`, etc. | Source files — scanned for consumer and inline blocks in comments |
-| `mdt.toml` / `.mdt.toml` / `.config/mdt.toml` | Configuration file |
-| `.mdt/cache/` | Cache directory (auto-managed) |
-| `.templates/` | Canonical template directory |
+| Pattern                                       | Role                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| `*.t.md`                                      | Template files — only these contain provider blocks               |
+| `*.md`, `*.mdx`, `*.markdown`                 | Markdown files — scanned for consumer and inline blocks           |
+| `*.rs`, `*.ts`, `*.py`, etc.                  | Source files — scanned for consumer and inline blocks in comments |
+| `mdt.toml` / `.mdt.toml` / `.config/mdt.toml` | Configuration file                                                |
+| `.mdt/cache/`                                 | Cache directory (auto-managed)                                    |
+| `.templates/`                                 | Canonical template directory                                      |
 
 ## Skipped by default
 

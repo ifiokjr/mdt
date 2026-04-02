@@ -60,7 +60,7 @@ For project-level adoption, add it to `.pi/settings.json` so every contributor g
 
 ```json
 {
-  "packages": ["npm:@ifi/mdt-skills"]
+	"packages": ["npm:@ifi/mdt-skills"]
 }
 ```
 

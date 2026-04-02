@@ -6,8 +6,8 @@ import {
 	copyFileSync,
 	existsSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";

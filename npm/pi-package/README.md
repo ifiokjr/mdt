@@ -32,7 +32,7 @@ Add to your `.pi/settings.json`:
 
 ```json
 {
-  "packages": ["npm:@ifi/mdt-skills"]
+	"packages": ["npm:@ifi/mdt-skills"]
 }
 ```
 
@@ -45,15 +45,15 @@ Then any contributor running `pi` in the project will automatically get the skil
 
 ## What the skill covers
 
-| Topic | Description |
-|-------|-------------|
-| Template syntax | Provider (`{@}`), consumer (`{=}`), inline (`{~}`), close (`{/}`) tags |
-| Transformers | `trim`, `indent`, `linePrefix`, `codeBlock`, `replace`, `if`, and more |
-| Data interpolation | Pull values from JSON, TOML, YAML, KDL, INI, or script output |
-| Source file support | Consumer blocks in `.rs`, `.ts`, `.py`, `.go`, `.java`, etc. |
-| MCP tools | Full reference for all 7 MCP server tools with best practices |
-| Configuration | `mdt.toml` sections: `[data]`, `[padding]`, `[exclude]`, `[templates]` |
-| CLI commands | `init`, `check`, `update`, `list`, `info`, `doctor`, `assist`, `lsp`, `mcp` |
+| Topic               | Description                                                                 |
+| ------------------- | --------------------------------------------------------------------------- |
+| Template syntax     | Provider (`{@}`), consumer (`{=}`), inline (`{~}`), close (`{/}`) tags      |
+| Transformers        | `trim`, `indent`, `linePrefix`, `codeBlock`, `replace`, `if`, and more      |
+| Data interpolation  | Pull values from JSON, TOML, YAML, KDL, INI, or script output               |
+| Source file support | Consumer blocks in `.rs`, `.ts`, `.py`, `.go`, `.java`, etc.                |
+| MCP tools           | Full reference for all 7 MCP server tools with best practices               |
+| Configuration       | `mdt.toml` sections: `[data]`, `[padding]`, `[exclude]`, `[templates]`      |
+| CLI commands        | `init`, `check`, `update`, `list`, `info`, `doctor`, `assist`, `lsp`, `mcp` |
 
 ## Links
 

@@ -26,14 +26,18 @@ mdt list
 1. **Define once** — Create provider blocks in `*.t.md` files (canonical location: `.templates/`):
    ```markdown
    <!-- {@blockName} -->
+
    Content defined once.
+
    <!-- {/blockName} -->
    ```
 
 2. **Reuse everywhere** — Add consumer blocks in markdown or source files:
    ```markdown
    <!-- {=blockName} -->
+
    Replaced on update.
+
    <!-- {/blockName} -->
    ```
 
@@ -45,15 +49,15 @@ mdt list
 
 When using the MCP server, **always call `mdt_find_reuse` before creating a new provider**:
 
-| Tool | Purpose |
-|------|---------|
+| Tool             | Purpose                                                     |
+| ---------------- | ----------------------------------------------------------- |
 | `mdt_find_reuse` | Find similar providers and reuse opportunities — call first |
-| `mdt_list` | List all providers and consumers |
-| `mdt_check` | Verify consumers are up-to-date |
-| `mdt_update` | Sync all consumers |
-| `mdt_preview` | Preview rendered output before committing |
-| `mdt_get_block` | Get a specific block's content |
-| `mdt_init` | Initialize a new mdt project |
+| `mdt_list`       | List all providers and consumers                            |
+| `mdt_check`      | Verify consumers are up-to-date                             |
+| `mdt_update`     | Sync all consumers                                          |
+| `mdt_preview`    | Preview rendered output before committing                   |
+| `mdt_get_block`  | Get a specific block's content                              |
+| `mdt_init`       | Initialize a new mdt project                                |
 
 ## Key Rules
 
