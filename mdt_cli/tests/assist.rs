@@ -41,11 +41,16 @@ fn assist_json_prints_machine_readable_profile() -> AnyEmptyResult {
 			.as_array()
 			.is_some_and(|items| !items.is_empty())
 	);
-	assert!(
-		json["notes"]
-			.as_array()
-			.is_some_and(|items| !items.is_empty())
-	);
+	let notes = json["notes"].as_array().unwrap_or_else(|| {
+		panic!("expected notes to be an array")
+	});
+	assert!(!notes.is_empty());
+
+	// Pi-specific notes should mention the skill package
+	let skill_note = notes
+		.iter()
+		.any(|note| note.as_str().is_some_and(|s| s.contains("@ifi/mdt-skills")));
+	assert!(skill_note, "Pi notes should mention @ifi/mdt-skills");
 
 	Ok(())
 }

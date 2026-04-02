@@ -111,6 +111,16 @@ Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suf
 
 <!-- {/mdtCliUsage} -->
 
+## Agent Skill Package
+
+If you use a coding agent that supports the [Agent Skills standard](https://agentskills.io) (like [Pi](https://github.com/badlogic/pi)), install the official mdt skill:
+
+```sh
+pi install npm:@ifi/mdt-skills
+```
+
+The [`@ifi/mdt-skills`](https://www.npmjs.com/package/@ifi/mdt-skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration — so it can fully manage your project's documentation templates.
+
 ## Crates
 
 | Crate                    | Description                                                                    |

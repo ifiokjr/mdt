@@ -6,6 +6,7 @@ import {
 	copyFileSync,
 	existsSync,
 	mkdirSync,
+	readFileSync,
 	readdirSync,
 	writeFileSync,
 } from "node:fs";
@@ -228,6 +229,38 @@ function createPlatformPackage(
 	writeJson(join(packageDir, "package.json"), packageJson);
 }
 
+function copyDirRecursive(src, dest) {
+	ensureDirectory(dest);
+	const entries = readdirSync(src, { withFileTypes: true });
+	for (const entry of entries) {
+		const srcPath = join(src, entry.name);
+		const destPath = join(dest, entry.name);
+		if (entry.isDirectory()) {
+			copyDirRecursive(srcPath, destPath);
+		} else {
+			copyFileSync(srcPath, destPath);
+		}
+	}
+}
+
+function createSkillsPackage({ outDir, version }) {
+	const sourceDir = join(repoRoot, "npm/pi-package");
+	const packageDir = join(outDir, "skills");
+	ensureDirectory(packageDir);
+
+	// Copy skills directory
+	copyDirRecursive(join(sourceDir, "skills"), join(packageDir, "skills"));
+	copyFileSync(join(sourceDir, "README.md"), join(packageDir, "README.md"));
+	copyFileSync(join(repoRoot, "license"), join(packageDir, "LICENSE"));
+
+	// Read source package.json and set version
+	const sourcePkg = JSON.parse(
+		readFileSync(join(sourceDir, "package.json"), "utf8"),
+	);
+	sourcePkg.version = version;
+	writeJson(join(packageDir, "package.json"), sourcePkg);
+}
+
 function createRootPackage({ outDir, version }) {
 	const packageDir = join(outDir, "root");
 	const binDir = join(packageDir, "bin");
@@ -287,10 +320,12 @@ function main() {
 	for (const spec of platforms) {
 		createPlatformPackage({ outDir, spec, version, releaseTag, assetsDir });
 	}
+	createSkillsPackage({ outDir, version });
 	createRootPackage({ outDir, version });
 
 	const summary = {
 		platformPackages: platforms.map((spec) => spec.packageName),
+		skillsPackage: "@ifi/mdt-skills",
 		rootPackage: "@ifi/mdt",
 		version,
 	};

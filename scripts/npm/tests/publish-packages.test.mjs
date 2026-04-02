@@ -57,6 +57,7 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 	const tempRoot = makeTempDir("happy");
 	const packagesDir = join(tempRoot, "packages");
 	const platformDir = join(packagesDir, "platform");
+	const skillsDir = join(packagesDir, "skills");
 	const rootDir = join(packagesDir, "root");
 	const publishLogPath = join(tempRoot, "publish.log");
 	const fakeBinDir = join(tempRoot, "bin");
@@ -72,6 +73,7 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 			"@ifi/mdt-linux-x64-gnu",
 			"1.2.3",
 		);
+		createPackage(skillsDir, "@ifi/mdt-skills", "1.2.3");
 		createPackage(rootDir, "@ifi/mdt", "1.2.3");
 		createFakeNpm(fakeBinDir, publishLogPath);
 
@@ -91,18 +93,20 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
 		assert.match(result.stdout, /Skipping @ifi\/mdt-linux-x64-gnu@1.2.3/);
 		assert.match(result.stdout, /Publishing @ifi\/mdt-darwin-arm64@1.2.3/);
+		assert.match(result.stdout, /Publishing @ifi\/mdt-skills@1.2.3/);
 		assert.match(result.stdout, /Publishing @ifi\/mdt@1.2.3/);
 
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-		assert.equal(publishedDirs.length, 2);
+		assert.equal(publishedDirs.length, 3);
 		assert.match(
 			publishedDirs[0],
 			/packages\/platform\/@ifi__mdt-darwin-arm64$/,
 		);
-		assert.match(publishedDirs[1], /packages\/root$/);
+		assert.match(publishedDirs[1], /packages\/skills$/);
+		assert.match(publishedDirs[2], /packages\/root$/);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}

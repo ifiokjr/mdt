@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 function parseArgs(argv) {
@@ -78,6 +78,13 @@ function main() {
 	for (const packageDir of platformPackages) {
 		publishPackage(packageDir);
 	}
+
+	// Publish the skills package (independent of platform binaries).
+	const skillsDir = join(packagesDir, "skills");
+	if (existsSync(join(skillsDir, "package.json"))) {
+		publishPackage(skillsDir);
+	}
+
 	publishPackage(join(packagesDir, "root"));
 }
 

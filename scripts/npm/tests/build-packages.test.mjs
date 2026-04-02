@@ -126,6 +126,40 @@ test("build-packages generates root and platform npm packages from release archi
 		assert.deepEqual(linuxPackage.os, ["linux"]);
 		assert.deepEqual(linuxPackage.cpu, ["x64"]);
 		assert.deepEqual(linuxPackage.libc, ["glibc"]);
+
+		// Skills package assertions
+		assert.ok(
+			existsSync(join(outDir, "skills", "skills", "mdt", "SKILL.md")),
+			"skills package should contain skills/mdt/SKILL.md",
+		);
+		assert.ok(
+			existsSync(join(outDir, "skills", "skills", "mdt", "REFERENCE.md")),
+			"skills package should contain skills/mdt/REFERENCE.md",
+		);
+		assert.ok(
+			existsSync(join(outDir, "skills", "README.md")),
+			"skills package should contain README.md",
+		);
+		assert.ok(
+			existsSync(join(outDir, "skills", "LICENSE")),
+			"skills package should contain LICENSE",
+		);
+
+		const skillsPackage = JSON.parse(
+			readFileSync(join(outDir, "skills", "package.json"), "utf8"),
+		);
+		assert.equal(skillsPackage.name, "@ifi/mdt-skills");
+		assert.equal(skillsPackage.version, "1.2.3");
+		assert.ok(
+			skillsPackage.keywords.includes("pi-package"),
+			"skills package should have pi-package keyword",
+		);
+
+		// Summary should include skills package
+		const summary = JSON.parse(
+			readFileSync(join(outDir, "summary.json"), "utf8"),
+		);
+		assert.equal(summary.skillsPackage, "@ifi/mdt-skills");
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
