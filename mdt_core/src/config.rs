@@ -129,7 +129,7 @@ pub struct ScriptDataSource {
 /// after = 1
 ///
 /// [[formatters]]
-/// command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+/// command = "dprint fmt --stdin \"{{ filePath }}\""
 /// patterns = ["**"]
 ///
 /// disable_gitignore = false
