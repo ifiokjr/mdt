@@ -90,6 +90,9 @@ pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
 # `[[formatters]]` makes `mdt update` and `mdt check` converge with your
 # formatter's canonical output.
 #
+# This is the recommended fix when `mdt update`, your formatter, and
+# `mdt check` would otherwise bounce back and forth in CI.
+#
 # Formatter `command` values are rendered with minijinja before execution.
 # Available variables:
 # - `{{ filePath }}`         -> absolute path to the file being formatted

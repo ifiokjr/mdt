@@ -200,7 +200,7 @@ old
 
 #[test]
 fn resolve_root_with_some_path() {
-	let result = resolve_root(Some(std::path::Path::new("/tmp/test_project")));
+	let result = resolve_root(Some(Path::new("/tmp/test_project")));
 	assert_eq!(result, PathBuf::from("/tmp/test_project"));
 }
 
@@ -213,38 +213,36 @@ fn resolve_root_with_none_falls_back_to_cwd() {
 
 #[test]
 fn relative_display_path_inside_root() {
-	let root = std::path::Path::new("/home/user/project");
-	let full = std::path::Path::new("/home/user/project/src/main.rs");
+	let root = Path::new("/home/user/project");
+	let full = Path::new("/home/user/project/src/main.rs");
 	assert_eq!(relative_display_path(full, root), "src/main.rs");
 }
 
 #[test]
 fn relative_display_path_outside_root_returns_full_path() {
-	let root = std::path::Path::new("/home/user/project");
-	let full = std::path::Path::new("/other/path/file.md");
+	let root = Path::new("/home/user/project");
+	let full = Path::new("/other/path/file.md");
 	assert_eq!(relative_display_path(full, root), "/other/path/file.md");
 }
 
 #[test]
 fn relative_display_path_same_as_root() {
-	let root = std::path::Path::new("/home/user/project");
-	let full = std::path::Path::new("/home/user/project");
+	let root = Path::new("/home/user/project");
+	let full = Path::new("/home/user/project");
 	assert_eq!(relative_display_path(full, root), "");
 }
 
 #[test]
 fn is_markdown_path_matches_supported_extensions() {
-	assert!(is_markdown_path(std::path::Path::new("/tmp/readme.md")));
-	assert!(is_markdown_path(std::path::Path::new("/tmp/page.mdx")));
-	assert!(is_markdown_path(std::path::Path::new(
-		"/tmp/guide.markdown"
-	)));
+	assert!(is_markdown_path(Path::new("/tmp/readme.md")));
+	assert!(is_markdown_path(Path::new("/tmp/page.mdx")));
+	assert!(is_markdown_path(Path::new("/tmp/guide.markdown")));
 }
 
 #[test]
 fn is_markdown_path_rejects_non_markdown_extensions() {
-	assert!(!is_markdown_path(std::path::Path::new("/tmp/main.rs")));
-	assert!(!is_markdown_path(std::path::Path::new("/tmp/readme")));
+	assert!(!is_markdown_path(Path::new("/tmp/main.rs")));
+	assert!(!is_markdown_path(Path::new("/tmp/readme")));
 }
 
 #[test]
@@ -1167,10 +1165,10 @@ fn validate_project_errors_on_missing_provider() -> MdtResult<()> {
 
 #[test]
 fn is_template_file_correct() {
-	assert!(is_template_file(std::path::Path::new("template.t.md")));
-	assert!(is_template_file(std::path::Path::new("docs/api.t.md")));
-	assert!(!is_template_file(std::path::Path::new("readme.md")));
-	assert!(!is_template_file(std::path::Path::new("template.md")));
+	assert!(is_template_file(Path::new("template.t.md")));
+	assert!(is_template_file(Path::new("docs/api.t.md")));
+	assert!(!is_template_file(Path::new("readme.md")));
+	assert!(!is_template_file(Path::new("template.md")));
 }
 
 #[test]
@@ -5078,15 +5076,13 @@ fn point_advance_display_impl() {
 
 #[test]
 fn is_template_file_edge_cases() {
-	assert!(is_template_file(std::path::Path::new("a.t.md")));
-	assert!(is_template_file(std::path::Path::new(
-		"/long/path/to/file.t.md"
-	)));
+	assert!(is_template_file(Path::new("a.t.md")));
+	assert!(is_template_file(Path::new("/long/path/to/file.t.md")));
 	// ".t.md" is a valid template file name (it does end with ".t.md")
-	assert!(is_template_file(std::path::Path::new(".t.md")));
-	assert!(!is_template_file(std::path::Path::new("t.md")));
-	assert!(!is_template_file(std::path::Path::new("readme.t.mdx")));
-	assert!(!is_template_file(std::path::Path::new("")));
+	assert!(is_template_file(Path::new(".t.md")));
+	assert!(!is_template_file(Path::new("t.md")));
+	assert!(!is_template_file(Path::new("readme.t.mdx")));
+	assert!(!is_template_file(Path::new("")));
 }
 
 // --- project.rs: normalize_line_endings edge cases ---
@@ -6748,13 +6744,13 @@ fn validate_project_ok_when_all_providers_exist() -> MdtResult<()> {
 #[test]
 fn is_template_file_more_edge_cases() {
 	// Various additional edge cases
-	assert!(is_template_file(std::path::Path::new("foo.t.md")));
-	assert!(is_template_file(std::path::Path::new(
+	assert!(is_template_file(Path::new("foo.t.md")));
+	assert!(is_template_file(Path::new(
 		"deep/nested/path/template.t.md"
 	)));
-	assert!(!is_template_file(std::path::Path::new("t.md")));
-	assert!(!is_template_file(std::path::Path::new("readme.mdx")));
-	assert!(!is_template_file(std::path::Path::new("notes.txt")));
+	assert!(!is_template_file(Path::new("t.md")));
+	assert!(!is_template_file(Path::new("readme.mdx")));
+	assert!(!is_template_file(Path::new("notes.txt")));
 }
 
 // --- Coverage: error.rs SymlinkCycle display ---

@@ -89,23 +89,33 @@ For integration with other tools, use `--format json`:
   run: mdt check --format json
 ```
 
-Output when everything is up to date:
+<!-- {=mdtCheckJsonOutput} -->
+
+`mdt check --format json` returns:
+
+- `ok` — overall success boolean
+- `stale` — block-level drift entries with `file` and `block`
+- `stale_files` — formatter-only file drift entries with `file`
+
+When formatter-aware normalization would change the full file without changing any managed block body, `stale_files` is populated and `stale` can remain empty.
+
+Clean output:
 
 ```json
-{ "ok": true, "stale": [] }
+{ "ok": true, "stale": [], "stale_files": [] }
 ```
 
-Output when blocks are stale:
+Formatter-only drift example:
 
 ```json
 {
 	"ok": false,
-	"stale": [
-		{ "file": "readme.md", "block": "install" },
-		{ "file": "src/lib.rs", "block": "docs" }
-	]
+	"stale": [],
+	"stale_files": [{ "file": "docs/readme.md" }]
 }
 ```
+
+<!-- {/mdtCheckJsonOutput} -->
 
 ## Pre-commit hook
 

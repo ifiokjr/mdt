@@ -412,10 +412,12 @@ async fn update_formatter_only_stale_project_normalizes_file() {
 	assert_eq!(json["ok"], true);
 	assert_eq!(json["updated_count"], 0);
 	assert_eq!(json["updated_files"][0], "readme.md");
-	assert!(json["summary"]
-		.as_str()
-		.unwrap_or_else(|| panic!("summary string"))
-		.contains("Normalized 1 file(s) via formatter integration."));
+	assert!(
+		json["summary"]
+			.as_str()
+			.unwrap_or_else(|| panic!("summary string"))
+			.contains("Normalized 1 file(s) via formatter integration.")
+	);
 	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
 		.unwrap_or_else(|e| panic!("read readme: {e}"));
 	assert!(readme_content.contains("Published title"));
