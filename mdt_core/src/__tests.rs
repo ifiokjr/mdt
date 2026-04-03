@@ -5534,6 +5534,7 @@ fn config_default_max_file_size() {
 	let config: MdtConfig = toml::from_str("").unwrap_or_else(|e| panic!("parse: {e}"));
 	assert_eq!(config.max_file_size, DEFAULT_MAX_FILE_SIZE);
 	assert!(config.padding.is_none());
+	assert!(config.formatters.is_empty());
 	assert!(!config.disable_gitignore);
 	assert!(config.data.is_empty());
 	assert!(config.exclude.patterns.is_empty());
@@ -7462,6 +7463,35 @@ fn config_defaults_exclude_markdown_codeblocks_to_false() {
 		"expected CodeBlockFilter::Bool(false)"
 	);
 	assert!(!config.exclude.markdown_codeblocks.is_enabled());
+}
+
+#[test]
+fn config_parses_formatter_entries() {
+	let toml_content = r#"
+[[formatters]]
+command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+patterns = ["**"]
+
+[[formatters]]
+command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+patterns = ["**/*.ts", "**/*.tsx"]
+"#;
+	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(config.formatters.len(), 2);
+	assert_eq!(
+		config.formatters[0],
+		FormatterConfig {
+			command: "dprint fmt --stdin \"$MDT_FORMAT_FILE\"".to_string(),
+			patterns: vec!["**".to_string()],
+		}
+	);
+	assert_eq!(
+		config.formatters[1],
+		FormatterConfig {
+			command: "prettier --stdin-filepath \"$MDT_FORMAT_FILE\"".to_string(),
+			patterns: vec!["**/*.ts".to_string(), "**/*.tsx".to_string()],
+		}
+	);
 }
 
 #[test]

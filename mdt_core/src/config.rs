@@ -126,6 +126,10 @@ pub struct ScriptDataSource {
 /// before = 1
 /// after = 1
 ///
+/// [[formatters]]
+/// command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+/// patterns = ["**"]
+///
 /// disable_gitignore = false
 /// ```
 #[derive(Debug, Deserialize)]
@@ -151,6 +155,11 @@ pub struct MdtConfig {
 	/// control how many blank lines separate tags from content.
 	#[serde(default)]
 	pub padding: Option<PaddingConfig>,
+	/// Ordered formatter pipeline entries used to normalize full-file output.
+	/// Each matching formatter reads the candidate file from stdin and writes
+	/// the full replacement content to stdout.
+	#[serde(default)]
+	pub formatters: Vec<FormatterConfig>,
 	/// When true, `.gitignore` files are not used for filtering. By default
 	/// (`false`), mdt respects `.gitignore` patterns and skips files that
 	/// would be ignored by git. Set to `true` when working outside a git
@@ -217,6 +226,17 @@ pub struct PaddingConfig {
 	/// Blank lines between the content and the closing tag.
 	#[serde(default)]
 	pub after: PaddingValue,
+}
+
+/// A configured formatter stage for normalizing full-file output.
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+pub struct FormatterConfig {
+	/// Shell command that reads file content from stdin and writes formatted
+	/// content to stdout.
+	pub command: String,
+	/// Glob patterns relative to the project root that determine which files
+	/// this formatter applies to.
+	pub patterns: Vec<String>,
 }
 
 fn default_max_file_size() -> u64 {
