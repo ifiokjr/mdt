@@ -850,7 +850,7 @@ fn formatter_pipeline_updates_target_content_and_converges_check() -> MdtResult<
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"ALPHA\", \"BETA\"))'"
+command = "perl -0pe 's/ALPHA/BETA/g'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -898,7 +898,7 @@ fn formatter_pipeline_reports_formatter_only_stale_file() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+command = "perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -941,7 +941,7 @@ fn formatter_pipeline_ignores_matching_paths() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Hello\", \"Ignored\"))'"
+command = "perl -0pe 's/Hello/Ignored/g'"
 patterns = ["**/*.md"]
 ignore = ["readme.md"]
 "#,
@@ -978,7 +978,7 @@ fn formatter_pipeline_renders_command_template_with_minijinja() -> MdtResult<()>
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; print(sys.argv[1]); print(sys.argv[2]); print(sys.argv[3]); sys.stdout.write(sys.stdin.read())' \"{{ filePath }}\" \"{{ relativeFilePath }}\" \"{{ rootDirectory }}\""
+command = "sh -c 'printf \"%s\\n%s\\n%s\\n\" \"$1\" \"$2\" \"$3\"; cat' _ \"{{ filePath }}\" \"{{ relativeFilePath }}\" \"{{ rootDirectory }}\""
 patterns = ["**/*.md"]
 "#,
 	)
@@ -10375,7 +10375,7 @@ fn formatter_pipeline_with_matching_noop_formatter_is_noop() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read())'"
+command = "perl -0pe ''"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -10527,7 +10527,7 @@ fn formatter_pipeline_failure_with_stderr_surfaces_stderr_reason() -> MdtResult<
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stderr.write(\"boom\\n\"); sys.exit(9)'"
+command = "perl -e 'print STDERR \"boom\\n\"; exit 9'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -10560,7 +10560,7 @@ fn formatter_pipeline_source_file_count_mismatch_returns_formatter_error() -> Md
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(\"//! just a comment\\n\")'"
+command = "perl -e 'print qq(//! just a comment\\n)'"
 patterns = ["**/*.rs"]
 "#,
 	)

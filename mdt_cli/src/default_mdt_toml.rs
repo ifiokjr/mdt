@@ -1,8 +1,6 @@
 // This file is generated via mdt. Edit `template.t.md` instead.
 
-// <!-- {=mdtInitAnnotatedConfigurationRust} -->
-
-
+// <!-- {=mdtInitAnnotatedConfigurationRust|trim} -->
 pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
 #
 # Welcome to mdt. This starter config is intentionally fully annotated so you
@@ -114,6 +112,4 @@ pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
 # patterns = ["**/*.ts", "**/*.tsx"]
 # ignore = ["dist/**"]
 "####;
-
-
 // <!-- {/mdtInitAnnotatedConfigurationRust} -->
