@@ -805,7 +805,14 @@ fn run_formatter_command(
 	input: &str,
 ) -> MdtResult<String> {
 	let relative_file = file.strip_prefix(&ctx.root).unwrap_or(file);
-	let interpolated = interpolate_formatter_command(command, file, relative_file, &ctx.root);
+	let interpolated = interpolate_formatter_command(command, file, relative_file, &ctx.root)
+		.map_err(|reason| {
+			MdtError::Formatter {
+				file: relative_file.display().to_string(),
+				command: command.to_string(),
+				reason,
+			}
+		})?;
 	let mut command_builder = if cfg!(windows) {
 		let mut command_builder = Command::new("cmd");
 		command_builder.arg("/C").arg(&interpolated);
@@ -857,14 +864,27 @@ fn interpolate_formatter_command(
 	file: &Path,
 	relative_file: &Path,
 	root: &Path,
-) -> String {
-	command
-		.replace("{{ filePath }}", &file.display().to_string())
-		.replace(
-			"{{ relativeFilePath }}",
-			&relative_file.display().to_string(),
-		)
-		.replace("{{ rootDirectory }}", &root.display().to_string())
+) -> Result<String, String> {
+	if !has_template_syntax(command) {
+		return Ok(command.to_string());
+	}
+
+	let mut env = minijinja::Environment::new();
+	env.set_keep_trailing_newline(true);
+	env.add_template("__formatter_command__", command)
+		.map_err(|error| format!("invalid formatter command template: {error}"))?;
+
+	let template = env
+		.get_template("__formatter_command__")
+		.map_err(|error| format!("invalid formatter command template: {error}"))?;
+
+	template
+		.render(minijinja::context! {
+			filePath => file.display().to_string(),
+			relativeFilePath => relative_file.display().to_string(),
+			rootDirectory => root.display().to_string(),
+		})
+		.map_err(|error| format!("invalid formatter command template: {error}"))
 }
 
 fn parse_candidate_consumer_contents(

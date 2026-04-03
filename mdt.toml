@@ -1,14 +1,126 @@
+# <!-- {=mdtAnnotatedConfiguration} -->
+# mdt.toml
+#
+# This file is intentionally verbose: active entries show one working setup,
+# and commented entries document every configuration option currently
+# supported by the codebase.
+#
+# Rule for contributors: when config behavior changes, update this annotated
+# file and the synced configuration guide in the same PR.
+
+# Top-level safety limit for scanned files, in bytes.
+# Omit this to use the built-in default of 10 MB.
+# Raise it for unusually large generated docs; lower it if you want earlier
+# failure on oversized files.
+# max_file_size = 10485760
+
+# By default mdt respects `.gitignore` so it behaves like the repo itself.
+# Set this to `true` only when ignored/generated files should still be scanned,
+# or when you want `[include]` and `[exclude]` to be the only scanning rules.
+# disable_gitignore = true
+
+# Padding controls the blank lines between tags and injected content.
+# Supported values for both `before` and `after`:
+# - false -> keep content inline with the tag
+# - 0     -> move content to the next line with no blank line
+# - 1     -> one blank line
+# - 2+    -> two or more blank lines
+#
+# This repo uses `0`/`0` because it keeps comment-based targets formatter-stable
+# without introducing extra blank lines for dprint/rustfmt to rewrite.
 [padding]
 before = 0
 after = 0
 
 [data]
+# String values are file-backed namespaces.
+# The parser is inferred from the extension: `.json`, `.toml`, `.yaml`,
+# `.yml`, `.kdl`, and `.ini` are supported.
+#
+# This repo exposes Cargo metadata as `{{ cargo.package.* }}` so templates can
+# stay synchronized with workspace package information.
 cargo = "Cargo.toml"
 
+# Typed data sources let you force a parser when the extension is missing,
+# unusual, or intentionally generic.
+# release = { path = "release-info", format = "json" }
+
+# Script-backed data sources shell out and parse stdout.
+# `format` accepts: `text`, `string`, `raw`, `txt`, `json`, `toml`, `yaml`,
+# `yml`, `kdl`, or `ini`.
+# `watch` lists files that invalidate the cached result in
+# `.mdt/cache/data-v1.json`.
+#
+# Use this when the source of truth comes from tooling instead of a checked-in
+# file.
+# version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
+# git = { command = "git rev-parse --short HEAD", format = "text" }
+
 [exclude]
+# Gitignore-style patterns skip files or directories during scanning.
+# Supports `!negation`, trailing `/` for directories, `*`, `**`, and character
+# classes.
+#
+# This repo excludes test-only fixtures and snapshot directories so mdt only
+# scans files that can contain real, maintained blocks.
 patterns = [
 	"**/tests/",
 	"**/__tests.rs",
 	"**/snapshots/",
 ]
+
+# `markdown_codeblocks` only affects fenced code blocks that appear inside
+# source-file comments. It exists so docs/examples can show mdt tags without
+# accidentally turning those examples into live targets.
+#
+# Supported values:
+# - false        -> process tags in fenced code blocks normally (default)
+# - true         -> ignore tags in all fenced code blocks
+# - "..."        -> ignore code blocks whose info string contains that substring
+# - ["...", ...] -> ignore code blocks whose info string matches any substring
+#
+# This repo uses `true` because source-comment examples should stay
+# illustrative, not executable.
 markdown_codeblocks = true
+
+# `blocks` excludes specific block names everywhere, even if their files are
+# scanned. Use it when a block name is temporary, experimental, or
+# intentionally unmanaged.
+# blocks = ["draftSection", "experimentalApi"]
+
+# `include` narrows scanning to only matching files. Use it to opt into a
+# smaller search space in large repos once you know exactly where mdt tags live.
+# [include]
+# patterns = ["docs/**/*.rs", "src/**/*.ts", "packages/*/readme.md"]
+
+# `templates.paths` restricts where `*.t.md` source files are discovered.
+# Leave it unset to find template files anywhere in the project.
+# Use it when a repo wants a dedicated source-of-truth directory layout.
+# [templates]
+# paths = [".templates", "shared/templates"]
+
+# `[[formatters]]` lets `mdt update` and `mdt check` compare against your
+# formatter's canonical output instead of raw injected text.
+#
+# Formatter commands are rendered with minijinja before execution.
+# Available variables:
+# - `{{ filePath }}`         -> absolute path to the file being formatted
+# - `{{ relativeFilePath }}` -> path relative to the project root
+# - `{{ rootDirectory }}`    -> absolute path to the project root
+#
+# `patterns` and `ignore` are both ordered rule lists with gitignore-like
+# globs. A leading `!` negates a prior match, so later rules can re-include
+# paths.
+#
+# This repo enables dprint for generated markdown targets so docs stay in sync
+# with the same formatter used elsewhere in the workspace.
+[[formatters]]
+command = "dprint fmt --stdin \"{{ filePath }}\""
+patterns = ["**/*.md"]
+ignore = ["**/*.t.md"]
+
+# Add more formatter stages when different file types need different tools.
+# [[formatters]]
+# command = "prettier --stdin-filepath \"{{ filePath }}\""
+# patterns = ["**/*.ts", "**/*.tsx"]
+# <!-- {/mdtAnnotatedConfiguration} -->
