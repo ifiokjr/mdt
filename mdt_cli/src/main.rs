@@ -603,7 +603,7 @@ fn run_check_once(
 	if result.is_ok() {
 		match format {
 			OutputFormat::Json => {
-				println!("{{\"ok\":true,\"stale\":[]}}");
+				println!("{{\"ok\":true,\"stale\":[],\"stale_files\":[]}}");
 			}
 			OutputFormat::Github => {
 				println!("All consumer blocks are up to date.");
@@ -637,6 +637,14 @@ fn run_check_once(
 					})
 				})
 				.collect();
+			let stale_file_entries: Vec<serde_json::Value> = result
+				.stale_files
+				.iter()
+				.map(|entry| {
+					let rel = relative_display_path(&entry.file, &root);
+					serde_json::json!({ "file": rel })
+				})
+				.collect();
 			let error_entries: Vec<serde_json::Value> = result
 				.render_errors
 				.iter()
@@ -654,6 +662,7 @@ fn run_check_once(
 			let output = serde_json::json!({
 				"ok": false,
 				"stale": stale_entries,
+				"stale_files": stale_file_entries,
 				"errors": error_entries,
 			});
 			println!("{output}");
@@ -673,6 +682,10 @@ fn run_check_once(
 					entry.line, entry.column, entry.block_name
 				);
 			}
+			for entry in &result.stale_files {
+				let rel = relative_display_path(&entry.file, &root);
+				println!("::warning file={rel}::Formatter-normalized file output is out of date");
+			}
 			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
@@ -687,6 +700,13 @@ fn run_check_once(
 				styled!(stderr, "stale consumers:", yellow_bold),
 				styled!(stderr, result.stale.len().to_string(), yellow)
 			);
+			if !result.stale_files.is_empty() {
+				eprintln!(
+					"  {} {}",
+					styled!(stderr, "stale files:", yellow_bold),
+					styled!(stderr, result.stale_files.len().to_string(), yellow)
+				);
+			}
 
 			let sorted_errors = sorted_render_errors(&result, &root);
 			if !sorted_errors.is_empty() {
@@ -725,6 +745,19 @@ fn run_check_once(
 				}
 			}
 
+			let sorted_stale_files = sorted_stale_files(&result, &root);
+			if !sorted_stale_files.is_empty() {
+				eprintln!();
+				eprintln!("{}", styled!(stderr, "Stale files:", yellow_bold));
+				for entry in sorted_stale_files {
+					let rel = relative_display_path(&entry.file, &root);
+					eprintln!("  file {}", styled!(stderr, rel, cyan));
+					if show_diff {
+						print_diff(&entry.current_content, &entry.expected_content);
+					}
+				}
+			}
+
 			eprintln!();
 			eprintln!("{}", check_summary(&result));
 		}
@@ -742,6 +775,12 @@ fn check_summary(result: &mdt_core::CheckResult) -> String {
 		parts.push(format!(
 			"{} consumer block(s) are out of date",
 			result.stale.len()
+		));
+	}
+	if !result.stale_files.is_empty() {
+		parts.push(format!(
+			"{} formatter-normalized file(s) are out of date",
+			result.stale_files.len()
 		));
 	}
 	format!("{}. Run `mdt update` to fix.", parts.join(" and "))
@@ -775,6 +814,17 @@ fn sorted_render_errors<'a>(
 			.then_with(|| a.block_name.cmp(&b.block_name))
 	});
 	render_errors
+}
+
+fn sorted_stale_files<'a>(
+	result: &'a mdt_core::CheckResult,
+	root: &Path,
+) -> Vec<&'a mdt_core::StaleFileEntry> {
+	let mut stale_files: Vec<_> = result.stale_files.iter().collect();
+	stale_files.sort_by(|a, b| {
+		relative_display_path(&a.file, root).cmp(&relative_display_path(&b.file, root))
+	});
+	stale_files
 }
 
 fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -828,17 +878,24 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 		print_template_warnings(&updates.warnings, &root);
 	}
 
-	if updates.updated_count == 0 {
+	if updates.updated_files.is_empty() {
 		println!("All consumer blocks are already up to date.");
 		return Ok(());
 	}
 
 	if dry_run {
-		println!(
-			"Dry run: would update {} block(s) in {} file(s):",
-			updates.updated_count,
-			updates.updated_files.len()
-		);
+		if updates.updated_count == 0 {
+			println!(
+				"Dry run: would normalize {} file(s) via formatter integration:",
+				updates.updated_files.len()
+			);
+		} else {
+			println!(
+				"Dry run: would update {} block(s) in {} file(s):",
+				updates.updated_count,
+				updates.updated_files.len()
+			);
+		}
 		let mut paths: Vec<_> = updates.updated_files.keys().collect();
 		paths.sort();
 		for path in paths {
@@ -847,11 +904,18 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 		}
 	} else {
 		write_updates(&updates)?;
-		println!(
-			"Updated {} block(s) in {} file(s).",
-			updates.updated_count,
-			updates.updated_files.len()
-		);
+		if updates.updated_count == 0 {
+			println!(
+				"Normalized {} file(s) via formatter integration.",
+				updates.updated_files.len()
+			);
+		} else {
+			println!(
+				"Updated {} block(s) in {} file(s).",
+				updates.updated_count,
+				updates.updated_files.len()
+			);
+		}
 
 		if args.verbose {
 			let mut paths: Vec<_> = updates.updated_files.keys().collect();

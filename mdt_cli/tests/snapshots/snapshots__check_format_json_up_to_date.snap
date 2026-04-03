@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpnAz0EY
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpkvjbam
     - check
     - "--format"
     - json
@@ -14,6 +14,6 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-{"ok":true,"stale":[]}
+{"ok":true,"stale":[],"stale_files":[]}
 
 ----- stderr -----

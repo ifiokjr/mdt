@@ -40,7 +40,10 @@ pub enum MdtError {
 	#[error("failed to parse config file: {0}")]
 	#[diagnostic(
 		code(mdt::config_parse),
-		help("check that mdt.toml is valid TOML with [data] and/or [exclude] sections")
+		help(
+			"check that mdt.toml is valid TOML with supported sections like [data], [exclude], \
+			 [padding], and [[formatters]]"
+		)
 	)]
 	ConfigParse(String),
 
@@ -105,6 +108,20 @@ pub enum MdtError {
 		help("remove the circular symlink or exclude this path")
 	)]
 	SymlinkCycle { path: String },
+
+	#[error("formatter failed for `{file}` while running `{command}`: {reason}")]
+	#[diagnostic(
+		code(mdt::formatter),
+		help(
+			"check the formatter command, its config, and whether the formatter preserves mdt \
+			 block tags"
+		)
+	)]
+	Formatter {
+		file: String,
+		command: String,
+		reason: String,
+	},
 
 	#[error("unconvertible float value in data file `{path}`: {value}")]
 	#[diagnostic(

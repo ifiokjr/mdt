@@ -300,6 +300,11 @@ impl MdtMcpServer {
 				}
 			})
 			.collect();
+		let stale_files: Vec<_> = result
+			.stale_files
+			.iter()
+			.map(|entry| relative_display_path(&entry.file, &root))
+			.collect();
 
 		let ok = result.is_ok() && missing.is_empty();
 		let summary = if ok {
@@ -311,6 +316,12 @@ impl MdtMcpServer {
 			}
 			if !stale.is_empty() {
 				parts.push(format!("{} stale consumer block(s)", stale.len()));
+			}
+			if !stale_files.is_empty() {
+				parts.push(format!(
+					"{} stale formatter-normalized file(s)",
+					stale_files.len()
+				));
 			}
 			if !missing.is_empty() {
 				parts.push(format!("{} missing provider name(s)", missing.len()));
@@ -327,6 +338,7 @@ impl MdtMcpServer {
 			"action": "check",
 			"summary": summary,
 			"stale": stale,
+			"stale_files": stale_files,
 			"render_errors": render_errors,
 			"warnings": warnings,
 			"missing_provider_names": missing,
@@ -361,7 +373,7 @@ impl MdtMcpServer {
 			.collect();
 		updated_files.sort();
 
-		if updates.updated_count == 0 {
+		if updates.updated_files.is_empty() {
 			return Ok(json_result(serde_json::json!({
 				"ok": true,
 				"action": "update",
@@ -378,7 +390,19 @@ impl MdtMcpServer {
 			write_updates(&updates).map_err(|e| McpError::internal_error(e.to_string(), None))?;
 		}
 
-		let summary = if params.dry_run {
+		let summary = if updates.updated_count == 0 {
+			if params.dry_run {
+				format!(
+					"Dry run: would normalize {} file(s) via formatter integration.",
+					updated_files.len()
+				)
+			} else {
+				format!(
+					"Normalized {} file(s) via formatter integration.",
+					updated_files.len()
+				)
+			}
+		} else if params.dry_run {
 			format!(
 				"Dry run: would update {} block(s) in {} file(s).",
 				updates.updated_count,
