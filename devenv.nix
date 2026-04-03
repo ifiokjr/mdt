@@ -19,6 +19,7 @@ in
       deno
       dprint
       extra.knope
+      extra.pnpm-standalone
       mdbook
       nixfmt
       rustup
@@ -34,6 +35,7 @@ in
     rustup toolchain install nightly --component rustfmt --no-self-update 2>/dev/null || true
     # Ensure stable is at least 1.88 (required by rmcp/darling for mdt_mcp)
     rustup update stable --no-self-update 2>/dev/null || true
+    eval "$(pnpm-activate-env)"
   '';
 
   # disable dotenv since it breaks the variable interpolation supported by `direnv`
