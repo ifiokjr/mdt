@@ -221,6 +221,54 @@ fn is_builtin_variable(name: &str) -> bool {
 	)
 }
 
+/// Normalize content for lenient comparison by collapsing insignificant
+/// whitespace. This makes `mdt check` tolerant of formatter rewrites that
+/// only change blank lines, trailing spaces, or indentation alignment.
+///
+/// The normalization:
+/// - trims each line of trailing whitespace
+/// - collapses runs of blank lines into a single blank line
+/// - trims leading/trailing blank lines from the whole string
+pub fn normalize_whitespace(content: &str) -> String {
+	let mut result = String::with_capacity(content.len());
+	let mut prev_blank = false;
+
+	for line in content.split('\n') {
+		let trimmed = line.trim_end();
+		let is_blank = trimmed.is_empty();
+
+		if is_blank {
+			if !prev_blank && !result.is_empty() {
+				result.push('\n');
+			}
+			prev_blank = true;
+		} else {
+			if !result.is_empty() {
+				result.push('\n');
+			}
+			result.push_str(trimmed);
+			prev_blank = false;
+		}
+	}
+
+	result
+}
+
+/// Compare two content strings, using lenient normalization when the
+/// comparison mode is `Lenient`.
+fn content_matches(
+	actual: &str,
+	expected: &str,
+	comparison: &crate::config::ComparisonMode,
+) -> bool {
+	match comparison {
+		crate::config::ComparisonMode::Strict => actual == expected,
+		crate::config::ComparisonMode::Lenient => {
+			normalize_whitespace(actual) == normalize_whitespace(expected)
+		}
+	}
+}
+
 /// Check whether content contains minijinja template syntax.
 fn has_template_syntax(content: &str) -> bool {
 	content.contains("{{") || content.contains("{%") || content.contains("{#")
@@ -380,7 +428,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 				let Some(expected) = raw_expected[index].clone() else {
 					continue;
 				};
-				if consumer.content != expected {
+				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
 						file: consumer.file.clone(),
 						block_name: consumer.block.name.clone(),
@@ -411,7 +459,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 				continue;
 			}
 			let expected = final_contents[index].clone();
-			if consumer.content != expected {
+			if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 				file_stale_count += 1;
 				stale.push(StaleEntry {
 					file: consumer.file.clone(),
@@ -594,7 +642,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					expected = pad_content_with_config(&expected, &consumer.content, padding);
 				}
 
-				if consumer.content != expected {
+				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
 						file: consumer.file.clone(),
 						block_name: consumer.block.name.clone(),
@@ -637,7 +685,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					Some(&ctx.data),
 				);
 
-				if consumer.content != expected {
+				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
 						file: consumer.file.clone(),
 						block_name: consumer.block.name.clone(),

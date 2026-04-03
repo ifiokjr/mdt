@@ -510,6 +510,7 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
@@ -538,6 +539,7 @@ fn check_project_detects_stale() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
@@ -594,6 +596,7 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -723,6 +726,7 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -760,6 +764,7 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -789,6 +794,7 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -819,6 +825,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -832,6 +839,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -850,7 +858,7 @@ fn formatter_pipeline_updates_target_content_and_converges_check() -> MdtResult<
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/ALPHA/BETA/g'"
+command = "/usr/bin/perl -0pe 's/ALPHA/BETA/g'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -898,7 +906,7 @@ fn formatter_pipeline_reports_formatter_only_stale_file() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/Draft title/Published title/g'"
+command = "/usr/bin/perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -941,7 +949,7 @@ fn formatter_pipeline_ignores_matching_paths() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/Hello/Ignored/g'"
+command = "/usr/bin/perl -0pe 's/Hello/Ignored/g'"
 patterns = ["**/*.md"]
 ignore = ["readme.md"]
 "#,
@@ -978,7 +986,7 @@ fn formatter_pipeline_renders_command_template_with_minijinja() -> MdtResult<()>
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "sh -c 'printf \"%s\\n%s\\n%s\\n\" \"$1\" \"$2\" \"$3\"; cat' _ \"{{ filePath }}\" \"{{ relativeFilePath }}\" \"{{ rootDirectory }}\""
+command = "/bin/sh -c 'printf \"%s\\n%s\\n%s\\n\" \"$1\" \"$2\" \"$3\"; /bin/cat' _ \"{{ filePath }}\" \"{{ relativeFilePath }}\" \"{{ rootDirectory }}\""
 patterns = ["**/*.md"]
 "#,
 	)
@@ -2608,6 +2616,7 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -3509,6 +3518,7 @@ fn pad_blocks_disabled_does_not_pad() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
@@ -5654,6 +5664,7 @@ fn project_context_find_missing_providers() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let missing = ctx.find_missing_providers();
@@ -6677,6 +6688,7 @@ fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	assert_eq!(ctx.project.providers.len(), 1);
@@ -8451,6 +8463,7 @@ fn block_arguments_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 
@@ -8500,6 +8513,7 @@ fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 
@@ -8591,6 +8605,7 @@ fn check_project_reports_argument_count_mismatch() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
@@ -8621,6 +8636,7 @@ fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 
@@ -8662,6 +8678,7 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
@@ -10375,7 +10392,7 @@ fn formatter_pipeline_with_matching_noop_formatter_is_noop() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe ''"
+command = "/usr/bin/perl -0pe ''"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -10527,7 +10544,7 @@ fn formatter_pipeline_failure_with_stderr_surfaces_stderr_reason() -> MdtResult<
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -e 'print STDERR \"boom\\n\"; exit 9'"
+command = "/usr/bin/perl -e 'print STDERR \"boom\\n\"; exit 9'"
 patterns = ["**/*.md"]
 "#,
 	)
@@ -10560,7 +10577,7 @@ fn formatter_pipeline_source_file_count_mismatch_returns_formatter_error() -> Md
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -e 'print qq(//! just a comment\\n)'"
+command = "/usr/bin/perl -e 'print qq(//! just a comment\\n)'"
 patterns = ["**/*.rs"]
 "#,
 	)
@@ -10618,4 +10635,153 @@ fn formatter_warnings_deduplicate_providers_and_ignore_provider_params() -> MdtR
 	);
 
 	Ok(())
+}
+
+// --- lenient comparison mode ---
+
+#[test]
+fn normalize_whitespace_collapses_blank_lines() {
+	let input = "hello\n\n\n\nworld\n";
+	let result = normalize_whitespace(input);
+	assert!(result.contains("hello"));
+	assert!(result.contains("world"));
+	// Multiple blank lines collapse to at most one
+	assert!(!result.contains("\n\n\n"));
+}
+
+#[test]
+fn normalize_whitespace_trims_trailing_spaces() {
+	let input = "hello   \nworld  \n";
+	let result = normalize_whitespace(input);
+	assert!(!result.contains("   "));
+	assert!(!result.contains("  "));
+	assert!(result.starts_with("hello"));
+}
+
+#[test]
+fn normalize_whitespace_preserves_content() {
+	let input = "# title\n\nparagraph\n";
+	let result = normalize_whitespace(input);
+	assert!(result.contains("# title"));
+	assert!(result.contains("paragraph"));
+}
+
+#[test]
+fn normalize_whitespace_is_idempotent() {
+	let input = "hello\n\n\nworld  \n\n";
+	let once = normalize_whitespace(input);
+	let twice = normalize_whitespace(&once);
+	assert_eq!(once, twice);
+}
+
+#[test]
+fn normalize_whitespace_empty_string() {
+	assert_eq!(normalize_whitespace(""), "");
+}
+
+#[test]
+fn normalize_whitespace_only_blanks() {
+	assert_eq!(normalize_whitespace("\n\n\n"), "");
+}
+
+#[test]
+fn lenient_check_passes_with_whitespace_only_differences() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello world.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Consumer has extra blank lines and trailing spaces — lenient should pass
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\n\nHello world.  \n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(
+		result.is_ok(),
+		"lenient check should pass with whitespace-only diff"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_fails_with_content_differences() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello world.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nGoodbye world.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"lenient check should still catch content changes"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_fails_with_whitespace_differences() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// No [check] section = default strict
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello world.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\n\nHello world.  \n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"strict check should catch whitespace differences"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn lenient_config_parsed_from_toml() {
+	let toml = r#"
+[check]
+comparison = "lenient"
+"#;
+	let config: MdtConfig = toml::from_str(toml).unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(config.check.comparison, ComparisonMode::Lenient);
+}
+
+#[test]
+fn strict_config_is_default() {
+	let config: MdtConfig = toml::from_str("").unwrap_or_else(|e| panic!("parse: {e}"));
+	assert_eq!(config.check.comparison, ComparisonMode::Strict);
 }

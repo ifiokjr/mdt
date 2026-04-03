@@ -218,6 +218,8 @@ pub struct ProjectContext {
 	pub formatters: Vec<FormatterConfig>,
 	/// Source scanning code block filtering needed when reparsing source files.
 	pub markdown_codeblocks: CodeBlockFilter,
+	/// Check comparison mode (`strict` or `lenient`).
+	pub comparison: crate::config::ComparisonMode,
 }
 
 impl ProjectContext {
@@ -411,6 +413,9 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let formatters = config
 		.as_ref()
 		.map_or_else(Vec::new, |c| c.formatters.clone());
+	let comparison = config
+		.as_ref()
+		.map_or_else(Default::default, |c| c.check.comparison.clone());
 	let markdown_codeblocks = options.markdown_codeblocks.clone();
 	let data = match config {
 		Some(config) => config.load_data(root)?,
@@ -424,6 +429,7 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		padding,
 		formatters,
 		markdown_codeblocks,
+		comparison,
 	})
 }
 

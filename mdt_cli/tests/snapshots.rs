@@ -317,7 +317,7 @@ fn formatter_check_json_reports_stale_files() -> AnyEmptyResult {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/Draft title/Published title/g'"
+command = "/usr/bin/perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)?;
@@ -348,7 +348,7 @@ fn formatter_update_normalize_only() -> AnyEmptyResult {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/Draft title/Published title/g'"
+command = "/usr/bin/perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)?;
