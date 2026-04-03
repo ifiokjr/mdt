@@ -9974,3 +9974,623 @@ fn scan_project_cache_telemetry_resets_after_cold_cache_rebuild() -> MdtResult<(
 
 	Ok(())
 }
+
+#[test]
+fn data_source_accessors_cover_all_variants() {
+	let path = DataSource::Path(PathBuf::from("package.json"));
+	assert_eq!(path.path(), Some(Path::new("package.json")));
+	assert_eq!(path.format(), None);
+	assert_eq!(path.command(), None);
+	assert_eq!(path.watch(), None);
+
+	let typed = DataSource::Typed(TypedDataSource {
+		path: PathBuf::from("release-info"),
+		format: "json".to_string(),
+	});
+	assert_eq!(typed.path(), Some(Path::new("release-info")));
+	assert_eq!(typed.format(), Some("json"));
+	assert_eq!(typed.command(), None);
+	assert_eq!(typed.watch(), None);
+
+	let script = DataSource::Script(ScriptDataSource {
+		command: "printf hi".to_string(),
+		format: Some("text".to_string()),
+		watch: vec![PathBuf::from("VERSION")],
+	});
+	assert_eq!(script.path(), None);
+	assert_eq!(script.format(), Some("text"));
+	assert_eq!(script.command(), Some("printf hi"));
+	assert_eq!(
+		script.watch(),
+		Some(vec![PathBuf::from("VERSION")].as_slice())
+	);
+}
+
+#[test]
+fn padding_value_line_count_and_default_cover_all_variants() {
+	assert_eq!(PaddingValue::Bool(false).line_count(), None);
+	assert_eq!(PaddingValue::Bool(true).line_count(), Some(1));
+	assert_eq!(PaddingValue::Lines(3).line_count(), Some(3));
+	assert!(matches!(PaddingValue::default(), PaddingValue::Lines(1)));
+}
+
+#[test]
+fn code_block_filter_helpers_cover_all_variants() {
+	let disabled = CodeBlockFilter::Bool(false);
+	assert!(!disabled.is_enabled());
+	assert!(!disabled.should_skip("rust,ignore"));
+
+	let enabled = CodeBlockFilter::Bool(true);
+	assert!(enabled.is_enabled());
+	assert!(enabled.should_skip("rust,ignore"));
+
+	let info_string = CodeBlockFilter::InfoString("ignore".to_string());
+	assert!(info_string.is_enabled());
+	assert!(info_string.should_skip("rust,ignore"));
+	assert!(!info_string.should_skip("rust"));
+
+	let empty_infos = CodeBlockFilter::InfoStrings(Vec::new());
+	assert!(!empty_infos.is_enabled());
+	assert!(!empty_infos.should_skip("rust,ignore"));
+
+	let info_strings = CodeBlockFilter::InfoStrings(vec!["ignore".to_string(), "skip".to_string()]);
+	assert!(info_strings.is_enabled());
+	assert!(info_strings.should_skip("rust,skip"));
+	assert!(!info_strings.should_skip("rust"));
+}
+
+#[test]
+fn find_undefined_variables_returns_empty_for_invalid_template_syntax() {
+	let mut data = HashMap::new();
+	data.insert("pkg".to_string(), serde_json::json!({"version": "1.0.0"}));
+
+	assert!(find_undefined_variables("{{", &data).is_empty());
+}
+
+#[test]
+fn formatter_config_matches_file_ignores_invalid_patterns_during_rule_evaluation() {
+	let formatter = FormatterConfig {
+		command: "noop".to_string(),
+		patterns: vec!["[".to_string(), "**/*.md".to_string()],
+		ignore: vec!["!docs/readme.md".to_string()],
+	};
+
+	assert!(formatter.matches_file(
+		Path::new("/tmp/project"),
+		Path::new("/tmp/project/docs/readme.md")
+	));
+}
+
+#[test]
+fn config_load_data_script_without_watch_reruns_every_time() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let command = "count=$(cat .run_count 2>/dev/null || echo 0); count=$((count+1)); echo \
+	               \"$count\" > .run_count; printf value";
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!("[data]\nversion = {{ command = {command:?}, format = \"   \" }}\n"),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data1 = config.load_data(tmp.path())?;
+	assert_eq!(
+		data1["version"],
+		serde_json::Value::String("value".to_string())
+	);
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1"
+	);
+
+	let data2 = config.load_data(tmp.path())?;
+	assert_eq!(
+		data2["version"],
+		serde_json::Value::String("value".to_string())
+	);
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"2",
+		"script without watch files should rerun on every load"
+	);
+	assert!(tmp.path().join(".mdt/cache/data-v1.json").is_file());
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_script_uses_cache_when_watch_file_is_missing() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let command = "count=$(cat .run_count 2>/dev/null || echo 0); count=$((count+1)); echo \
+	               \"$count\" > .run_count; printf cached";
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!(
+			"[data]\nvalue = {{ command = {command:?}, format = \"text\", watch = [\"MISSING\"] \
+			 }}\n"
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data1 = config.load_data(tmp.path())?;
+	assert_eq!(
+		data1["value"],
+		serde_json::Value::String("cached".to_string())
+	);
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1"
+	);
+
+	let data2 = config.load_data(tmp.path())?;
+	assert_eq!(
+		data2["value"],
+		serde_json::Value::String("cached".to_string())
+	);
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1",
+		"missing watch file should still participate in cache fingerprinting"
+	);
+
+	std::fs::write(tmp.path().join("MISSING"), "now exists\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	let _ = config.load_data(tmp.path())?;
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"2",
+		"creating a watched file should invalidate the cached script result"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_recovers_from_invalid_script_cache_file() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("VERSION"), "1.0.0\n").unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".mdt/cache")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(tmp.path().join(".mdt/cache/data-v1.json"), "not json")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	let command = "count=$(cat .run_count 2>/dev/null || echo 0); count=$((count+1)); echo \
+	               \"$count\" > .run_count; cat VERSION";
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!(
+			"[data]\nversion = {{ command = {command:?}, format = \"text\", watch = [\"VERSION\"] \
+			 }}\n"
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let data = config.load_data(tmp.path())?;
+	assert_eq!(
+		data["version"],
+		serde_json::Value::String("1.0.0\n".to_string())
+	);
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_ignores_outdated_script_cache_schema() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("VERSION"), "1.0.0\n").unwrap_or_else(|e| panic!("write: {e}"));
+	let command = "count=$(cat .run_count 2>/dev/null || echo 0); count=$((count+1)); echo \
+	               \"$count\" > .run_count; cat VERSION";
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!(
+			"[data]\nversion = {{ command = {command:?}, format = \"text\", watch = [\"VERSION\"] \
+			 }}\n"
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let _ = config.load_data(tmp.path())?;
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"1"
+	);
+
+	std::fs::write(
+		tmp.path().join(".mdt/cache/data-v1.json"),
+		r#"{"schema_version":999,"entries":{}}"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	let _ = config.load_data(tmp.path())?;
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"2",
+		"outdated cache schema should force the script to rerun"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_typed_missing_file_reports_data_file_error() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nrelease = { path = \"missing.json\", format = \"json\" }\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let err = config.load_data(tmp.path()).unwrap_err();
+	assert!(matches!(err, MdtError::DataFile { path, .. } if path == "missing.json"));
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_invalid_ini_reports_data_file_error() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("settings.ini"), "[broken\nkey=value\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nsettings = \"settings.ini\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let err = config.load_data(tmp.path()).unwrap_err();
+	assert!(matches!(err, MdtError::DataFile { path, .. } if path == "settings.ini"));
+
+	Ok(())
+}
+
+#[test]
+fn config_load_data_script_failure_uses_stderr_reason() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\nversion = { command = \"echo boom 1>&2; exit 7\", format = \"text\" }\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	let err = config.load_data(tmp.path()).unwrap_err();
+	assert!(
+		matches!(err, MdtError::DataScript { namespace, reason } if namespace == "version" && reason == "boom")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn check_result_status_helpers_cover_errors_and_warnings() {
+	let clean = CheckResult {
+		stale: Vec::new(),
+		stale_files: Vec::new(),
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	assert!(clean.is_ok());
+	assert!(!clean.has_errors());
+	assert!(!clean.has_warnings());
+
+	let with_warnings = CheckResult {
+		stale: Vec::new(),
+		stale_files: vec![StaleFileEntry {
+			file: PathBuf::from("readme.md"),
+			current_content: "old".to_string(),
+			expected_content: "new".to_string(),
+		}],
+		render_errors: vec![RenderError {
+			file: PathBuf::from("readme.md"),
+			block_name: "block".to_string(),
+			message: "boom".to_string(),
+			line: 1,
+			column: 1,
+		}],
+		warnings: vec![TemplateWarning {
+			provider_file: PathBuf::from("template.t.md"),
+			block_name: "block".to_string(),
+			undefined_variables: vec!["missing.value".to_string()],
+		}],
+	};
+	assert!(!with_warnings.is_ok());
+	assert!(with_warnings.has_errors());
+	assert!(with_warnings.has_warnings());
+}
+
+#[test]
+fn formatter_pipeline_with_matching_noop_formatter_is_noop() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read())'"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok());
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+	assert!(updates.updated_files.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn formatter_enabled_paths_fall_back_to_unformatted_logic_when_no_patterns_match() -> MdtResult<()>
+{
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"this should never run\"\npatterns = [\"**/*.rs\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello from template\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1);
+	assert!(result.stale_files.is_empty());
+	assert!(result.render_errors.is_empty());
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	assert_eq!(updates.updated_files.len(), 1);
+	assert!(
+		updates
+			.updated_files
+			.get(&tmp.path().join("readme.md"))
+			.unwrap_or_else(|| panic!("expected updated readme"))
+			.contains("Hello from template")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn formatter_enabled_check_reports_argument_and_inline_errors() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"this should never run\"\npatterns = [\"**/*.rs\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@tmpl:\"a\":\"b\"} -->\n\n{{ a }} {{ b }}\n\n<!-- {/tmpl} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=tmpl:\"x\"} -->\n\nold\n\n<!-- {/tmpl} -->\n\n<!-- {~inline} -->value<!-- \
+		 {/inline} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.render_errors.len(), 2);
+	assert!(
+		result
+			.render_errors
+			.iter()
+			.any(|error| error.message.contains("argument count mismatch"))
+	);
+	assert!(result.render_errors.iter().any(|error| {
+		error
+			.message
+			.contains("inline block requires one template argument")
+	}));
+
+	Ok(())
+}
+
+#[test]
+fn render_template_invalid_syntax_returns_template_render_error() {
+	let mut data = HashMap::new();
+	data.insert("value".to_string(), serde_json::json!("ok"));
+
+	let err = render_template("{{ value | }}", &data).unwrap_err();
+	assert!(matches!(err, MdtError::TemplateRender(message) if !message.is_empty()));
+}
+
+#[test]
+fn formatter_enabled_compute_updates_skips_non_eligible_blocks() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"this should never run\"\npatterns = [\"**/*.rs\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@tmpl:\"a\"} -->\n\n{{ a }}\n\n<!-- {/tmpl} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=missing} -->\n\nold\n\n<!-- {/missing} -->\n\n<!-- {=tmpl} -->\n\nold\n\n<!-- \
+		 {/tmpl} -->\n\n<!-- {~inline} -->value<!-- {/inline} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+	assert!(updates.updated_files.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_failure_with_stderr_surfaces_stderr_reason() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stderr.write(\"boom\\n\"); sys.exit(9)'"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let err = compute_updates(&ctx).unwrap_err();
+	assert!(matches!(err, MdtError::Formatter { reason, .. } if reason == "boom"));
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_source_file_count_mismatch_returns_formatter_error() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(\"//! just a comment\\n\")'"
+patterns = ["**/*.rs"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello from template\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		"//! <!-- {=block} -->\n//! old\n//! <!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let err = compute_updates(&ctx).unwrap_err();
+	assert!(
+		matches!(err, MdtError::Formatter { reason, .. } if reason.contains("changed the number of consumer blocks from 1 to 0"))
+	);
+
+	Ok(())
+}
+
+#[test]
+fn formatter_warnings_deduplicate_providers_and_ignore_provider_params() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.0.0"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install:\"name\"} -->\n\n{{ name }} {{ pkg.version }} {{ missing.value }}\n\n<!-- \
+		 {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install:\"mdt\"} -->\n\nold\n\n<!-- {/install} -->\n\n<!-- {=install:\"mdt-cli\"} \
+		 -->\n\nold\n\n<!-- {/install} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.warnings.len(), 1);
+	assert_eq!(result.warnings[0].block_name, "install");
+	assert_eq!(
+		result.warnings[0].undefined_variables,
+		vec!["missing.value"]
+	);
+
+	Ok(())
+}
