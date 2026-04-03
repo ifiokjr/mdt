@@ -101,7 +101,13 @@ test("build-packages generates root and platform npm packages from release archi
 		);
 		assert.ok(
 			existsSync(
-				join(outDir, "platform", "@m-d-t__cli-win32-x64-msvc", "bin", "mdt.exe"),
+				join(
+					outDir,
+					"platform",
+					"@m-d-t__cli-win32-x64-msvc",
+					"bin",
+					"mdt.exe",
+				),
 			),
 		);
 
