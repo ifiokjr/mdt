@@ -27,8 +27,15 @@ fn can_init() -> AnyEmptyResult {
 	assert!(config_path.exists());
 
 	let config_content = std::fs::read_to_string(&config_path)?;
-	assert!(config_content.contains("[data]"));
-	assert!(config_content.contains("[padding]"));
+	assert!(config_content.contains("# Welcome to mdt."));
+	assert!(config_content.contains("# max_file_size = 10485760"));
+	assert!(config_content.contains("# [data]"));
+	assert!(config_content.contains("# [padding]"));
+	assert!(config_content.contains("# [exclude]"));
+	assert!(config_content.contains("# [include]"));
+	assert!(config_content.contains("# [templates]"));
+	assert!(config_content.contains("# [[formatters]]"));
+	assert!(config_content.contains("{{ filePath }}"));
 
 	Ok(())
 }
@@ -124,11 +131,15 @@ fn init_creates_both_template_and_config() -> AnyEmptyResult {
 
 	// Verify config is valid TOML (all lines are comments or blank, so it parses as empty)
 	let config_content = std::fs::read_to_string(&config_path)?;
-	assert!(config_content.contains("# mdt configuration"));
+	assert!(config_content.contains("# Welcome to mdt."));
 	assert!(config_content.contains("# [data]"));
 	assert!(config_content.contains("# [padding]"));
-	assert!(config_content.contains("# pkg = \"package.json\""));
-	assert!(config_content.contains("# cargo = \"Cargo.toml\""));
+	assert!(config_content.contains("# [exclude]"));
+	assert!(config_content.contains("# [include]"));
+	assert!(config_content.contains("# [templates]"));
+	assert!(config_content.contains("# [[formatters]]"));
+	assert!(config_content.contains("# package = \"package.json\""));
+	assert!(config_content.contains("# release = { path = \"release-info\", format = \"json\" }"));
 
 	Ok(())
 }

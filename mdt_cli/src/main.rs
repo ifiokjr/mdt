@@ -1,3 +1,5 @@
+mod default_mdt_toml;
+
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::path::Path;
@@ -266,17 +268,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if config_exists {
 		// Skip silently if config already exists.
 	} else {
-		let sample_config =
-			"# mdt configuration\n# See \
-			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
-			 Map data files to template namespaces.\n# Values from these files are available in \
-			 source blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo = \
-			 \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch = \
-			 [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
-			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
-			 [padding]\n# before = 0\n# after = 0\n";
-
-		std::fs::write(&config_path, sample_config)?;
+		std::fs::write(&config_path, default_mdt_toml::DEFAULT_MDT_TOML)?;
 		println!("Created mdt.toml");
 	}
 

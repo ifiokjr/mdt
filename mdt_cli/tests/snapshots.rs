@@ -95,6 +95,9 @@ fn init_fresh_directory() -> AnyEmptyResult {
 	let template = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))?;
 	insta::assert_snapshot!("init_fresh_directory_template", template);
 
+	let config = std::fs::read_to_string(tmp.path().join("mdt.toml"))?;
+	insta::assert_snapshot!("init_fresh_directory_config", config);
+
 	Ok(())
 }
 
@@ -358,7 +361,10 @@ patterns = ["**/*.md"]
 		"# Draft title\n\n<!-- {=body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
 	)?;
 
-	assert_cmd_snapshot!("formatter_update_normalize_only", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"formatter_update_normalize_only",
+		mdt_cmd(tmp.path()).arg("update")
+	);
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 	insta::assert_snapshot!("formatter_update_normalize_only_readme_md", readme);
 
