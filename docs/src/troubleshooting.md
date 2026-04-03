@@ -157,7 +157,7 @@ Use formatter integration so mdt formats the full updated file before comparing 
 
 ```toml
 [[formatters]]
-command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
 ```
 
@@ -165,11 +165,11 @@ For per-language tools, add multiple entries:
 
 ```toml
 [[formatters]]
-command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+command = "prettier --stdin-filepath \"{{ filePath }}\""
 patterns = ["**/*.ts", "**/*.tsx"]
 
 [[formatters]]
-command = "eslint_d --fix-to-stdout --stdin --stdin-filename \"$MDT_FORMAT_FILE\""
+command = "eslint_d --fix-to-stdout --stdin --stdin-filename \"{{ filePath }}\""
 patterns = ["**/*.ts", "**/*.tsx"]
 ```
 

@@ -933,6 +933,47 @@ patterns = ["**/*.md"]
 }
 
 #[test]
+fn formatter_pipeline_interpolates_command_placeholders() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("nested")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; print(sys.argv[1]); print(sys.argv[2]); print(sys.argv[3]); sys.stdout.write(sys.stdin.read())' \"{{ filePath }}\" \"{{ relativeFilePath }}\" \"{{ rootDirectory }}\""
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("nested/readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+	let updated = updates
+		.updated_files
+		.get(&tmp.path().join("nested/readme.md"))
+		.unwrap_or_else(|| panic!("expected normalized file"));
+	assert!(updated.contains(&tmp.path().join("nested/readme.md").display().to_string()));
+	assert!(updated.contains("nested/readme.md"));
+	assert!(updated.contains(&tmp.path().display().to_string()));
+
+	Ok(())
+}
+
+#[test]
 fn formatter_pipeline_failures_return_formatter_error() -> MdtResult<()> {
 	if cfg!(windows) {
 		return Ok(());
@@ -7626,11 +7667,11 @@ fn config_defaults_exclude_markdown_codeblocks_to_false() {
 fn config_parses_formatter_entries() {
 	let toml_content = r#"
 [[formatters]]
-command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
 
 [[formatters]]
-command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+command = "prettier --stdin-filepath \"{{ filePath }}\""
 patterns = ["**/*.ts", "**/*.tsx"]
 "#;
 	let config: MdtConfig = toml::from_str(toml_content).unwrap_or_else(|e| panic!("parse: {e}"));
@@ -7638,14 +7679,14 @@ patterns = ["**/*.ts", "**/*.tsx"]
 	assert_eq!(
 		config.formatters[0],
 		FormatterConfig {
-			command: "dprint fmt --stdin \"$MDT_FORMAT_FILE\"".to_string(),
+			command: "dprint fmt --stdin \"{{ filePath }}\"".to_string(),
 			patterns: vec!["**".to_string()],
 		}
 	);
 	assert_eq!(
 		config.formatters[1],
 		FormatterConfig {
-			command: "prettier --stdin-filepath \"$MDT_FORMAT_FILE\"".to_string(),
+			command: "prettier --stdin-filepath \"{{ filePath }}\"".to_string(),
 			patterns: vec!["**/*.ts".to_string(), "**/*.tsx".to_string()],
 		}
 	);
@@ -7656,8 +7697,7 @@ fn config_load_rejects_formatter_without_patterns() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"$MDT_FORMAT_FILE\\\"\"\npatterns = \
-		 []\n",
+		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"{{ filePath }}\\\"\"\npatterns = []\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -7672,7 +7712,7 @@ fn config_load_rejects_invalid_formatter_pattern() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"$MDT_FORMAT_FILE\\\"\"\npatterns = \
+		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"{{ filePath }}\\\"\"\npatterns = \
 		 [\"[\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));

@@ -127,11 +127,11 @@ Use formatter entries to make `mdt update` and `mdt check` converge with your pr
 
 ```toml
 [[formatters]]
-command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
 
 [[formatters]]
-command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+command = "prettier --stdin-filepath \"{{ filePath }}\""
 patterns = ["**/*.ts", "**/*.tsx"]
 ```
 
@@ -151,11 +151,11 @@ This integration applies to both:
 
 That means `mdt update → formatter → mdt check` should converge without extra repair loops.
 
-#### Environment variables available to formatter commands
+#### Interpolated values available to formatter commands
 
-- `MDT_FORMAT_FILE` — absolute path to the file being formatted
-- `MDT_FORMAT_RELATIVE_FILE` — path relative to the project root
-- `MDT_FORMAT_ROOT` — absolute project root
+- `{{ filePath }}` — absolute path to the file being formatted
+- `{{ relativeFilePath }}` — path relative to the project root
+- `{{ rootDirectory }}` — absolute project root
 
 #### Recommended patterns
 
@@ -163,7 +163,7 @@ If you already use a formatter router like dprint, a single catch-all entry is o
 
 ```toml
 [[formatters]]
-command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
 ```
 
@@ -249,6 +249,6 @@ patterns = ["src/**"]
 paths = ["templates"]
 
 [[formatters]]
-command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
 ```

@@ -596,20 +596,18 @@ fn run_formatter_command(
 	input: &str,
 ) -> MdtResult<String> {
 	let relative_file = file.strip_prefix(&ctx.root).unwrap_or(file);
+	let interpolated = interpolate_formatter_command(command, file, relative_file, &ctx.root);
 	let mut command_builder = if cfg!(windows) {
 		let mut command_builder = Command::new("cmd");
-		command_builder.arg("/C").arg(command);
+		command_builder.arg("/C").arg(&interpolated);
 		command_builder
 	} else {
 		let mut command_builder = Command::new("sh");
-		command_builder.arg("-c").arg(command);
+		command_builder.arg("-c").arg(&interpolated);
 		command_builder
 	};
 	let mut child = command_builder
 		.current_dir(&ctx.root)
-		.env("MDT_FORMAT_FILE", file)
-		.env("MDT_FORMAT_RELATIVE_FILE", relative_file)
-		.env("MDT_FORMAT_ROOT", &ctx.root)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
@@ -635,7 +633,7 @@ fn run_formatter_command(
 		};
 		return Err(MdtError::Formatter {
 			file: relative_file.display().to_string(),
-			command: command.to_string(),
+			command: interpolated,
 			reason,
 		});
 	}
@@ -643,6 +641,21 @@ fn run_formatter_command(
 	Ok(normalize_line_endings(&String::from_utf8_lossy(
 		&output.stdout,
 	)))
+}
+
+fn interpolate_formatter_command(
+	command: &str,
+	file: &Path,
+	relative_file: &Path,
+	root: &Path,
+) -> String {
+	command
+		.replace("{{ filePath }}", &file.display().to_string())
+		.replace(
+			"{{ relativeFilePath }}",
+			&relative_file.display().to_string(),
+		)
+		.replace("{{ rootDirectory }}", &root.display().to_string())
 }
 
 fn parse_candidate_consumer_contents(
