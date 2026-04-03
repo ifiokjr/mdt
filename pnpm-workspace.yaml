@@ -1,4 +1,2 @@
-useNodeVersion: 24.14.0
-nodeVersion: 24.14.0
 packages:
   - "npm/skills"
