@@ -81,13 +81,13 @@ Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drif
 - Install with npm:
 
 ```sh
-npm install -g @ifi/mdt
+npm install -g @m-d-t/cli
 ```
 
 - Or run it without installing:
 
 ```sh
-npx @ifi/mdt --help
+npx @m-d-t/cli --help
 ```
 
 - Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
@@ -159,10 +159,10 @@ Every target block named `greeting` now has the same content. Run `mdt check` in
 If you use a coding agent that supports the [Agent Skills standard](https://agentskills.io) (like [Pi](https://github.com/badlogic/pi)), install the official mdt skill:
 
 ```sh
-pi install npm:@ifi/mdt-skills
+pi install npm:@m-d-t/skills
 ```
 
-The [`@ifi/mdt-skills`](https://www.npmjs.com/package/@ifi/mdt-skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration — so it can fully manage your project's documentation templates.
+The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration — so it can fully manage your project's documentation templates.
 
 ## Crates
 

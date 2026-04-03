@@ -7,16 +7,16 @@ const { spawnSync } = require("node:child_process");
 
 const PLATFORM_PACKAGES = {
 	darwin: {
-		arm64: ["@ifi/mdt-darwin-arm64"],
-		x64: ["@ifi/mdt-darwin-x64"],
+		arm64: ["@m-d-t/cli-darwin-arm64"],
+		x64: ["@m-d-t/cli-darwin-x64"],
 	},
 	linux: {
-		arm64: ["@ifi/mdt-linux-arm64-gnu", "@ifi/mdt-linux-arm64-musl"],
-		x64: ["@ifi/mdt-linux-x64-gnu", "@ifi/mdt-linux-x64-musl"],
+		arm64: ["@m-d-t/cli-linux-arm64-gnu", "@m-d-t/cli-linux-arm64-musl"],
+		x64: ["@m-d-t/cli-linux-x64-gnu", "@m-d-t/cli-linux-x64-musl"],
 	},
 	win32: {
-		arm64: ["@ifi/mdt-win32-arm64-msvc"],
-		x64: ["@ifi/mdt-win32-x64-msvc"],
+		arm64: ["@m-d-t/cli-win32-arm64-msvc"],
+		x64: ["@m-d-t/cli-win32-x64-msvc"],
 	},
 };
 
@@ -104,7 +104,7 @@ function main() {
 		console.error(failures.join("\n"));
 	}
 	console.error(
-		"Reinstall with `npm install -g @ifi/mdt`, download a binary from GitHub releases, or use `cargo install mdt_cli`.",
+		"Reinstall with `npm install -g @m-d-t/cli`, download a binary from GitHub releases, or use `cargo install mdt_cli`.",
 	);
 	process.exit(1);
 }

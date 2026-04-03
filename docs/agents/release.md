@@ -47,8 +47,8 @@ npm publishing is handled by a separate `npm-publish` workflow when `NPM_TOKEN` 
 - The `release` workflow builds and uploads the GitHub release binaries, then publishes a small metadata artifact containing the release tag.
 - The `npm-publish` workflow runs after the `release` workflow completes successfully, downloads that metadata artifact, then repackages the exact release binaries into npm packages.
 - `npm-publish` checks out the default branch tooling rather than the release tag itself, so manual reruns can publish older release tags even if the npm packaging scripts were added later.
-- The top-level package is `@ifi/mdt`.
-- The agent skill package is `@ifi/mdt-skills` (a pi-compatible skill package).
+- The top-level package is `@m-d-t/cli`.
+- The agent skill package is `@m-d-t/skills` (a pi-compatible skill package).
 - Platform packages are published first (for Linux, macOS, and Windows targets).
 - The skills package is published after platform packages.
 - The top-level package is published last and depends on those platform packages through `optionalDependencies`.

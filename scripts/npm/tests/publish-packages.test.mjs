@@ -33,7 +33,7 @@ case "$cmd" in
   view)
     package_ref="$1"
     version="\${package_ref##*@}"
-    if [ "$package_ref" = "@ifi/mdt-linux-x64-gnu@\${version}" ]; then
+    if [ "$package_ref" = "@m-d-t/cli-linux-x64-gnu@\${version}" ]; then
       printf '%s\\n' "$version"
       exit 0
     fi
@@ -64,17 +64,17 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 
 	try {
 		createPackage(
-			join(platformDir, "@ifi__mdt-darwin-arm64"),
-			"@ifi/mdt-darwin-arm64",
+			join(platformDir, "@m-d-t__cli-darwin-arm64"),
+			"@m-d-t/cli-darwin-arm64",
 			"1.2.3",
 		);
 		createPackage(
-			join(platformDir, "@ifi__mdt-linux-x64-gnu"),
-			"@ifi/mdt-linux-x64-gnu",
+			join(platformDir, "@m-d-t__cli-linux-x64-gnu"),
+			"@m-d-t/cli-linux-x64-gnu",
 			"1.2.3",
 		);
-		createPackage(skillsDir, "@ifi/mdt-skills", "1.2.3");
-		createPackage(rootDir, "@ifi/mdt", "1.2.3");
+		createPackage(skillsDir, "@m-d-t/skills", "1.2.3");
+		createPackage(rootDir, "@m-d-t/cli", "1.2.3");
 		createFakeNpm(fakeBinDir, publishLogPath);
 
 		const result = spawnSync(
@@ -91,10 +91,10 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		);
 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
-		assert.match(result.stdout, /Skipping @ifi\/mdt-linux-x64-gnu@1.2.3/);
-		assert.match(result.stdout, /Publishing @ifi\/mdt-darwin-arm64@1.2.3/);
-		assert.match(result.stdout, /Publishing @ifi\/mdt-skills@1.2.3/);
-		assert.match(result.stdout, /Publishing @ifi\/mdt@1.2.3/);
+		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1.2.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1.2.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/skills@1.2.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/cli@1.2.3/);
 
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
@@ -103,7 +103,7 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		assert.equal(publishedDirs.length, 3);
 		assert.match(
 			publishedDirs[0],
-			/packages\/platform\/@ifi__mdt-darwin-arm64$/,
+			/packages\/platform\/@m-d-t__cli-darwin-arm64$/,
 		);
 		assert.match(publishedDirs[1], /packages\/skills$/);
 		assert.match(publishedDirs[2], /packages\/root$/);

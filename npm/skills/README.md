@@ -1,4 +1,4 @@
-# @ifi/mdt-skills
+# @m-d-t/skills
 
 Agent skills for [mdt](https://github.com/ifiokjr/mdt) — the markdown template synchronization tool.
 
@@ -17,13 +17,13 @@ This package provides a **pi-compatible agent skill** that teaches your coding a
 ### As a pi package
 
 ```sh
-pi install npm:@ifi/mdt-skills
+pi install npm:@m-d-t/skills
 ```
 
 Or try it for a single session:
 
 ```sh
-pi -e npm:@ifi/mdt-skills
+pi -e npm:@m-d-t/skills
 ```
 
 ### As a project-level dependency
@@ -32,7 +32,7 @@ Add to your `.pi/settings.json`:
 
 ```json
 {
-	"packages": ["npm:@ifi/mdt-skills"]
+	"packages": ["npm:@m-d-t/skills"]
 }
 ```
 
@@ -40,7 +40,7 @@ Then any contributor running `pi` in the project will automatically get the skil
 
 ## Requirements
 
-- [mdt CLI](https://github.com/ifiokjr/mdt) installed (`npm install -g @ifi/mdt` or `cargo install mdt_cli`)
+- [mdt CLI](https://github.com/ifiokjr/mdt) installed (`npm install -g @m-d-t/cli` or `cargo install mdt_cli`)
 - For MCP integration: an mdt MCP server configured in your agent (`mdt mcp`)
 
 ## What the skill covers
@@ -59,4 +59,4 @@ Then any contributor running `pi` in the project will automatically get the skil
 
 - [mdt repository](https://github.com/ifiokjr/mdt)
 - [Documentation](https://ifiokjr.github.io/mdt/)
-- [CLI binary package](https://www.npmjs.com/package/@ifi/mdt)
+- [CLI binary package](https://www.npmjs.com/package/@m-d-t/cli)

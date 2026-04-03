@@ -96,33 +96,33 @@ test("build-packages generates root and platform npm packages from release archi
 		assert.ok(existsSync(join(outDir, "root", "bin", "mdt.js")));
 		assert.ok(
 			existsSync(
-				join(outDir, "platform", "@ifi__mdt-linux-x64-gnu", "bin", "mdt"),
+				join(outDir, "platform", "@m-d-t__cli-linux-x64-gnu", "bin", "mdt"),
 			),
 		);
 		assert.ok(
 			existsSync(
-				join(outDir, "platform", "@ifi__mdt-win32-x64-msvc", "bin", "mdt.exe"),
+				join(outDir, "platform", "@m-d-t__cli-win32-x64-msvc", "bin", "mdt.exe"),
 			),
 		);
 
 		const rootPackage = JSON.parse(
 			readFileSync(join(outDir, "root", "package.json"), "utf8"),
 		);
-		assert.equal(rootPackage.name, "@ifi/mdt");
+		assert.equal(rootPackage.name, "@m-d-t/cli");
 		assert.equal(rootPackage.version, "1.2.3");
 		assert.equal(rootPackage.bin.mdt, "bin/mdt.js");
 		assert.equal(
-			rootPackage.optionalDependencies["@ifi/mdt-darwin-arm64"],
+			rootPackage.optionalDependencies["@m-d-t/cli-darwin-arm64"],
 			"1.2.3",
 		);
 
 		const linuxPackage = JSON.parse(
 			readFileSync(
-				join(outDir, "platform", "@ifi__mdt-linux-x64-gnu", "package.json"),
+				join(outDir, "platform", "@m-d-t__cli-linux-x64-gnu", "package.json"),
 				"utf8",
 			),
 		);
-		assert.equal(linuxPackage.name, "@ifi/mdt-linux-x64-gnu");
+		assert.equal(linuxPackage.name, "@m-d-t/cli-linux-x64-gnu");
 		assert.deepEqual(linuxPackage.os, ["linux"]);
 		assert.deepEqual(linuxPackage.cpu, ["x64"]);
 		assert.deepEqual(linuxPackage.libc, ["glibc"]);
@@ -148,7 +148,7 @@ test("build-packages generates root and platform npm packages from release archi
 		const skillsPackage = JSON.parse(
 			readFileSync(join(outDir, "skills", "package.json"), "utf8"),
 		);
-		assert.equal(skillsPackage.name, "@ifi/mdt-skills");
+		assert.equal(skillsPackage.name, "@m-d-t/skills");
 		assert.equal(skillsPackage.version, "1.2.3");
 		assert.ok(
 			skillsPackage.keywords.includes("pi-package"),
@@ -159,7 +159,7 @@ test("build-packages generates root and platform npm packages from release archi
 		const summary = JSON.parse(
 			readFileSync(join(outDir, "summary.json"), "utf8"),
 		);
-		assert.equal(summary.skillsPackage, "@ifi/mdt-skills");
+		assert.equal(summary.skillsPackage, "@m-d-t/skills");
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
