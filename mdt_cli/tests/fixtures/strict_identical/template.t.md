@@ -1,0 +1,5 @@
+<!-- {@block} -->
+
+Exact content.
+
+<!-- {/block} -->
