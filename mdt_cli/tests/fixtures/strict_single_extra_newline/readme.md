@@ -1,0 +1,6 @@
+<!-- {=block} -->
+
+Content
+
+
+<!-- {/block} -->

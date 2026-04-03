@@ -1,0 +1,4 @@
+[check]
+comparison = "lenient"
+[data]
+pkg = "package.json"
