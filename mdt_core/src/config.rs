@@ -169,6 +169,51 @@ pub struct MdtConfig {
 	/// scanned — in that case, use `[exclude]` patterns instead.
 	#[serde(default)]
 	pub disable_gitignore: bool,
+	/// Check comparison configuration controlling how `mdt check` compares
+	/// expected vs actual block content.
+	#[serde(default)]
+	pub check: CheckConfig,
+}
+
+/// Configuration for the `mdt check` comparison behavior.
+///
+/// ```toml
+/// [check]
+/// comparison = "lenient"
+/// ```
+///
+/// When `comparison` is `"lenient"`, `mdt check` normalizes whitespace
+/// before comparing expected and actual block content. This makes the check
+/// tolerant of formatter rewrites that only change insignificant whitespace
+/// (blank lines, trailing spaces, table padding, JSON indentation).
+///
+/// `mdt update` always writes exact bytes regardless of this setting.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CheckConfig {
+	/// Comparison mode: `"strict"` (default) or `"lenient"`.
+	#[serde(default)]
+	pub comparison: ComparisonMode,
+}
+
+impl Default for CheckConfig {
+	fn default() -> Self {
+		Self {
+			comparison: ComparisonMode::default(),
+		}
+	}
+}
+
+/// How `mdt check` compares expected vs actual content.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ComparisonMode {
+	/// Byte-for-byte comparison (default).
+	#[default]
+	Strict,
+	/// Whitespace-normalized comparison. Ignores differences in blank line
+	/// count, trailing whitespace, and other insignificant whitespace so
+	/// formatter rewrites do not cause false staleness.
+	Lenient,
 }
 
 /// Controls the number of blank lines between a tag and its content.

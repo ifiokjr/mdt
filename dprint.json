@@ -47,9 +47,7 @@
 		"**/node_modules",
 		".bin/",
 		".local-cache/",
-		"**/pkg/",
-		"*.t.md",
-		"**/*.t.md"
+		"**/pkg/"
 	],
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.13.wasm",

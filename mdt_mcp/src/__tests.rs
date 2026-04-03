@@ -76,7 +76,7 @@ fn create_formatter_only_stale_project(root: &Path) {
 	std::fs::write(
 		root.join("mdt.toml"),
 		r#"[[formatters]]
-command = "perl -0pe 's/Draft title/Published title/g'"
+command = "/usr/bin/perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)
