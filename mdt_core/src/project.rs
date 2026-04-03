@@ -22,6 +22,7 @@ use crate::MdtResult;
 use crate::config::CONFIG_FILE_CANDIDATES;
 use crate::config::CodeBlockFilter;
 use crate::config::DEFAULT_MAX_FILE_SIZE;
+use crate::config::FormatterConfig;
 use crate::config::MdtConfig;
 use crate::config::PaddingConfig;
 use crate::engine::validate_transformers;
@@ -204,6 +205,8 @@ pub struct Project {
 /// [`compute_updates`](crate::compute_updates).
 #[derive(Debug)]
 pub struct ProjectContext {
+	/// Project root used for config resolution and formatter execution.
+	pub root: PathBuf,
 	/// The scanned project with providers and consumers.
 	pub project: Project,
 	/// Template data loaded from files referenced in `mdt.toml`.
@@ -211,6 +214,10 @@ pub struct ProjectContext {
 	/// Padding configuration controlling blank lines between tags and content.
 	/// `None` means no padding is applied.
 	pub padding: Option<PaddingConfig>,
+	/// Ordered formatter pipeline entries used to normalize full-file output.
+	pub formatters: Vec<FormatterConfig>,
+	/// Source scanning code block filtering needed when reparsing source files.
+	pub markdown_codeblocks: CodeBlockFilter,
 }
 
 impl ProjectContext {
@@ -401,15 +408,22 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let options = ScanOptions::from_config(config.as_ref());
 	let project = scan_project_with_options(root, &options)?;
 	let padding = config.as_ref().and_then(|c| c.padding.clone());
+	let formatters = config
+		.as_ref()
+		.map_or_else(Vec::new, |c| c.formatters.clone());
+	let markdown_codeblocks = options.markdown_codeblocks.clone();
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
 	};
 
 	Ok(ProjectContext {
+		root: root.to_path_buf(),
 		project,
 		data,
 		padding,
+		formatters,
+		markdown_codeblocks,
 	})
 }
 

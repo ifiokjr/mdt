@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::UNIX_EPOCH;
 
+use globset::Glob;
+use globset::GlobSetBuilder;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -239,6 +241,22 @@ pub struct FormatterConfig {
 	pub patterns: Vec<String>,
 }
 
+impl FormatterConfig {
+	/// Returns true when this formatter applies to `file`, relative to `root`.
+	#[must_use]
+	pub fn matches_file(&self, root: &Path, file: &Path) -> bool {
+		let relative = file.strip_prefix(root).unwrap_or(file);
+		let key = normalize_path_key(relative);
+		let mut builder = GlobSetBuilder::new();
+		for pattern in &self.patterns {
+			if let Ok(glob) = Glob::new(pattern) {
+				builder.add(glob);
+			}
+		}
+		builder.build().is_ok_and(|set| set.is_match(key))
+	}
+}
+
 fn default_max_file_size() -> u64 {
 	DEFAULT_MAX_FILE_SIZE
 }
@@ -331,6 +349,26 @@ fn save_script_cache(root: &Path, cache: &DataScriptCache) {
 
 fn normalize_path_key(path: &Path) -> String {
 	path.to_string_lossy().replace('\\', "/")
+}
+
+fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
+	for formatter in formatters {
+		if formatter.patterns.is_empty() {
+			return Err(MdtError::ConfigParse(
+				"each [[formatters]] entry must define at least one pattern".to_string(),
+			));
+		}
+		for pattern in &formatter.patterns {
+			Glob::new(pattern).map_err(|e| {
+				MdtError::ConfigParse(format!(
+					"invalid formatter pattern `{pattern}` for command `{}`: {e}",
+					formatter.command
+				))
+			})?;
+		}
+	}
+
+	Ok(())
 }
 
 fn watch_fingerprint(path: &Path) -> WatchFingerprint {
@@ -473,6 +511,7 @@ impl MdtConfig {
 		let content = std::fs::read_to_string(&config_path)?;
 		let config: MdtConfig =
 			toml::from_str(&content).map_err(|e| MdtError::ConfigParse(e.to_string()))?;
+		validate_formatters(&config.formatters)?;
 
 		Ok(Some(config))
 	}

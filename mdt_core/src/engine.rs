@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::BuildHasher;
+use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
+use std::process::Stdio;
 
 use crate::Argument;
 use crate::BlockType;
@@ -10,9 +14,14 @@ use crate::MdtResult;
 use crate::Transformer;
 use crate::TransformerType;
 use crate::config::PaddingConfig;
+use crate::parser::parse_with_diagnostics;
 use crate::project::ConsumerEntry;
 use crate::project::ProjectContext;
 use crate::project::ProviderEntry;
+use crate::project::extract_content_between_tags;
+use crate::project::is_markdown_path;
+use crate::project::normalize_line_endings;
+use crate::source_scanner::parse_source_with_diagnostics;
 
 /// A warning about undefined template variables in a provider block.
 #[derive(Debug, Clone)]
@@ -34,6 +43,9 @@ pub struct TemplateWarning {
 pub struct CheckResult {
 	/// Consumer entries that are out of date.
 	pub stale: Vec<StaleEntry>,
+	/// Files whose formatter-normalized full-file output differs even though no
+	/// individual consumer content changed.
+	pub stale_files: Vec<StaleFileEntry>,
 	/// Errors encountered while rendering templates. These are collected
 	/// instead of aborting so that the check reports all problems at once.
 	pub render_errors: Vec<RenderError>,
@@ -44,7 +56,7 @@ pub struct CheckResult {
 impl CheckResult {
 	/// Returns true if all consumers are up to date and no errors occurred.
 	pub fn is_ok(&self) -> bool {
-		self.stale.is_empty() && self.render_errors.is_empty()
+		self.stale.is_empty() && self.stale_files.is_empty() && self.render_errors.is_empty()
 	}
 
 	/// Returns true if there are template render errors.
@@ -90,6 +102,19 @@ pub struct StaleEntry {
 	pub line: usize,
 	/// 1-indexed column number of the consumer's opening tag.
 	pub column: usize,
+}
+
+/// A file whose formatter-normalized output differs even though no specific
+/// consumer block content changed.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct StaleFileEntry {
+	/// Path to the stale file.
+	pub file: PathBuf,
+	/// The current full file content.
+	pub current_content: String,
+	/// The expected full file content after formatter normalization.
+	pub expected_content: String,
 }
 
 /// Result of updating a project.
@@ -238,54 +263,116 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 /// reports all problems in a single pass.
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
+	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
 	let warnings = collect_template_warnings(ctx);
+	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
-	for consumer in &ctx.project.consumers {
-		match consumer.block.r#type {
-			BlockType::Consumer => {
-				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-					continue;
-				};
+	for (file, consumers) in consumers_by_file {
+		let original = std::fs::read_to_string(&file)?;
+		let ordered_consumers = sort_consumers_in_file(consumers);
+		let mut candidate = original.clone();
+		let mut eligible = vec![false; ordered_consumers.len()];
+		let mut raw_expected: Vec<Option<String>> = vec![None; ordered_consumers.len()];
 
-				let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
-					render_errors.push(RenderError {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						message: format!(
-							"argument count mismatch: provider `{}` declares {} parameter(s), but \
-							 consumer passes {}",
-							consumer.block.name,
-							provider.block.arguments.len(),
-							consumer.block.arguments.len(),
-						),
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-					continue;
-				};
-				let rendered = match render_template(&provider.content, &render_data) {
-					Ok(r) => r,
-					Err(e) => {
+		for (index, consumer) in ordered_consumers.iter().enumerate().rev() {
+			match consumer.block.r#type {
+				BlockType::Consumer => {
+					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+						continue;
+					};
+
+					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
+					else {
 						render_errors.push(RenderError {
 							file: consumer.file.clone(),
 							block_name: consumer.block.name.clone(),
-							message: e.to_string(),
+							message: format!(
+								"argument count mismatch: provider `{}` declares {} parameter(s), \
+								 but consumer passes {}",
+								consumer.block.name,
+								provider.block.arguments.len(),
+								consumer.block.arguments.len(),
+							),
 							line: consumer.block.opening.start.line,
 							column: consumer.block.opening.start.column,
 						});
 						continue;
+					};
+					let rendered = match render_template(&provider.content, &render_data) {
+						Ok(rendered) => rendered,
+						Err(error) => {
+							render_errors.push(RenderError {
+								file: consumer.file.clone(),
+								block_name: consumer.block.name.clone(),
+								message: error.to_string(),
+								line: consumer.block.opening.start.line,
+								column: consumer.block.opening.start.column,
+							});
+							continue;
+						}
+					};
+					let mut expected = apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&render_data),
+					);
+					if let Some(padding) = &ctx.padding {
+						expected = pad_content_with_config(&expected, &consumer.content, padding);
 					}
-				};
-				let mut expected = apply_transformers_with_data(
-					&rendered,
-					&consumer.block.transformers,
-					Some(&render_data),
-				);
-				if let Some(padding) = &ctx.padding {
-					expected = pad_content_with_config(&expected, &consumer.content, padding);
+					eligible[index] = true;
+					raw_expected[index] = Some(expected.clone());
+					if consumer.content != expected {
+						replace_consumer_content(&mut candidate, consumer, &expected);
+					}
 				}
+				BlockType::Inline => {
+					let Some(template) = consumer.block.arguments.first() else {
+						render_errors.push(RenderError {
+							file: consumer.file.clone(),
+							block_name: consumer.block.name.clone(),
+							message: "inline block requires one template argument, e.g. <!-- \
+							          {~name:\"{{ pkg.version }}\"} -->"
+								.to_string(),
+							line: consumer.block.opening.start.line,
+							column: consumer.block.opening.start.column,
+						});
+						continue;
+					};
+					let rendered = match render_template(template, &ctx.data) {
+						Ok(rendered) => rendered,
+						Err(error) => {
+							render_errors.push(RenderError {
+								file: consumer.file.clone(),
+								block_name: consumer.block.name.clone(),
+								message: error.to_string(),
+								line: consumer.block.opening.start.line,
+								column: consumer.block.opening.start.column,
+							});
+							continue;
+						}
+					};
+					let expected = apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&ctx.data),
+					);
+					eligible[index] = true;
+					raw_expected[index] = Some(expected.clone());
+					if consumer.content != expected {
+						replace_consumer_content(&mut candidate, consumer, &expected);
+					}
+				}
+				BlockType::Provider => {}
+			}
+		}
 
+		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+		if formatter_commands.is_empty() {
+			for (index, consumer) in ordered_consumers.iter().enumerate() {
+				let Some(expected) = raw_expected[index].clone() else {
+					continue;
+				};
 				if consumer.content != expected {
 					stale.push(StaleEntry {
 						file: consumer.file.clone(),
@@ -297,55 +384,51 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					});
 				}
 			}
-			BlockType::Inline => {
-				let Some(template) = consumer.block.arguments.first() else {
-					render_errors.push(RenderError {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						message: "inline block requires one template argument, e.g. <!-- \
-						          {~name:\"{{ pkg.version }}\"} -->"
-							.to_string(),
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-					continue;
-				};
-				let rendered = match render_template(template, &ctx.data) {
-					Ok(r) => r,
-					Err(e) => {
-						render_errors.push(RenderError {
-							file: consumer.file.clone(),
-							block_name: consumer.block.name.clone(),
-							message: e.to_string(),
-							line: consumer.block.opening.start.line,
-							column: consumer.block.opening.start.column,
-						});
-						continue;
-					}
-				};
-				let expected = apply_transformers_with_data(
-					&rendered,
-					&consumer.block.transformers,
-					Some(&ctx.data),
-				);
+			continue;
+		}
 
-				if consumer.content != expected {
-					stale.push(StaleEntry {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						current_content: consumer.content.clone(),
-						expected_content: expected,
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-				}
+		if candidate == original {
+			continue;
+		}
+
+		let final_contents = parse_candidate_consumer_contents(
+			ctx,
+			&file,
+			&candidate,
+			ordered_consumers.len(),
+			&formatter_commands,
+		)?;
+		let mut file_stale_count = 0;
+		for (index, consumer) in ordered_consumers.iter().enumerate() {
+			if !eligible[index] {
+				continue;
 			}
-			BlockType::Provider => {}
+			let expected = final_contents[index].clone();
+			if consumer.content != expected {
+				file_stale_count += 1;
+				stale.push(StaleEntry {
+					file: consumer.file.clone(),
+					block_name: consumer.block.name.clone(),
+					current_content: consumer.content.clone(),
+					expected_content: expected,
+					line: consumer.block.opening.start.line,
+					column: consumer.block.opening.start.column,
+				});
+			}
+		}
+
+		if file_stale_count == 0 {
+			stale_files.push(StaleFileEntry {
+				file: file.clone(),
+				current_content: original,
+				expected_content: candidate,
+			});
 		}
 	}
 
 	Ok(CheckResult {
 		stale,
+		stale_files,
 		render_errors,
 		warnings,
 	})
@@ -356,41 +439,24 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 	let warnings = collect_template_warnings(ctx);
+	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
-	// Group consumers by file
-	let mut consumers_by_file: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
-	for consumer in &ctx.project.consumers {
-		consumers_by_file
-			.entry(consumer.file.clone())
-			.or_default()
-			.push(consumer);
-	}
+	for (file, consumers) in consumers_by_file {
+		let original = std::fs::read_to_string(&file)?;
+		let ordered_consumers = sort_consumers_in_file(consumers);
+		let mut candidate = original.clone();
+		let mut eligible = vec![false; ordered_consumers.len()];
+		let mut raw_expected: Vec<Option<String>> = vec![None; ordered_consumers.len()];
 
-	for (file, consumers) in &consumers_by_file {
-		let original = if let Some(content) = file_contents.get(file) {
-			content.clone()
-		} else {
-			std::fs::read_to_string(file)?
-		};
-
-		let mut result = original.clone();
-		let mut had_update = false;
-		// Process consumers in reverse offset order so earlier replacements
-		// don't shift the positions of later ones.
-		let mut sorted_consumers: Vec<&&ConsumerEntry> = consumers.iter().collect();
-		sorted_consumers
-			.sort_by(|a, b| b.block.opening.end.offset.cmp(&a.block.opening.end.offset));
-
-		for consumer in sorted_consumers {
+		for (index, consumer) in ordered_consumers.iter().enumerate().rev() {
 			let new_content = match consumer.block.r#type {
 				BlockType::Consumer => {
 					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
 						continue;
 					};
-
 					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
 					else {
-						continue; // Argument count mismatch — skip this consumer.
+						continue;
 					};
 					let rendered = render_template(&provider.content, &render_data)?;
 					let mut new_content = apply_transformers_with_data(
@@ -418,26 +484,46 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 				BlockType::Provider => continue,
 			};
 
+			eligible[index] = true;
+			raw_expected[index] = Some(new_content.clone());
 			if consumer.content != new_content {
-				let start = consumer.block.opening.end.offset;
-				let end = consumer.block.closing.start.offset;
-
-				if start <= end && end <= result.len() {
-					let mut buf =
-						String::with_capacity(result.len() - (end - start) + new_content.len());
-					buf.push_str(&result[..start]);
-					buf.push_str(&new_content);
-					buf.push_str(&result[end..]);
-					result = buf;
-					had_update = true;
-					updated_count += 1;
-				}
+				replace_consumer_content(&mut candidate, consumer, &new_content);
 			}
 		}
 
-		if had_update {
-			file_contents.insert(file.clone(), result);
+		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+		if candidate == original {
+			continue;
 		}
+
+		if formatter_commands.is_empty() {
+			updated_count += ordered_consumers
+				.iter()
+				.enumerate()
+				.filter(|(index, consumer)| {
+					raw_expected[*index]
+						.as_ref()
+						.is_some_and(|expected| consumer.content != *expected)
+				})
+				.count();
+		} else {
+			let final_contents = parse_candidate_consumer_contents(
+				ctx,
+				&file,
+				&candidate,
+				ordered_consumers.len(),
+				&formatter_commands,
+			)?;
+			updated_count += ordered_consumers
+				.iter()
+				.enumerate()
+				.filter(|(index, consumer)| {
+					eligible[*index] && consumer.content != final_contents[*index]
+				})
+				.count();
+		}
+
+		file_contents.insert(file.clone(), candidate);
 	}
 
 	Ok(UpdateResult {
@@ -445,6 +531,176 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 		updated_count,
 		warnings,
 	})
+}
+
+fn group_consumers_by_file(consumers: &[ConsumerEntry]) -> HashMap<PathBuf, Vec<&ConsumerEntry>> {
+	let mut grouped: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
+	for consumer in consumers {
+		grouped
+			.entry(consumer.file.clone())
+			.or_default()
+			.push(consumer);
+	}
+	grouped
+}
+
+fn sort_consumers_in_file(mut consumers: Vec<&ConsumerEntry>) -> Vec<&ConsumerEntry> {
+	consumers.sort_by(|a, b| {
+		a.block
+			.opening
+			.start
+			.offset
+			.cmp(&b.block.opening.start.offset)
+	});
+	consumers
+}
+
+fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_content: &str) {
+	let start = consumer.block.opening.end.offset;
+	let end = consumer.block.closing.start.offset;
+	if start > end || end > result.len() {
+		return;
+	}
+
+	let mut buf = String::with_capacity(result.len() - (end - start) + new_content.len());
+	buf.push_str(&result[..start]);
+	buf.push_str(new_content);
+	buf.push_str(&result[end..]);
+	*result = buf;
+}
+
+fn apply_formatter_pipeline(
+	ctx: &ProjectContext,
+	file: &Path,
+	content: &str,
+) -> MdtResult<(String, Vec<String>)> {
+	let matching_commands: Vec<String> = ctx
+		.formatters
+		.iter()
+		.filter(|formatter| formatter.matches_file(&ctx.root, file))
+		.map(|formatter| formatter.command.clone())
+		.collect();
+
+	let mut current = content.to_string();
+	for command in &matching_commands {
+		current = run_formatter_command(ctx, file, command, &current)?;
+	}
+
+	Ok((current, matching_commands))
+}
+
+fn run_formatter_command(
+	ctx: &ProjectContext,
+	file: &Path,
+	command: &str,
+	input: &str,
+) -> MdtResult<String> {
+	let relative_file = file.strip_prefix(&ctx.root).unwrap_or(file);
+	let mut command_builder = if cfg!(windows) {
+		let mut command_builder = Command::new("cmd");
+		command_builder.arg("/C").arg(command);
+		command_builder
+	} else {
+		let mut command_builder = Command::new("sh");
+		command_builder.arg("-c").arg(command);
+		command_builder
+	};
+	let mut child = command_builder
+		.current_dir(&ctx.root)
+		.env("MDT_FORMAT_FILE", file)
+		.env("MDT_FORMAT_RELATIVE_FILE", relative_file)
+		.env("MDT_FORMAT_ROOT", &ctx.root)
+		.stdin(Stdio::piped())
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped())
+		.spawn()?;
+
+	if let Some(mut stdin) = child.stdin.take() {
+		stdin.write_all(input.as_bytes())?;
+	}
+
+	let output = child.wait_with_output()?;
+	if !output.status.success() {
+		let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+		let reason = if stderr.is_empty() {
+			format!(
+				"command exited with status {}",
+				output
+					.status
+					.code()
+					.map_or_else(|| "unknown".to_string(), |code| code.to_string())
+			)
+		} else {
+			stderr
+		};
+		return Err(MdtError::Formatter {
+			file: relative_file.display().to_string(),
+			command: command.to_string(),
+			reason,
+		});
+	}
+
+	Ok(normalize_line_endings(&String::from_utf8_lossy(
+		&output.stdout,
+	)))
+}
+
+fn parse_candidate_consumer_contents(
+	ctx: &ProjectContext,
+	file: &Path,
+	content: &str,
+	expected_consumer_count: usize,
+	formatter_commands: &[String],
+) -> MdtResult<Vec<String>> {
+	let normalized = normalize_line_endings(content);
+	let (blocks, _) = if is_markdown_path(file) {
+		parse_with_diagnostics(&normalized).map_err(|error| {
+			MdtError::Formatter {
+				file: file
+					.strip_prefix(&ctx.root)
+					.unwrap_or(file)
+					.display()
+					.to_string(),
+				command: formatter_commands.join(" && "),
+				reason: format!("formatter pipeline produced unparsable markdown: {error}"),
+			}
+		})?
+	} else {
+		parse_source_with_diagnostics(&normalized, &ctx.markdown_codeblocks).map_err(|error| {
+			MdtError::Formatter {
+				file: file
+					.strip_prefix(&ctx.root)
+					.unwrap_or(file)
+					.display()
+					.to_string(),
+				command: formatter_commands.join(" && "),
+				reason: format!("formatter pipeline produced unparsable source comments: {error}"),
+			}
+		})?
+	};
+	let consumer_contents: Vec<String> = blocks
+		.into_iter()
+		.filter(|block| matches!(block.r#type, BlockType::Consumer | BlockType::Inline))
+		.map(|block| extract_content_between_tags(&normalized, &block))
+		.collect();
+
+	if consumer_contents.len() != expected_consumer_count {
+		return Err(MdtError::Formatter {
+			file: file
+				.strip_prefix(&ctx.root)
+				.unwrap_or(file)
+				.display()
+				.to_string(),
+			command: formatter_commands.join(" && "),
+			reason: format!(
+				"formatter pipeline changed the number of consumer blocks from {} to {}",
+				expected_consumer_count,
+				consumer_contents.len()
+			),
+		});
+	}
+
+	Ok(consumer_contents)
 }
 
 /// Collect warnings about undefined template variables across all provider

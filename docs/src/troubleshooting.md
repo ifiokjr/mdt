@@ -143,46 +143,39 @@ This includes content hashes in cache fingerprints (in addition to size/mtime). 
 
 ## Formatter interference
 
-Code formatters like dprint, Prettier, and rustfmt can reformat content inside template tags, causing mdt to see the blocks as stale even when the source hasn't changed.
+Code formatters like dprint, Prettier, and rustfmt can reformat content inside target files, which used to create `mdt update → formatter → mdt check` loops.
 
 ### Symptoms
 
 - `mdt check` reports stale blocks after running a formatter.
 - Running `mdt update` followed by the formatter followed by `mdt check` always shows stale blocks.
-- Whitespace or indentation changes inside target blocks.
+- Whitespace, wrapping, or markdown table changes keep reappearing.
 
-### Solutions
+### Recommended fix: configure `[[formatters]]`
 
-#### Exclude template files from formatters
+Use formatter integration so mdt formats the full updated file before comparing or writing it.
 
-Template files (`*.t.md`) contain the source-of-truth content. Formatters should not touch them.
-
-**dprint:** Add to `dprint.json`:
-
-```json
-{
-	"excludes": ["**/*.t.md"]
-}
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+patterns = ["**"]
 ```
 
-**Prettier:** Add to `.prettierignore`:
+For per-language tools, add multiple entries:
 
+```toml
+[[formatters]]
+command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+patterns = ["**/*.ts", "**/*.tsx"]
+
+[[formatters]]
+command = "eslint_d --fix-to-stdout --stdin --stdin-filename \"$MDT_FORMAT_FILE\""
+patterns = ["**/*.ts", "**/*.tsx"]
 ```
-*.t.md
-```
 
-#### Use `<!-- dprint-ignore -->` for target blocks
+This makes `mdt update` and `mdt check` use the same formatter-aware full-file pipeline.
 
-If a formatter is reformatting content inside a target block in a markdown file, add a dprint ignore comment before the block:
-
-```markdown
-<!-- dprint-ignore -->
-<!-- {=codeExample} -->
-
-    indented code that formatters want to change
-
-<!-- {/codeExample} -->
-```
+### Additional mitigations
 
 #### Set padding to minimize whitespace differences
 
@@ -204,6 +197,28 @@ If a formatter enforces specific indentation, configure your transformers to pro
 <!-- {=docs|trim|indent:"\t"} -->
 <!-- {/docs} -->
 ```
+
+#### Exclude template files as a temporary workaround
+
+If you cannot enable `[[formatters]]` yet, excluding `*.t.md` from your formatter can still reduce drift. This is a workaround, not the preferred long-term setup.
+
+**dprint:** Add to `dprint.json`:
+
+```json
+{
+	"excludes": ["**/*.t.md"]
+}
+```
+
+**Prettier:** Add to `.prettierignore`:
+
+```
+*.t.md
+```
+
+#### Use ignore comments for especially formatter-sensitive blocks
+
+If a formatter is still rewriting a specific target block in an undesirable way, use your formatter's ignore mechanism around that block where appropriate.
 
 ## CI integration issues
 

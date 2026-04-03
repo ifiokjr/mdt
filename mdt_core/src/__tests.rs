@@ -509,6 +509,9 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
 	assert!(result.is_ok());
@@ -534,6 +537,9 @@ fn check_project_detects_stale() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
 	assert!(!result.is_ok());
@@ -587,6 +593,9 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 1);
@@ -713,6 +722,9 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
@@ -747,6 +759,9 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	// Only the existing consumer should be updated
@@ -773,6 +788,9 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
@@ -800,6 +818,9 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	write_updates(&updates)?;
@@ -810,9 +831,133 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 0);
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_updates_target_content_and_converges_check() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"ALPHA\", \"BETA\"))'"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nALPHA\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nALPHA\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1);
+	assert!(result.stale_files.is_empty());
+	assert_eq!(result.stale[0].expected_content.trim(), "BETA");
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let updated_content = updates
+		.updated_files
+		.get(&tmp.path().join("readme.md"))
+		.unwrap_or_else(|| panic!("expected updated readme"));
+	assert!(updated_content.contains("BETA"));
+	write_updates(&updates)?;
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok());
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_reports_formatter_only_stale_file() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Draft title\n\n<!-- {=body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.stale.is_empty());
+	assert_eq!(result.stale_files.len(), 1);
+
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+	assert_eq!(updates.updated_files.len(), 1);
+	let updated_content = updates
+		.updated_files
+		.get(&tmp.path().join("readme.md"))
+		.unwrap_or_else(|| panic!("expected updated readme"));
+	assert!(updated_content.contains("Published title"));
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_failures_return_formatter_error() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"exit 7\"\npatterns = [\"**/*.md\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let err = compute_updates(&ctx).unwrap_err();
+	assert!(matches!(err, MdtError::Formatter { .. }));
 
 	Ok(())
 }
@@ -2356,6 +2501,9 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
@@ -3254,6 +3402,9 @@ fn pad_blocks_disabled_does_not_pad() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 1);
@@ -5398,6 +5549,9 @@ fn project_context_find_missing_providers() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let missing = ctx.find_missing_providers();
 	assert_eq!(missing, vec!["missing1"]);
@@ -6418,6 +6572,9 @@ fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	assert_eq!(ctx.project.providers.len(), 1);
 	assert_eq!(ctx.project.consumers.len(), 1);
@@ -7495,6 +7652,38 @@ patterns = ["**/*.ts", "**/*.tsx"]
 }
 
 #[test]
+fn config_load_rejects_formatter_without_patterns() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"$MDT_FORMAT_FILE\\\"\"\npatterns = \
+		 []\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = MdtConfig::load(tmp.path());
+	assert!(
+		matches!(result, Err(MdtError::ConfigParse(message)) if message.contains("at least one pattern"))
+	);
+}
+
+#[test]
+fn config_load_rejects_invalid_formatter_pattern() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"$MDT_FORMAT_FILE\\\"\"\npatterns = \
+		 [\"[\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = MdtConfig::load(tmp.path());
+	assert!(
+		matches!(result, Err(MdtError::ConfigParse(message)) if message.contains("invalid formatter pattern"))
+	);
+}
+
+#[test]
 fn source_scanner_filters_codeblock_html_comments() -> MdtResult<()> {
 	let content = "\
 /// ```markdown
@@ -8102,6 +8291,9 @@ fn block_arguments_end_to_end() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 
 	let updates = compute_updates(&ctx)?;
@@ -8148,6 +8340,9 @@ fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 
 	let updates = compute_updates(&ctx)?;
@@ -8236,6 +8431,9 @@ fn check_project_reports_argument_count_mismatch() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
 	assert!(
@@ -8263,6 +8461,9 @@ fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 
 	let updates = compute_updates(&ctx)?;
@@ -8301,6 +8502,9 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 		project: scan_project(tmp.path())?,
 		data: HashMap::new(),
 		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		root: tmp.path().to_path_buf(),
 	};
 	let result = check_project(&ctx)?;
 	assert!(

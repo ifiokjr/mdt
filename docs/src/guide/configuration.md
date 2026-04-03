@@ -121,6 +121,54 @@ Without this setting, transformers like `trim` can cause content to merge direct
 
 **Recommended for projects with formatters:** Use `before = 0, after = 0` to minimize whitespace that formatters might alter.
 
+### `[[formatters]]` — Formatter-aware update/check pipeline
+
+Use formatter entries to make `mdt update` and `mdt check` converge with your project's formatter.
+
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+patterns = ["**"]
+
+[[formatters]]
+command = "prettier --stdin-filepath \"$MDT_FORMAT_FILE\""
+patterns = ["**/*.ts", "**/*.tsx"]
+```
+
+Each formatter entry:
+
+- reads the full candidate file from stdin
+- writes the full formatted file to stdout
+- runs from the project root
+- applies to files whose relative path matches any of its `patterns`
+
+If multiple formatter entries match the same file, they run in declaration order.
+
+This integration applies to both:
+
+- `mdt update` — after target content is injected
+- `mdt check` — before expected output is compared to the file on disk
+
+That means `mdt update → formatter → mdt check` should converge without extra repair loops.
+
+#### Environment variables available to formatter commands
+
+- `MDT_FORMAT_FILE` — absolute path to the file being formatted
+- `MDT_FORMAT_RELATIVE_FILE` — path relative to the project root
+- `MDT_FORMAT_ROOT` — absolute project root
+
+#### Recommended patterns
+
+If you already use a formatter router like dprint, a single catch-all entry is often enough:
+
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+patterns = ["**"]
+```
+
+If you use separate tools per file type, add multiple entries in the order you want them applied.
+
 ### `max_file_size` — Safety limit for scanned files
 
 Set the maximum file size (in bytes) that mdt will scan. Files larger than this limit return an error.
@@ -199,4 +247,8 @@ patterns = ["src/**"]
 
 [templates]
 paths = ["templates"]
+
+[[formatters]]
+command = "dprint fmt --stdin \"$MDT_FORMAT_FILE\""
+patterns = ["**"]
 ```
