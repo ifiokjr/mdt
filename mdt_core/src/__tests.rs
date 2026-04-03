@@ -10785,3 +10785,503 @@ fn strict_config_is_default() {
 	let config: MdtConfig = toml::from_str("").unwrap_or_else(|e| panic!("parse: {e}"));
 	assert_eq!(config.check.comparison, ComparisonMode::Strict);
 }
+
+// --- lenient mode: content changes MUST still be detected ---
+
+#[test]
+fn lenient_check_detects_word_change() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@docs} -->\n\nInstall with npm.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=docs} -->\n\nInstall with yarn.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1, "lenient must detect changed words");
+	assert_eq!(result.stale[0].block_name, "docs");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_detects_added_line() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nLine one.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nLine one.\nLine two.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1, "lenient must detect added lines");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_detects_removed_line() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nLine one.\nLine two.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nLine one.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1, "lenient must detect removed lines");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_detects_completely_different_content() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\n# Installation\n\nRun `cargo install mdt`.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nThis is completely unrelated content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"lenient must detect completely different content"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_detects_changed_code_block_content() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\n```sh\ncargo install mdt\n```\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\n```sh\nnpm install mdt\n```\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"lenient must detect changed code block content"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_detects_inline_block_content_change() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"2.0.0"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"Version: <!-- {~ver:\"{{ pkg.version }}\"} -->1.0.0<!-- {/ver} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"lenient must detect inline block content change"
+	);
+	assert_eq!(result.stale[0].block_name, "ver");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_multiple_blocks_mixed_stale_and_clean() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@alpha} -->\n\nAlpha content.\n\n<!-- {/alpha} -->\n<!-- {@beta} -->\n\nBeta \
+		 content.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// alpha: only whitespace diff (should pass lenient)
+	// beta: actual content diff (should fail lenient)
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=alpha} -->\n\n\nAlpha content.  \n\n\n<!-- {/alpha} -->\n<!-- {=beta} \
+		 -->\n\nChanged beta.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1, "only beta should be stale");
+	assert_eq!(result.stale[0].block_name, "beta");
+
+	Ok(())
+}
+
+// --- lenient mode: whitespace variations that MUST pass ---
+
+#[test]
+fn lenient_check_passes_extra_blank_lines() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\n# Title\n\nParagraph.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\n\n\n# Title\n\n\n\nParagraph.\n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok(), "lenient should ignore extra blank lines");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_passes_trailing_whitespace() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello.   \t  \n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok(), "lenient should ignore trailing whitespace");
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_passes_mixed_blank_line_counts() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nA\n\nB\n\nC\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// 1 blank between A-B, 3 blanks between B-C
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nA\n\nB\n\n\n\nC\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(
+		result.is_ok(),
+		"lenient should ignore different blank line counts"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn lenient_check_passes_no_trailing_newline_vs_trailing_newline() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nContent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Consumer has extra trailing newlines
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nContent\n\n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(
+		result.is_ok(),
+		"lenient should ignore trailing newline differences"
+	);
+
+	Ok(())
+}
+
+// --- strict mode: whitespace differences MUST be detected ---
+
+#[test]
+fn strict_check_fails_extra_blank_lines() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// No [check] = strict
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\n# Title\n\nParagraph.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\n\n\n# Title\n\n\n\nParagraph.\n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"strict must detect extra blank lines"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_fails_trailing_whitespace() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello.   \n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"strict must detect trailing whitespace"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_fails_single_extra_newline() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nContent\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nContent\n\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		1,
+		"strict must detect single extra newline"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_passes_when_identical() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nExact content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nExact content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(
+		result.is_ok(),
+		"strict should pass when content is byte-identical"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_fails_content_change() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nOriginal.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nModified.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.stale.len(), 1, "strict must detect content change");
+
+	Ok(())
+}
+
+#[test]
+fn strict_check_multiple_blocks_all_detected() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@a} -->\n\nAAA\n\n<!-- {/a} -->\n<!-- {@b} -->\n\nBBB\n\n<!-- {/b} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// Both blocks have trailing whitespace differences
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=a} -->\n\nAAA  \n\n<!-- {/a} -->\n<!-- {=b} -->\n\nBBB  \n\n<!-- {/b} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(
+		result.stale.len(),
+		2,
+		"strict must detect whitespace diff in both blocks"
+	);
+
+	Ok(())
+}
+
+// --- lenient mode: update still writes exact bytes ---
+
+#[test]
+fn lenient_update_writes_exact_bytes() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[check]\ncomparison = \"lenient\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nExact bytes here.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates
+		.updated_files
+		.get(&tmp.path().join("readme.md"))
+		.unwrap_or_else(|| panic!("expected updated readme"));
+	// The exact provider content should be in the output, not a normalized version
+	assert!(
+		content.contains("\nExact bytes here.\n"),
+		"update must write exact source content"
+	);
+
+	Ok(())
+}
