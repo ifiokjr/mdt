@@ -104,8 +104,11 @@ pub struct StaleEntry {
 	pub column: usize,
 }
 
-/// A file whose formatter-normalized output differs even though no specific
-/// consumer block content changed.
+/// <!-- {=mdtFormatterOnlyStaleDocs|trim|linePrefix:"/// ":true} -->
+/// Formatter-aware checking can also report **formatter-only** drift. This happens when the formatter would rewrite the full file, but no individual managed block body is stale.
+///
+/// In that case mdt reports the file in `stale_files` so automation can distinguish surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
+/// <!-- {/mdtFormatterOnlyStaleDocs} -->
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct StaleFileEntry {

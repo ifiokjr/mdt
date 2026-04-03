@@ -63,8 +63,38 @@ mdt check --format github
 **Output formats:**
 
 - **`text`** — Human-readable output. Lists stale blocks with file paths, colored headings, and colored diagnostics when the terminal supports color. Includes diff when `--diff` is set.
-- **`json`** — Machine-readable JSON. Fields: `ok` (boolean), `stale` (array of `{file, block}`).
+- **`json`** — Machine-readable JSON. Includes `ok`, `stale`, and `stale_files` so automation can distinguish block drift from formatter-only file drift.
 - **`github`** — GitHub Actions `::warning` annotations. Produces inline warnings on PR diffs.
+
+#### JSON payload
+
+<!-- {=mdtCheckJsonOutput} -->
+
+`mdt check --format json` returns:
+
+- `ok` — overall success boolean
+- `stale` — block-level drift entries with `file` and `block`
+- `stale_files` — formatter-only file drift entries with `file`
+
+When formatter-aware normalization would change the full file without changing any managed block body, `stale_files` is populated and `stale` can remain empty.
+
+Clean output:
+
+```json
+{ "ok": true, "stale": [], "stale_files": [] }
+```
+
+Formatter-only drift example:
+
+```json
+{
+	"ok": false,
+	"stale": [],
+	"stale_files": [{ "file": "docs/readme.md" }]
+}
+```
+
+<!-- {/mdtCheckJsonOutput} -->
 
 ### `mdt update`
 

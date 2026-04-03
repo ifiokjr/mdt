@@ -153,7 +153,7 @@ Code formatters like dprint, Prettier, and rustfmt can reformat content inside t
 
 ### Recommended fix: configure `[[formatters]]`
 
-Use formatter integration so mdt formats the full updated file before comparing or writing it.
+Use formatter integration so mdt formats the full updated file before comparing or writing it. This is the long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46.
 
 ```toml
 [[formatters]]
@@ -175,6 +175,16 @@ patterns = ["**/*.ts", "**/*.tsx"]
 ```
 
 This makes `mdt update` and `mdt check` use the same formatter-aware full-file pipeline.
+
+#### Formatter-only stale files
+
+<!-- {=mdtFormatterOnlyStaleDocs} -->
+
+Formatter-aware checking can also report **formatter-only** drift. This happens when the formatter would rewrite the full file, but no individual managed block body is stale.
+
+In that case mdt reports the file in `stale_files` so automation can distinguish surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
+
+<!-- {/mdtFormatterOnlyStaleDocs} -->
 
 ### Additional mitigations
 

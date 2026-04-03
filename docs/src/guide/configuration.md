@@ -108,6 +108,9 @@ patterns = ["vendor/", "dist/"]
 # `[[formatters]]` makes `mdt update` and `mdt check` converge with your
 # formatter's canonical output.
 #
+# This is the recommended fix when `mdt update`, your formatter, and
+# `mdt check` would otherwise bounce back and forth in CI.
+#
 # Formatter `command` values are rendered with minijinja before execution.
 # Available variables:
 # - `{{ filePath }}`         -> absolute path to the file being formatted
@@ -241,31 +244,30 @@ Without this setting, transformers like `trim` can cause content to merge direct
 
 ### `[[formatters]]` — Formatter-aware update/check pipeline
 
-Use formatter entries to make `mdt update` and `mdt check` converge with your project's formatter.
+<!-- {=mdtFormatterPipelineDocs} -->
 
-```toml
-[[formatters]]
-command = "dprint fmt --stdin \"{{ filePath }}\""
-patterns = ["**"]
-ignore = ["**/*.snap", "docs/generated/**"]
+Formatter entries make `mdt update` and `mdt check` converge with your formatter's canonical **full-file** output instead of comparing raw injected block text.
 
-[[formatters]]
-command = "prettier --stdin-filepath \"{{ filePath }}\""
-patterns = ["**/*.ts", "**/*.tsx"]
-```
+This is the recommended long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and the best way to keep CI green when external formatters rewrite synced files.
 
-Each formatter entry:
+Each matching formatter entry:
 
 - reads the full candidate file from stdin
-- writes the full formatted file to stdout
+- writes the full replacement file to stdout
 - runs from the project root
-- applies to files whose relative path matches any of its `patterns`
-- skips files whose relative path matches any of its `ignore` patterns
-- evaluates both lists in order, with leading `!` entries acting as negation rules
+- runs after block injection during `mdt update`
+- runs before expected-output comparison during `mdt check`
+- runs in declaration order when multiple entries match the same file
 
-If multiple formatter entries match the same file, they run in declaration order.
+`command` is rendered with minijinja before execution. Available variables:
 
-Use `ignore` when a formatter should generally apply to a file type but skip specific paths:
+- `{{ filePath }}` — absolute path to the file being formatted
+- `{{ relativeFilePath }}` — path relative to the project root
+- `{{ rootDirectory }}` — absolute project root
+
+`patterns` and `ignore` are ordered gitignore-style rule lists. Leading `!` entries negate a prior match, so later rules can re-include paths for a single formatter stage.
+
+If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error instead of silently falling back to unformatted output.
 
 ```toml
 [[formatters]]
@@ -274,38 +276,9 @@ patterns = ["**/*.md", "!docs/generated/**"]
 ignore = ["vendor/**", "docs/generated/**", "!docs/generated/keep.md"]
 ```
 
-Here:
+Repositories without configured formatters keep the legacy fast path, so formatter support only adds work when you opt in.
 
-- `patterns` includes markdown files, but excludes `docs/generated/**`
-- `ignore` excludes `vendor/**` and most generated docs
-- `!docs/generated/keep.md` re-allows one ignored path for this formatter entry
-
-This integration applies to both:
-
-- `mdt update` — after target content is injected
-- `mdt check` — before expected output is compared to the file on disk
-
-That means `mdt update → formatter → mdt check` should converge without extra repair loops.
-
-#### Minijinja variables available to formatter commands
-
-Formatter commands are rendered with minijinja before execution.
-
-- `{{ filePath }}` — absolute path to the file being formatted
-- `{{ relativeFilePath }}` — path relative to the project root
-- `{{ rootDirectory }}` — absolute project root
-
-#### Recommended patterns
-
-If you already use a formatter router like dprint, a single catch-all entry is often enough:
-
-```toml
-[[formatters]]
-command = "dprint fmt --stdin \"{{ filePath }}\""
-patterns = ["**"]
-```
-
-If you use separate tools per file type, add multiple entries in the order you want them applied.
+<!-- {/mdtFormatterPipelineDocs} -->
 
 ### `max_file_size` — Safety limit for scanned files
 
@@ -477,8 +450,9 @@ markdown_codeblocks = true
 # globs. A leading `!` negates a prior match, so later rules can re-include
 # paths.
 #
-# This repo enables dprint for generated markdown targets so docs stay in sync
-# with the same formatter used elsewhere in the workspace.
+# This repo enables dprint for generated markdown targets to prevent the
+# formatter cycle from issue #46, where `mdt update` and `dprint fmt` would
+# otherwise keep disagreeing in CI.
 [[formatters]]
 command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**/*.md"]
