@@ -49,8 +49,8 @@ fn assist_json_prints_machine_readable_profile() -> AnyEmptyResult {
 	// Pi-specific notes should mention the skill package
 	let skill_note = notes
 		.iter()
-		.any(|note| note.as_str().is_some_and(|s| s.contains("@ifi/mdt-skills")));
-	assert!(skill_note, "Pi notes should mention @ifi/mdt-skills");
+		.any(|note| note.as_str().is_some_and(|s| s.contains("@m-d-t/skills")));
+	assert!(skill_note, "Pi notes should mention @m-d-t/skills");
 
 	Ok(())
 }

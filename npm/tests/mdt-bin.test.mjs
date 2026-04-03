@@ -9,16 +9,16 @@ const launcherPath = join(process.cwd(), "npm/bin/mdt.js");
 
 const platformPackages = {
 	darwin: {
-		arm64: ["@ifi/mdt-darwin-arm64"],
-		x64: ["@ifi/mdt-darwin-x64"],
+		arm64: ["@m-d-t/cli-darwin-arm64"],
+		x64: ["@m-d-t/cli-darwin-x64"],
 	},
 	linux: {
-		arm64: ["@ifi/mdt-linux-arm64-gnu", "@ifi/mdt-linux-arm64-musl"],
-		x64: ["@ifi/mdt-linux-x64-gnu", "@ifi/mdt-linux-x64-musl"],
+		arm64: ["@m-d-t/cli-linux-arm64-gnu", "@m-d-t/cli-linux-arm64-musl"],
+		x64: ["@m-d-t/cli-linux-x64-gnu", "@m-d-t/cli-linux-x64-musl"],
 	},
 	win32: {
-		arm64: ["@ifi/mdt-win32-arm64-msvc"],
-		x64: ["@ifi/mdt-win32-x64-msvc"],
+		arm64: ["@m-d-t/cli-win32-arm64-msvc"],
+		x64: ["@m-d-t/cli-win32-x64-msvc"],
 	},
 };
 
@@ -90,7 +90,7 @@ test("launcher shows a helpful error when no platform package is installed", () 
 		const result = runLauncher(nodeModulesDir, ["--help"]);
 		assert.notEqual(result.status, 0);
 		assert.match(result.stderr, /Unable to find a compatible mdt binary/);
-		assert.match(result.stderr, /Reinstall with `npm install -g @ifi\/mdt`/);
+		assert.match(result.stderr, /Reinstall with `npm install -g @m-d-t\/cli`/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

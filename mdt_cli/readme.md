@@ -21,13 +21,13 @@
 - Install with npm:
 
 ```sh
-npm install -g @ifi/mdt
+npm install -g @m-d-t/cli
 ```
 
 - Or run it without installing:
 
 ```sh
-npx @ifi/mdt --help
+npx @m-d-t/cli --help
 ```
 
 - Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)

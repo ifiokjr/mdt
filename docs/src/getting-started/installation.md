@@ -5,7 +5,7 @@
 Install the CLI from npm:
 
 ```sh
-npm install -g @ifi/mdt
+npm install -g @m-d-t/cli
 ```
 
 This installs the `mdt` command and pulls in the prebuilt binary package that matches your platform.
@@ -13,7 +13,7 @@ This installs the `mdt` command and pulls in the prebuilt binary package that ma
 You can also run it without a global install:
 
 ```sh
-npx @ifi/mdt --help
+npx @m-d-t/cli --help
 ```
 
 This path is ideal for JavaScript and TypeScript projects that already use npm and do not want to install the Rust toolchain.
@@ -58,7 +58,7 @@ mdt_core = "0.7.0"
 If you use [Pi](https://github.com/badlogic/pi) or another agent harness that supports the [Agent Skills standard](https://agentskills.io), install the official mdt skill package:
 
 ```sh
-pi install npm:@ifi/mdt-skills
+pi install npm:@m-d-t/skills
 ```
 
 This teaches your coding agent how to work with mdt template syntax, MCP tools, CLI commands, transformers, and configuration. See [Assistant Setup](./assistant-setup.md) for more details.

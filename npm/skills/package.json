@@ -1,12 +1,12 @@
 {
-	"name": "@ifi/mdt-skills",
+	"name": "@m-d-t/skills",
 	"version": "0.0.0",
 	"description": "Agent skills for mdt — keep markdown templates synchronized across your project. Includes MCP tool guidance, template syntax, and CLI workflow instructions.",
 	"license": "Unlicense",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/ifiokjr/mdt.git",
-		"directory": "npm/pi-package"
+		"directory": "npm/skills"
 	},
 	"homepage": "https://github.com/ifiokjr/mdt",
 	"bugs": {

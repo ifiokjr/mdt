@@ -24,7 +24,7 @@ const platforms = [
 		label: "Linux arm64 (glibc)",
 		libc: "glibc",
 		os: "linux",
-		packageName: "@ifi/mdt-linux-arm64-gnu",
+		packageName: "@m-d-t/cli-linux-arm64-gnu",
 		target: "aarch64-unknown-linux-gnu",
 	},
 	{
@@ -34,7 +34,7 @@ const platforms = [
 		label: "Linux arm64 (musl)",
 		libc: "musl",
 		os: "linux",
-		packageName: "@ifi/mdt-linux-arm64-musl",
+		packageName: "@m-d-t/cli-linux-arm64-musl",
 		target: "aarch64-unknown-linux-musl",
 	},
 	{
@@ -43,7 +43,7 @@ const platforms = [
 		cpu: "arm64",
 		label: "macOS arm64",
 		os: "darwin",
-		packageName: "@ifi/mdt-darwin-arm64",
+		packageName: "@m-d-t/cli-darwin-arm64",
 		target: "aarch64-apple-darwin",
 	},
 	{
@@ -53,7 +53,7 @@ const platforms = [
 		label: "Linux x64 (glibc)",
 		libc: "glibc",
 		os: "linux",
-		packageName: "@ifi/mdt-linux-x64-gnu",
+		packageName: "@m-d-t/cli-linux-x64-gnu",
 		target: "x86_64-unknown-linux-gnu",
 	},
 	{
@@ -63,7 +63,7 @@ const platforms = [
 		label: "Linux x64 (musl)",
 		libc: "musl",
 		os: "linux",
-		packageName: "@ifi/mdt-linux-x64-musl",
+		packageName: "@m-d-t/cli-linux-x64-musl",
 		target: "x86_64-unknown-linux-musl",
 	},
 	{
@@ -72,7 +72,7 @@ const platforms = [
 		cpu: "x64",
 		label: "macOS x64",
 		os: "darwin",
-		packageName: "@ifi/mdt-darwin-x64",
+		packageName: "@m-d-t/cli-darwin-x64",
 		target: "x86_64-apple-darwin",
 	},
 	{
@@ -81,7 +81,7 @@ const platforms = [
 		cpu: "x64",
 		label: "Windows x64",
 		os: "win32",
-		packageName: "@ifi/mdt-win32-x64-msvc",
+		packageName: "@m-d-t/cli-win32-x64-msvc",
 		target: "x86_64-pc-windows-msvc",
 	},
 	{
@@ -90,7 +90,7 @@ const platforms = [
 		cpu: "arm64",
 		label: "Windows arm64",
 		os: "win32",
-		packageName: "@ifi/mdt-win32-arm64-msvc",
+		packageName: "@m-d-t/cli-win32-arm64-msvc",
 		target: "aarch64-pc-windows-msvc",
 	},
 ];
@@ -244,7 +244,7 @@ function copyDirRecursive(src, dest) {
 }
 
 function createSkillsPackage({ outDir, version }) {
-	const sourceDir = join(repoRoot, "npm/pi-package");
+	const sourceDir = join(repoRoot, "npm/skills");
 	const packageDir = join(outDir, "skills");
 	ensureDirectory(packageDir);
 
@@ -275,7 +275,7 @@ function createRootPackage({ outDir, version }) {
 	);
 
 	writeJson(join(packageDir, "package.json"), {
-		name: "@ifi/mdt",
+		name: "@m-d-t/cli",
 		version,
 		description: "CLI for managing markdown templates across your project",
 		license: "Unlicense",
@@ -325,8 +325,8 @@ function main() {
 
 	const summary = {
 		platformPackages: platforms.map((spec) => spec.packageName),
-		skillsPackage: "@ifi/mdt-skills",
-		rootPackage: "@ifi/mdt",
+		skillsPackage: "@m-d-t/skills",
+		rootPackage: "@m-d-t/cli",
 		version,
 	};
 	writeFileSync(
