@@ -970,7 +970,7 @@ ignore = ["readme.md"]
 }
 
 #[test]
-fn formatter_pipeline_interpolates_command_placeholders() -> MdtResult<()> {
+fn formatter_pipeline_renders_command_template_with_minijinja() -> MdtResult<()> {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -1006,6 +1006,35 @@ patterns = ["**/*.md"]
 	assert!(updated.contains(&tmp.path().join("nested/readme.md").display().to_string()));
 	assert!(updated.contains("nested/readme.md"));
 	assert!(updated.contains(&tmp.path().display().to_string()));
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_invalid_command_template_returns_formatter_error() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"echo {{ filePath\"\npatterns = [\"**/*.md\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let err = compute_updates(&ctx).unwrap_err();
+	assert!(matches!(
+		err,
+		MdtError::Formatter { reason, .. } if reason.contains("invalid formatter command template")
+	));
 
 	Ok(())
 }
