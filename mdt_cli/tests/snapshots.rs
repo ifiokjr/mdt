@@ -304,6 +304,67 @@ fn check_with_diff() -> AnyEmptyResult {
 	Ok(())
 }
 
+#[test]
+fn formatter_check_json_reports_stale_files() -> AnyEmptyResult {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir()?;
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+patterns = ["**/*.md"]
+"#,
+	)?;
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Draft title\n\n<!-- {=body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)?;
+
+	assert_cmd_snapshot!(
+		"formatter_check_json_reports_stale_files",
+		mdt_cmd(tmp.path()).arg("check").arg("--format").arg("json")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn formatter_update_normalize_only() -> AnyEmptyResult {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir()?;
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+patterns = ["**/*.md"]
+"#,
+	)?;
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)?;
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Draft title\n\n<!-- {=body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)?;
+
+	assert_cmd_snapshot!("formatter_update_normalize_only", mdt_cmd(tmp.path()).arg("update"));
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	insta::assert_snapshot!("formatter_update_normalize_only_readme_md", readme);
+
+	Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // verbose output: scan details during update and check
 // ---------------------------------------------------------------------------

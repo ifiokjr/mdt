@@ -6,7 +6,6 @@ use std::process::Command;
 use std::time::UNIX_EPOCH;
 
 use globset::Glob;
-use globset::GlobSetBuilder;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -131,6 +130,7 @@ pub struct ScriptDataSource {
 /// [[formatters]]
 /// command = "dprint fmt --stdin \"{{ filePath }}\""
 /// patterns = ["**"]
+/// ignore = ["**/*.snap"]
 ///
 /// disable_gitignore = false
 /// ```
@@ -239,6 +239,10 @@ pub struct FormatterConfig {
 	/// Glob patterns relative to the project root that determine which files
 	/// this formatter applies to.
 	pub patterns: Vec<String>,
+	/// Glob patterns relative to the project root that should be excluded from
+	/// this formatter, even if they match `patterns`.
+	#[serde(default)]
+	pub ignore: Vec<String>,
 }
 
 impl FormatterConfig {
@@ -247,13 +251,8 @@ impl FormatterConfig {
 	pub fn matches_file(&self, root: &Path, file: &Path) -> bool {
 		let relative = file.strip_prefix(root).unwrap_or(file);
 		let key = normalize_path_key(relative);
-		let mut builder = GlobSetBuilder::new();
-		for pattern in &self.patterns {
-			if let Ok(glob) = Glob::new(pattern) {
-				builder.add(glob);
-			}
-		}
-		builder.build().is_ok_and(|set| set.is_match(key))
+		matches_formatter_rules(&self.patterns, &key)
+			&& !matches_formatter_rules(&self.ignore, &key)
 	}
 }
 
@@ -359,9 +358,17 @@ fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
 			));
 		}
 		for pattern in &formatter.patterns {
-			Glob::new(pattern).map_err(|e| {
+			validate_formatter_pattern(pattern).map_err(|e| {
 				MdtError::ConfigParse(format!(
 					"invalid formatter pattern `{pattern}` for command `{}`: {e}",
+					formatter.command
+				))
+			})?;
+		}
+		for pattern in &formatter.ignore {
+			validate_formatter_pattern(pattern).map_err(|e| {
+				MdtError::ConfigParse(format!(
+					"invalid formatter ignore pattern `{pattern}` for command `{}`: {e}",
 					formatter.command
 				))
 			})?;
@@ -369,6 +376,32 @@ fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
 	}
 
 	Ok(())
+}
+
+fn validate_formatter_pattern(pattern: &str) -> Result<(), globset::Error> {
+	let glob_pattern = pattern.strip_prefix('!').unwrap_or(pattern);
+	Glob::new(glob_pattern).map(|_| ())
+}
+
+fn matches_formatter_rules(patterns: &[String], key: &str) -> bool {
+	let mut matched = false;
+
+	for pattern in patterns {
+		let (glob_pattern, is_negated) = if let Some(glob_pattern) = pattern.strip_prefix('!') {
+			(glob_pattern, true)
+		} else {
+			(pattern.as_str(), false)
+		};
+		let Ok(glob) = Glob::new(glob_pattern) else {
+			continue;
+		};
+		let matcher = glob.compile_matcher();
+		if matcher.is_match(key) {
+			matched = !is_negated;
+		}
+	}
+
+	matched
 }
 
 fn watch_fingerprint(path: &Path) -> WatchFingerprint {

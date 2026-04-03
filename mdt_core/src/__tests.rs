@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 
 use rstest::rstest;
@@ -928,6 +929,42 @@ patterns = ["**/*.md"]
 		.get(&tmp.path().join("readme.md"))
 		.unwrap_or_else(|| panic!("expected updated readme"));
 	assert!(updated_content.contains("Published title"));
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_ignores_matching_paths() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Hello\", \"Ignored\"))'"
+patterns = ["**/*.md"]
+ignore = ["readme.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok());
+	let updates = compute_updates(&ctx)?;
+	assert!(updates.updated_files.is_empty());
 
 	Ok(())
 }
@@ -7669,6 +7706,7 @@ fn config_parses_formatter_entries() {
 [[formatters]]
 command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
+ignore = ["**/*.snap"]
 
 [[formatters]]
 command = "prettier --stdin-filepath \"{{ filePath }}\""
@@ -7681,6 +7719,7 @@ patterns = ["**/*.ts", "**/*.tsx"]
 		FormatterConfig {
 			command: "dprint fmt --stdin \"{{ filePath }}\"".to_string(),
 			patterns: vec!["**".to_string()],
+			ignore: vec!["**/*.snap".to_string()],
 		}
 	);
 	assert_eq!(
@@ -7688,8 +7727,46 @@ patterns = ["**/*.ts", "**/*.tsx"]
 		FormatterConfig {
 			command: "prettier --stdin-filepath \"{{ filePath }}\"".to_string(),
 			patterns: vec!["**/*.ts".to_string(), "**/*.tsx".to_string()],
+			ignore: Vec::new(),
 		}
 	);
+}
+
+#[test]
+fn formatter_config_matches_file_respects_ignore_patterns() {
+	let formatter = FormatterConfig {
+		command: "dprint fmt --stdin \"{{ filePath }}\"".to_string(),
+		patterns: vec!["**/*.md".to_string()],
+		ignore: vec!["docs/generated/**".to_string()],
+	};
+	let root = Path::new("/repo");
+	assert!(formatter.matches_file(root, Path::new("/repo/readme.md")));
+	assert!(!formatter.matches_file(root, Path::new("/repo/src/lib.rs")));
+	assert!(!formatter.matches_file(root, Path::new("/repo/docs/generated/readme.md")));
+}
+
+#[test]
+fn formatter_config_patterns_support_negation() {
+	let formatter = FormatterConfig {
+		command: "dprint fmt --stdin \"{{ filePath }}\"".to_string(),
+		patterns: vec!["**/*.md".to_string(), "!docs/generated/**".to_string()],
+		ignore: Vec::new(),
+	};
+	let root = Path::new("/repo");
+	assert!(formatter.matches_file(root, Path::new("/repo/readme.md")));
+	assert!(!formatter.matches_file(root, Path::new("/repo/docs/generated/readme.md")));
+}
+
+#[test]
+fn formatter_config_ignore_supports_negation() {
+	let formatter = FormatterConfig {
+		command: "dprint fmt --stdin \"{{ filePath }}\"".to_string(),
+		patterns: vec!["**/*.md".to_string()],
+		ignore: vec!["docs/**".to_string(), "!docs/manual.md".to_string()],
+	};
+	let root = Path::new("/repo");
+	assert!(!formatter.matches_file(root, Path::new("/repo/docs/generated/readme.md")));
+	assert!(formatter.matches_file(root, Path::new("/repo/docs/manual.md")));
 }
 
 #[test]
@@ -7720,6 +7797,22 @@ fn config_load_rejects_invalid_formatter_pattern() {
 	let result = MdtConfig::load(tmp.path());
 	assert!(
 		matches!(result, Err(MdtError::ConfigParse(message)) if message.contains("invalid formatter pattern"))
+	);
+}
+
+#[test]
+fn config_load_rejects_invalid_formatter_ignore_pattern() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[[formatters]]\ncommand = \"dprint fmt --stdin \\\"{{ filePath }}\\\"\"\npatterns = \
+		 [\"**/*.md\"]\nignore = [\"[\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let result = MdtConfig::load(tmp.path());
+	assert!(
+		matches!(result, Err(MdtError::ConfigParse(message)) if message.contains("invalid formatter ignore pattern"))
 	);
 }
 

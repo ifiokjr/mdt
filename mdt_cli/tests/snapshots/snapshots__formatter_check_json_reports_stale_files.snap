@@ -1,0 +1,19 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpYyJDzX
+    - check
+    - "--format"
+    - json
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+{"errors":[],"ok":false,"stale":[],"stale_files":[{"file":"readme.md"}]}
+
+----- stderr -----
