@@ -159,6 +159,7 @@ Use formatter integration so mdt formats the full updated file before comparing 
 [[formatters]]
 command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
+ignore = ["docs/generated/**"]
 ```
 
 For per-language tools, add multiple entries:
@@ -219,6 +220,17 @@ If you cannot enable `[[formatters]]` yet, excluding `*.t.md` from your formatte
 #### Use ignore comments for especially formatter-sensitive blocks
 
 If a formatter is still rewriting a specific target block in an undesirable way, use your formatter's ignore mechanism around that block where appropriate.
+
+You can also exclude whole paths from a specific formatter entry with `ignore`:
+
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"{{ filePath }}\""
+patterns = ["**/*.md", "!docs/generated/**"]
+ignore = ["docs/generated/**", "vendor/**", "!docs/generated/keep.md"]
+```
+
+Leading `!` entries act as negation rules in both `patterns` and `ignore`.
 
 ## CI integration issues
 

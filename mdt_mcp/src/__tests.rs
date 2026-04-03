@@ -72,6 +72,27 @@ Hello from mdt!
 	std::fs::write(root.join("readme.md"), readme).unwrap_or_else(|e| panic!("write readme: {e}"));
 }
 
+fn create_formatter_only_stale_project(root: &Path) {
+	std::fs::write(
+		root.join("mdt.toml"),
+		r#"[[formatters]]
+command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write config: {e}"));
+	std::fs::write(
+		root.join("template.t.md"),
+		"<!-- {@body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		root.join("readme.md"),
+		"# Draft title\n\n<!-- {=body} -->\n\nBody content.\n\n<!-- {/body} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write readme: {e}"));
+}
+
 /// Create a project with multiple provider blocks.
 fn create_multi_block_project(root: &Path) {
 	let template = "\
@@ -288,6 +309,29 @@ async fn check_on_stale_project_reports_stale_blocks() {
 	assert_eq!(json["stale"][0]["file"], "readme.md");
 }
 
+#[tokio::test]
+async fn check_reports_formatter_only_stale_files() {
+	if cfg!(windows) {
+		return;
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_formatter_only_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["stale"], serde_json::json!([]));
+	assert_eq!(json["stale_files"][0], "readme.md");
+}
+
 // ===========================================================================
 // update
 // ===========================================================================
@@ -344,6 +388,37 @@ async fn update_on_stale_project_applies_changes() {
 		!readme_content.contains("Old stale content"),
 		"old stale content should be replaced"
 	);
+}
+
+#[tokio::test]
+async fn update_formatter_only_stale_project_normalizes_file() {
+	if cfg!(windows) {
+		return;
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_formatter_only_stale_project(tmp.path());
+
+	let server = MdtMcpServer::new();
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("update: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+	assert_eq!(json["updated_count"], 0);
+	assert_eq!(json["updated_files"][0], "readme.md");
+	assert!(json["summary"]
+		.as_str()
+		.unwrap_or_else(|| panic!("summary string"))
+		.contains("Normalized 1 file(s) via formatter integration."));
+	let readme_content = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read readme: {e}"));
+	assert!(readme_content.contains("Published title"));
 }
 
 #[tokio::test]

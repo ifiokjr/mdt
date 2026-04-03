@@ -262,6 +262,10 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 /// Template render errors are collected rather than aborting, so the check
 /// reports all problems in a single pass.
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
+	if ctx.formatters.is_empty() {
+		return check_project_without_formatters(ctx);
+	}
+
 	let mut stale = Vec::new();
 	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
@@ -436,6 +440,10 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 
 /// Compute the updated file contents for all consumer blocks.
 pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
+	if ctx.formatters.is_empty() {
+		return compute_updates_without_formatters(ctx);
+	}
+
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 	let warnings = collect_template_warnings(ctx);
@@ -524,6 +532,207 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 		}
 
 		file_contents.insert(file.clone(), candidate);
+	}
+
+	Ok(UpdateResult {
+		updated_files: file_contents,
+		updated_count,
+		warnings,
+	})
+}
+
+fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResult> {
+	let mut stale = Vec::new();
+	let mut render_errors = Vec::new();
+	let warnings = collect_template_warnings(ctx);
+
+	for consumer in &ctx.project.consumers {
+		match consumer.block.r#type {
+			BlockType::Consumer => {
+				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+					continue;
+				};
+
+				let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
+					render_errors.push(RenderError {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						message: format!(
+							"argument count mismatch: provider `{}` declares {} parameter(s), but \
+							 consumer passes {}",
+							consumer.block.name,
+							provider.block.arguments.len(),
+							consumer.block.arguments.len(),
+						),
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+					continue;
+				};
+				let rendered = match render_template(&provider.content, &render_data) {
+					Ok(rendered) => rendered,
+					Err(error) => {
+						render_errors.push(RenderError {
+							file: consumer.file.clone(),
+							block_name: consumer.block.name.clone(),
+							message: error.to_string(),
+							line: consumer.block.opening.start.line,
+							column: consumer.block.opening.start.column,
+						});
+						continue;
+					}
+				};
+				let mut expected = apply_transformers_with_data(
+					&rendered,
+					&consumer.block.transformers,
+					Some(&render_data),
+				);
+				if let Some(padding) = &ctx.padding {
+					expected = pad_content_with_config(&expected, &consumer.content, padding);
+				}
+
+				if consumer.content != expected {
+					stale.push(StaleEntry {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						current_content: consumer.content.clone(),
+						expected_content: expected,
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+				}
+			}
+			BlockType::Inline => {
+				let Some(template) = consumer.block.arguments.first() else {
+					render_errors.push(RenderError {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						message: "inline block requires one template argument, e.g. <!-- \
+						          {~name:\"{{ pkg.version }}\"} -->"
+							.to_string(),
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+					continue;
+				};
+				let rendered = match render_template(template, &ctx.data) {
+					Ok(rendered) => rendered,
+					Err(error) => {
+						render_errors.push(RenderError {
+							file: consumer.file.clone(),
+							block_name: consumer.block.name.clone(),
+							message: error.to_string(),
+							line: consumer.block.opening.start.line,
+							column: consumer.block.opening.start.column,
+						});
+						continue;
+					}
+				};
+				let expected = apply_transformers_with_data(
+					&rendered,
+					&consumer.block.transformers,
+					Some(&ctx.data),
+				);
+
+				if consumer.content != expected {
+					stale.push(StaleEntry {
+						file: consumer.file.clone(),
+						block_name: consumer.block.name.clone(),
+						current_content: consumer.content.clone(),
+						expected_content: expected,
+						line: consumer.block.opening.start.line,
+						column: consumer.block.opening.start.column,
+					});
+				}
+			}
+			BlockType::Provider => {}
+		}
+	}
+
+	Ok(CheckResult {
+		stale,
+		stale_files: Vec::new(),
+		render_errors,
+		warnings,
+	})
+}
+
+fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
+	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
+	let mut updated_count = 0;
+	let warnings = collect_template_warnings(ctx);
+	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
+
+	for (file, consumers) in &consumers_by_file {
+		let original = if let Some(content) = file_contents.get(file) {
+			content.clone()
+		} else {
+			std::fs::read_to_string(file)?
+		};
+
+		let mut result = original.clone();
+		let mut had_update = false;
+		let mut sorted_consumers: Vec<&&ConsumerEntry> = consumers.iter().collect();
+		sorted_consumers
+			.sort_by(|a, b| b.block.opening.end.offset.cmp(&a.block.opening.end.offset));
+
+		for consumer in sorted_consumers {
+			let new_content = match consumer.block.r#type {
+				BlockType::Consumer => {
+					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+						continue;
+					};
+
+					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
+					else {
+						continue;
+					};
+					let rendered = render_template(&provider.content, &render_data)?;
+					let mut new_content = apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&render_data),
+					);
+					if let Some(padding) = &ctx.padding {
+						new_content =
+							pad_content_with_config(&new_content, &consumer.content, padding);
+					}
+					new_content
+				}
+				BlockType::Inline => {
+					let Some(template) = consumer.block.arguments.first() else {
+						continue;
+					};
+					let rendered = render_template(template, &ctx.data)?;
+					apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&ctx.data),
+					)
+				}
+				BlockType::Provider => continue,
+			};
+
+			if consumer.content != new_content {
+				let start = consumer.block.opening.end.offset;
+				let end = consumer.block.closing.start.offset;
+
+				if start <= end && end <= result.len() {
+					let mut buf =
+						String::with_capacity(result.len() - (end - start) + new_content.len());
+					buf.push_str(&result[..start]);
+					buf.push_str(&new_content);
+					buf.push_str(&result[end..]);
+					result = buf;
+					had_update = true;
+					updated_count += 1;
+				}
+			}
+		}
+
+		if had_update {
+			file_contents.insert(file.clone(), result);
+		}
 	}
 
 	Ok(UpdateResult {

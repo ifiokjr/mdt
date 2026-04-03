@@ -129,6 +129,7 @@ Use formatter entries to make `mdt update` and `mdt check` converge with your pr
 [[formatters]]
 command = "dprint fmt --stdin \"{{ filePath }}\""
 patterns = ["**"]
+ignore = ["**/*.snap", "docs/generated/**"]
 
 [[formatters]]
 command = "prettier --stdin-filepath \"{{ filePath }}\""
@@ -141,8 +142,25 @@ Each formatter entry:
 - writes the full formatted file to stdout
 - runs from the project root
 - applies to files whose relative path matches any of its `patterns`
+- skips files whose relative path matches any of its `ignore` patterns
+- evaluates both lists in order, with leading `!` entries acting as negation rules
 
 If multiple formatter entries match the same file, they run in declaration order.
+
+Use `ignore` when a formatter should generally apply to a file type but skip specific paths:
+
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"{{ filePath }}\""
+patterns = ["**/*.md", "!docs/generated/**"]
+ignore = ["vendor/**", "docs/generated/**", "!docs/generated/keep.md"]
+```
+
+Here:
+
+- `patterns` includes markdown files, but excludes `docs/generated/**`
+- `ignore` excludes `vendor/**` and most generated docs
+- `!docs/generated/keep.md` re-allows one ignored path for this formatter entry
 
 This integration applies to both:
 
