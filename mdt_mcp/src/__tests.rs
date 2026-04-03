@@ -76,7 +76,7 @@ fn create_formatter_only_stale_project(root: &Path) {
 	std::fs::write(
 		root.join("mdt.toml"),
 		r#"[[formatters]]
-command = "python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace(\"Draft title\", \"Published title\"))'"
+command = "perl -0pe 's/Draft title/Published title/g'"
 patterns = ["**/*.md"]
 "#,
 	)
