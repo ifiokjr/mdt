@@ -5,21 +5,9 @@ use mdt_core::AnyEmptyResult;
 #[test]
 fn update_replaces_stale_content() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_stale", tmp.path());
 
-	// Create a provider template file
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	// Create a consumer file with outdated content
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -37,19 +25,9 @@ fn update_replaces_stale_content() -> AnyEmptyResult {
 #[test]
 fn update_noop_when_in_sync() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -63,18 +41,11 @@ fn update_noop_when_in_sync() -> AnyEmptyResult {
 #[test]
 fn update_dry_run_does_not_write() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_stale", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	let consumer_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 
-	let consumer_content =
-		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n";
-	std::fs::write(tmp.path().join("readme.md"), consumer_content)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")
@@ -85,7 +56,7 @@ fn update_dry_run_does_not_write() -> AnyEmptyResult {
 
 	// File should not have changed
 	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert_eq!(content, consumer_content);
+	assert_eq!(content, consumer_before);
 
 	Ok(())
 }
@@ -93,19 +64,9 @@ fn update_dry_run_does_not_write() -> AnyEmptyResult {
 #[test]
 fn update_with_transformers() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_with_transformer", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@docs} -->\n\nSome documentation content.\n\n<!-- {/docs} -->\n",
-	)?;
-
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=docs|trim} -->\n\nold\n\n<!-- {/docs} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -121,18 +82,9 @@ fn update_with_transformers() -> AnyEmptyResult {
 #[test]
 fn update_verbose_shows_files() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_stale_named", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--verbose")
 		.arg("--path")
@@ -147,14 +99,9 @@ fn update_verbose_shows_files() -> AnyEmptyResult {
 #[test]
 fn update_warns_missing_provider() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_orphan", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -170,18 +117,9 @@ fn update_warns_missing_provider() -> AnyEmptyResult {
 #[test]
 fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_multiple_blocks", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@a} -->\n\nalpha\n\n<!-- {/a} -->\n\n<!-- {@b} -->\n\nbeta\n\n<!-- {/b} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=a} -->\n\nold\n\n<!-- {/a} -->\n\n<!-- {=b} -->\n\nold\n\n<!-- {/b} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -200,18 +138,9 @@ fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
 #[test]
 fn update_dry_run_shows_file_list() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_stale_named", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")
@@ -226,27 +155,9 @@ fn update_dry_run_shows_file_list() -> AnyEmptyResult {
 #[test]
 fn update_with_config_and_data() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_with_data", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "my-app", "version": "3.0.0"}"#,
-	)?;
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
-		 -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -262,23 +173,9 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 #[test]
 fn update_inline_table_cell_with_data() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_inline_data", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "mdt", "version": "3.1.4"}"#,
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- {~version:\"{{ \
-		 pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -297,33 +194,9 @@ fn update_inline_table_cell_with_data() -> AnyEmptyResult {
 #[test]
 fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_multiline_links", tmp.path());
 
-	let template = r#"<!-- {@badge:"crateName"} -->
-
-[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
-[crate-link]: https://crates.io/crates/{{ crateName }}
-[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
-[docs-link]: https://docs.rs/{{ crateName }}/
-[ci-image]: https://github.com/example/repo/workflows/ci/badge.svg
-[ci-link]: https://github.com/example/repo/actions
-
-<!-- {/badge} -->
-"#;
-	std::fs::write(tmp.path().join("template.t.md"), template)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		r#"# Readme
-
-<!-- {=badge:"my_crate"} -->
-
-old
-
-<!-- {/badge} -->
-"#,
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -368,24 +241,10 @@ old
 #[test]
 fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	let template = r"<!-- {@links} -->
-
-[repo]: https://github.com/example/repo
-[docs]: https://docs.example.com
-[ci]: https://ci.example.com/badge.svg
-
-<!-- {/links} -->
-";
-	std::fs::write(tmp.path().join("template.t.md"), template)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=links} -->\n\nold\n\n<!-- {/links} -->\n",
-	)?;
+	common::copy_fixture("update_multiline_idempotent", tmp.path());
 
 	// First update
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -399,8 +258,7 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 	assert!(after_first.contains("\n[ci]:"));
 
 	// Second update — should be idempotent
-	let mut cmd2 = common::mdt_cmd();
-	cmd2.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -420,19 +278,9 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 #[test]
 fn update_preserves_surrounding_content() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_preserves_surrounding", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew content\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Header\n\nParagraph before.\n\n<!-- {=block} -->\n\nold\n\n<!-- {/block} \
-		 -->\n\nParagraph after.\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())

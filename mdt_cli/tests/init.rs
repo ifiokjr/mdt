@@ -2,11 +2,14 @@ mod common;
 
 use mdt_core::AnyEmptyResult;
 
+/// Tests that run `mdt init` on an empty directory don't need a fixture — an
+/// empty tempdir *is* the fixture scenario (nothing pre-exists).
+
 #[test]
 fn can_init() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	let mut cmd = common::mdt_cmd();
-	let assert = cmd
+
+	let assert = common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
@@ -43,14 +46,9 @@ fn can_init() -> AnyEmptyResult {
 #[test]
 fn init_does_not_overwrite() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	let template_path = tmp.path().join("template.t.md");
-	std::fs::write(&template_path, "existing content")?;
+	common::copy_fixture("init_overwrite_both", tmp.path());
 
-	let config_path = tmp.path().join("mdt.toml");
-	std::fs::write(&config_path, "existing config")?;
-
-	let mut cmd = common::mdt_cmd();
-	let assert = cmd
+	let assert = common::mdt_cmd()
 		.arg("init")
 		.arg("--path")
 		.arg(tmp.path())
@@ -58,10 +56,10 @@ fn init_does_not_overwrite() -> AnyEmptyResult {
 		.success();
 	assert.stdout(predicates::str::contains("already exists"));
 
-	let content = std::fs::read_to_string(&template_path)?;
+	let content = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
 	assert_eq!(content, "existing content");
 
-	let config_content = std::fs::read_to_string(&config_path)?;
+	let config_content = std::fs::read_to_string(tmp.path().join("mdt.toml"))?;
 	assert_eq!(config_content, "existing config");
 
 	Ok(())
@@ -147,8 +145,7 @@ fn init_creates_both_template_and_config() -> AnyEmptyResult {
 #[test]
 fn init_creates_config_when_template_exists() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	let template_path = tmp.path().join("template.t.md");
-	std::fs::write(&template_path, "existing template")?;
+	common::copy_fixture("init_existing_template_only", tmp.path());
 
 	common::mdt_cmd()
 		.arg("init")
@@ -160,7 +157,7 @@ fn init_creates_config_when_template_exists() -> AnyEmptyResult {
 		.stdout(predicates::str::contains("Created mdt.toml"));
 
 	// Template should not be modified
-	let content = std::fs::read_to_string(&template_path)?;
+	let content = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
 	assert_eq!(content, "existing template");
 
 	// Config should be created
