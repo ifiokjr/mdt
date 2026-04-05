@@ -15,22 +15,9 @@ const ANSI_ESCAPE: &str = "\u{1b}[";
 #[test]
 fn check_passes_when_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	// Create a provider template file
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	// Create a consumer file with matching content
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	let _ = cmd
-		.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -44,18 +31,9 @@ fn check_passes_when_up_to_date() -> AnyEmptyResult {
 #[test]
 fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -75,21 +53,9 @@ fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 #[test]
 fn check_fails_when_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_stale", tmp.path());
 
-	// Create a provider template file
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	// Create a consumer file with outdated content
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -103,11 +69,9 @@ fn check_fails_when_stale() -> AnyEmptyResult {
 #[test]
 fn check_with_no_blocks() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_no_blocks", tmp.path());
 
-	std::fs::write(tmp.path().join("readme.md"), "# Just a readme\n")?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -121,18 +85,9 @@ fn check_with_no_blocks() -> AnyEmptyResult {
 #[test]
 fn check_verbose_shows_provider_count() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_single_block", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\ncontent\n\n<!-- {/block} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--verbose")
 		.arg("--path")
@@ -148,15 +103,9 @@ fn check_verbose_shows_provider_count() -> AnyEmptyResult {
 #[test]
 fn check_warns_missing_provider() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_orphan", tmp.path());
 
-	// Consumer with no matching provider
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -172,18 +121,9 @@ fn check_warns_missing_provider() -> AnyEmptyResult {
 #[test]
 fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_stale_named", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@myBlock} -->\n\nnew\n\n<!-- {/myBlock} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=myBlock} -->\n\nold\n\n<!-- {/myBlock} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -199,18 +139,9 @@ fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 #[test]
 fn check_multiple_stale_blocks() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_multiple_stale", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@a} -->\n\nnew a\n\n<!-- {/a} -->\n\n<!-- {@b} -->\n\nnew b\n\n<!-- {/b} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=a} -->\n\nold a\n\n<!-- {/a} -->\n\n<!-- {=b} -->\n\nold b\n\n<!-- {/b} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -224,15 +155,7 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 #[test]
 fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_stale", tmp.path());
 
 	let mut cmd = common::mdt_cmd();
 	cmd.env_remove("NO_COLOR")
@@ -251,15 +174,7 @@ fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
 #[test]
 fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_stale", tmp.path());
 
 	let mut cmd = common::mdt_cmd();
 	cmd.env_remove("NO_COLOR")
@@ -279,15 +194,7 @@ fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyRe
 #[test]
 fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_stale", tmp.path());
 
 	let mut cmd = common::mdt_cmd();
 	cmd.env_remove("NO_COLOR")
@@ -306,11 +213,7 @@ fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
 #[test]
 fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting|wat} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_invalid_transformer", tmp.path());
 
 	let mut cmd = common::mdt_cmd();
 	cmd.env_remove("NO_COLOR")
@@ -329,11 +232,7 @@ fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
 #[test]
 fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting|wat} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_invalid_transformer", tmp.path());
 
 	let mut cmd = common::mdt_cmd();
 	cmd.env_remove("NO_COLOR")
@@ -353,29 +252,9 @@ fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyRes
 #[test]
 fn check_warns_undefined_template_variables() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_undefined_vars", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "my-lib", "version": "1.0.0"}"#,
-	)?;
-	// Provider with a typo: "pkgg" instead of "pkg" — renders to "npm install "
-	// (empty string for undefined variable due to Chainable behavior)
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@install} -->\n\nnpm install {{ pkgg.name }}\n\n<!-- {/install} -->\n",
-	)?;
-	// Consumer content must match the rendered output (empty string for undefined)
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=install} -->\n\nnpm install \n\n<!-- {/install} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -390,27 +269,9 @@ fn check_warns_undefined_template_variables() -> AnyEmptyResult {
 #[test]
 fn check_no_warnings_for_valid_template_variables() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_valid_vars", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "my-lib", "version": "1.0.0"}"#,
-	)?;
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
-		 -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=install} -->\n\nnpm install my-lib@1.0.0\n\n<!-- {/install} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -449,22 +310,12 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 #[test]
 fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
 	// We cannot test the full watch loop (it runs forever), but we can verify
-	// the binary accepts --watch without crashing. Output timing can be flaky
-	// under piped test execution, so we avoid asserting on stdout contents.
+	// the binary accepts --watch without crashing.
 	let mut cmd = common::mdt_cmd();
 	let _ = cmd
-		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--watch")
 		.arg("--path")
@@ -543,18 +394,9 @@ fn assist_command_is_accepted_by_cli_parser() {
 #[test]
 fn info_json_includes_cache_observability_fields() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	let mut cmd = common::mdt_cmd();
-	let output = cmd
-		.env("NO_COLOR", "1")
+	let output = common::mdt_cmd()
 		.arg("info")
 		.arg("--format")
 		.arg("json")
@@ -585,18 +427,9 @@ fn info_json_includes_cache_observability_fields() -> AnyEmptyResult {
 #[test]
 fn doctor_json_includes_cache_checks() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	let mut cmd = common::mdt_cmd();
-	let output = cmd
-		.env("NO_COLOR", "1")
+	let output = common::mdt_cmd()
 		.arg("doctor")
 		.arg("--format")
 		.arg("json")
