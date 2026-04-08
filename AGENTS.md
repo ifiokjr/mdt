@@ -15,7 +15,7 @@ mdt is a Rust workspace for defining markdown template blocks once and synchroni
 - Use `lint:clippy` (or `cargo clippy --workspace --all-features --all-targets`) for clippy checks.
 - All code changes go through a PR.
 - Code changes in publishable crates require at least one `.changeset/*` entry.
-- Treat `mdt.toml` as the canonical annotated config reference. When config behavior changes, update the shared config docs in `template.t.md`, run `mdt update`, and verify `mdt.toml` plus `docs/src/guide/configuration.md` stay in sync in the same PR.
+- Treat `mdt.toml` as the canonical annotated config reference. When config behavior changes, update the shared config docs in `.templates/` and `mdt.toml`/`docs/src/guide/configuration.md` in the same PR via `mdt update`.
 
 ## Read more only when needed
 

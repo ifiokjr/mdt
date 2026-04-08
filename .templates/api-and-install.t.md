@@ -1,0 +1,367 @@
+<!-- {@mdtLspOverview} -->
+
+`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
+
+### Capabilities
+
+- **Diagnostics** — reports stale target blocks, missing sources (with name suggestions), duplicate sources, unclosed blocks, unknown transformers, invalid arguments, unused sources, and source blocks in non-template files.
+- **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
+- **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
+- **Go to definition** — navigates from a target block to its provider, or from a source to all of its consumers.
+- **References** — finds all source, target, and inline blocks sharing the same name.
+- **Rename** — renames a block across all provider and target tags (both opening and closing) in the workspace.
+- **Document symbols** — lists source, target, and inline blocks in the outline/symbol view.
+- **Code actions** — offers a quick-fix to update stale target blocks in place.
+
+### Usage
+
+Start the language server via the CLI:
+
+```sh
+mdt lsp
+```
+
+The server communicates over stdin/stdout using the Language Server Protocol.
+
+<!-- {/mdtLspOverview} -->
+
+<!-- {@mdtMcpOverview} -->
+
+`mdt_mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [mdt](https://github.com/ifiokjr/mdt) template engine. It exposes mdt functionality as MCP tools that can be used by AI assistants and other MCP-compatible clients.
+
+### Tools
+
+- **`mdt_check`** — Verify all target blocks are up-to-date.
+- **`mdt_update`** — Update all target blocks with latest source content.
+- **`mdt_list`** — List all sources and targets in the project.
+- **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
+- **`mdt_get_block`** — Get the content of a specific block by name.
+- **`mdt_preview`** — Preview the result of applying transformers to a block.
+- **`mdt_init`** — Initialize a new mdt project with a sample `.templates/template.t.md` file and starter `mdt.toml`.
+
+### Agent Workflow
+
+- Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new source block.
+- Use the JSON-first tool responses as the source of truth. The MCP server returns structured payloads so agents can inspect results without parsing prose.
+- Use `mdt_preview` as an authoring workflow: inspect the source template plus each target's rendered output before deciding whether to reuse, edit, or sync.
+- Keep source names global and unique in the project to avoid collisions.
+- After edits, run `mdt_check` (and optionally `mdt_update`) so target blocks stay synchronized.
+
+### Usage
+
+Start the MCP server via the CLI:
+
+```sh
+mdt mcp
+```
+
+Add the following to your MCP client configuration:
+
+```json
+{
+	"mcpServers": {
+		"mdt": {
+			"command": "mdt",
+			"args": ["mcp"]
+		}
+	}
+}
+```
+
+<!-- {/mdtMcpOverview} -->
+
+<!-- {@mdtContributing} -->
+
+[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
+
+To automatically load the environment you should [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
+
+```bash
+# The security mechanism didn't allow to load the `.envrc`.
+# Since we trust it, let's allow it execution.
+direnv allow .
+```
+
+At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling and dependencies.
+
+<!-- {/mdtContributing} -->
+
+<!-- {@mdtCoreInstall} -->
+
+```toml
+[dependencies]
+mdt_core = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtCoreInstall} -->
+
+<!-- {@mdtLspInstall} -->
+
+```toml
+[dependencies]
+mdt_lsp = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtLspInstall} -->
+
+<!-- {@mdtMcpInstall} -->
+
+```toml
+[dependencies]
+mdt_mcp = "{{ cargo.workspace.package.version }}"
+```
+
+<!-- {/mdtMcpInstall} -->
+
+<!-- {@mdtCliInstall} -->
+
+- Install with npm:
+
+```sh
+npm install -g @m-d-t/cli
+```
+
+- Or run it without installing:
+
+```sh
+npx @m-d-t/cli --help
+```
+
+- Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
+- Or install with Cargo:
+
+```sh
+cargo install mdt_cli
+```
+
+<!-- {/mdtCliInstall} -->
+
+<!-- {@mdtCoreOverview} -->
+
+`mdt_core` is the core library for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides the lexer, parser, project scanner, and template engine for processing markdown template tags. Content defined once in source blocks can be distributed to target blocks across markdown files, code documentation comments, READMEs, and more.
+
+## Processing Pipeline
+
+```text
+Markdown / source file
+  → Lexer (tokenizes HTML comments into TokenGroups)
+  → Pattern matcher (validates token sequences)
+  → Parser (classifies groups, extracts names + transformers, matches open/close into Blocks)
+  → Project scanner (walks directory tree, builds source→content map + target list)
+  → Engine (matches targets to sources, applies transformers, replaces content)
+```
+
+## Modules
+
+- [`config`] — Configuration loading from `mdt.toml`, including data source mappings, exclude/include patterns, and template paths.
+- [`project`] — Project scanning and directory walking. Discovers provider and target blocks across all files in a project.
+- [`source_scanner`] — Source file scanning for target tags inside code comments (Rust, TypeScript, Python, Go, Java, etc.).
+
+## Key Types
+
+- [`Block`] — A parsed template block (source or target) with its name, type, position, and transformers.
+- [`Transformer`] — A pipe-delimited content filter (e.g., `trim`, `indent`, `linePrefix`) applied during injection.
+- [`ProjectContext`] — A scanned project together with its loaded template data, ready for checking or updating.
+- [`MdtConfig`] — Configuration loaded from `mdt.toml`.
+- [`CheckResult`] — Result of checking a project for stale targets.
+- [`UpdateResult`] — Result of computing updates for target blocks.
+
+## Data Interpolation
+
+Provider content supports [`minijinja`](https://docs.rs/minijinja) template variables populated from project files. The `mdt.toml` config maps source files to namespaces:
+
+```toml
+[data]
+pkg = "package.json"
+cargo = "Cargo.toml"
+```
+
+Then in source blocks: `{{ "{{" }} pkg.version {{ "}}" }}` or `{{ "{{" }} cargo.package.edition {{ "}}" }}`.
+
+Supported sources: files and script commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
+
+## Quick Start
+
+```rust,no_run
+use mdt_core::project::scan_project_with_config;
+use mdt_core::{check_project, compute_updates, write_updates};
+use std::path::Path;
+
+let ctx = scan_project_with_config(Path::new(".")).unwrap();
+
+// Check for stale targets
+let result = check_project(&ctx).unwrap();
+if !result.is_ok() {
+    eprintln!("{} stale target(s) found", result.stale.len());
+}
+
+// Update all target blocks
+let updates = compute_updates(&ctx).unwrap();
+write_updates(&updates).unwrap();
+```
+
+<!-- {/mdtCoreOverview} -->
+
+<!-- {@mdtBlockDocs} -->
+
+A parsed template block representing either a source or consumer.
+
+Source blocks are defined in `*.t.md` template files using `{@name}...{/name}` tag syntax (wrapped in HTML comments). They supply content that gets distributed to matching consumers.
+
+Target blocks appear in any scanned file using `{=name}...{/name}` tag syntax (wrapped in HTML comments). Their content is replaced with the matching source's content (after applying any transformers) when `mdt update` is run.
+
+Each block tracks its [`name`](Block::name) for source-target matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
+
+<!-- {/mdtBlockDocs} -->
+
+<!-- {@mdtTransformerDocs} -->
+
+A content transformer applied to source content during injection into a target block.
+
+Transformers are specified using pipe-delimited syntax after the block name in a target tag:
+
+```markdown
+<!-- {=blockName|trim|indent:"  "|linePrefix:"/// "} -->
+```
+
+Transformers are applied in left-to-right order. Each transformer has a [`TransformerType`] and zero or more [`Argument`]s passed via colon-delimited syntax (e.g., `indent:"  "`).
+
+Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
+
+<!-- {/mdtTransformerDocs} -->
+
+<!-- {@mdtArgumentDocs} -->
+
+An argument value passed to a [`Transformer`].
+
+Arguments are specified after the transformer name using colon-delimited syntax:
+
+```markdown
+<!-- {=block|replace:"old":"new"|indent:"  "} -->
+```
+
+Three types are supported:
+
+- **String** — Quoted text, e.g. `"hello"` or `'hello'`
+- **Number** — Integer or floating-point, e.g. `42` or `3.14`
+- **Boolean** — `true` or `false`
+
+<!-- {/mdtArgumentDocs} -->
+
+<!-- {@mdtBadgeLinks:"crateName"} -->
+
+[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg [crate-link]: https://crates.io/crates/{{ crateName }} [docs-image]: https://docs.rs/{{ crateName }}/badge.svg [docs-link]: https://docs.rs/{{ crateName }}/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg [coverage-link]: https://codecov.io/gh/ifiokjr/mdt [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
+
+<!-- {/mdtBadgeLinks} -->
+
+<!-- {@mdtBeforeAfter} -->
+
+## The Problem
+
+You have the same install instructions in three places:
+
+**readme.md:**
+
+```markdown
+## Installation
+
+npm install my-lib
+```
+
+**src/lib.rs:**
+
+```rust
+//! ## Installation
+//!
+//! npm install my-lib
+```
+
+**docs/getting-started.md:**
+
+```markdown
+## Installation
+
+npm install my-lib
+```
+
+You update one. The others drift. CI doesn't catch it.
+
+## The Fix
+
+Define it once in a `*.t.md` template file (the "t" stands for template):
+
+```markdown
+<!-- {@install} -->
+
+npm install my-lib
+
+<!-- {/install} -->
+```
+
+Use it everywhere:
+
+```markdown
+<!-- {=install} -->
+
+(replaced automatically)
+
+<!-- {/install} -->
+```
+
+Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
+
+<!-- {/mdtBeforeAfter} -->
+
+<!-- {@mdtQuickStart} -->
+
+### 1. Initialize
+
+```sh
+mkdir my-project && cd my-project
+mdt init
+```
+
+This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (config).
+
+### 2. Define a source block
+
+In `.templates/template.t.md`:
+
+```markdown
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+```
+
+### 3. Use it in your README
+
+In `readme.md`:
+
+```markdown
+<!-- {=greeting} -->
+<!-- {/greeting} -->
+```
+
+### 4. Sync
+
+```sh
+mdt update
+```
+
+Every target block named `greeting` now has the same content. Run `mdt check` in CI to catch drift.
+
+<!-- {/mdtQuickStart} -->
+
+<!-- {@greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->
+
+<!-- {=greeting} -->
+
+Hello from mdt!
+
+<!-- {/greeting} -->

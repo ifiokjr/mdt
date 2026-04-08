@@ -2,7 +2,7 @@
 
 If you want to know whether `mdt` is solving a real problem, this repository is the best example.
 
-The project already uses source blocks from `template.t.md` to keep repeated content synchronized across multiple surfaces:
+The project already uses source blocks from `.templates/*.t.md` to keep repeated content synchronized across multiple surfaces:
 
 - root and crate READMEs
 - crate-level Rust docs
@@ -12,7 +12,7 @@ That is the core value proposition in one repo: write shared content once, then 
 
 ## 1. README synchronization
 
-The source block `mdtCliUsage` lives in [`template.t.md`](../../../template.t.md).
+The source block `mdtCliUsage` lives in [`.templates/overview.t.md`](../../../.templates/overview.t.md).
 
 It is consumed in multiple README-style surfaces:
 
@@ -23,7 +23,7 @@ That means the command list and diagnostics workflow stay aligned without copyin
 
 ## 2. Source-doc synchronization
 
-The source block `mdtLspOverview` also lives in [`template.t.md`](../../../template.t.md), but it fans out into both markdown and Rust source docs:
+The source block `mdtLspOverview` also lives in [`.templates/api-and-install.t.md`](../../../.templates/api-and-install.t.md), but it fans out into both markdown and Rust source docs:
 
 - [`mdt_lsp/readme.md`](../../../mdt_lsp/readme.md)
 - [`mdt_lsp/src/lib.rs`](../../../mdt_lsp/src/lib.rs)
@@ -76,7 +76,7 @@ If you are evaluating adoption, inspect these files together:
 
 ### Shared sources
 
-- [`template.t.md`](../../../template.t.md)
+- `.templates/overview.t.md` and `.templates/api-and-install.t.md`
 
 ### README targets
 
