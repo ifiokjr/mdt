@@ -14,6 +14,11 @@ devenv shell
 install:all
 ```
 
+Entering the dev shell also installs the repository git hooks managed by `devenv`:
+
+- `pre-commit` applies autofixable `mdt`, formatting, and clippy updates to staged changes.
+- `pre-push` runs the CI-aligned lint, test, npm integration, and build checks.
+
 ## Building and Testing
 
 ```sh

@@ -41,6 +41,42 @@ in
   # disable dotenv since it breaks the variable interpolation supported by `direnv`
   dotenv.disableHint = true;
 
+  git-hooks.hooks = {
+    mdt-pre-commit = {
+      enable = true;
+      name = "mdt pre-commit autofix";
+      description = "Apply autofixable formatting and lint updates to staged changes.";
+      entry = "bash scripts/git-hooks/pre-commit.sh";
+      language = "system";
+      pass_filenames = true;
+      require_serial = true;
+      always_run = true;
+      stages = [ "pre-commit" ];
+      extraPackages = with pkgs; [
+        bash
+        devenv
+        git
+      ];
+    };
+
+    mdt-pre-push = {
+      enable = true;
+      name = "mdt pre-push CI checks";
+      description = "Run the local CI-equivalent checks before pushing.";
+      entry = "bash scripts/git-hooks/pre-push.sh";
+      language = "system";
+      pass_filenames = false;
+      require_serial = true;
+      always_run = true;
+      stages = [ "pre-push" ];
+      extraPackages = with pkgs; [
+        bash
+        devenv
+        git
+      ];
+    };
+  };
+
   scripts = {
     "mdt" = {
       exec = ''
