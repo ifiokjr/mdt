@@ -1,41 +1,13 @@
 mod common;
 
-use std::path::Path;
-
 use mdt_core::AnyEmptyResult;
-
-fn copy_fixture(dest: &Path) {
-	let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript_workspace");
-	copy_dir_recursive(&fixture, dest);
-}
-
-fn copy_dir_recursive(src: &Path, dst: &Path) {
-	std::fs::create_dir_all(dst)
-		.unwrap_or_else(|e| panic!("create_dir_all {}: {e}", dst.display()));
-	for entry in
-		std::fs::read_dir(src).unwrap_or_else(|e| panic!("read_dir {}: {e}", src.display()))
-	{
-		let entry = entry.unwrap_or_else(|e| panic!("entry: {e}"));
-		let src_path = entry.path();
-		let dst_path = dst.join(entry.file_name());
-
-		if src_path.is_dir() {
-			copy_dir_recursive(&src_path, &dst_path);
-		} else {
-			std::fs::copy(&src_path, &dst_path).unwrap_or_else(|e| {
-				panic!("copy {} -> {}: {e}", src_path.display(), dst_path.display())
-			});
-		}
-	}
-}
 
 #[test]
 fn update_typescript_workspace() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	copy_fixture(tmp.path());
+	common::copy_fixture("typescript_workspace", tmp.path());
 
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
+	common::mdt_cmd()
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -76,11 +48,10 @@ fn update_typescript_workspace() -> AnyEmptyResult {
 #[test]
 fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	copy_fixture(tmp.path());
+	common::copy_fixture("typescript_workspace", tmp.path());
 
 	// First update
 	common::mdt_cmd()
-		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--path")
 		.arg(tmp.path())
@@ -89,7 +60,6 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 
 	// Then check — should pass
 	common::mdt_cmd()
-		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -103,11 +73,10 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 #[test]
 fn check_typescript_workspace_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	copy_fixture(tmp.path());
+	common::copy_fixture("typescript_workspace", tmp.path());
 
 	// Check without updating — should fail because content is stale
 	common::mdt_cmd()
-		.env("NO_COLOR", "1")
 		.arg("check")
 		.arg("--path")
 		.arg(tmp.path())
@@ -120,12 +89,11 @@ fn check_typescript_workspace_stale() -> AnyEmptyResult {
 #[test]
 fn dry_run_typescript_workspace() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
-	copy_fixture(tmp.path());
+	common::copy_fixture("typescript_workspace", tmp.path());
 
 	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 
 	common::mdt_cmd()
-		.env("NO_COLOR", "1")
 		.arg("update")
 		.arg("--dry-run")
 		.arg("--path")

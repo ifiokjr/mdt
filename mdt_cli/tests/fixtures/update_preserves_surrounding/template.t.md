@@ -1,0 +1,5 @@
+<!-- {@block} -->
+
+new content
+
+<!-- {/block} -->
