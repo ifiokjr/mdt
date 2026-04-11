@@ -464,7 +464,7 @@ markdown_codeblocks = true
 
 <!-- {@mdtInitAnnotatedConfigurationRust} -->
 
-{% raw %} pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
+{% raw %} pub(crate) const DEFAULT_MDT_TOML: &str = r#"# mdt.toml
 
 # 
 
@@ -684,6 +684,6 @@ markdown_codeblocks = true
 
 # ignore = ["dist/**"]
 
-"####; {% endraw %}
+"#; {% endraw %}
 
 <!-- {/mdtInitAnnotatedConfigurationRust} -->
