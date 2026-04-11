@@ -1,7 +1,7 @@
 // This file is generated via mdt. Edit the source blocks in `.templates/` instead.
 
 // <!-- {=mdtInitAnnotatedConfigurationRust|trim} -->
-pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
+pub(crate) const DEFAULT_MDT_TOML: &str = r#"# mdt.toml
 
 # 
 
@@ -221,5 +221,5 @@ pub(crate) const DEFAULT_MDT_TOML: &str = r####"# mdt.toml
 
 # ignore = ["dist/**"]
 
-"####;
+"#;
 // <!-- {/mdtInitAnnotatedConfigurationRust} -->

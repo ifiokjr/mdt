@@ -37,6 +37,8 @@ use mdt_core::write_updates;
 use owo_colors::OwoColorize;
 use similar::ChangeTag;
 use similar::TextDiff;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt;
 
 static USE_STDOUT_COLOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static USE_STDERR_COLOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -151,6 +153,13 @@ fn main() {
 	let stderr_color = !args.no_color && detect_color(supports_color::Stream::Stderr);
 	USE_STDOUT_COLOR.store(stdout_color, std::sync::atomic::Ordering::Relaxed);
 	USE_STDERR_COLOR.store(stderr_color, std::sync::atomic::Ordering::Relaxed);
+
+	if let Ok(filter) = EnvFilter::try_from_env("MDT_LOG") {
+		fmt::Subscriber::builder()
+			.with_env_filter(filter)
+			.with_writer(std::io::stderr)
+			.init();
+	}
 
 	let disable_miette_color = !stderr_color;
 	miette::set_hook(Box::new(move |_| {

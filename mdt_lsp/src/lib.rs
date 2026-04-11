@@ -45,6 +45,8 @@ use tower_lsp_server::Client;
 use tower_lsp_server::LanguageServer;
 use tower_lsp_server::jsonrpc::Result as LspResult;
 use tower_lsp_server::ls_types::*;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt;
 
 /// State for a single open document.
 #[derive(Debug, Clone)]
@@ -87,7 +89,7 @@ impl WorkspaceState {
 				self.data = ctx.data;
 			}
 			Err(e) => {
-				eprintln!("mdt-lsp: failed to scan project: {e}");
+				tracing::error!("failed to scan project: {e}");
 			}
 		}
 	}
@@ -1626,6 +1628,12 @@ fn compute_rename(
 /// Start the LSP server on stdin/stdout. This is used by both the standalone
 /// `mdt-lsp` binary and the `mdt lsp` CLI subcommand.
 pub async fn run_server() {
+	let filter = EnvFilter::try_from_env("MDT_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+	fmt::Subscriber::builder()
+		.with_env_filter(filter)
+		.with_writer(std::io::stderr)
+		.init();
+
 	let stdin = tokio::io::stdin();
 	let stdout = tokio::io::stdout();
 

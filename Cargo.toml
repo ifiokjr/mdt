@@ -46,6 +46,9 @@ thiserror = { default-features = false, version = "^2" }
 tokio = { default-features = false, version = "^1" }
 toml = { default-features = false, version = "^1" }
 tower-lsp-server = { default-features = false, version = "^0.23" }
+tracing = { default-features = false, version = "^0.1", features = ["attributes"] }
+tracing-subscriber = { default-features = false, version = "^0.3", features = ["env-filter", "fmt"] }
+tracing-test = { default-features = false, version = "^0.2" }
 
 # Internal crates
 mdt_core = { path = "./mdt_core", version = "0.7.0" }

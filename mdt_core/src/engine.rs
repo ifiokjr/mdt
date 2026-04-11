@@ -7,6 +7,11 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
 
+use tracing::debug;
+use tracing::instrument;
+use tracing::trace;
+use tracing::warn;
+
 use crate::Argument;
 use crate::BlockType;
 use crate::MdtError;
@@ -136,10 +141,12 @@ pub struct UpdateResult {
 /// If data is empty or the content has no template syntax, returns the
 /// content unchanged.
 #[allow(clippy::implicit_hasher)]
+#[instrument(skip(content, data), fields(content_len = content.len(), data_keys = data.len()))]
 pub fn render_template(
 	content: &str,
 	data: &HashMap<String, serde_json::Value>,
 ) -> MdtResult<String> {
+	trace!("rendering template");
 	if data.is_empty() || !has_template_syntax(content) {
 		return Ok(content.to_string());
 	}
@@ -312,7 +319,14 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 /// Consumer blocks that reference non-existent providers are silently skipped.
 /// Template render errors are collected rather than aborting, so the check
 /// reports all problems in a single pass.
+#[instrument(skip(ctx), fields(
+	root = %ctx.root.display(),
+	providers = ctx.project.providers.len(),
+	consumers = ctx.project.consumers.len(),
+	has_formatters = !ctx.formatters.is_empty(),
+))]
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
+	debug!("checking project");
 	if ctx.formatters.is_empty() {
 		return check_project_without_formatters(ctx);
 	}
@@ -321,9 +335,11 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
 	let warnings = collect_template_warnings(ctx);
+	debug!(warnings = warnings.len(), "collected template warnings");
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
 	for (file, consumers) in consumers_by_file {
+		trace!(file = %file.display(), consumers = consumers.len(), "checking file");
 		let original = std::fs::read_to_string(&file)?;
 		let ordered_consumers = sort_consumers_in_file(consumers);
 		let mut candidate = original.clone();
@@ -357,6 +373,12 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					let rendered = match render_template(&provider.content, &render_data) {
 						Ok(rendered) => rendered,
 						Err(error) => {
+							warn!(
+								file = %consumer.file.display(),
+								block = %consumer.block.name,
+								error = %error,
+								"template render failed",
+							);
 							render_errors.push(RenderError {
 								file: consumer.file.clone(),
 								block_name: consumer.block.name.clone(),
@@ -481,6 +503,13 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		}
 	}
 
+	debug!(
+		stale = stale.len(),
+		stale_files = stale_files.len(),
+		render_errors = render_errors.len(),
+		"check complete",
+	);
+
 	Ok(CheckResult {
 		stale,
 		stale_files,
@@ -490,7 +519,14 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 }
 
 /// Compute the updated file contents for all consumer blocks.
+#[instrument(skip(ctx), fields(
+	root = %ctx.root.display(),
+	providers = ctx.project.providers.len(),
+	consumers = ctx.project.consumers.len(),
+	has_formatters = !ctx.formatters.is_empty(),
+))]
 pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
+	debug!("computing updates");
 	if ctx.formatters.is_empty() {
 		return compute_updates_without_formatters(ctx);
 	}
@@ -501,6 +537,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
 	for (file, consumers) in consumers_by_file {
+		trace!(file = %file.display(), "processing file for updates");
 		let original = std::fs::read_to_string(&file)?;
 		let ordered_consumers = sort_consumers_in_file(consumers);
 		let mut candidate = original.clone();
@@ -584,6 +621,11 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 
 		file_contents.insert(file.clone(), candidate);
 	}
+
+	debug!(
+		updated_files = file_contents.len(),
+		updated_count, "updates computed"
+	);
 
 	Ok(UpdateResult {
 		updated_files: file_contents,
@@ -1045,14 +1087,17 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 }
 
 /// Write the updated contents back to disk.
+#[instrument(skip(updates), fields(file_count = updates.updated_files.len()))]
 pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 	for (path, content) in &updates.updated_files {
+		trace!(path = %path.display(), "writing updated file");
 		std::fs::write(path, content)?;
 	}
 	Ok(())
 }
 
 /// Apply a sequence of transformers to content.
+#[instrument(skip(content), fields(content_len = content.len(), transformer_count = transformers.len()))]
 pub fn apply_transformers(content: &str, transformers: &[Transformer]) -> String {
 	apply_transformers_with_data(content, transformers, None)
 }
@@ -1060,6 +1105,7 @@ pub fn apply_transformers(content: &str, transformers: &[Transformer]) -> String
 /// Apply a sequence of transformers to content with an optional data context.
 /// The data context is used by data-dependent transformers like `if`.
 #[allow(clippy::implicit_hasher)]
+#[instrument(skip(content, data), fields(content_len = content.len(), transformer_count = transformers.len(), has_data = data.is_some()))]
 pub fn apply_transformers_with_data(
 	content: &str,
 	transformers: &[Transformer],
@@ -1068,6 +1114,7 @@ pub fn apply_transformers_with_data(
 	let mut result = content.to_string();
 
 	for transformer in transformers {
+		trace!(transformer = ?transformer.r#type, "applying transformer");
 		result = apply_transformer(&result, transformer, data);
 	}
 
