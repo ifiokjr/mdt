@@ -10706,6 +10706,7 @@ fn strict_config_is_default() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_check_project_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10739,6 +10740,7 @@ fn tracing_check_project_creates_span_and_events() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_check_project_warns_on_render_error() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10770,6 +10772,7 @@ fn tracing_check_project_warns_on_render_error() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10803,6 +10806,7 @@ fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_scan_project_with_config_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10823,6 +10827,7 @@ fn tracing_scan_project_with_config_creates_span_and_events() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_scan_project_with_options_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10838,6 +10843,7 @@ fn tracing_scan_project_with_options_creates_span_and_events() -> MdtResult<()> 
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_render_template_creates_span_with_fields() -> MdtResult<()> {
 	let mut data = HashMap::new();
@@ -10856,6 +10862,7 @@ fn tracing_render_template_creates_span_with_fields() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_render_template_skips_content_value() -> MdtResult<()> {
 	let data = HashMap::new();
@@ -10868,6 +10875,7 @@ fn tracing_render_template_skips_content_value() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_write_updates_creates_span_and_traces_files() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10889,6 +10897,7 @@ fn tracing_write_updates_creates_span_and_traces_files() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_apply_transformers_creates_span_with_fields() {
 	let transformers = vec![Transformer {
@@ -10903,6 +10912,7 @@ fn tracing_apply_transformers_creates_span_with_fields() {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_apply_transformers_with_data_traces_each_transformer() {
 	let transformers = vec![
@@ -10925,6 +10935,7 @@ fn tracing_apply_transformers_with_data_traces_each_transformer() {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_config_load_traces_found() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10940,6 +10951,7 @@ fn tracing_config_load_traces_found() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_config_load_traces_missing() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10954,6 +10966,7 @@ fn tracing_config_load_traces_missing() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_config_load_data_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -10978,6 +10991,7 @@ fn tracing_config_load_data_creates_span_and_events() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_parse_creates_span() -> MdtResult<()> {
 	let input = "<!-- {@test} -->\nHello\n<!-- {/test} -->";
@@ -10992,6 +11006,7 @@ fn tracing_parse_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_parse_with_diagnostics_creates_span() -> MdtResult<()> {
 	let input = "<!-- {@test} -->\nContent\n<!-- {/test} -->";
@@ -11005,6 +11020,7 @@ fn tracing_parse_with_diagnostics_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_parse_source_creates_span_with_content_len() -> MdtResult<()> {
 	let content = "// <!-- {@block} -->\n// content\n// <!-- {/block} -->";
@@ -11018,6 +11034,7 @@ fn tracing_parse_source_creates_span_with_content_len() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_parse_source_with_diagnostics_creates_span() -> MdtResult<()> {
 	let content = "// <!-- {@block} -->\n// content\n// <!-- {/block} -->";
@@ -11033,6 +11050,7 @@ fn tracing_parse_source_with_diagnostics_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_validate_project_creates_span() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -11057,6 +11075,7 @@ fn tracing_validate_project_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_find_missing_providers_creates_span() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -11078,6 +11097,7 @@ fn tracing_find_missing_providers_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_scan_project_creates_span() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -11092,6 +11112,7 @@ fn tracing_scan_project_creates_span() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_check_project_has_formatters_flag() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -11123,6 +11144,7 @@ fn tracing_check_project_has_formatters_flag() -> MdtResult<()> {
 }
 
 #[traced_test]
+#[allow(clippy::disallowed_methods)]
 #[test]
 fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
