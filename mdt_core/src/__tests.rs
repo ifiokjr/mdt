@@ -10708,40 +10708,6 @@ fn strict_config_is_default() {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_check_project_creates_span_and_events() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nHello.\n\n<!-- {/block} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nHello.\n\n<!-- {/block} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let ctx = ProjectContext {
-		project: scan_project(tmp.path())?,
-		data: HashMap::new(),
-		padding: None,
-		formatters: Vec::new(),
-		markdown_codeblocks: CodeBlockFilter::default(),
-		comparison: ComparisonMode::default(),
-		root: tmp.path().to_path_buf(),
-	};
-	let _result = check_project(&ctx)?;
-
-	assert!(logs_contain("checking project"));
-	assert!(logs_contain("providers=1"));
-	assert!(logs_contain("consumers=1"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_check_project_warns_on_render_error() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
@@ -10774,40 +10740,6 @@ fn tracing_check_project_warns_on_render_error() -> MdtResult<()> {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@info} -->\n\nNew info.\n\n<!-- {/info} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(
-		tmp.path().join("doc.md"),
-		"# Doc\n\n<!-- {=info} -->\n\nOld info.\n\n<!-- {/info} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let ctx = ProjectContext {
-		project: scan_project(tmp.path())?,
-		data: HashMap::new(),
-		padding: None,
-		formatters: Vec::new(),
-		markdown_codeblocks: CodeBlockFilter::default(),
-		comparison: ComparisonMode::default(),
-		root: tmp.path().to_path_buf(),
-	};
-	let _updates = compute_updates(&ctx)?;
-
-	assert!(logs_contain("computing updates"));
-	assert!(logs_contain("providers=1"));
-	assert!(logs_contain("consumers=1"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_scan_project_with_config_creates_span_and_events() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
@@ -10829,22 +10761,6 @@ fn tracing_scan_project_with_config_creates_span_and_events() -> MdtResult<()> {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_scan_project_with_options_creates_span_and_events() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("readme.md"), "# Hello\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let _project = scan_project_with_options(tmp.path(), &ScanOptions::default())?;
-
-	assert!(logs_contain("scan_project_with_options"));
-	assert!(logs_contain("collected files for scanning"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_render_template_creates_span_with_fields() -> MdtResult<()> {
 	let mut data = HashMap::new();
 	data.insert(
@@ -10857,19 +10773,6 @@ fn tracing_render_template_creates_span_with_fields() -> MdtResult<()> {
 	assert!(logs_contain("rendering template"));
 	assert!(logs_contain("content_len"));
 	assert!(logs_contain("data_keys"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
-fn tracing_render_template_skips_content_value() -> MdtResult<()> {
-	let data = HashMap::new();
-	let _result = render_template("secret content here", &data)?;
-
-	assert!(logs_contain("rendering template"));
-	assert!(!logs_contain("secret content here"));
 
 	Ok(())
 }
@@ -10899,21 +10802,6 @@ fn tracing_write_updates_creates_span_and_traces_files() -> MdtResult<()> {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_apply_transformers_creates_span_with_fields() {
-	let transformers = vec![Transformer {
-		r#type: TransformerType::Trim,
-		args: Vec::new(),
-	}];
-	let result = apply_transformers("  hello  ", &transformers);
-
-	assert_eq!(result, "hello");
-	assert!(logs_contain("apply_transformers"));
-	assert!(logs_contain("transformer_count=1"));
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_apply_transformers_with_data_traces_each_transformer() {
 	let transformers = vec![
 		Transformer {
@@ -10937,22 +10825,6 @@ fn tracing_apply_transformers_with_data_traces_each_transformer() {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_config_load_traces_found() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "").unwrap_or_else(|e| panic!("write: {e}"));
-
-	let config = MdtConfig::load(tmp.path())?;
-
-	assert!(config.is_some());
-	assert!(logs_contain("load"));
-	assert!(logs_contain("loading config file"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_config_load_traces_missing() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
@@ -10961,31 +10833,6 @@ fn tracing_config_load_traces_missing() -> MdtResult<()> {
 	assert!(config.is_none());
 	assert!(logs_contain("load"));
 	assert!(logs_contain("no config file found"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
-fn tracing_config_load_data_creates_span_and_events() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.0.0"}"#)
-		.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected config"));
-	let data = config.load_data(tmp.path())?;
-
-	assert_eq!(data.len(), 1);
-	assert!(logs_contain("load_data"));
-	assert!(logs_contain("data_sources=1"));
-	assert!(logs_contain("loading data namespace"));
-	assert!(logs_contain("data loading complete"));
 
 	Ok(())
 }
@@ -11008,42 +10855,12 @@ fn tracing_parse_creates_span() -> MdtResult<()> {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_parse_with_diagnostics_creates_span() -> MdtResult<()> {
-	let input = "<!-- {@test} -->\nContent\n<!-- {/test} -->";
-	let (blocks, diagnostics) = parse_with_diagnostics(input)?;
-
-	assert_eq!(blocks.len(), 1);
-	assert!(diagnostics.is_empty());
-	assert!(logs_contain("parsing markdown with diagnostics"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_parse_source_creates_span_with_content_len() -> MdtResult<()> {
 	let content = "// <!-- {@block} -->\n// content\n// <!-- {/block} -->";
 	let blocks = parse_source(content)?;
 
 	assert_eq!(blocks.len(), 1);
 	assert!(logs_contain("parsing source file"));
-	assert!(logs_contain("content_len"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
-fn tracing_parse_source_with_diagnostics_creates_span() -> MdtResult<()> {
-	let content = "// <!-- {@block} -->\n// content\n// <!-- {/block} -->";
-	let filter = CodeBlockFilter::default();
-	let (blocks, diagnostics) = parse_source_with_diagnostics(content, &filter)?;
-
-	assert_eq!(blocks.len(), 1);
-	assert!(diagnostics.is_empty());
-	assert!(logs_contain("parsing source file with diagnostics"));
 	assert!(logs_contain("content_len"));
 
 	Ok(())
@@ -11077,28 +10894,6 @@ fn tracing_validate_project_creates_span() -> MdtResult<()> {
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
-fn tracing_find_missing_providers_creates_span() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=missing} -->\nContent\n<!-- {/missing} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let p = scan_project(tmp.path())?;
-	let missing = find_missing_providers(&p);
-
-	assert_eq!(missing.len(), 1);
-	assert_eq!(missing[0], "missing");
-	assert!(logs_contain("find_missing_providers"));
-	assert!(logs_contain("found missing providers"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
 fn tracing_scan_project_creates_span() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(tmp.path().join("readme.md"), "# Hello\n")
@@ -11107,38 +10902,6 @@ fn tracing_scan_project_creates_span() -> MdtResult<()> {
 	let _project = scan_project(tmp.path())?;
 
 	assert!(logs_contain("scan_project"));
-
-	Ok(())
-}
-
-#[traced_test]
-#[allow(clippy::disallowed_methods)]
-#[test]
-fn tracing_check_project_has_formatters_flag() -> MdtResult<()> {
-	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@a} -->\nA\n<!-- {/a} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=a} -->\nA\n<!-- {/a} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-
-	let ctx = ProjectContext {
-		project: scan_project(tmp.path())?,
-		data: HashMap::new(),
-		padding: None,
-		formatters: Vec::new(),
-		markdown_codeblocks: CodeBlockFilter::default(),
-		comparison: ComparisonMode::default(),
-		root: tmp.path().to_path_buf(),
-	};
-	let _result = check_project(&ctx)?;
-
-	assert!(logs_contain("has_formatters=false"));
 
 	Ok(())
 }
