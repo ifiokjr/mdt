@@ -70,6 +70,8 @@ use rmcp::tool_handler;
 use rmcp::tool_router;
 use serde::Deserialize;
 use serde::Serialize;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt;
 
 /// Parameters for tools that accept an optional project path.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -887,6 +889,12 @@ mod __tests;
 
 /// Start the MCP server on stdin/stdout.
 pub async fn run_server() {
+	let filter = EnvFilter::try_from_env("MDT_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+	fmt::Subscriber::builder()
+		.with_env_filter(filter)
+		.with_writer(std::io::stderr)
+		.init();
+
 	let server = MdtMcpServer::new();
 	let transport = rmcp::transport::io::stdio();
 
@@ -897,7 +905,7 @@ pub async fn run_server() {
 			let _ = running.waiting().await;
 		}
 		Err(e) => {
-			eprintln!("mdt-mcp: failed to start server: {e}");
+			tracing::error!("failed to start server: {e}");
 		}
 	}
 }

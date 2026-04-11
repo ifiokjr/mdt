@@ -17,6 +17,8 @@ mdt_core = { workspace = true }
 serde_json = { workspace = true, default-features = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "io-std"], default-features = true }
 tower-lsp-server = { workspace = true, features = ["proposed"], default-features = true }
+tracing = { workspace = true, default-features = true }
+tracing-subscriber = { workspace = true, default-features = true }
 
 [dev-dependencies]
 insta = { workspace = true, default-features = true }

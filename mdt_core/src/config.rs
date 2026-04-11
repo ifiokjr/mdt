@@ -8,6 +8,9 @@ use std::time::UNIX_EPOCH;
 use globset::Glob;
 use serde::Deserialize;
 use serde::Serialize;
+use tracing::debug;
+use tracing::instrument;
+use tracing::trace;
 
 use crate::MdtError;
 use crate::MdtResult;
@@ -188,19 +191,11 @@ pub struct MdtConfig {
 /// (blank lines, trailing spaces, table padding, JSON indentation).
 ///
 /// `mdt update` always writes exact bytes regardless of this setting.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct CheckConfig {
 	/// Comparison mode: `"strict"` (default) or `"lenient"`.
 	#[serde(default)]
 	pub comparison: ComparisonMode,
-}
-
-impl Default for CheckConfig {
-	fn default() -> Self {
-		Self {
-			comparison: ComparisonMode::default(),
-		}
-	}
 }
 
 /// How `mdt check` compares expected vs actual content.
@@ -613,11 +608,14 @@ impl MdtConfig {
 
 	/// Load the config from the first discovered config file at `root`.
 	/// Returns `None` if the file does not exist.
+	#[instrument]
 	pub fn load(root: &Path) -> MdtResult<Option<MdtConfig>> {
 		let Some(config_path) = Self::resolve_path(root) else {
+			trace!("no config file found");
 			return Ok(None);
 		};
 
+		debug!(config_path = %config_path.display(), "loading config file");
 		let content = std::fs::read_to_string(&config_path)?;
 		let config: MdtConfig =
 			toml::from_str(&content).map_err(|e| MdtError::ConfigParse(e.to_string()))?;
@@ -628,6 +626,7 @@ impl MdtConfig {
 
 	/// Read each data file and parse it into a `serde_json::Value` keyed by
 	/// namespace.
+	#[instrument(skip(self), fields(data_sources = self.data.len()))]
 	pub fn load_data(&self, root: &Path) -> MdtResult<HashMap<String, serde_json::Value>> {
 		let mut data = HashMap::new();
 		let mut script_cache = load_script_cache(root);
@@ -638,6 +637,7 @@ impl MdtConfig {
 		namespaces.sort();
 
 		for namespace in namespaces {
+			trace!(namespace = %namespace, "loading data namespace");
 			let source = self
 				.data
 				.get(&namespace)
@@ -682,6 +682,8 @@ impl MdtConfig {
 		if touched_script_cache {
 			save_script_cache(root, &script_cache);
 		}
+
+		debug!(namespaces_loaded = data.len(), "data loading complete");
 
 		Ok(data)
 	}

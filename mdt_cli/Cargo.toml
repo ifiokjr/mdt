@@ -29,6 +29,7 @@ serde_json = { workspace = true, default-features = true }
 similar = { workspace = true, default-features = true }
 supports-color = { workspace = true, default-features = true }
 tokio = { workspace = true, features = ["rt-multi-thread"], default-features = true }
+tracing-subscriber = { workspace = true, default-features = true }
 
 [dev-dependencies]
 assert_cmd = { workspace = true, default-features = true }

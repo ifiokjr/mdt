@@ -14,6 +14,8 @@ use ignore::gitignore::Gitignore;
 use ignore::gitignore::GitignoreBuilder;
 use serde::Deserialize;
 use serde::Serialize;
+use tracing::debug;
+use tracing::instrument;
 
 use crate::Block;
 use crate::BlockType;
@@ -400,15 +402,24 @@ pub struct ConsumerEntry {
 }
 
 /// Scan a directory and discover all provider and consumer blocks.
+#[instrument]
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	scan_project_with_options(root, &ScanOptions::default())
 }
 
 /// Scan a project with config — loads discovered project config, reads data files, and scans.
+#[instrument]
 pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let config = MdtConfig::load(root)?;
+	debug!(config_found = config.is_some(), "loaded project config");
 	let options = ScanOptions::from_config(config.as_ref());
 	let project = scan_project_with_options(root, &options)?;
+	debug!(
+		providers = project.providers.len(),
+		consumers = project.consumers.len(),
+		diagnostics = project.diagnostics.len(),
+		"project scan complete",
+	);
 	let padding = config.as_ref().and_then(|c| c.padding.clone());
 	let formatters = config
 		.as_ref()
@@ -421,6 +432,7 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
 	};
+	debug!(data_namespaces = data.len(), "loaded data sources");
 
 	Ok(ProjectContext {
 		root: root.to_path_buf(),
@@ -759,6 +771,12 @@ fn build_project_from_file_data(
 }
 
 /// Scan a directory with the given [`ScanOptions`].
+#[instrument(skip(options), fields(
+	exclude_count = options.exclude_patterns.len(),
+	template_paths = options.template_paths.len(),
+	max_file_size = options.max_file_size,
+	disable_gitignore = options.disable_gitignore,
+))]
 pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
 	let mut files = collect_files(root, &options.exclude_patterns, options.disable_gitignore)?;
 
@@ -790,6 +808,8 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 			true,
 		)?;
 	}
+
+	debug!(files = files.len(), "collected files for scanning");
 
 	let project_key = build_project_cache_key(options);
 	let file_fingerprints = collect_file_fingerprints(
@@ -1102,6 +1122,10 @@ pub fn is_template_file(path: &Path) -> bool {
 
 /// Find all provider block names that are referenced by consumers but have no
 /// matching provider.
+#[instrument(skip(project), fields(
+	providers = project.providers.len(),
+	consumers = project.consumers.len(),
+))]
 pub fn find_missing_providers(project: &Project) -> Vec<String> {
 	let mut missing = Vec::new();
 	for consumer in &project.consumers {
@@ -1114,6 +1138,7 @@ pub fn find_missing_providers(project: &Project) -> Vec<String> {
 			missing.push(consumer.block.name.clone());
 		}
 	}
+	debug!(missing = missing.len(), "found missing providers");
 	missing
 }
 
@@ -1166,10 +1191,15 @@ pub fn suggest_similar_provider_names<'a>(
 }
 
 /// Validate that all consumer blocks have matching providers.
+#[instrument(skip(project), fields(
+	providers = project.providers.len(),
+	consumers = project.consumers.len(),
+))]
 pub fn validate_project(project: &Project) -> MdtResult<()> {
 	let missing = find_missing_providers(project);
 	if let Some(name) = missing.into_iter().next() {
 		return Err(MdtError::MissingProvider(name));
 	}
+	debug!("project validation passed");
 	Ok(())
 }

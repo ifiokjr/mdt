@@ -4,6 +4,8 @@ use markdown::mdast::Node;
 use markdown::to_mdast;
 use serde::Deserialize;
 use serde::Serialize;
+use tracing::debug;
+use tracing::instrument;
 
 use super::MdtError;
 use super::MdtResult;
@@ -45,8 +47,10 @@ pub enum ParseDiagnostic {
 
 /// Parse markdown content and return all blocks (provider and consumer) found
 /// within it.
+#[instrument(skip(content))]
 pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
 	let content = content.as_ref();
+	debug!(content_len = content.len(), "parsing markdown");
 	let html_nodes = get_html_nodes(content)?;
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups(&token_groups)
@@ -55,10 +59,15 @@ pub fn parse(content: impl AsRef<str>) -> MdtResult<Vec<Block>> {
 /// Parse markdown content and return blocks together with diagnostics.
 /// Unlike `parse()`, this does not error on unclosed blocks — instead they
 /// are collected as diagnostics.
+#[instrument(skip(content))]
 pub fn parse_with_diagnostics(
 	content: impl AsRef<str>,
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
 	let content = content.as_ref();
+	debug!(
+		content_len = content.len(),
+		"parsing markdown with diagnostics"
+	);
 	let html_nodes = get_html_nodes(content)?;
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups_with_diagnostics(&token_groups)

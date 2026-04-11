@@ -1,6 +1,8 @@
 use markdown::mdast::Html;
 use markdown::unist::Point as UnistPoint;
 use markdown::unist::Position as UnistPosition;
+use tracing::debug;
+use tracing::instrument;
 
 use crate::MdtResult;
 use crate::config::CodeBlockFilter;
@@ -13,7 +15,9 @@ use crate::parser::build_blocks_from_groups_with_diagnostics;
 
 /// Parse source code content (non-markdown) for mdt blocks by extracting HTML
 /// comments directly from the raw text.
+#[instrument(skip(content), fields(content_len = content.len()))]
 pub fn parse_source(content: &str) -> MdtResult<Vec<Block>> {
+	debug!("parsing source file");
 	let html_nodes = extract_html_comments(content);
 	let token_groups = tokenize(html_nodes)?;
 	build_blocks_from_groups_lenient(&token_groups)
@@ -22,10 +26,12 @@ pub fn parse_source(content: &str) -> MdtResult<Vec<Block>> {
 /// Parse source code content and return blocks together with diagnostics.
 /// When `filter` is enabled, HTML comments inside fenced code blocks
 /// (within doc comments) are excluded from scanning.
+#[instrument(skip(content), fields(content_len = content.len()))]
 pub fn parse_source_with_diagnostics(
 	content: &str,
 	filter: &CodeBlockFilter,
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	debug!("parsing source file with diagnostics");
 	let mut html_nodes = extract_html_comments(content);
 
 	if filter.is_enabled() {
