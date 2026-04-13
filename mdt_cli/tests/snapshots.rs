@@ -3,7 +3,6 @@ use std::process::Command;
 
 use insta_cmd::assert_cmd_snapshot;
 use insta_cmd::get_cargo_bin;
-use mdt_core::AnyEmptyResult;
 
 fn copy_fixture(name: &str, dest: &Path) {
 	let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -85,7 +84,7 @@ fn with_redacted_paths(tmp_path: &Path, f: impl FnOnce()) {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn init_fresh_directory() -> AnyEmptyResult {
+fn init_fresh_directory() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -102,7 +101,7 @@ fn init_fresh_directory() -> AnyEmptyResult {
 }
 
 #[test]
-fn init_existing_template() -> AnyEmptyResult {
+fn init_existing_template() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("init_existing", tmp.path());
 
@@ -124,7 +123,7 @@ fn init_existing_template() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn list_blocks() -> AnyEmptyResult {
+fn list_blocks() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("list_blocks", tmp.path());
 
@@ -136,7 +135,7 @@ fn list_blocks() -> AnyEmptyResult {
 }
 
 #[test]
-fn list_empty_project() -> AnyEmptyResult {
+fn list_empty_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -147,7 +146,7 @@ fn list_empty_project() -> AnyEmptyResult {
 }
 
 #[test]
-fn list_blocks_verbose() -> AnyEmptyResult {
+fn list_blocks_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("list_blocks", tmp.path());
 
@@ -166,7 +165,7 @@ fn list_blocks_verbose() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn info_empty_project() -> AnyEmptyResult {
+fn info_empty_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -177,7 +176,7 @@ fn info_empty_project() -> AnyEmptyResult {
 }
 
 #[test]
-fn info_project() -> AnyEmptyResult {
+fn info_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("info_project", tmp.path());
 
@@ -189,7 +188,7 @@ fn info_project() -> AnyEmptyResult {
 }
 
 #[test]
-fn info_empty_project_json() -> AnyEmptyResult {
+fn info_empty_project_json() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -203,7 +202,7 @@ fn info_empty_project_json() -> AnyEmptyResult {
 }
 
 #[test]
-fn info_project_json() -> AnyEmptyResult {
+fn info_project_json() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("info_project", tmp.path());
 
@@ -222,7 +221,7 @@ fn info_project_json() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn check_format_text_stale() -> AnyEmptyResult {
+fn check_format_text_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -235,7 +234,7 @@ fn check_format_text_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_format_json_stale() -> AnyEmptyResult {
+fn check_format_json_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -248,7 +247,7 @@ fn check_format_json_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_format_github_stale() -> AnyEmptyResult {
+fn check_format_github_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -264,7 +263,7 @@ fn check_format_github_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_format_json_up_to_date() -> AnyEmptyResult {
+fn check_format_json_up_to_date() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 	run_update(tmp.path());
@@ -278,7 +277,7 @@ fn check_format_json_up_to_date() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_format_github_up_to_date() -> AnyEmptyResult {
+fn check_format_github_up_to_date() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 	run_update(tmp.path());
@@ -295,7 +294,7 @@ fn check_format_github_up_to_date() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_with_diff() -> AnyEmptyResult {
+fn check_with_diff() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -308,7 +307,7 @@ fn check_with_diff() -> AnyEmptyResult {
 }
 
 #[test]
-fn formatter_check_json_reports_stale_files() -> AnyEmptyResult {
+fn formatter_check_json_reports_stale_files() -> std::io::Result<()> {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -339,7 +338,7 @@ patterns = ["**/*.md"]
 }
 
 #[test]
-fn formatter_update_normalize_only() -> AnyEmptyResult {
+fn formatter_update_normalize_only() -> std::io::Result<()> {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -376,7 +375,7 @@ patterns = ["**/*.md"]
 // ---------------------------------------------------------------------------
 
 #[test]
-fn update_verbose() -> AnyEmptyResult {
+fn update_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 
@@ -391,7 +390,7 @@ fn update_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_verbose_up_to_date() -> AnyEmptyResult {
+fn update_verbose_up_to_date() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
@@ -407,7 +406,7 @@ fn update_verbose_up_to_date() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_verbose_up_to_date() -> AnyEmptyResult {
+fn check_verbose_up_to_date() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
@@ -427,7 +426,7 @@ fn check_verbose_up_to_date() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unused_provider_check() -> AnyEmptyResult {
+fn unused_provider_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unused_provider", tmp.path());
 
@@ -437,7 +436,7 @@ fn unused_provider_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn unused_provider_check_verbose() -> AnyEmptyResult {
+fn unused_provider_check_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unused_provider", tmp.path());
 
@@ -452,7 +451,7 @@ fn unused_provider_check_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn unused_provider_ignore_flag() -> AnyEmptyResult {
+fn unused_provider_ignore_flag() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unused_provider", tmp.path());
 
@@ -474,7 +473,7 @@ fn unused_provider_ignore_flag() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unknown_transformer_check() -> AnyEmptyResult {
+fn unknown_transformer_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unknown_transformer", tmp.path());
 
@@ -487,7 +486,7 @@ fn unknown_transformer_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn unknown_transformer_ignore_flag() -> AnyEmptyResult {
+fn unknown_transformer_ignore_flag() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unknown_transformer", tmp.path());
 
@@ -506,7 +505,7 @@ fn unknown_transformer_ignore_flag() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn missing_provider_check() -> AnyEmptyResult {
+fn missing_provider_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("missing_provider", tmp.path());
 
@@ -516,7 +515,7 @@ fn missing_provider_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn missing_provider_update() -> AnyEmptyResult {
+fn missing_provider_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("missing_provider", tmp.path());
 
@@ -533,7 +532,7 @@ fn missing_provider_update() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn multiple_providers_update() -> AnyEmptyResult {
+fn multiple_providers_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 
@@ -552,7 +551,7 @@ fn multiple_providers_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn multiple_providers_check_after_update() -> AnyEmptyResult {
+fn multiple_providers_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 	run_update(tmp.path());
@@ -566,7 +565,7 @@ fn multiple_providers_check_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn multiple_providers_dry_run() -> AnyEmptyResult {
+fn multiple_providers_dry_run() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 
@@ -584,7 +583,7 @@ fn multiple_providers_dry_run() -> AnyEmptyResult {
 }
 
 #[test]
-fn multiple_providers_list() -> AnyEmptyResult {
+fn multiple_providers_list() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 
@@ -600,7 +599,7 @@ fn multiple_providers_list() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn no_subcommand() -> AnyEmptyResult {
+fn no_subcommand() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	assert_cmd_snapshot!(
@@ -619,7 +618,7 @@ fn no_subcommand() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn empty_project_check() -> AnyEmptyResult {
+fn empty_project_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	assert_cmd_snapshot!("empty_project_check", mdt_cmd(tmp.path()).arg("check"));
@@ -628,7 +627,7 @@ fn empty_project_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn empty_project_update() -> AnyEmptyResult {
+fn empty_project_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	assert_cmd_snapshot!("empty_project_update", mdt_cmd(tmp.path()).arg("update"));
@@ -641,7 +640,7 @@ fn empty_project_update() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn pad_blocks_rust_check_stale() -> AnyEmptyResult {
+fn pad_blocks_rust_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_rust", tmp.path());
 
@@ -654,7 +653,7 @@ fn pad_blocks_rust_check_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_rust_check_stale_diff() -> AnyEmptyResult {
+fn pad_blocks_rust_check_stale_diff() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_rust", tmp.path());
 
@@ -667,7 +666,7 @@ fn pad_blocks_rust_check_stale_diff() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_rust_update() -> AnyEmptyResult {
+fn pad_blocks_rust_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_rust", tmp.path());
 
@@ -683,7 +682,7 @@ fn pad_blocks_rust_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_rust_check_after_update() -> AnyEmptyResult {
+fn pad_blocks_rust_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_rust", tmp.path());
 	run_update(tmp.path());
@@ -697,7 +696,7 @@ fn pad_blocks_rust_check_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_rust_update_idempotent() -> AnyEmptyResult {
+fn pad_blocks_rust_update_idempotent() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_rust", tmp.path());
 	run_update(tmp.path());
@@ -720,7 +719,7 @@ fn pad_blocks_rust_update_idempotent() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn pad_blocks_multi_lang_check_stale() -> AnyEmptyResult {
+fn pad_blocks_multi_lang_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_multi_lang", tmp.path());
 
@@ -733,7 +732,7 @@ fn pad_blocks_multi_lang_check_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_multi_lang_update() -> AnyEmptyResult {
+fn pad_blocks_multi_lang_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_multi_lang", tmp.path());
 
@@ -758,7 +757,7 @@ fn pad_blocks_multi_lang_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_multi_lang_check_after_update() -> AnyEmptyResult {
+fn pad_blocks_multi_lang_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_multi_lang", tmp.path());
 	run_update(tmp.path());
@@ -772,7 +771,7 @@ fn pad_blocks_multi_lang_check_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_multi_lang_update_idempotent() -> AnyEmptyResult {
+fn pad_blocks_multi_lang_update_idempotent() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_multi_lang", tmp.path());
 	run_update(tmp.path());
@@ -795,7 +794,7 @@ fn pad_blocks_multi_lang_update_idempotent() -> AnyEmptyResult {
 }
 
 #[test]
-fn pad_blocks_multi_lang_dry_run() -> AnyEmptyResult {
+fn pad_blocks_multi_lang_dry_run() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("pad_blocks_multi_lang", tmp.path());
 
@@ -817,7 +816,7 @@ fn pad_blocks_multi_lang_dry_run() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn padding_zero_rust_check_stale() -> AnyEmptyResult {
+fn padding_zero_rust_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("padding_zero_rust", tmp.path());
 
@@ -830,7 +829,7 @@ fn padding_zero_rust_check_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn padding_zero_rust_update() -> AnyEmptyResult {
+fn padding_zero_rust_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("padding_zero_rust", tmp.path());
 
@@ -849,7 +848,7 @@ fn padding_zero_rust_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn padding_zero_rust_check_after_update() -> AnyEmptyResult {
+fn padding_zero_rust_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("padding_zero_rust", tmp.path());
 	run_update(tmp.path());
@@ -863,7 +862,7 @@ fn padding_zero_rust_check_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn padding_zero_rust_update_idempotent() -> AnyEmptyResult {
+fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("padding_zero_rust", tmp.path());
 	run_update(tmp.path());
@@ -886,7 +885,7 @@ fn padding_zero_rust_update_idempotent() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn validation_errors_check() -> AnyEmptyResult {
+fn validation_errors_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("validation_errors", tmp.path());
 
@@ -896,7 +895,7 @@ fn validation_errors_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn validation_errors_update() -> AnyEmptyResult {
+fn validation_errors_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("validation_errors", tmp.path());
 
@@ -909,7 +908,7 @@ fn validation_errors_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn validation_errors_ignore_flag() -> AnyEmptyResult {
+fn validation_errors_ignore_flag() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("validation_errors", tmp.path());
 
@@ -928,7 +927,7 @@ fn validation_errors_ignore_flag() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn include_empty_update() -> AnyEmptyResult {
+fn include_empty_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("include_empty", tmp.path());
 
@@ -944,7 +943,7 @@ fn include_empty_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn include_empty_check_after_update() -> AnyEmptyResult {
+fn include_empty_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("include_empty", tmp.path());
 	run_update(tmp.path());
@@ -962,7 +961,7 @@ fn include_empty_check_after_update() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn list_orphan_consumer() -> AnyEmptyResult {
+fn list_orphan_consumer() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("orphan_consumer", tmp.path());
 
@@ -974,7 +973,7 @@ fn list_orphan_consumer() -> AnyEmptyResult {
 }
 
 #[test]
-fn list_orphan_consumer_verbose() -> AnyEmptyResult {
+fn list_orphan_consumer_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("orphan_consumer", tmp.path());
 
@@ -989,7 +988,7 @@ fn list_orphan_consumer_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn orphan_consumer_check() -> AnyEmptyResult {
+fn orphan_consumer_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("orphan_consumer", tmp.path());
 
@@ -999,7 +998,7 @@ fn orphan_consumer_check() -> AnyEmptyResult {
 }
 
 #[test]
-fn orphan_consumer_update() -> AnyEmptyResult {
+fn orphan_consumer_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("orphan_consumer", tmp.path());
 
@@ -1016,7 +1015,7 @@ fn orphan_consumer_update() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn check_verbose_stale() -> AnyEmptyResult {
+fn check_verbose_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -1031,7 +1030,7 @@ fn check_verbose_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_diff_text_verbose() -> AnyEmptyResult {
+fn check_diff_text_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("check_formats", tmp.path());
 
@@ -1049,7 +1048,7 @@ fn check_diff_text_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_dry_run_verbose() -> AnyEmptyResult {
+fn update_dry_run_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 
@@ -1072,7 +1071,7 @@ fn update_dry_run_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_verbose_multiple_providers() -> AnyEmptyResult {
+fn update_verbose_multiple_providers() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("multiple_providers", tmp.path());
 
@@ -1091,7 +1090,7 @@ fn update_verbose_multiple_providers() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn validation_errors_check_verbose() -> AnyEmptyResult {
+fn validation_errors_check_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("validation_errors", tmp.path());
 
@@ -1106,7 +1105,7 @@ fn validation_errors_check_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn validation_errors_ignore_verbose() -> AnyEmptyResult {
+fn validation_errors_ignore_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("validation_errors", tmp.path());
 
@@ -1124,7 +1123,7 @@ fn validation_errors_ignore_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn unknown_transformer_check_verbose() -> AnyEmptyResult {
+fn unknown_transformer_check_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unknown_transformer", tmp.path());
 
@@ -1139,7 +1138,7 @@ fn unknown_transformer_check_verbose() -> AnyEmptyResult {
 }
 
 #[test]
-fn unknown_transformer_ignore_verbose() -> AnyEmptyResult {
+fn unknown_transformer_ignore_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("unknown_transformer", tmp.path());
 
@@ -1161,7 +1160,7 @@ fn unknown_transformer_ignore_verbose() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn typescript_workspace_check_stale() -> AnyEmptyResult {
+fn typescript_workspace_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 
@@ -1174,7 +1173,7 @@ fn typescript_workspace_check_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn typescript_workspace_update() -> AnyEmptyResult {
+fn typescript_workspace_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 
@@ -1193,7 +1192,7 @@ fn typescript_workspace_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn typescript_workspace_check_after_update() -> AnyEmptyResult {
+fn typescript_workspace_check_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
@@ -1207,7 +1206,7 @@ fn typescript_workspace_check_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn typescript_workspace_update_idempotent() -> AnyEmptyResult {
+fn typescript_workspace_update_idempotent() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
@@ -1234,7 +1233,7 @@ fn typescript_workspace_update_idempotent() -> AnyEmptyResult {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn doctor_empty_project() -> AnyEmptyResult {
+fn doctor_empty_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -1245,7 +1244,7 @@ fn doctor_empty_project() -> AnyEmptyResult {
 }
 
 #[test]
-fn doctor_empty_project_json() -> AnyEmptyResult {
+fn doctor_empty_project_json() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	with_redacted_paths(tmp.path(), || {
@@ -1262,7 +1261,7 @@ fn doctor_empty_project_json() -> AnyEmptyResult {
 }
 
 #[test]
-fn doctor_info_project_fails() -> AnyEmptyResult {
+fn doctor_info_project_fails() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("info_project", tmp.path());
 
@@ -1277,7 +1276,7 @@ fn doctor_info_project_fails() -> AnyEmptyResult {
 }
 
 #[test]
-fn doctor_duplicate_provider_fails() -> AnyEmptyResult {
+fn doctor_duplicate_provider_fails() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture("doctor_duplicate_provider", tmp.path());
 

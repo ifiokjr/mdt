@@ -329,31 +329,43 @@ pub struct ProjectCacheInspection {
 
 impl ProjectCacheInspection {
 	/// True when a cache artifact exists.
+	#[must_use]
+	#[inline]
 	pub fn exists(&self) -> bool {
 		self.artifact.exists
 	}
 
 	/// True when the cache artifact can be read from disk.
+	#[must_use]
+	#[inline]
 	pub fn readable(&self) -> bool {
 		self.artifact.readable
 	}
 
 	/// True when the cache artifact parsed and matched supported schema.
+	#[must_use]
+	#[inline]
 	pub fn valid(&self) -> bool {
 		self.artifact.valid
 	}
 
 	/// True when cache schema version is supported.
+	#[must_use]
+	#[inline]
 	pub fn schema_supported(&self) -> bool {
 		self.compatibility.schema_supported
 	}
 
 	/// True when cache key matches current scan options.
+	#[must_use]
+	#[inline]
 	pub fn project_key_matches(&self) -> bool {
 		self.compatibility.project_key_matches
 	}
 
 	/// True when content-hash verification mode is enabled.
+	#[must_use]
+	#[inline]
 	pub fn hash_verification_enabled(&self) -> bool {
 		self.compatibility.hash_verification_enabled
 	}
@@ -402,12 +414,20 @@ pub struct ConsumerEntry {
 }
 
 /// Scan a directory and discover all provider and consumer blocks.
+///
+/// # Errors
+///
+/// Returns [`MdtError`] if I/O operations fail or if config parsing fails.
 #[instrument]
 pub fn scan_project(root: &Path) -> MdtResult<Project> {
 	scan_project_with_options(root, &ScanOptions::default())
 }
 
 /// Scan a project with config — loads discovered project config, reads data files, and scans.
+///
+/// # Errors
+///
+/// Returns [`MdtError`] if config loading, data file reading, or I/O operations fail.
 #[instrument]
 pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let config = MdtConfig::load(root)?;
@@ -650,8 +670,8 @@ fn parse_file_for_scan(
 		.into_iter()
 		.map(|diag| parse_diagnostic_to_project(file, diag))
 		.collect();
-	let mut providers = Vec::new();
-	let mut consumers = Vec::new();
+	let mut providers = Vec::with_capacity(blocks.len());
+	let mut consumers = Vec::with_capacity(blocks.len());
 
 	let is_template = file
 		.file_name()
@@ -723,7 +743,7 @@ fn build_project_from_file_data(
 	file_data: &BTreeMap<String, index_cache::CachedFileData>,
 ) -> MdtResult<Project> {
 	let mut providers: HashMap<String, ProviderEntry> = HashMap::new();
-	let mut consumers = Vec::new();
+	let mut consumers = Vec::with_capacity(files.len());
 	let mut diagnostics = Vec::new();
 
 	for file in files {
@@ -771,6 +791,10 @@ fn build_project_from_file_data(
 }
 
 /// Scan a directory with the given [`ScanOptions`].
+///
+/// # Errors
+///
+/// Returns [`MdtError`] if I/O operations fail, file reading fails, or duplicate providers are found.
 #[instrument(skip(options), fields(
 	exclude_count = options.exclude_patterns.len(),
 	template_paths = options.template_paths.len(),

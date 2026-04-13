@@ -132,6 +132,11 @@ pub enum MdtError {
 }
 
 pub type MdtResult<T> = Result<T, MdtError>;
-pub type AnyError = Box<dyn std::error::Error>;
-pub type AnyEmptyResult = Result<(), AnyError>;
-pub type AnyResult<T> = Result<T, AnyError>;
+
+/// Converts an `MdtError` into an `std::io::Error` for test compatibility.
+/// This allows tests to use `?` with mixed error types.
+impl From<MdtError> for std::io::Error {
+	fn from(error: MdtError) -> Self {
+		std::io::Error::other(error.to_string())
+	}
+}

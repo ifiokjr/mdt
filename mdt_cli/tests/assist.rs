@@ -1,6 +1,5 @@
 mod common;
 
-use mdt_core::AnyEmptyResult;
 use predicates::prelude::*;
 
 #[test]
@@ -19,7 +18,7 @@ fn assist_text_prints_mcp_snippet_and_guidance() {
 }
 
 #[test]
-fn assist_json_prints_machine_readable_profile() -> AnyEmptyResult {
+fn assist_json_prints_machine_readable_profile() -> std::io::Result<()> {
 	let mut cmd = common::mdt_cmd();
 	let output = cmd
 		.arg("assist")

@@ -1004,15 +1004,15 @@ patterns = ["**/*.md"]
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
-	assert_eq!(updates.updated_count, 0);
-	let updated = updates
+	let update_result = compute_updates(&ctx)?;
+	assert_eq!(update_result.updated_count, 0);
+	let updated_file = update_result
 		.updated_files
 		.get(&tmp.path().join("nested/readme.md"))
 		.unwrap_or_else(|| panic!("expected normalized file"));
-	assert!(updated.contains(&tmp.path().join("nested/readme.md").display().to_string()));
-	assert!(updated.contains("nested/readme.md"));
-	assert!(updated.contains(&tmp.path().display().to_string()));
+	assert!(updated_file.contains(&tmp.path().join("nested/readme.md").display().to_string()));
+	assert!(updated_file.contains("nested/readme.md"));
+	assert!(updated_file.contains(&tmp.path().display().to_string()));
 
 	Ok(())
 }

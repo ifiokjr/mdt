@@ -467,8 +467,8 @@ fn matches_formatter_rules(patterns: &[String], key: &str) -> bool {
 		let Ok(glob) = Glob::new(glob_pattern) else {
 			continue;
 		};
-		let matcher = glob.compile_matcher();
-		if matcher.is_match(key) {
+		let compiled = glob.compile_matcher();
+		if compiled.is_match(key) {
 			matched = !is_negated;
 		}
 	}
@@ -529,6 +529,8 @@ impl Default for CodeBlockFilter {
 
 impl CodeBlockFilter {
 	/// Returns `true` if code block filtering is enabled in any form.
+	#[must_use]
+	#[inline]
 	pub fn is_enabled(&self) -> bool {
 		match self {
 			Self::Bool(b) => *b,
@@ -539,6 +541,8 @@ impl CodeBlockFilter {
 
 	/// Returns `true` if a code block with the given info string should have
 	/// its mdt tags skipped.
+	#[must_use]
+	#[inline]
 	pub fn should_skip(&self, info_string: &str) -> bool {
 		match self {
 			Self::Bool(b) => *b,

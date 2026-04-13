@@ -6,14 +6,13 @@ use mdt_cli::Commands;
 use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
-use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
 use serde_json::Value;
 
 const ANSI_ESCAPE: &str = "\u{1b}[";
 
 #[test]
-fn check_passes_when_up_to_date() -> AnyEmptyResult {
+fn check_passes_when_up_to_date() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	// Create a provider template file
@@ -42,7 +41,7 @@ fn check_passes_when_up_to_date() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_writes_project_cache_artifact() -> AnyEmptyResult {
+fn check_writes_project_cache_artifact() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -73,7 +72,7 @@ fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_fails_when_stale() -> AnyEmptyResult {
+fn check_fails_when_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	// Create a provider template file
@@ -101,7 +100,7 @@ fn check_fails_when_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_with_no_blocks() -> AnyEmptyResult {
+fn check_with_no_blocks() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(tmp.path().join("readme.md"), "# Just a readme\n")?;
@@ -119,7 +118,7 @@ fn check_with_no_blocks() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_verbose_shows_provider_count() -> AnyEmptyResult {
+fn check_verbose_shows_provider_count() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -146,7 +145,7 @@ fn check_verbose_shows_provider_count() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_warns_missing_provider() -> AnyEmptyResult {
+fn check_warns_missing_provider() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	// Consumer with no matching provider
@@ -170,7 +169,7 @@ fn check_warns_missing_provider() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
+fn check_stale_shows_block_name_and_file() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -197,7 +196,7 @@ fn check_stale_shows_block_name_and_file() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_multiple_stale_blocks() -> AnyEmptyResult {
+fn check_multiple_stale_blocks() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -222,7 +221,7 @@ fn check_multiple_stale_blocks() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
+fn check_stale_text_output_is_colored_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -249,7 +248,7 @@ fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyResult {
+fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -277,7 +276,7 @@ fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyRe
 }
 
 #[test]
-fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
+fn check_stale_text_output_honors_clicolor_zero() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -304,7 +303,7 @@ fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
+fn check_validation_diagnostics_are_colored_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -327,7 +326,7 @@ fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyResult {
+fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -351,7 +350,7 @@ fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyRes
 }
 
 #[test]
-fn check_warns_undefined_template_variables() -> AnyEmptyResult {
+fn check_warns_undefined_template_variables() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -388,7 +387,7 @@ fn check_warns_undefined_template_variables() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_no_warnings_for_valid_template_variables() -> AnyEmptyResult {
+fn check_no_warnings_for_valid_template_variables() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -447,7 +446,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 }
 
 #[test]
-fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
+fn check_watch_flag_accepted_by_binary() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -541,7 +540,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 }
 
 #[test]
-fn info_json_includes_cache_observability_fields() -> AnyEmptyResult {
+fn info_json_includes_cache_observability_fields() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	std::fs::write(
 		tmp.path().join("template.t.md"),
@@ -583,7 +582,7 @@ fn info_json_includes_cache_observability_fields() -> AnyEmptyResult {
 }
 
 #[test]
-fn doctor_json_includes_cache_checks() -> AnyEmptyResult {
+fn doctor_json_includes_cache_checks() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	std::fs::write(
 		tmp.path().join("template.t.md"),

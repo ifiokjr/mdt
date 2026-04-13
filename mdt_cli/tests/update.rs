@@ -1,9 +1,7 @@
 mod common;
 
-use mdt_core::AnyEmptyResult;
-
 #[test]
-fn update_replaces_stale_content() -> AnyEmptyResult {
+fn update_replaces_stale_content() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	// Create a provider template file
@@ -35,7 +33,7 @@ fn update_replaces_stale_content() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_noop_when_in_sync() -> AnyEmptyResult {
+fn update_noop_when_in_sync() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -61,7 +59,7 @@ fn update_noop_when_in_sync() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_dry_run_does_not_write() -> AnyEmptyResult {
+fn update_dry_run_does_not_write() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -91,7 +89,7 @@ fn update_dry_run_does_not_write() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_with_transformers() -> AnyEmptyResult {
+fn update_with_transformers() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -119,7 +117,7 @@ fn update_with_transformers() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_verbose_shows_files() -> AnyEmptyResult {
+fn update_verbose_shows_files() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -145,7 +143,7 @@ fn update_verbose_shows_files() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_warns_missing_provider() -> AnyEmptyResult {
+fn update_warns_missing_provider() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -168,7 +166,7 @@ fn update_warns_missing_provider() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
+fn update_multiple_blocks_in_one_file() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -198,7 +196,7 @@ fn update_multiple_blocks_in_one_file() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_dry_run_shows_file_list() -> AnyEmptyResult {
+fn update_dry_run_shows_file_list() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -224,7 +222,7 @@ fn update_dry_run_shows_file_list() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_with_config_and_data() -> AnyEmptyResult {
+fn update_with_config_and_data() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -260,7 +258,7 @@ fn update_with_config_and_data() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_inline_table_cell_with_data() -> AnyEmptyResult {
+fn update_inline_table_cell_with_data() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
@@ -295,7 +293,7 @@ fn update_inline_table_cell_with_data() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_preserves_multiline_link_definitions() -> AnyEmptyResult {
+fn update_preserves_multiline_link_definitions() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	let template = r#"<!-- {@badge:"crateName"} -->
@@ -366,7 +364,7 @@ old
 }
 
 #[test]
-fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
+fn update_multiline_idempotent_after_write() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	let template = r"<!-- {@links} -->
@@ -418,7 +416,7 @@ fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_preserves_surrounding_content() -> AnyEmptyResult {
+fn update_preserves_surrounding_content() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	std::fs::write(
