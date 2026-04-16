@@ -1,9 +1,7 @@
 mod common;
 
-use mdt_core::AnyEmptyResult;
-
 #[test]
-fn info_resolves_dot_mdt_toml() -> AnyEmptyResult {
+fn info_resolves_dot_mdt_toml() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	std::fs::write(tmp.path().join(".mdt.toml"), "")?;
 
@@ -22,7 +20,7 @@ fn info_resolves_dot_mdt_toml() -> AnyEmptyResult {
 }
 
 #[test]
-fn info_resolves_dot_config_mdt_toml() -> AnyEmptyResult {
+fn info_resolves_dot_config_mdt_toml() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	std::fs::create_dir_all(tmp.path().join(".config"))?;
 	std::fs::write(tmp.path().join(".config/mdt.toml"), "")?;
@@ -42,7 +40,7 @@ fn info_resolves_dot_config_mdt_toml() -> AnyEmptyResult {
 }
 
 #[test]
-fn info_prefers_mdt_toml_over_other_candidates() -> AnyEmptyResult {
+fn info_prefers_mdt_toml_over_other_candidates() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	std::fs::create_dir_all(tmp.path().join(".config"))?;
 	std::fs::write(tmp.path().join("mdt.toml"), "")?;

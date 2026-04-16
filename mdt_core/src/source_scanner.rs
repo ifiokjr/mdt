@@ -97,7 +97,7 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 	let bytes = content.as_bytes();
 	let open_marker = b"<!--";
 	let close_marker = b"-->";
-	let mut nodes = Vec::new();
+	let mut nodes = Vec::with_capacity(content.len() / 50);
 	let mut search_from = 0;
 	let line_table = LineTable::new(content);
 
@@ -168,7 +168,7 @@ fn strip_comment_prefix(line: &str) -> &str {
 /// example, triple-backtick fences prefixed with `///`) and returns the byte
 /// ranges of their content so that HTML comments within can be filtered out.
 fn find_fenced_code_block_ranges(content: &str, filter: &CodeBlockFilter) -> Vec<CodeBlockRange> {
-	let mut ranges = Vec::new();
+	let mut ranges = Vec::with_capacity(8);
 	let mut in_code_block = false;
 	let mut block_start = 0;
 	let mut should_skip_current = false;

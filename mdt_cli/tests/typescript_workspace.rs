@@ -2,8 +2,6 @@ mod common;
 
 use std::path::Path;
 
-use mdt_core::AnyEmptyResult;
-
 fn copy_fixture(dest: &Path) {
 	let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript_workspace");
 	copy_dir_recursive(&fixture, dest);
@@ -30,7 +28,7 @@ fn copy_dir_recursive(src: &Path, dst: &Path) {
 }
 
 #[test]
-fn update_typescript_workspace() -> AnyEmptyResult {
+fn update_typescript_workspace() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture(tmp.path());
 
@@ -74,7 +72,7 @@ fn update_typescript_workspace() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_typescript_workspace_after_update() -> AnyEmptyResult {
+fn check_typescript_workspace_after_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture(tmp.path());
 
@@ -101,7 +99,7 @@ fn check_typescript_workspace_after_update() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_typescript_workspace_stale() -> AnyEmptyResult {
+fn check_typescript_workspace_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture(tmp.path());
 
@@ -118,7 +116,7 @@ fn check_typescript_workspace_stale() -> AnyEmptyResult {
 }
 
 #[test]
-fn dry_run_typescript_workspace() -> AnyEmptyResult {
+fn dry_run_typescript_workspace() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	copy_fixture(tmp.path());
 

@@ -78,6 +78,8 @@ impl PartialEq for Token {
 }
 
 impl Token {
+	#[inline]
+	#[must_use]
 	pub fn increment(&self) -> usize {
 		match self {
 			Token::HtmlCommentOpen => 4,

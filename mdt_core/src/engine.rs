@@ -634,6 +634,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	})
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 	let mut render_errors = Vec::new();

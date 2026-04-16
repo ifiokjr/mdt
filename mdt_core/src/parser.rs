@@ -92,9 +92,9 @@ pub fn build_blocks_from_groups_lenient(token_groups: &[TokenGroup]) -> MdtResul
 pub fn build_blocks_from_groups_with_diagnostics(
 	token_groups: &[TokenGroup],
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
-	let mut pending: Vec<BlockCreator> = vec![];
-	let mut blocks: Vec<Block> = vec![];
-	let mut diagnostics: Vec<ParseDiagnostic> = vec![];
+	let mut pending: Vec<BlockCreator> = Vec::with_capacity(token_groups.len());
+	let mut blocks: Vec<Block> = Vec::with_capacity(token_groups.len());
+	let mut diagnostics: Vec<ParseDiagnostic> = Vec::with_capacity(token_groups.len() / 4);
 
 	for group in token_groups {
 		match classify_group_with_diagnostics(group, &mut diagnostics) {
@@ -165,8 +165,8 @@ pub fn build_blocks_from_groups_with_diagnostics(
 }
 
 fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<Vec<Block>> {
-	let mut pending: Vec<BlockCreator> = vec![];
-	let mut blocks: Vec<Block> = vec![];
+	let mut pending: Vec<BlockCreator> = Vec::with_capacity(token_groups.len());
+	let mut blocks: Vec<Block> = Vec::with_capacity(token_groups.len());
 
 	for group in token_groups {
 		match classify_group(group) {
