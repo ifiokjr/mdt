@@ -1,0 +1,16 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+# Readme
+
+<!-- {=badge:"my_crate"} -->
+
+[crate-image]: https://img.shields.io/crates/v/my_crate.svg
+[crate-link]: https://crates.io/crates/my_crate
+[docs-image]: https://docs.rs/my_crate/badge.svg
+[docs-link]: https://docs.rs/my_crate/
+[ci-image]: https://github.com/example/repo/workflows/ci/badge.svg
+[ci-link]: https://github.com/example/repo/actions
+
+<!-- {/badge} -->

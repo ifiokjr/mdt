@@ -1,0 +1,11 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+# Readme
+
+<!-- {=greeting} -->
+
+Hello world!
+
+<!-- {/greeting} -->

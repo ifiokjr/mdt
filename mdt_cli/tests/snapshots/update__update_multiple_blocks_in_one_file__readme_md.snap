@@ -1,0 +1,15 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+<!-- {=a} -->
+
+alpha
+
+<!-- {/a} -->
+
+<!-- {=b} -->
+
+beta
+
+<!-- {/b} -->

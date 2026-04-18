@@ -1,4 +1,7 @@
+#![allow(dead_code)]
+
 use std::path::Path;
+use std::process::Command as StdCommand;
 
 use assert_cmd::Command;
 use insta_cmd::get_cargo_bin;
@@ -7,6 +10,50 @@ pub fn mdt_cmd() -> Command {
 	let mut cmd = Command::new(get_cargo_bin("mdt"));
 	cmd.env("NO_COLOR", "1");
 	cmd
+}
+
+pub fn mdt_std_cmd() -> StdCommand {
+	let mut cmd = StdCommand::new(get_cargo_bin("mdt"));
+	cmd.env("NO_COLOR", "1");
+	cmd
+}
+
+pub fn mdt_cmd_for_path(path: &Path) -> StdCommand {
+	let mut cmd = mdt_std_cmd();
+	cmd.arg("--path");
+	cmd.arg(path);
+	cmd
+}
+
+pub fn with_redacted_temp_dir(tmp_path: &Path, f: impl FnOnce()) {
+	let path_str = tmp_path.display().to_string();
+	let mut escaped = String::with_capacity(path_str.len() * 2);
+
+	for ch in path_str.chars() {
+		if matches!(
+			ch,
+			'\\' | '.' | '+' | '*' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|'
+		) {
+			escaped.push('\\');
+		}
+		escaped.push(ch);
+	}
+
+	let mut settings = insta::Settings::clone_current();
+	settings.add_filter(&escaped, "[TEMP_DIR]");
+	settings.add_filter(
+		r#""timestamp_unix_ms": \d+"#,
+		r#""timestamp_unix_ms": [UNIX_MS]"#,
+	);
+	settings.add_filter(
+		r"Last scan unix ms\s+\d+",
+		"Last scan unix ms            [UNIX_MS]",
+	);
+	settings.bind(f);
+}
+
+pub fn snapshot_path_id(path: &str) -> String {
+	path.replace(['/', '.'], "_")
 }
 
 /// Copy a named fixture directory into `dest`, preserving directory structure.

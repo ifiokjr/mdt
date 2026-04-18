@@ -1,0 +1,20 @@
+---
+source: mdt_cli/tests/snapshots.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpzRHtby
+    - update
+    - "--dry-run"
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Dry run: would update 3 block(s) in 2 file(s):
+  readme.md
+  src/index.ts
+
+----- stderr -----

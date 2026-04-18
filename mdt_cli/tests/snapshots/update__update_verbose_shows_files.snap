@@ -1,0 +1,22 @@
+---
+source: mdt_cli/tests/update.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpQXW3HL
+    - "--verbose"
+    - update
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Scanned project: 1 provider(s), 1 consumer(s)
+  Providers:
+    @myBlock ([TEMP_DIR]/template.t.md)
+Updated 1 block(s) in 1 file(s).
+  readme.md
+
+----- stderr -----

@@ -1,57 +1,14 @@
 mod common;
 
-use std::path::Path;
-use std::process::Command;
-
 use insta_cmd::assert_cmd_snapshot;
-use insta_cmd::get_cargo_bin;
+use mdt_core::AnyEmptyResult;
 
-fn mdt_cmd(path: &Path) -> Command {
-	let mut cmd = Command::new(get_cargo_bin("mdt"));
-	cmd.env("NO_COLOR", "1");
-	cmd.arg("--path");
-	cmd.arg(path);
-	cmd
-}
-
-fn run_update(path: &Path) {
-	let status = Command::new(get_cargo_bin("mdt"))
-		.env("NO_COLOR", "1")
-		.arg("--path")
-		.arg(path)
+fn run_update(path: &std::path::Path) {
+	let status = common::mdt_cmd_for_path(path)
 		.arg("update")
 		.status()
 		.unwrap_or_else(|e| panic!("failed to run mdt update: {e}"));
 	assert!(status.success(), "mdt update should succeed");
-}
-
-/// Bind insta settings that redact the temp directory path from snapshot
-/// output, replacing it with `[TEMP_DIR]`. This ensures snapshots are
-/// reproducible across machines and runs.
-fn with_redacted_paths(tmp_path: &Path, f: impl FnOnce()) {
-	let path_str = tmp_path.display().to_string();
-	// Escape regex metacharacters in the path
-	let mut escaped = String::with_capacity(path_str.len() * 2);
-	for ch in path_str.chars() {
-		if matches!(
-			ch,
-			'\\' | '.' | '+' | '*' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|'
-		) {
-			escaped.push('\\');
-		}
-		escaped.push(ch);
-	}
-	let mut settings = insta::Settings::clone_current();
-	settings.add_filter(&escaped, "[TEMP_DIR]");
-	settings.add_filter(
-		r#""timestamp_unix_ms": \d+"#,
-		r#""timestamp_unix_ms": [UNIX_MS]"#,
-	);
-	settings.add_filter(
-		r"Last scan unix ms\s+\d+",
-		"Last scan unix ms            [UNIX_MS]",
-	);
-	settings.bind(f);
 }
 
 // ---------------------------------------------------------------------------
@@ -59,36 +16,39 @@ fn with_redacted_paths(tmp_path: &Path, f: impl FnOnce()) {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn init_fresh_directory() -> std::io::Result<()> {
+fn init_fresh_directory() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("init_fresh_directory", mdt_cmd(tmp.path()).arg("init"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"init_fresh_directory",
+			common::mdt_cmd_for_path(tmp.path()).arg("init")
+		);
 	});
 
 	let template = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))?;
-	insta::assert_snapshot!("init_fresh_directory_template", template);
+	insta::assert_snapshot!("init_fresh_directory__template_t_md", template);
 
 	let config = std::fs::read_to_string(tmp.path().join("mdt.toml"))?;
-	insta::assert_snapshot!("init_fresh_directory_config", config);
+	insta::assert_snapshot!("init_fresh_directory__mdt_toml", config);
 
 	Ok(())
 }
 
 #[test]
-fn init_existing_template() -> std::io::Result<()> {
+fn init_existing_template() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("init_existing", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("init_existing_template", mdt_cmd(tmp.path()).arg("init"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"init_existing_template",
+			common::mdt_cmd_for_path(tmp.path()).arg("init")
+		);
 	});
 
 	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))?;
-	assert!(
-		template.contains("{@greeting}"),
-		"original template should be preserved"
-	);
+	insta::assert_snapshot!("init_existing_template__template_t_md", template);
 
 	Ok(())
 }
@@ -98,37 +58,45 @@ fn init_existing_template() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn list_blocks() -> std::io::Result<()> {
+fn list_blocks() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("list_blocks", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("list_blocks", mdt_cmd(tmp.path()).arg("list"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"list_blocks",
+			common::mdt_cmd_for_path(tmp.path()).arg("list")
+		);
 	});
 
 	Ok(())
 }
 
 #[test]
-fn list_empty_project() -> std::io::Result<()> {
+fn list_empty_project() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("list_empty_project", mdt_cmd(tmp.path()).arg("list"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"list_empty_project",
+			common::mdt_cmd_for_path(tmp.path()).arg("list")
+		);
 	});
 
 	Ok(())
 }
 
 #[test]
-fn list_blocks_verbose() -> std::io::Result<()> {
+fn list_blocks_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("list_blocks", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"list_blocks_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("list")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("list")
 		);
 	});
 
@@ -140,36 +108,13 @@ fn list_blocks_verbose() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn info_empty_project() -> std::io::Result<()> {
+fn info_empty_project() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("info_empty_project", mdt_cmd(tmp.path()).arg("info"));
-	});
-
-	Ok(())
-}
-
-#[test]
-fn info_project() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-	common::copy_fixture("info_project", tmp.path());
-
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("info_project", mdt_cmd(tmp.path()).arg("info"));
-	});
-
-	Ok(())
-}
-
-#[test]
-fn info_empty_project_json() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
-			"info_empty_project_json",
-			mdt_cmd(tmp.path()).arg("info").arg("--format").arg("json")
+			"info_empty_project",
+			common::mdt_cmd_for_path(tmp.path()).arg("info")
 		);
 	});
 
@@ -177,14 +122,49 @@ fn info_empty_project_json() -> std::io::Result<()> {
 }
 
 #[test]
-fn info_project_json() -> std::io::Result<()> {
+fn info_project() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("info_project", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"info_project",
+			common::mdt_cmd_for_path(tmp.path()).arg("info")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn info_empty_project_json() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"info_empty_project_json",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("info")
+				.arg("--format")
+				.arg("json")
+		);
+	});
+
+	Ok(())
+}
+
+#[test]
+fn info_project_json() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("info_project", tmp.path());
+
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"info_project_json",
-			mdt_cmd(tmp.path()).arg("info").arg("--format").arg("json")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("info")
+				.arg("--format")
+				.arg("json")
 		);
 	});
 
@@ -196,39 +176,45 @@ fn info_project_json() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn check_format_text_stale() -> std::io::Result<()> {
+fn check_format_text_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_format_text_stale",
-		mdt_cmd(tmp.path()).arg("check").arg("--format").arg("text")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--format")
+			.arg("text")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn check_format_json_stale() -> std::io::Result<()> {
+fn check_format_json_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_format_json_stale",
-		mdt_cmd(tmp.path()).arg("check").arg("--format").arg("json")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--format")
+			.arg("json")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn check_format_github_stale() -> std::io::Result<()> {
+fn check_format_github_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_format_github_stale",
-		mdt_cmd(tmp.path())
+		common::mdt_cmd_for_path(tmp.path())
 			.arg("check")
 			.arg("--format")
 			.arg("github")
@@ -238,28 +224,31 @@ fn check_format_github_stale() -> std::io::Result<()> {
 }
 
 #[test]
-fn check_format_json_up_to_date() -> std::io::Result<()> {
+fn check_format_json_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_format_json_up_to_date",
-		mdt_cmd(tmp.path()).arg("check").arg("--format").arg("json")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--format")
+			.arg("json")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn check_format_github_up_to_date() -> std::io::Result<()> {
+fn check_format_github_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_format_github_up_to_date",
-		mdt_cmd(tmp.path())
+		common::mdt_cmd_for_path(tmp.path())
 			.arg("check")
 			.arg("--format")
 			.arg("github")
@@ -269,20 +258,22 @@ fn check_format_github_up_to_date() -> std::io::Result<()> {
 }
 
 #[test]
-fn check_with_diff() -> std::io::Result<()> {
+fn check_with_diff() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
 	assert_cmd_snapshot!(
 		"check_with_diff",
-		mdt_cmd(tmp.path()).arg("check").arg("--diff")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--diff")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn formatter_check_json_reports_stale_files() -> std::io::Result<()> {
+fn formatter_check_json_reports_stale_files() -> AnyEmptyResult {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -306,14 +297,17 @@ patterns = ["**/*.md"]
 
 	assert_cmd_snapshot!(
 		"formatter_check_json_reports_stale_files",
-		mdt_cmd(tmp.path()).arg("check").arg("--format").arg("json")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--format")
+			.arg("json")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn formatter_update_normalize_only() -> std::io::Result<()> {
+fn formatter_update_normalize_only() -> AnyEmptyResult {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -337,10 +331,10 @@ patterns = ["**/*.md"]
 
 	assert_cmd_snapshot!(
 		"formatter_update_normalize_only",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("formatter_update_normalize_only_readme_md", readme);
+	insta::assert_snapshot!("formatter_update_normalize_only__readme_md", readme);
 
 	Ok(())
 }
@@ -350,14 +344,16 @@ patterns = ["**/*.md"]
 // ---------------------------------------------------------------------------
 
 #[test]
-fn update_verbose() -> std::io::Result<()> {
+fn update_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"update_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("update")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("update")
 		);
 	});
 
@@ -365,15 +361,17 @@ fn update_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn update_verbose_up_to_date() -> std::io::Result<()> {
+fn update_verbose_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"update_verbose_up_to_date",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("update")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("update")
 		);
 	});
 
@@ -381,15 +379,17 @@ fn update_verbose_up_to_date() -> std::io::Result<()> {
 }
 
 #[test]
-fn check_verbose_up_to_date() -> std::io::Result<()> {
+fn check_verbose_up_to_date() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"check_verbose_up_to_date",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("check")
 		);
 	});
 
@@ -401,24 +401,29 @@ fn check_verbose_up_to_date() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unused_provider_check() -> std::io::Result<()> {
+fn unused_provider_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unused_provider", tmp.path());
 
-	assert_cmd_snapshot!("unused_provider_check", mdt_cmd(tmp.path()).arg("check"));
+	assert_cmd_snapshot!(
+		"unused_provider_check",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
 
 	Ok(())
 }
 
 #[test]
-fn unused_provider_check_verbose() -> std::io::Result<()> {
+fn unused_provider_check_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unused_provider", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"unused_provider_check_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("check")
 		);
 	});
 
@@ -426,14 +431,14 @@ fn unused_provider_check_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn unused_provider_ignore_flag() -> std::io::Result<()> {
+fn unused_provider_ignore_flag() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unused_provider", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"unused_provider_ignore_flag",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("--ignore-unused-blocks")
 				.arg("--verbose")
 				.arg("check")
@@ -448,26 +453,26 @@ fn unused_provider_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unknown_transformer_check() -> std::io::Result<()> {
+fn unknown_transformer_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unknown_transformer", tmp.path());
 
 	assert_cmd_snapshot!(
 		"unknown_transformer_check",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn unknown_transformer_ignore_flag() -> std::io::Result<()> {
+fn unknown_transformer_ignore_flag() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unknown_transformer", tmp.path());
 
 	assert_cmd_snapshot!(
 		"unknown_transformer_ignore_flag",
-		mdt_cmd(tmp.path())
+		common::mdt_cmd_for_path(tmp.path())
 			.arg("--ignore-invalid-transformers")
 			.arg("check")
 	);
@@ -480,24 +485,30 @@ fn unknown_transformer_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn missing_provider_check() -> std::io::Result<()> {
+fn missing_provider_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("missing_provider", tmp.path());
 
-	assert_cmd_snapshot!("missing_provider_check", mdt_cmd(tmp.path()).arg("check"));
+	assert_cmd_snapshot!(
+		"missing_provider_check",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
 
 	Ok(())
 }
 
 #[test]
-fn missing_provider_update() -> std::io::Result<()> {
+fn missing_provider_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("missing_provider", tmp.path());
 
-	assert_cmd_snapshot!("missing_provider_update", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"missing_provider_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("missing_provider_update_readme_md", readme);
+	insta::assert_snapshot!("missing_provider_update__readme_md", readme);
 
 	Ok(())
 }
@@ -507,40 +518,40 @@ fn missing_provider_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn multiple_providers_update() -> std::io::Result<()> {
+fn multiple_providers_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 
 	assert_cmd_snapshot!(
 		"multiple_providers_update",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("multiple_providers_update_readme_md", readme);
+	insta::assert_snapshot!("multiple_providers_update__readme_md", readme);
 
 	let docs = std::fs::read_to_string(tmp.path().join("docs.md"))?;
-	insta::assert_snapshot!("multiple_providers_update_docs_md", docs);
+	insta::assert_snapshot!("multiple_providers_update__docs_md", docs);
 
 	Ok(())
 }
 
 #[test]
-fn multiple_providers_check_after_update() -> std::io::Result<()> {
+fn multiple_providers_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"multiple_providers_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn multiple_providers_dry_run() -> std::io::Result<()> {
+fn multiple_providers_dry_run() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 
@@ -548,7 +559,9 @@ fn multiple_providers_dry_run() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"multiple_providers_dry_run",
-		mdt_cmd(tmp.path()).arg("update").arg("--dry-run")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("update")
+			.arg("--dry-run")
 	);
 
 	let readme_after = std::fs::read_to_string(tmp.path().join("readme.md"))?;
@@ -558,12 +571,15 @@ fn multiple_providers_dry_run() -> std::io::Result<()> {
 }
 
 #[test]
-fn multiple_providers_list() -> std::io::Result<()> {
+fn multiple_providers_list() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("multiple_providers_list", mdt_cmd(tmp.path()).arg("list"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"multiple_providers_list",
+			common::mdt_cmd_for_path(tmp.path()).arg("list")
+		);
 	});
 
 	Ok(())
@@ -574,16 +590,10 @@ fn multiple_providers_list() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn no_subcommand() -> std::io::Result<()> {
+fn no_subcommand() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	assert_cmd_snapshot!(
-		"no_subcommand",
-		Command::new(get_cargo_bin("mdt"))
-			.env("NO_COLOR", "1")
-			.arg("--path")
-			.arg(tmp.path())
-	);
+	assert_cmd_snapshot!("no_subcommand", common::mdt_cmd_for_path(tmp.path()));
 
 	Ok(())
 }
@@ -593,19 +603,25 @@ fn no_subcommand() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn empty_project_check() -> std::io::Result<()> {
+fn empty_project_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	assert_cmd_snapshot!("empty_project_check", mdt_cmd(tmp.path()).arg("check"));
+	assert_cmd_snapshot!(
+		"empty_project_check",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
 
 	Ok(())
 }
 
 #[test]
-fn empty_project_update() -> std::io::Result<()> {
+fn empty_project_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	assert_cmd_snapshot!("empty_project_update", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"empty_project_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
 
 	Ok(())
 }
@@ -615,63 +631,68 @@ fn empty_project_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn pad_blocks_rust_check_stale() -> std::io::Result<()> {
+fn pad_blocks_rust_check_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_rust", tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_rust_check_stale",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_rust_check_stale_diff() -> std::io::Result<()> {
+fn pad_blocks_rust_check_stale_diff() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_rust", tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_rust_check_stale_diff",
-		mdt_cmd(tmp.path()).arg("check").arg("--diff")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("check")
+			.arg("--diff")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_rust_update() -> std::io::Result<()> {
+fn pad_blocks_rust_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_rust", tmp.path());
 
-	assert_cmd_snapshot!("pad_blocks_rust_update", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"pad_blocks_rust_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
 
 	let lib_rs = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
-	insta::assert_snapshot!("pad_blocks_rust_update_lib_rs", lib_rs);
+	insta::assert_snapshot!("pad_blocks_rust_update__lib_rs", lib_rs);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("pad_blocks_rust_update_readme_md", readme);
+	insta::assert_snapshot!("pad_blocks_rust_update__readme_md", readme);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_rust_check_after_update() -> std::io::Result<()> {
+fn pad_blocks_rust_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_rust", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_rust_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_rust_update_idempotent() -> std::io::Result<()> {
+fn pad_blocks_rust_update_idempotent() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_rust", tmp.path());
 	run_update(tmp.path());
@@ -680,7 +701,7 @@ fn pad_blocks_rust_update_idempotent() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"pad_blocks_rust_update_idempotent",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let lib_after_second = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
@@ -694,59 +715,59 @@ fn pad_blocks_rust_update_idempotent() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn pad_blocks_multi_lang_check_stale() -> std::io::Result<()> {
+fn pad_blocks_multi_lang_check_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_multi_lang", tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_multi_lang_check_stale",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_multi_lang_update() -> std::io::Result<()> {
+fn pad_blocks_multi_lang_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_multi_lang", tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_multi_lang_update",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let lib_rs = std::fs::read_to_string(tmp.path().join("src/lib.rs"))?;
-	insta::assert_snapshot!("pad_blocks_multi_lang_update_lib_rs", lib_rs);
+	insta::assert_snapshot!("pad_blocks_multi_lang_update__lib_rs", lib_rs);
 
 	let index_ts = std::fs::read_to_string(tmp.path().join("src/index.ts"))?;
-	insta::assert_snapshot!("pad_blocks_multi_lang_update_index_ts", index_ts);
+	insta::assert_snapshot!("pad_blocks_multi_lang_update__index_ts", index_ts);
 
 	let main_py = std::fs::read_to_string(tmp.path().join("src/main.py"))?;
-	insta::assert_snapshot!("pad_blocks_multi_lang_update_main_py", main_py);
+	insta::assert_snapshot!("pad_blocks_multi_lang_update__main_py", main_py);
 
 	let main_go = std::fs::read_to_string(tmp.path().join("src/main.go"))?;
-	insta::assert_snapshot!("pad_blocks_multi_lang_update_main_go", main_go);
+	insta::assert_snapshot!("pad_blocks_multi_lang_update__main_go", main_go);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_multi_lang_check_after_update() -> std::io::Result<()> {
+fn pad_blocks_multi_lang_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_multi_lang", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"pad_blocks_multi_lang_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn pad_blocks_multi_lang_update_idempotent() -> std::io::Result<()> {
+fn pad_blocks_multi_lang_update_idempotent() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_multi_lang", tmp.path());
 	run_update(tmp.path());
@@ -756,7 +777,7 @@ fn pad_blocks_multi_lang_update_idempotent() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"pad_blocks_multi_lang_update_idempotent",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let lib_rs_second = std::fs::read_to_string(tmp.path().join("src/lib.rs"))?;
@@ -769,7 +790,7 @@ fn pad_blocks_multi_lang_update_idempotent() -> std::io::Result<()> {
 }
 
 #[test]
-fn pad_blocks_multi_lang_dry_run() -> std::io::Result<()> {
+fn pad_blocks_multi_lang_dry_run() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("pad_blocks_multi_lang", tmp.path());
 
@@ -777,7 +798,9 @@ fn pad_blocks_multi_lang_dry_run() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"pad_blocks_multi_lang_dry_run",
-		mdt_cmd(tmp.path()).arg("update").arg("--dry-run")
+		common::mdt_cmd_for_path(tmp.path())
+			.arg("update")
+			.arg("--dry-run")
 	);
 
 	let lib_rs_after = std::fs::read_to_string(tmp.path().join("src/lib.rs"))?;
@@ -791,53 +814,53 @@ fn pad_blocks_multi_lang_dry_run() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn padding_zero_rust_check_stale() -> std::io::Result<()> {
+fn padding_zero_rust_check_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("padding_zero_rust", tmp.path());
 
 	assert_cmd_snapshot!(
 		"padding_zero_rust_check_stale",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn padding_zero_rust_update() -> std::io::Result<()> {
+fn padding_zero_rust_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("padding_zero_rust", tmp.path());
 
 	assert_cmd_snapshot!(
 		"padding_zero_rust_update",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let lib_rs = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
-	insta::assert_snapshot!("padding_zero_rust_update_lib_rs", lib_rs);
+	insta::assert_snapshot!("padding_zero_rust_update__lib_rs", lib_rs);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("padding_zero_rust_update_readme_md", readme);
+	insta::assert_snapshot!("padding_zero_rust_update__readme_md", readme);
 
 	Ok(())
 }
 
 #[test]
-fn padding_zero_rust_check_after_update() -> std::io::Result<()> {
+fn padding_zero_rust_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("padding_zero_rust", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"padding_zero_rust_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
+fn padding_zero_rust_update_idempotent() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("padding_zero_rust", tmp.path());
 	run_update(tmp.path());
@@ -846,7 +869,7 @@ fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"padding_zero_rust_update_idempotent",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let lib_after_second = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
@@ -860,36 +883,39 @@ fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn validation_errors_check() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-	common::copy_fixture("validation_errors", tmp.path());
-
-	assert_cmd_snapshot!("validation_errors_check", mdt_cmd(tmp.path()).arg("check"));
-
-	Ok(())
-}
-
-#[test]
-fn validation_errors_update() -> std::io::Result<()> {
+fn validation_errors_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("validation_errors", tmp.path());
 
 	assert_cmd_snapshot!(
-		"validation_errors_update",
-		mdt_cmd(tmp.path()).arg("update")
+		"validation_errors_check",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn validation_errors_ignore_flag() -> std::io::Result<()> {
+fn validation_errors_update() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("validation_errors", tmp.path());
+
+	assert_cmd_snapshot!(
+		"validation_errors_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn validation_errors_ignore_flag() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("validation_errors", tmp.path());
 
 	assert_cmd_snapshot!(
 		"validation_errors_ignore_flag",
-		mdt_cmd(tmp.path())
+		common::mdt_cmd_for_path(tmp.path())
 			.arg("--ignore-unclosed-blocks")
 			.arg("check")
 	);
@@ -902,30 +928,33 @@ fn validation_errors_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn include_empty_update() -> std::io::Result<()> {
+fn include_empty_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("include_empty", tmp.path());
 
-	assert_cmd_snapshot!("include_empty_update", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"include_empty_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
 
 	let lib_rs = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
-	insta::assert_snapshot!("include_empty_update_lib_rs", lib_rs);
+	insta::assert_snapshot!("include_empty_update__lib_rs", lib_rs);
 
 	let no_include = std::fs::read_to_string(tmp.path().join("no_include_empty.rs"))?;
-	insta::assert_snapshot!("include_empty_update_no_include_empty_rs", no_include);
+	insta::assert_snapshot!("include_empty_update__no_include_empty_rs", no_include);
 
 	Ok(())
 }
 
 #[test]
-fn include_empty_check_after_update() -> std::io::Result<()> {
+fn include_empty_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("include_empty", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"include_empty_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
@@ -936,26 +965,14 @@ fn include_empty_check_after_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn list_orphan_consumer() -> std::io::Result<()> {
+fn list_orphan_consumer() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("orphan_consumer", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("list_orphan_consumer", mdt_cmd(tmp.path()).arg("list"));
-	});
-
-	Ok(())
-}
-
-#[test]
-fn list_orphan_consumer_verbose() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-	common::copy_fixture("orphan_consumer", tmp.path());
-
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
-			"list_orphan_consumer_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("list")
+			"list_orphan_consumer",
+			common::mdt_cmd_for_path(tmp.path()).arg("list")
 		);
 	});
 
@@ -963,24 +980,47 @@ fn list_orphan_consumer_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn orphan_consumer_check() -> std::io::Result<()> {
+fn list_orphan_consumer_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("orphan_consumer", tmp.path());
 
-	assert_cmd_snapshot!("orphan_consumer_check", mdt_cmd(tmp.path()).arg("check"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"list_orphan_consumer_verbose",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("list")
+		);
+	});
 
 	Ok(())
 }
 
 #[test]
-fn orphan_consumer_update() -> std::io::Result<()> {
+fn orphan_consumer_check() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("orphan_consumer", tmp.path());
 
-	assert_cmd_snapshot!("orphan_consumer_update", mdt_cmd(tmp.path()).arg("update"));
+	assert_cmd_snapshot!(
+		"orphan_consumer_check",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn orphan_consumer_update() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("orphan_consumer", tmp.path());
+
+	assert_cmd_snapshot!(
+		"orphan_consumer_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("orphan_consumer_update_readme_md", readme);
+	insta::assert_snapshot!("orphan_consumer_update__readme_md", readme);
 
 	Ok(())
 }
@@ -990,14 +1030,16 @@ fn orphan_consumer_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn check_verbose_stale() -> std::io::Result<()> {
+fn check_verbose_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"check_verbose_stale",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("check")
 		);
 	});
 
@@ -1005,14 +1047,14 @@ fn check_verbose_stale() -> std::io::Result<()> {
 }
 
 #[test]
-fn check_diff_text_verbose() -> std::io::Result<()> {
+fn check_diff_text_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_formats", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"check_diff_text_verbose",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("--verbose")
 				.arg("check")
 				.arg("--diff")
@@ -1023,16 +1065,16 @@ fn check_diff_text_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn update_dry_run_verbose() -> std::io::Result<()> {
+fn update_dry_run_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 
 	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"update_dry_run_verbose",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("--verbose")
 				.arg("update")
 				.arg("--dry-run")
@@ -1046,14 +1088,16 @@ fn update_dry_run_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn update_verbose_multiple_providers() -> std::io::Result<()> {
+fn update_verbose_multiple_providers() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("multiple_providers", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"update_verbose_multiple_providers",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("update")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("update")
 		);
 	});
 
@@ -1065,14 +1109,16 @@ fn update_verbose_multiple_providers() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn validation_errors_check_verbose() -> std::io::Result<()> {
+fn validation_errors_check_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("validation_errors", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"validation_errors_check_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("check")
 		);
 	});
 
@@ -1080,14 +1126,14 @@ fn validation_errors_check_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn validation_errors_ignore_verbose() -> std::io::Result<()> {
+fn validation_errors_ignore_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("validation_errors", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"validation_errors_ignore_verbose",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("--ignore-unclosed-blocks")
 				.arg("--verbose")
 				.arg("check")
@@ -1098,14 +1144,16 @@ fn validation_errors_ignore_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn unknown_transformer_check_verbose() -> std::io::Result<()> {
+fn unknown_transformer_check_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unknown_transformer", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"unknown_transformer_check_verbose",
-			mdt_cmd(tmp.path()).arg("--verbose").arg("check")
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("check")
 		);
 	});
 
@@ -1113,14 +1161,14 @@ fn unknown_transformer_check_verbose() -> std::io::Result<()> {
 }
 
 #[test]
-fn unknown_transformer_ignore_verbose() -> std::io::Result<()> {
+fn unknown_transformer_ignore_verbose() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("unknown_transformer", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"unknown_transformer_ignore_verbose",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("--ignore-invalid-transformers")
 				.arg("--verbose")
 				.arg("check")
@@ -1135,53 +1183,53 @@ fn unknown_transformer_ignore_verbose() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn typescript_workspace_check_stale() -> std::io::Result<()> {
+fn typescript_workspace_check_stale() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 
 	assert_cmd_snapshot!(
 		"typescript_workspace_check_stale",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn typescript_workspace_update() -> std::io::Result<()> {
+fn typescript_workspace_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 
 	assert_cmd_snapshot!(
 		"typescript_workspace_update",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	insta::assert_snapshot!("typescript_workspace_update_readme_md", readme);
+	insta::assert_snapshot!("typescript_workspace_update__readme_md", readme);
 
 	let index_ts = std::fs::read_to_string(tmp.path().join("src/index.ts"))?;
-	insta::assert_snapshot!("typescript_workspace_update_index_ts", index_ts);
+	insta::assert_snapshot!("typescript_workspace_update__index_ts", index_ts);
 
 	Ok(())
 }
 
 #[test]
-fn typescript_workspace_check_after_update() -> std::io::Result<()> {
+fn typescript_workspace_check_after_update() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
 
 	assert_cmd_snapshot!(
 		"typescript_workspace_check_after_update",
-		mdt_cmd(tmp.path()).arg("check")
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
 	);
 
 	Ok(())
 }
 
 #[test]
-fn typescript_workspace_update_idempotent() -> std::io::Result<()> {
+fn typescript_workspace_update_idempotent() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("typescript_workspace", tmp.path());
 	run_update(tmp.path());
@@ -1191,7 +1239,7 @@ fn typescript_workspace_update_idempotent() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"typescript_workspace_update_idempotent",
-		mdt_cmd(tmp.path()).arg("update")
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
 	);
 
 	let readme_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
@@ -1203,29 +1251,58 @@ fn typescript_workspace_update_idempotent() -> std::io::Result<()> {
 	Ok(())
 }
 
+#[test]
+fn typescript_workspace_dry_run() -> AnyEmptyResult {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("typescript_workspace", tmp.path());
+
+	let readme_before = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	let index_ts_before = std::fs::read_to_string(tmp.path().join("src/index.ts"))?;
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"typescript_workspace_dry_run",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--dry-run")
+		);
+	});
+
+	let readme_after = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	let index_ts_after = std::fs::read_to_string(tmp.path().join("src/index.ts"))?;
+
+	similar_asserts::assert_eq!(readme_before, readme_after);
+	similar_asserts::assert_eq!(index_ts_before, index_ts_after);
+
+	Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // doctor: project health diagnostics
 // ---------------------------------------------------------------------------
 
 #[test]
-fn doctor_empty_project() -> std::io::Result<()> {
+fn doctor_empty_project() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	with_redacted_paths(tmp.path(), || {
-		assert_cmd_snapshot!("doctor_empty_project", mdt_cmd(tmp.path()).arg("doctor"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"doctor_empty_project",
+			common::mdt_cmd_for_path(tmp.path()).arg("doctor")
+		);
 	});
 
 	Ok(())
 }
 
 #[test]
-fn doctor_empty_project_json() -> std::io::Result<()> {
+fn doctor_empty_project_json() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"doctor_empty_project_json",
-			mdt_cmd(tmp.path())
+			common::mdt_cmd_for_path(tmp.path())
 				.arg("doctor")
 				.arg("--format")
 				.arg("json")
@@ -1236,14 +1313,14 @@ fn doctor_empty_project_json() -> std::io::Result<()> {
 }
 
 #[test]
-fn doctor_info_project_fails() -> std::io::Result<()> {
+fn doctor_info_project_fails() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("info_project", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"doctor_info_project_fails",
-			mdt_cmd(tmp.path()).arg("doctor")
+			common::mdt_cmd_for_path(tmp.path()).arg("doctor")
 		);
 	});
 
@@ -1251,14 +1328,14 @@ fn doctor_info_project_fails() -> std::io::Result<()> {
 }
 
 #[test]
-fn doctor_duplicate_provider_fails() -> std::io::Result<()> {
+fn doctor_duplicate_provider_fails() -> AnyEmptyResult {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("doctor_duplicate_provider", tmp.path());
 
-	with_redacted_paths(tmp.path(), || {
+	common::with_redacted_temp_dir(tmp.path(), || {
 		assert_cmd_snapshot!(
 			"doctor_duplicate_provider_fails",
-			mdt_cmd(tmp.path()).arg("doctor")
+			common::mdt_cmd_for_path(tmp.path()).arg("doctor")
 		);
 	});
 

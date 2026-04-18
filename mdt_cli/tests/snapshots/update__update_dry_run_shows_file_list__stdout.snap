@@ -1,0 +1,19 @@
+---
+source: mdt_cli/tests/update.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpOdG88o
+    - update
+    - "--dry-run"
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Dry run: would update 1 block(s) in 1 file(s):
+  readme.md
+
+----- stderr -----

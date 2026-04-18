@@ -1,0 +1,9 @@
+---
+source: mdt_cli/tests/comparison.rs
+expression: content
+---
+<!-- {=docs} -->
+
+Install with npm.
+
+<!-- {/docs} -->

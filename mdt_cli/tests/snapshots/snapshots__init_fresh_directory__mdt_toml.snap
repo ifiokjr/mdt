@@ -1,6 +1,5 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 99
 expression: config
 ---
 # mdt.toml
