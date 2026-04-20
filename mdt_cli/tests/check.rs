@@ -7,7 +7,6 @@ use mdt_cli::Commands;
 use mdt_cli::DoctorOutputFormat;
 use mdt_cli::InfoOutputFormat;
 use mdt_cli::MdtCli;
-use mdt_core::AnyEmptyResult;
 use predicates::prelude::PredicateBooleanExt;
 use rstest::rstest;
 
@@ -35,7 +34,7 @@ fn check_outputs_are_snapshotted(
 	#[case] fixture: &str,
 	#[case] snapshot_name: &str,
 	#[case] verbose: bool,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture(fixture, tmp.path());
 
@@ -53,7 +52,7 @@ fn check_outputs_are_snapshotted(
 }
 
 #[test]
-fn check_writes_project_cache_artifact() -> AnyEmptyResult {
+fn check_writes_project_cache_artifact() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_up_to_date", tmp.path());
 
@@ -75,7 +74,7 @@ fn check_writes_project_cache_artifact() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
+fn check_stale_text_output_is_colored_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_stale", tmp.path());
 
@@ -94,7 +93,7 @@ fn check_stale_text_output_is_colored_when_forced() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyResult {
+fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_stale", tmp.path());
 
@@ -114,7 +113,7 @@ fn check_stale_text_output_honors_no_color_flag_even_when_forced() -> AnyEmptyRe
 }
 
 #[test]
-fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
+fn check_stale_text_output_honors_clicolor_zero() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_stale", tmp.path());
 
@@ -133,7 +132,7 @@ fn check_stale_text_output_honors_clicolor_zero() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
+fn check_validation_diagnostics_are_colored_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_invalid_transformer", tmp.path());
 
@@ -152,7 +151,7 @@ fn check_validation_diagnostics_are_colored_when_forced() -> AnyEmptyResult {
 }
 
 #[test]
-fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> AnyEmptyResult {
+fn check_validation_diagnostics_honor_no_color_flag_when_forced() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_invalid_transformer", tmp.path());
 
@@ -194,7 +193,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 }
 
 #[test]
-fn check_watch_flag_accepted_by_binary() -> AnyEmptyResult {
+fn check_watch_flag_accepted_by_binary() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_up_to_date", tmp.path());
 
@@ -281,7 +280,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 fn cache_observability_outputs_are_snapshotted(
 	#[case] command_name: &str,
 	#[case] snapshot_name: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_up_to_date", tmp.path());
 

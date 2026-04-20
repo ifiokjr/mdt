@@ -1,10 +1,9 @@
 mod common;
 
 use insta_cmd::assert_cmd_snapshot;
-use mdt_core::AnyEmptyResult;
 use rstest::rstest;
 
-fn assert_init_snapshot(fixture: &str, snapshot_name: &str) -> AnyEmptyResult {
+fn assert_init_snapshot(fixture: &str, snapshot_name: &str) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture(fixture, tmp.path());
 
@@ -33,12 +32,12 @@ fn assert_init_snapshot(fixture: &str, snapshot_name: &str) -> AnyEmptyResult {
 fn init_preserves_existing_files_and_writes_missing_ones(
 	#[case] fixture: &str,
 	#[case] snapshot_name: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	assert_init_snapshot(fixture, snapshot_name)
 }
 
 #[test]
-fn init_creates_valid_template() -> AnyEmptyResult {
+fn init_creates_valid_template() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 
 	common::mdt_cmd()

@@ -1,7 +1,6 @@
 mod common;
 
 use insta_cmd::assert_cmd_snapshot;
-use mdt_core::AnyEmptyResult;
 use rstest::rstest;
 
 #[rstest]
@@ -11,7 +10,7 @@ use rstest::rstest;
 fn info_resolves_config_candidates(
 	#[case] fixture: &str,
 	#[case] snapshot_name: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture(fixture, tmp.path());
 

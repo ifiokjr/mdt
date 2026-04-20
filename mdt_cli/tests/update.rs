@@ -1,14 +1,13 @@
 mod common;
 
 use insta_cmd::assert_cmd_snapshot;
-use mdt_core::AnyEmptyResult;
 use rstest::rstest;
 
 fn assert_update_snapshot(
 	fixture: &str,
 	snapshot_name: &str,
 	relative_path: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture(fixture, tmp.path());
 
@@ -35,7 +34,7 @@ fn assert_update_dry_run_snapshot(
 	fixture: &str,
 	snapshot_name: &str,
 	relative_path: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture(fixture, tmp.path());
 
@@ -84,12 +83,12 @@ fn update_rewrites_files_from_fixtures(
 	#[case] fixture: &str,
 	#[case] snapshot_name: &str,
 	#[case] relative_path: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	assert_update_snapshot(fixture, snapshot_name, relative_path)
 }
 
 #[test]
-fn update_noop_when_in_sync() -> AnyEmptyResult {
+fn update_noop_when_in_sync() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_up_to_date", tmp.path());
 
@@ -110,12 +109,12 @@ fn update_dry_run_preserves_files(
 	#[case] fixture: &str,
 	#[case] snapshot_name: &str,
 	#[case] relative_path: &str,
-) -> AnyEmptyResult {
+) -> std::io::Result<()> {
 	assert_update_dry_run_snapshot(fixture, snapshot_name, relative_path)
 }
 
 #[test]
-fn update_verbose_shows_files() -> AnyEmptyResult {
+fn update_verbose_shows_files() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("check_stale_named", tmp.path());
 
@@ -132,7 +131,7 @@ fn update_verbose_shows_files() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_warns_missing_provider() -> AnyEmptyResult {
+fn update_warns_missing_provider() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("update_orphan", tmp.path());
 
@@ -147,7 +146,7 @@ fn update_warns_missing_provider() -> AnyEmptyResult {
 }
 
 #[test]
-fn update_multiline_idempotent_after_write() -> AnyEmptyResult {
+fn update_multiline_idempotent_after_write() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	common::copy_fixture("update_multiline_idempotent", tmp.path());
 
