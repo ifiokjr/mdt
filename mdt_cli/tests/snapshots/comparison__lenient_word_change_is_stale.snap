@@ -1,0 +1,14 @@
+---
+source: mdt_cli/tests/comparison.rs
+expression: "&result.stale"
+---
+[
+    StaleEntry {
+        file: "[TEMP_DIR]/readme.md",
+        block_name: "docs",
+        current_content: "\n\nInstall with yarn.\n\n",
+        expected_content: "\n\nInstall with npm.\n\n",
+        line: 1,
+        column: 1,
+    },
+]

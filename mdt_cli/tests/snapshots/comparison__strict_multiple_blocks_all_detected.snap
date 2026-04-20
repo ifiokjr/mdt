@@ -1,0 +1,22 @@
+---
+source: mdt_cli/tests/comparison.rs
+expression: "&result.stale"
+---
+[
+    StaleEntry {
+        file: "[TEMP_DIR]/readme.md",
+        block_name: "a",
+        current_content: "\n\nAAA  \n\n",
+        expected_content: "\n\nAAA\n\n",
+        line: 1,
+        column: 1,
+    },
+    StaleEntry {
+        file: "[TEMP_DIR]/readme.md",
+        block_name: "b",
+        current_content: "\n\nBBB  \n\n",
+        expected_content: "\n\nBBB\n\n",
+        line: 6,
+        column: 1,
+    },
+]

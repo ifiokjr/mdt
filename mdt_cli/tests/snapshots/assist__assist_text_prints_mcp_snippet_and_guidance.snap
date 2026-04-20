@@ -1,0 +1,41 @@
+---
+source: mdt_cli/tests/assist.rs
+info:
+  program: mdt
+  args:
+    - assist
+    - claude
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+mdt assist
+
+Assistant                 Claude
+Strategy                  mdt ships assistant setup presets and repo-local guidance, not a plugin marketplace.
+
+MCP config snippet:
+{
+  "mcpServers": {
+    "mdt": {
+      "args": [
+        "mcp"
+      ],
+      "command": "mdt"
+    }
+  }
+}
+
+Suggested repo-local guidance:
+- Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a new provider block.
+- Use `.templates/` as the canonical location for template files.
+- Run `mdt_check` after documentation edits and `mdt_update` when consumers are stale.
+- Use `mdt_preview` to inspect provider and consumer output before syncing changes.
+
+Notes for Claude:
+- Add the MCP snippet to Claude's MCP server configuration.
+- Keep the repo-local guidance in your project instructions so Claude reuses providers before creating new ones.
+
+----- stderr -----

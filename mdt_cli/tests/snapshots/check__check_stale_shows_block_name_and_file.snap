@@ -1,0 +1,24 @@
+---
+source: mdt_cli/tests/check.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp47Jn49
+    - check
+  env:
+    NO_COLOR: "1"
+---
+success: false
+exit_code: 1
+----- stdout -----
+
+----- stderr -----
+Check failed.
+  render errors: 0
+  stale consumers: 1
+
+Stale consumers:
+  block `myBlock` at readme.md:1:1
+
+1 consumer block(s) are out of date. Run `mdt update` to fix.

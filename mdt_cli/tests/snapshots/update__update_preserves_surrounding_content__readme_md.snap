@@ -1,0 +1,15 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+# Header
+
+Paragraph before.
+
+<!-- {=block} -->
+
+new content
+
+<!-- {/block} -->
+
+Paragraph after.

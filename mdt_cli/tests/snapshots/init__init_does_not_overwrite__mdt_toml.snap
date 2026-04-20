@@ -1,0 +1,5 @@
+---
+source: mdt_cli/tests/init.rs
+expression: config
+---
+existing config

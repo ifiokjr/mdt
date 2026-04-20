@@ -1,143 +1,131 @@
 mod common;
 
-#[test]
-fn update_replaces_stale_content() -> std::io::Result<()> {
+use insta_cmd::assert_cmd_snapshot;
+use rstest::rstest;
+
+fn assert_update_snapshot(
+	fixture: &str,
+	snapshot_name: &str,
+	relative_path: &str,
+) -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture(fixture, tmp.path());
 
-	// Create a provider template file
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			format!("{snapshot_name}__stdout"),
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
 
-	// Create a consumer file with outdated content
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("Updated"));
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains("Hello world!"));
-	assert!(!content.contains("Old content."));
+	let content = std::fs::read_to_string(tmp.path().join(relative_path))?;
+	insta::assert_snapshot!(
+		format!(
+			"{snapshot_name}__{}",
+			common::snapshot_path_id(relative_path)
+		),
+		content
+	);
 
 	Ok(())
+}
+
+fn assert_update_dry_run_snapshot(
+	fixture: &str,
+	snapshot_name: &str,
+	relative_path: &str,
+) -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture(fixture, tmp.path());
+
+	let before = std::fs::read_to_string(tmp.path().join(relative_path))?;
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			format!("{snapshot_name}__stdout"),
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--dry-run")
+		);
+	});
+
+	let after = std::fs::read_to_string(tmp.path().join(relative_path))?;
+	similar_asserts::assert_eq!(before, after);
+
+	Ok(())
+}
+
+#[rstest]
+#[case("update_stale", "update_replaces_stale_content", "readme.md")]
+#[case("update_with_transformer", "update_with_transformers", "readme.md")]
+#[case(
+	"update_multiple_blocks",
+	"update_multiple_blocks_in_one_file",
+	"readme.md"
+)]
+#[case("update_with_data", "update_with_config_and_data", "readme.md")]
+#[case(
+	"update_inline_data",
+	"update_inline_table_cell_with_data",
+	"readme.md"
+)]
+#[case(
+	"update_multiline_links",
+	"update_preserves_multiline_link_definitions",
+	"readme.md"
+)]
+#[case(
+	"update_preserves_surrounding",
+	"update_preserves_surrounding_content",
+	"readme.md"
+)]
+fn update_rewrites_files_from_fixtures(
+	#[case] fixture: &str,
+	#[case] snapshot_name: &str,
+	#[case] relative_path: &str,
+) -> std::io::Result<()> {
+	assert_update_snapshot(fixture, snapshot_name, relative_path)
 }
 
 #[test]
 fn update_noop_when_in_sync() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_up_to_date", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Readme\n\n<!-- {=greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("already up to date"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_noop_when_in_sync",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
 
 	Ok(())
 }
 
-#[test]
-fn update_dry_run_does_not_write() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@greeting} -->\n\nHello world!\n\n<!-- {/greeting} -->\n",
-	)?;
-
-	let consumer_content =
-		"# Readme\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n";
-	std::fs::write(tmp.path().join("readme.md"), consumer_content)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--dry-run")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("would update"));
-
-	// File should not have changed
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert_eq!(content, consumer_content);
-
-	Ok(())
-}
-
-#[test]
-fn update_with_transformers() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@docs} -->\n\nSome documentation content.\n\n<!-- {/docs} -->\n",
-	)?;
-
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=docs|trim} -->\n\nold\n\n<!-- {/docs} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success();
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains("Some documentation content."));
-
-	Ok(())
+#[rstest]
+#[case("update_stale", "update_dry_run_does_not_write", "readme.md")]
+#[case("check_stale_named", "update_dry_run_shows_file_list", "readme.md")]
+fn update_dry_run_preserves_files(
+	#[case] fixture: &str,
+	#[case] snapshot_name: &str,
+	#[case] relative_path: &str,
+) -> std::io::Result<()> {
+	assert_update_dry_run_snapshot(fixture, snapshot_name, relative_path)
 }
 
 #[test]
 fn update_verbose_shows_files() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("check_stale_named", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--verbose")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("readme.md"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_verbose_shows_files",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("--verbose")
+				.arg("update")
+		);
+	});
 
 	Ok(())
 }
@@ -145,220 +133,14 @@ fn update_verbose_shows_files() -> std::io::Result<()> {
 #[test]
 fn update_warns_missing_provider() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_orphan", tmp.path());
 
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stderr(predicates::str::contains(
-			"consumer block `orphan` has no matching provider",
-		));
-
-	Ok(())
-}
-
-#[test]
-fn update_multiple_blocks_in_one_file() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@a} -->\n\nalpha\n\n<!-- {/a} -->\n\n<!-- {@b} -->\n\nbeta\n\n<!-- {/b} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=a} -->\n\nold\n\n<!-- {/a} -->\n\n<!-- {=b} -->\n\nold\n\n<!-- {/b} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("Updated 2 block(s)"));
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains("alpha"));
-	assert!(content.contains("beta"));
-	assert!(!content.contains("old"));
-
-	Ok(())
-}
-
-#[test]
-fn update_dry_run_shows_file_list() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--dry-run")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("readme.md"));
-
-	Ok(())
-}
-
-#[test]
-fn update_with_config_and_data() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "my-app", "version": "3.0.0"}"#,
-	)?;
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@install} -->\n\nnpm install {{ pkg.name }}@{{ pkg.version }}\n\n<!-- {/install} \
-		 -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=install} -->\n\nold\n\n<!-- {/install} -->\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success();
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains("npm install my-app@3.0.0"));
-
-	Ok(())
-}
-
-#[test]
-fn update_inline_table_cell_with_data() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("mdt.toml"),
-		"[data]\npkg = \"package.json\"\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("package.json"),
-		r#"{"name": "mdt", "version": "3.1.4"}"#,
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"| Package | Version |\n| ------- | ------- |\n| mdt     | <!-- {~version:\"{{ \
-		 pkg.version }}\"} -->0.0.0<!-- {/version} --> |\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("Updated"));
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains(
-		"| mdt     | <!-- {~version:\"{{ pkg.version }}\"} -->3.1.4<!-- {/version} --> |"
-	));
-
-	Ok(())
-}
-
-#[test]
-fn update_preserves_multiline_link_definitions() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	let template = r#"<!-- {@badge:"crateName"} -->
-
-[crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
-[crate-link]: https://crates.io/crates/{{ crateName }}
-[docs-image]: https://docs.rs/{{ crateName }}/badge.svg
-[docs-link]: https://docs.rs/{{ crateName }}/
-[ci-image]: https://github.com/example/repo/workflows/ci/badge.svg
-[ci-link]: https://github.com/example/repo/actions
-
-<!-- {/badge} -->
-"#;
-	std::fs::write(tmp.path().join("template.t.md"), template)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		r#"# Readme
-
-<!-- {=badge:"my_crate"} -->
-
-old
-
-<!-- {/badge} -->
-"#,
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success();
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-
-	// Each link definition must be on its own line — newlines must be preserved.
-	assert!(
-		content.contains("\n[crate-image]:"),
-		"[crate-image] should be on its own line"
-	);
-	assert!(
-		content.contains("\n[crate-link]:"),
-		"[crate-link] should be on its own line"
-	);
-	assert!(
-		content.contains("\n[docs-image]:"),
-		"[docs-image] should be on its own line"
-	);
-	assert!(
-		content.contains("\n[docs-link]:"),
-		"[docs-link] should be on its own line"
-	);
-	assert!(
-		content.contains("\n[ci-image]:"),
-		"[ci-image] should be on its own line"
-	);
-	assert!(
-		content.contains("\n[ci-link]:"),
-		"[ci-link] should be on its own line"
-	);
-
-	// Verify template variables were rendered
-	assert!(content.contains("my_crate"));
-	assert!(!content.contains("{{ crateName }}"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_warns_missing_provider",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
 
 	Ok(())
 }
@@ -366,83 +148,30 @@ old
 #[test]
 fn update_multiline_idempotent_after_write() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_multiline_idempotent", tmp.path());
 
-	let template = r"<!-- {@links} -->
-
-[repo]: https://github.com/example/repo
-[docs]: https://docs.example.com
-[ci]: https://ci.example.com/badge.svg
-
-<!-- {/links} -->
-";
-	std::fs::write(tmp.path().join("template.t.md"), template)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=links} -->\n\nold\n\n<!-- {/links} -->\n",
-	)?;
-
-	// First update
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("Updated"));
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_multiline_idempotent_after_write__first_stdout",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
 
 	let after_first = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(after_first.contains("\n[repo]:"));
-	assert!(after_first.contains("\n[docs]:"));
-	assert!(after_first.contains("\n[ci]:"));
-
-	// Second update — should be idempotent
-	let mut cmd2 = common::mdt_cmd();
-	cmd2.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success()
-		.stdout(predicates::str::contains("already up to date"));
-
-	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert_eq!(
-		after_first, after_second,
-		"Second update should not change the file"
+	insta::assert_snapshot!(
+		"update_multiline_idempotent_after_write__readme_md",
+		after_first.as_str()
 	);
 
-	Ok(())
-}
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_multiline_idempotent_after_write__second_stdout",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
 
-#[test]
-fn update_preserves_surrounding_content() -> std::io::Result<()> {
-	let tmp = tempfile::tempdir()?;
-
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\nnew content\n\n<!-- {/block} -->\n",
-	)?;
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"# Header\n\nParagraph before.\n\n<!-- {=block} -->\n\nold\n\n<!-- {/block} \
-		 -->\n\nParagraph after.\n",
-	)?;
-
-	let mut cmd = common::mdt_cmd();
-	cmd.env("NO_COLOR", "1")
-		.arg("update")
-		.arg("--path")
-		.arg(tmp.path())
-		.assert()
-		.success();
-
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
-	assert!(content.contains("# Header"));
-	assert!(content.contains("Paragraph before."));
-	assert!(content.contains("new content"));
-	assert!(content.contains("Paragraph after."));
-	assert!(!content.contains("old"));
+	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	similar_asserts::assert_eq!(after_first, after_second);
 
 	Ok(())
 }

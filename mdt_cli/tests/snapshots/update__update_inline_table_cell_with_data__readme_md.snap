@@ -1,0 +1,7 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~version:"{{ pkg.version }}"} -->3.1.4<!-- {/version} --> |

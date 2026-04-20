@@ -1,0 +1,14 @@
+---
+source: mdt_cli/tests/comparison.rs
+expression: "&result.stale"
+---
+[
+    StaleEntry {
+        file: "[TEMP_DIR]/readme.md",
+        block_name: "block",
+        current_content: "\n\nThis is completely unrelated content.\n\n",
+        expected_content: "\n\n# Installation\n\nRun `cargo install mdt`.\n\n",
+        line: 1,
+        column: 1,
+    },
+]

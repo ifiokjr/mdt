@@ -1,0 +1,9 @@
+---
+source: mdt_cli/tests/update.rs
+expression: content
+---
+<!-- {=install} -->
+
+npm install my-app@3.0.0
+
+<!-- {/install} -->

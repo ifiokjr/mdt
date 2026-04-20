@@ -1,0 +1,14 @@
+---
+source: mdt_cli/tests/comparison.rs
+expression: "&result.stale"
+---
+[
+    StaleEntry {
+        file: "[TEMP_DIR]/readme.md",
+        block_name: "beta",
+        current_content: "\n\nChanged beta.\n\n",
+        expected_content: "\n\nBeta content.\n\n",
+        line: 8,
+        column: 1,
+    },
+]
