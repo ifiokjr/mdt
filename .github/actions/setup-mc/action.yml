@@ -1,0 +1,25 @@
+name: setup-mc
+description: "Install the monochange CLI (mc)"
+inputs:
+  version:
+    description: "monochange version to install"
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: install monochange
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        version="${{ inputs.version }}"
+        if [ "$version" = "latest" ]; then
+          url="https://github.com/monochange/monochange/releases/latest/download/mc-x86_64-unknown-linux-gnu.tar.gz"
+        else
+          url="https://github.com/monochange/monochange/releases/download/${version}/mc-x86_64-unknown-linux-gnu.tar.gz"
+        fi
+
+        echo "Installing monochange CLI from: $url"
+        curl --fail --silent --show-error --location "$url" | tar -xzf - -C /usr/local/bin mc
