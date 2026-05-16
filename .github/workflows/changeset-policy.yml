@@ -25,9 +25,6 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
 
-      - name: setup mc
-        uses: ./.github/actions/setup-mc
-
       - name: setup devenv
         uses: ./.github/actions/devenv
         with:

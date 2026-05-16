@@ -27,14 +27,17 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: setup mc
-        uses: ./.github/actions/setup-mc
+      - name: setup devenv
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: create release pr
         run: |
           mc release --commit --create-pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: devenv shell -- bash -e {0}
 
   upload-assets:
     env:

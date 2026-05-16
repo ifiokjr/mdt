@@ -65,9 +65,6 @@ jobs:
 
           echo "Verified: checked-out commit matches tag $expected_tag and is on main"
 
-      - name: setup mc
-        uses: ./.github/actions/setup-mc
-
       - name: setup devenv
         uses: ./.github/actions/devenv
         with:
