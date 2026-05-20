@@ -1,0 +1,136 @@
+[defaults]
+package_type = "cargo"
+parent_bump = "patch"
+include_private = false
+
+[defaults.changelog]
+path = "{{ path }}/changelog.md"
+format = "keep_a_changelog"
+
+[source]
+provider = "github"
+owner = "ifiokjr"
+repo = "mdt"
+
+[source.releases]
+enabled = true
+draft = true
+prerelease = false
+source = "monochange"
+
+[source.pull_requests]
+enabled = true
+branch_prefix = "monochange/release"
+base = "main"
+title = "chore(release): prepare release"
+labels = ["release", "automated"]
+auto_merge = false
+verified_commits = true
+
+[package.mdt_core]
+path = "mdt_core"
+type = "cargo"
+
+[package.mdt_cli]
+path = "mdt_cli"
+type = "cargo"
+
+[package.mdt_lsp]
+path = "mdt_lsp"
+type = "cargo"
+
+[package.mdt_mcp]
+path = "mdt_mcp"
+type = "cargo"
+
+[package.skills]
+path = "npm/skills"
+type = "npm"
+
+[group.core]
+packages = ["mdt_core", "mdt_cli", "mdt_lsp", "mdt_mcp"]
+release = true
+tag = true
+version_format = "primary"
+changelog = { path = "changelog.md", format = "keep_a_changelog", include = "all" }
+
+[ecosystems.cargo]
+enabled = true
+versioned_files = ["Cargo.toml"]
+
+[ecosystems.npm]
+enabled = true
+
+[changelog.types]
+major = { bump = "major", section = "breaking", description = "Major version bump including breaking API changes requiring migration" }
+minor = { bump = "minor", section = "feat", description = "Minor version bump including new features and enhancements" }
+patch = { bump = "patch", section = "fix", description = "Patch version bump for bug fixes and small corrections" }
+fix = { bump = "patch", section = "fix", description = "Bug fixes and error corrections" }
+feat = { bump = "minor", section = "feat", description = "New functionality or capabilities added" }
+change = { bump = "minor", section = "change", description = "Changes to existing behavior or API semantics" }
+refactor = { bump = "none", section = "refactor", description = "Internal code restructuring without changing external behavior" }
+docs = { bump = "none", section = "docs", description = "Documentation updates and clarifications only" }
+security = { bump = "none", section = "security", description = "Security improvements and vulnerability fixes" }
+perf = { bump = "none", section = "perf", description = "Performance and benchmarking improvements" }
+test = { bump = "none", section = "test", description = "Test suite improvements and additions" }
+note = { bump = "none", section = "other", description = "Informational notes with no version impact" }
+none = { bump = "none", section = "other", description = "Changes with no version impact" }
+
+[changelog.sections]
+breaking = { heading = "💥 Breaking Change", priority = 10 }
+feat = { heading = "🚀 Feature", priority = 20 }
+change = { heading = "📝 Changed", priority = 25 }
+fix = { heading = "🐛 Fixed", priority = 30 }
+test = { heading = "🧪 Testing", priority = 40 }
+refactor = { heading = "🔨 Refactor", priority = 40 }
+docs = { heading = "📖 Documentation", priority = 40 }
+security = { heading = "🔒 Security", priority = 40 }
+perf = { heading = "⚡ Performance", priority = 40 }
+other = { heading = "📦 Other", priority = 50 }
+
+[changesets.affected]
+enabled = true
+required = true
+skip_labels = ["no-changeset-required", "release"]
+comment_on_failure = true
+changed_paths = ["codecov.yml"]
+ignored_paths = [
+	"**/tests/**",
+	"**/__tests.rs",
+	"**/snapshots/**",
+	"**/changelog.md",
+	"changelog.md",
+]
+
+[cli.change]
+help_text = "Create a change file for one or more packages"
+inputs = [
+	{ name = "interactive", type = "boolean", default = false },
+	{ name = "package", type = "string_list", required = true },
+	{ name = "bump", type = "choice", choices = ["none", "patch", "minor", "major"], default = "patch" },
+	{ name = "reason", type = "string", required = true },
+	{ name = "version", type = "string" },
+	{ name = "type", type = "string" },
+	{ name = "caused_by", type = "string_list" },
+	{ name = "details", type = "string" },
+	{ name = "output", type = "path" },
+]
+steps = [
+	{ name = "create change file", type = "CreateChangeFile", inputs = ["interactive", "package", "bump", "version", "reason", "type", "details", "output"] },
+]
+
+[cli.release]
+help_text = "Prepare a pull request release from discovered change files. It should only be run in a github action."
+inputs = [
+	{ name = "format", type = "choice", choices = ["text", "json", "markdown"], default = "markdown" },
+	{ name = "no_verify", type = "boolean", default = true },
+	{ name = "commit", help_text = "Whether to commit the changes", type = "boolean", default = false },
+	{ name = "create_pr", help_text = "Whether to create the PR after the commit", type = "boolean", default = false },
+]
+steps = [
+	{ type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
+	{ type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
+	{ type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
+	{ type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}" } },
+	{ type = "OpenReleaseRequest", name = "create the pr", when = "{{ number_of_changesets > 0 && inputs.commit && inputs.create_pr }}", inputs = { no_verify = "{{ inputs.no_verify }}" } },
+]

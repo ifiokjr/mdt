@@ -2,7 +2,7 @@
 mdt_cli: patch
 ---
 
-Rename npm packages from `@ifi` to `@m-d-t` organisation.
+# Rename npm packages from `@ifi` to `@m-d-t` organisation.
 
 - `@ifi/mdt` → `@m-d-t/cli`
 - `@ifi/mdt-skills` → `@m-d-t/skills`

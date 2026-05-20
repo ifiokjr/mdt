@@ -1,6 +1,8 @@
 ---
-mdt_core: major > Apply Rust best practices for error handling, memory optimization, and API design
+mdt_core: major
 ---
+
+# Apply Rust best practices for error handling, memory optimization, and API design
 
 ## Summary
 

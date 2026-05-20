@@ -18,7 +18,7 @@ in
       cargo-run-bin
       deno
       dprint
-      extra.knope
+      extra.monochange
       extra.pnpm-standalone
       mdbook
       nixfmt
