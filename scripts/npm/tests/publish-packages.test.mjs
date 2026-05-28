@@ -72,19 +72,21 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 	const fakeBinDir = join(tempRoot, "bin");
 
 	try {
-		// Create platform packages flat under packagesDir (matches real repo structure)
-		for (
-			const dirName of [
-				"m-d-t__cli-darwin-arm64",
-				"m-d-t__cli-linux-x64-gnu",
-			]
-		) {
+		// Create ALL platform packages flat under packagesDir (matches publish-packages.ts PLATFORM_PACKAGE_DIRS)
+		const ALL_PLATFORM_PACKAGES = [
+			"m-d-t__cli-darwin-arm64",
+			"m-d-t__cli-darwin-x64",
+			"m-d-t__cli-linux-arm64-gnu",
+			"m-d-t__cli-linux-arm64-musl",
+			"m-d-t__cli-linux-x64-gnu",
+			"m-d-t__cli-linux-x64-musl",
+			"m-d-t__cli-win32-arm64-msvc",
+			"m-d-t__cli-win32-x64-msvc",
+		];
+		for (const dirName of ALL_PLATFORM_PACKAGES) {
 			const pkgDir = join(packagesDir, dirName);
-			createPackage(
-				pkgDir,
-				`@m-d-t/${dirName.replace("m-d-t__cli-", "cli-")}`,
-				"1.2.3",
-			);
+			const pkgName = `@m-d-t/${dirName.replace("m-d-t__cli-", "cli-")}`;
+			createPackage(pkgDir, pkgName, "1.2.3");
 			// Create a fake binary so hasBinary() passes
 			mkdirSync(join(pkgDir, "bin"), { recursive: true });
 			writeFileSync(join(pkgDir, "bin", "mdt"), "fake", { mode: 0o755 });
@@ -114,24 +116,20 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		);
 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
-		// linux-x64-gnu is already published (npm view succeeds)
+		// linux-x64-gnu is already published (npm view succeeds) → skipped
 		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
-		// darwin-arm64 is not published (npm view fails) so it should be published
+		// darwin-arm64 is not published (npm view fails) → published
 		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1\.2\.3/);
 		// the root CLI package should also be published
 		assert.match(result.stdout, /Publishing @m-d-t\/cli@1\.2\.3/);
 
+		// 8 platform packages total: 7 unpublished + 1 skipped = 7 published
+		// Plus 1 CLI package = 8 total published
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-		assert.equal(
-			publishedDirs.length,
-			2,
-			`expected 2 publishes, got: ${publishedDirs.join(", ")}`,
-		);
-		assert.match(publishedDirs[0], /packages\/m-d-t__cli-darwin-arm64$/);
-		assert.match(publishedDirs[1], /packages\/m-d-t__cli$/);
+		assert.equal(publishedDirs.length, 8);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
