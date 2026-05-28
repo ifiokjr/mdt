@@ -52,7 +52,7 @@ function shouldTryNextPackage(result: ReturnType<typeof spawnSync>): boolean {
 		return false;
 	}
 
-	const stderr = result.stderr ?? "";
+	const stderr = String(result.stderr ?? "");
 	return /not found|no such file or directory|exec format error/i.test(stderr);
 }
 
