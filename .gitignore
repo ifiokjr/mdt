@@ -11,6 +11,7 @@
 devenv.local.nix
 
 **/dist/**
+**/node_modules/**
 
 # insta snapshots
 *.pending-snap
@@ -21,3 +22,10 @@ devenv.local.nix
 
 # pre-commit
 .pre-commit-config.yaml
+
+# npm platform package binaries (populated at release time)
+packages/*/bin/
+packages/.tmp/
+
+# old npm directory (migrated to packages/)
+/npm/bin/

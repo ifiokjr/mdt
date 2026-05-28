@@ -1,0 +1,277 @@
+# =============================================================================
+# monochange.toml — repository configuration for monochange
+# =============================================================================
+#
+# Run `mc step:validate` to check this file against the workspace.
+# Run `mc init` to generate a starter config from detected packages.
+
+# =============================================================================
+# [defaults] — repository-wide defaults
+# =============================================================================
+
+[defaults]
+parent_bump = "patch"
+include_private = false
+package_type = "cargo"
+
+[defaults.changelog]
+path = "{{ path }}/changelog.md"
+format = "keep_a_changelog"
+initial_header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
+"""
+
+# =============================================================================
+# [changelog] — workspace-wide release-note rendering settings
+# =============================================================================
+
+[changelog]
+templates = [
+	"#### {{ summary }}\n\n{{ details }}\n\n{{ context }}",
+	"#### {{ summary }}\n\n{{ context }}",
+	"#### {{ summary }}\n\n{{ details }}",
+	"- {{ summary }}",
+]
+
+[changelog.style]
+metadata_style = "inline"
+
+[changelog.sections]
+breaking = { heading = "💥 Breaking Change", description = "Breaking changes that require consumer updates or migration", priority = 10 }
+feat = { heading = "🚀 Feature", description = "New features, enhancements, and additions", priority = 20 }
+change = { heading = "📝 Changed", description = "Changes to existing behavior, functionality, or API semantics", priority = 25 }
+fix = { heading = "🐛 Fixed", description = "Bug fixes and error corrections", priority = 30 }
+test = { heading = "🧪 Testing", description = "Test suite improvements and additions", priority = 40 }
+refactor = { heading = "🔨 Refactor", description = "Code refactoring with no functional changes", priority = 40 }
+docs = { heading = "📖 Documentation", description = "Documentation updates and improvements", priority = 40 }
+security = { heading = "🔒 Security", description = "Security vulnerabilities, patches, and hardening", priority = 40 }
+perf = { heading = "⚡ Performance", description = "Performance optimizations and improvements", priority = 40 }
+other = { heading = "📦 Other", description = "Miscellaneous changes not categorized elsewhere", priority = 50 }
+
+[changelog.section_thresholds]
+collapse = 40
+ignored = 45
+
+[changelog.types]
+major = { bump = "major", section = "breaking", description = "Major version bump including breaking API changes requiring migration" }
+breaking = { bump = "major", section = "breaking", description = "Breaking changes that require consumers to update their code" }
+minor = { bump = "minor", section = "feat", description = "Minor version bump including new features and enhancements" }
+feat = { bump = "minor", section = "feat", description = "New functionality or capabilities added to the package" }
+change = { bump = "minor", section = "change", description = "Changes to existing behavior or API semantics" }
+patch = { bump = "patch", section = "fix", description = "Patch version bump for bug fixes and small corrections" }
+refactor = { bump = "patch", section = "refactor", description = "Internal code restructuring without changing external behavior" }
+test = { bump = "none", section = "test", description = "Additions or improvements to the test suite only" }
+fix = { bump = "patch", section = "fix", description = "Bug fixes and error corrections" }
+none = { bump = "none", section = "other", description = "Changes with no version impact such as tooling or formatting" }
+docs = { bump = "none", section = "docs", description = "Documentation updates and clarifications only" }
+security = { bump = "none", section = "security", description = "Security improvements, advisories, and vulnerability fixes" }
+perf = { bump = "none", section = "perf", description = "Performance and benchmarking improvements" }
+
+# =============================================================================
+# [package.*] — declare each release-managed package explicitly
+# =============================================================================
+
+[package.mdt_core]
+path = "mdt_core"
+
+[package.mdt_cli]
+path = "mdt_cli"
+
+[package.mdt_lsp]
+path = "mdt_lsp"
+
+[package.mdt_mcp]
+path = "mdt_mcp"
+
+[package."@m-d-t/skills"]
+path = "npm/skills"
+type = "npm"
+
+[package.docs]
+path = "docs"
+publish = { enabled = false }
+
+[package."@m-d-t/cli"]
+path = "packages/m-d-t__cli"
+type = "npm"
+
+[package."@m-d-t/cli-darwin-arm64"]
+path = "packages/m-d-t__cli-darwin-arm64"
+type = "npm"
+
+[package."@m-d-t/cli-darwin-x64"]
+path = "packages/m-d-t__cli-darwin-x64"
+type = "npm"
+
+[package."@m-d-t/cli-linux-arm64-gnu"]
+path = "packages/m-d-t__cli-linux-arm64-gnu"
+type = "npm"
+
+[package."@m-d-t/cli-linux-arm64-musl"]
+path = "packages/m-d-t__cli-linux-arm64-musl"
+type = "npm"
+
+[package."@m-d-t/cli-linux-x64-gnu"]
+path = "packages/m-d-t__cli-linux-x64-gnu"
+type = "npm"
+
+[package."@m-d-t/cli-linux-x64-musl"]
+path = "packages/m-d-t__cli-linux-x64-musl"
+type = "npm"
+
+[package."@m-d-t/cli-win32-x64-msvc"]
+path = "packages/m-d-t__cli-win32-x64-msvc"
+type = "npm"
+
+[package."@m-d-t/cli-win32-arm64-msvc"]
+path = "packages/m-d-t__cli-win32-arm64-msvc"
+type = "npm"
+
+[package."@m-d-t/skills"]
+path = "packages/m-d-t__skills"
+type = "npm"
+
+# =============================================================================
+# [group.*] — version groups that share a single release identity
+# =============================================================================
+
+[group.mdt]
+packages = [
+	"mdt_core",
+	"mdt_cli",
+	"mdt_lsp",
+	"mdt_mcp",
+	"@m-d-t/cli",
+	"@m-d-t/cli-darwin-arm64",
+	"@m-d-t/cli-darwin-x64",
+	"@m-d-t/cli-linux-arm64-gnu",
+	"@m-d-t/cli-linux-arm64-musl",
+	"@m-d-t/cli-linux-x64-gnu",
+	"@m-d-t/cli-linux-x64-musl",
+	"@m-d-t/cli-win32-x64-msvc",
+	"@m-d-t/cli-win32-arm64-msvc",
+	"@m-d-t/skills",
+]
+tag = true
+release = true
+version_format = "primary"
+versioned_files = [
+	{ path = "Cargo.toml", type = "cargo", fields = ["workspace.package.version"] },
+	{ path = "Cargo.lock", type = "cargo", fields = ["dependencies"] },
+	{ path = "packages/*/package.json", type = "npm", fields = ["dependencies", "devDependencies", "optionalDependencies"] },
+]
+changelog = { path = "changelog.md", format = "keep_a_changelog", include = "all" }
+
+# =============================================================================
+# [changesets.affected] — changeset verification settings
+# =============================================================================
+
+[changesets.affected]
+enabled = true
+required = true
+skip_labels = ["no-changeset-required", "release"]
+comment_on_failure = true
+
+ignored_paths = [
+	"**/tests/**",
+	"**/__tests.rs",
+	"**/snapshots/**",
+	"fixtures/tests/**",
+	"**/changelog.md",
+	"changelog.md",
+	"**/node_modules/**",
+]
+
+# =============================================================================
+# [ecosystems.*] — per-ecosystem discovery and publishing settings
+# =============================================================================
+
+[ecosystems.cargo]
+enabled = true
+
+[ecosystems.cargo.publish]
+enabled = true
+mode = "builtin"
+registry = "crates_io"
+trusted_publishing = true
+
+[ecosystems.npm]
+enabled = true
+
+[ecosystems.npm.publish]
+enabled = true
+mode = "builtin"
+registry = "npm"
+trusted_publishing = true
+
+# =============================================================================
+# [source] — source-control provider configuration
+# =============================================================================
+
+[source]
+provider = "github"
+owner = "ifiokjr"
+repo = "mdt"
+
+[source.releases]
+enabled = true
+draft = false
+prerelease = false
+source = "monochange"
+
+[source.pull_requests]
+enabled = true
+branch_prefix = "monochange/release"
+base = "main"
+title = "chore(release): prepare release"
+labels = ["release", "automated"]
+auto_merge = false
+verified_commits = true
+
+# =============================================================================
+# [cli.*] — user-defined CLI commands
+# =============================================================================
+
+[cli.change]
+help_text = "Create a change file for one or more packages"
+inputs = [
+	{ name = "interactive", type = "boolean", default = false },
+	{ name = "package", type = "string_list", required = true },
+	{ name = "bump", type = "choice", choices = ["none", "patch", "minor", "major"], default = "patch" },
+	{ name = "reason", type = "string", required = true },
+	{ name = "version", type = "string" },
+	{ name = "type", type = "string" },
+	{ name = "caused_by", type = "string_list" },
+	{ name = "details", type = "string" },
+	{ name = "output", type = "path" },
+]
+steps = [
+	{ name = "create change file", type = "CreateChangeFile", inputs = ["interactive", "package", "bump", "version", "reason", "type", "details", "output"] },
+]
+
+[cli.release]
+help_text = "Prepare a pull request release from discovered change files"
+inputs = [
+	{ name = "format", type = "choice", choices = ["text", "json", "markdown"], default = "markdown" },
+	{ name = "no_verify", type = "boolean", default = true },
+	{ name = "commit", help_text = "Whether to commit the changes", type = "boolean", default = false },
+	{ name = "create_pr", help_text = "Whether to create the PR after the commit", type = "boolean", default = false },
+]
+steps = [
+	{ type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
+	{ type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
+	{ type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
+	{ type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+	{ type = "OpenReleaseRequest", name = "create the pr", when = "{{ number_of_changesets > 0 && inputs.commit && inputs.create_pr }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+]
+
+[cli.publish-check]
+help_text = "Validate the release and preview package publishing in dry-run mode"
+dry_run = true
+steps = [
+	{ type = "PublishPackages", name = "publish packages dry run" },
+]

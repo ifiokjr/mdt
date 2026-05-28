@@ -1,0 +1,27 @@
+{
+	"name": "@m-d-t/cli-darwin-arm64",
+	"version": "0.0.0",
+	"description": "Prebuilt mdt binary for macOS arm64",
+	"homepage": "https://github.com/ifiokjr/mdt",
+	"bugs": {
+		"url": "https://github.com/ifiokjr/mdt/issues"
+	},
+	"license": "Unlicense",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ifiokjr/mdt.git"
+	},
+	"files": [
+		"bin"
+	],
+	"os": [
+		"darwin"
+	],
+	"cpu": [
+		"arm64"
+	],
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}

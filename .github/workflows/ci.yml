@@ -1,12 +1,17 @@
 name: "ci"
+
 permissions:
   pull-requests: write
   contents: write
+
 on:
   push:
     branches:
       - main
   pull_request:
+    branches:
+      - main
+  merge_group:
     branches:
       - main
 
@@ -15,6 +20,23 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  security:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: run zizmor
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+        with:
+          inputs: ".github/workflows/ .github/actions/"
+          advanced-security: true
+
   lint:
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -39,6 +61,32 @@ jobs:
         run: cargo run --bin mdt -- check
         shell: devenv shell -c -- bash -e {0}
 
+  typecheck:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: build npm tooling
+        run: pnpm build
+
+      - name: typecheck
+        run: pnpm check
+
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -60,9 +108,21 @@ jobs:
         run: test:all
         shell: devenv shell -c -- bash -e {0}
 
+      - name: setup node for npm tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install pnpm for npm tests
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: run npm integration tests
         run: |
-          node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
+          pnpm install --no-frozen-lockfile
+          pnpm build
+          pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
 
   build:
     timeout-minutes: 60
@@ -84,7 +144,7 @@ jobs:
         run: cargo build --all-features --locked
         shell: devenv shell -c -- bash -e {0}
 
-  security:
+  cargo-deny:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -241,7 +301,7 @@ jobs:
               'Please add a changeset file in `.changeset/` with the breaking change documented:',
               '',
               '```sh',
-              'knope document-change',
+              'mc change --package <package> --bump major --reason "description"',
               '```',
               '',
               'Or create one manually:',
@@ -294,3 +354,7 @@ jobs:
           echo "::error::Breaking API changes detected in:${{ steps.verify.outputs.missing }}"
           echo "Please add a changeset with 'major' change type for each affected package."
           exit 1
+
+  # NOTE: release-lint and release-test jobs are disabled because monochange
+  # requires nightly Rust features and cannot be installed from source on stable.
+  # Re-enable once monochange is published to crates.io with stable Rust support.

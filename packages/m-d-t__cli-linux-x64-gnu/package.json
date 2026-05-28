@@ -1,0 +1,30 @@
+{
+	"name": "@m-d-t/cli-linux-x64-gnu",
+	"version": "0.0.0",
+	"description": "Prebuilt mdt binary for Linux x64 (glibc)",
+	"homepage": "https://github.com/ifiokjr/mdt",
+	"bugs": {
+		"url": "https://github.com/ifiokjr/mdt/issues"
+	},
+	"license": "Unlicense",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ifiokjr/mdt.git"
+	},
+	"files": [
+		"bin"
+	],
+	"os": [
+		"linux"
+	],
+	"cpu": [
+		"x64"
+	],
+	"libc": [
+		"glibc"
+	],
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}

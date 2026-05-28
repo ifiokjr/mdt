@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const scriptPath = join(process.cwd(), "scripts/npm/publish-packages.mjs");
+const scriptPath = join(process.cwd(), "scripts/npm/publish-packages.ts");
 
 function makeTempDir(name) {
 	return join(
@@ -53,33 +53,58 @@ esac
 	return scriptPath;
 }
 
+test("publish-packages requires a packages directory argument", () => {
+	const result = spawnSync("pnpm", ["tsx", scriptPath], {
+		cwd: process.cwd(),
+		encoding: "utf8",
+	});
+	assert.notEqual(result.status, 0);
+	assert.match(
+		result.stderr,
+		/usage: publish-packages\.ts --packages-dir <dir>/,
+	);
+});
+
 test("publish-packages publishes unpublished packages and skips existing ones", () => {
 	const tempRoot = makeTempDir("happy");
 	const packagesDir = join(tempRoot, "packages");
-	const platformDir = join(packagesDir, "platform");
-	const skillsDir = join(packagesDir, "skills");
-	const rootDir = join(packagesDir, "root");
 	const publishLogPath = join(tempRoot, "publish.log");
 	const fakeBinDir = join(tempRoot, "bin");
 
 	try {
-		createPackage(
-			join(platformDir, "@m-d-t__cli-darwin-arm64"),
-			"@m-d-t/cli-darwin-arm64",
-			"1.2.3",
-		);
-		createPackage(
-			join(platformDir, "@m-d-t__cli-linux-x64-gnu"),
-			"@m-d-t/cli-linux-x64-gnu",
-			"1.2.3",
-		);
-		createPackage(skillsDir, "@m-d-t/skills", "1.2.3");
-		createPackage(rootDir, "@m-d-t/cli", "1.2.3");
+		// Create ALL platform packages flat under packagesDir (matches publish-packages.ts PLATFORM_PACKAGE_DIRS)
+		const ALL_PLATFORM_PACKAGES = [
+			"m-d-t__cli-darwin-arm64",
+			"m-d-t__cli-darwin-x64",
+			"m-d-t__cli-linux-arm64-gnu",
+			"m-d-t__cli-linux-arm64-musl",
+			"m-d-t__cli-linux-x64-gnu",
+			"m-d-t__cli-linux-x64-musl",
+			"m-d-t__cli-win32-arm64-msvc",
+			"m-d-t__cli-win32-x64-msvc",
+		];
+		for (const dirName of ALL_PLATFORM_PACKAGES) {
+			const pkgDir = join(packagesDir, dirName);
+			const pkgName = `@m-d-t/${dirName.replace("m-d-t__cli-", "cli-")}`;
+			createPackage(pkgDir, pkgName, "1.2.3");
+			// Create a fake binary so hasBinary() passes
+			mkdirSync(join(pkgDir, "bin"), { recursive: true });
+			writeFileSync(join(pkgDir, "bin", "mdt"), "fake", { mode: 0o755 });
+		}
+
+		// Create the root CLI package
+		const cliDir = join(packagesDir, "m-d-t__cli");
+		createPackage(cliDir, "@m-d-t/cli", "1.2.3");
+		mkdirSync(join(cliDir, "bin"), { recursive: true });
+		writeFileSync(join(cliDir, "bin", "mdt.js"), "fake launcher", {
+			mode: 0o755,
+		});
+
 		createFakeNpm(fakeBinDir, publishLogPath);
 
 		const result = spawnSync(
-			"node",
-			[scriptPath, "--packages-dir", packagesDir],
+			"pnpm",
+			["tsx", scriptPath, "--packages-dir", packagesDir],
 			{
 				cwd: process.cwd(),
 				encoding: "utf8",
@@ -91,35 +116,21 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		);
 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
-		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/skills@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/cli@1.2.3/);
+		// linux-x64-gnu is already published (npm view succeeds) → skipped
+		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
+		// darwin-arm64 is not published (npm view fails) → published
+		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1\.2\.3/);
+		// the root CLI package should also be published
+		assert.match(result.stdout, /Publishing @m-d-t\/cli@1\.2\.3/);
 
+		// 8 platform packages total: 7 unpublished + 1 skipped = 7 published
+		// Plus 1 CLI package = 8 total published
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-		assert.equal(publishedDirs.length, 3);
-		assert.match(
-			publishedDirs[0],
-			/packages\/platform\/@m-d-t__cli-darwin-arm64$/,
-		);
-		assert.match(publishedDirs[1], /packages\/skills$/);
-		assert.match(publishedDirs[2], /packages\/root$/);
+		assert.equal(publishedDirs.length, 8);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
-});
-
-test("publish-packages requires a packages directory argument", () => {
-	const result = spawnSync("node", [scriptPath], {
-		cwd: process.cwd(),
-		encoding: "utf8",
-	});
-	assert.notEqual(result.status, 0);
-	assert.match(
-		result.stderr,
-		/usage: publish-packages\.mjs --packages-dir <dir>/,
-	);
 });

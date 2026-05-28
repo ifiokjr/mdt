@@ -18,8 +18,8 @@ in
       cargo-run-bin
       deno
       dprint
-      extra.knope
-      extra.pnpm-standalone
+      extra.monochange
+      extra.pnpm
       mdbook
       nixfmt
       rustup

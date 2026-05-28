@@ -1,0 +1,19 @@
+{
+	"$schema": "https://raw.githubusercontent.com/sxzz/tsdown/main/schema.json",
+	"entry": {
+		"packages/m-d-t__cli/bin/mdt": "packages/m-d-t__cli/src/mdt.ts"
+	},
+	"format": [
+		"esm"
+	],
+	"target": "node22",
+	"outDir": ".",
+	"clean": false,
+	"sourcemap": false,
+	"platform": "node",
+	"treeshake": true,
+	"dts": false,
+	"minify": false,
+	"report": false,
+	"fixedExtension": false
+}
