@@ -53,28 +53,51 @@ esac
 	return scriptPath;
 }
 
+test("publish-packages requires a packages directory argument", () => {
+	const result = spawnSync("pnpm", ["tsx", scriptPath], {
+		cwd: process.cwd(),
+		encoding: "utf8",
+	});
+	assert.notEqual(result.status, 0);
+	assert.match(
+		result.stderr,
+		/usage: publish-packages\.ts --packages-dir <dir>/,
+	);
+});
+
 test("publish-packages publishes unpublished packages and skips existing ones", () => {
 	const tempRoot = makeTempDir("happy");
 	const packagesDir = join(tempRoot, "packages");
-	const platformDir = join(packagesDir, "platform");
-	const skillsDir = join(packagesDir, "skills");
-	const rootDir = join(packagesDir, "root");
 	const publishLogPath = join(tempRoot, "publish.log");
 	const fakeBinDir = join(tempRoot, "bin");
 
 	try {
-		createPackage(
-			join(platformDir, "@m-d-t__cli-darwin-arm64"),
-			"@m-d-t/cli-darwin-arm64",
-			"1.2.3",
-		);
-		createPackage(
-			join(platformDir, "@m-d-t__cli-linux-x64-gnu"),
-			"@m-d-t/cli-linux-x64-gnu",
-			"1.2.3",
-		);
-		createPackage(skillsDir, "@m-d-t/skills", "1.2.3");
-		createPackage(rootDir, "@m-d-t/cli", "1.2.3");
+		// Create platform packages flat under packagesDir (matches real repo structure)
+		for (
+			const dirName of [
+				"m-d-t__cli-darwin-arm64",
+				"m-d-t__cli-linux-x64-gnu",
+			]
+		) {
+			const pkgDir = join(packagesDir, dirName);
+			createPackage(
+				pkgDir,
+				`@m-d-t/${dirName.replace("m-d-t__cli-", "cli-")}`,
+				"1.2.3",
+			);
+			// Create a fake binary so hasBinary() passes
+			mkdirSync(join(pkgDir, "bin"), { recursive: true });
+			writeFileSync(join(pkgDir, "bin", "mdt"), "fake", { mode: 0o755 });
+		}
+
+		// Create the root CLI package
+		const cliDir = join(packagesDir, "m-d-t__cli");
+		createPackage(cliDir, "@m-d-t/cli", "1.2.3");
+		mkdirSync(join(cliDir, "bin"), { recursive: true });
+		writeFileSync(join(cliDir, "bin", "mdt.js"), "fake launcher", {
+			mode: 0o755,
+		});
+
 		createFakeNpm(fakeBinDir, publishLogPath);
 
 		const result = spawnSync(
@@ -91,35 +114,25 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		);
 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
+		// linux-x64-gnu is already published (npm view succeeds)
 		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
+		// darwin-arm64 is not published (npm view fails) so it should be published
 		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1\.2\.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/skills@1\.2\.3/);
+		// the root CLI package should also be published
 		assert.match(result.stdout, /Publishing @m-d-t\/cli@1\.2\.3/);
 
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-		assert.equal(publishedDirs.length, 3);
-		assert.match(
-			publishedDirs[0],
-			/packages\/platform\/@m-d-t__cli-darwin-arm64$/,
+		assert.equal(
+			publishedDirs.length,
+			2,
+			`expected 2 publishes, got: ${publishedDirs.join(", ")}`,
 		);
-		assert.match(publishedDirs[1], /packages\/skills$/);
-		assert.match(publishedDirs[2], /packages\/root$/);
+		assert.match(publishedDirs[0], /packages\/m-d-t__cli-darwin-arm64$/);
+		assert.match(publishedDirs[1], /packages\/m-d-t__cli$/);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
-});
-
-test("publish-packages requires a packages directory argument", () => {
-	const result = spawnSync("pnpm", ["tsx", scriptPath], {
-		cwd: process.cwd(),
-		encoding: "utf8",
-	});
-	assert.notEqual(result.status, 0);
-	assert.match(
-		result.stderr,
-		/usage: publish-packages\.ts --packages-dir <dir>/,
-	);
 });
