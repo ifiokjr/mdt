@@ -108,8 +108,21 @@ jobs:
         run: test:all
         shell: devenv shell -c -- bash -e {0}
 
-      # NOTE: npm integration tests are run separately in the publish workflow.
-      # They require tsx and a specific Node.js version that conflicts with devenv.
+      - name: setup node for npm tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install pnpm for npm tests
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: run npm integration tests
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm build
+          pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
 
   build:
     timeout-minutes: 60
