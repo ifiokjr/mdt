@@ -46,6 +46,9 @@ test("build-packages reports missing release assets", () => {
 });
 
 test("build-packages processes release archives without error", () => {
+	// Clean up leftover temp directory from previous runs
+	const repoPackagesTmp = join(process.cwd(), "packages", ".tmp");
+	rmSync(repoPackagesTmp, { recursive: true, force: true });
 	const tempRoot = join(
 		tmpdir(),
 		`mdt-build-packages-${process.pid}-${Date.now()}`,

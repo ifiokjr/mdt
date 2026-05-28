@@ -30,7 +30,12 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: install JavaScript coverage tooling
         run: npm install --global c8@10
@@ -47,15 +52,16 @@ jobs:
       - name: generate JavaScript coverage report
         run: |
           rm -rf .node-coverage .node-lcov
+          pnpm install --no-frozen-lockfile
+          pnpm build
           NODE_V8_COVERAGE=.node-coverage \
-            node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
+            pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
           c8 report \
             --all \
             --reporter=lcovonly \
             --report-dir .node-lcov \
             --temp-directory .node-coverage \
-            --include "npm/bin/*.js" \
-            --include "scripts/npm/*.mjs" \
+            --include "scripts/npm/*.ts" \
             --exclude "**/tests/**"
           cp .node-lcov/lcov.info js-lcov.info
 

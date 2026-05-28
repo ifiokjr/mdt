@@ -1071,7 +1071,10 @@ fn formatter_pipeline_failures_return_formatter_error() -> MdtResult<()> {
 
 	let ctx = scan_project_with_config(tmp.path())?;
 	let err = compute_updates(&ctx).unwrap_err();
-	assert!(matches!(err, MdtError::Formatter { .. }));
+	assert!(
+		matches!(err, MdtError::Formatter { .. }),
+		"expected Formatter error but got: {err:?}"
+	);
 
 	Ok(())
 }
