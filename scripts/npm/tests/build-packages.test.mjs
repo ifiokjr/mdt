@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -61,125 +55,44 @@ function writeArchive(assetsDir, releaseTag, spec, tempRoot) {
 	}
 }
 
-test("build-packages generates root and platform npm packages from release archives", () => {
+test("build-packages populates platform packages from release archives", () => {
 	const tempRoot = join(
 		tmpdir(),
 		`mdt-build-packages-${process.pid}-${Date.now()}`,
 	);
 	const assetsDir = join(tempRoot, "assets");
-	const outDir = join(tempRoot, "out");
-	const releaseTag = "v1.2.3";
-
-	mkdirSync(assetsDir, { recursive: true });
-	for (const spec of targets) {
-		writeArchive(assetsDir, releaseTag, spec, tempRoot);
-	}
-
-	const result = spawnSync(
-		"node",
-		[
-			scriptPath,
-			"--version",
-			"1.2.3",
-			"--release-tag",
-			releaseTag,
-			"--assets-dir",
-			assetsDir,
-			"--out-dir",
-			outDir,
-		],
-		{ encoding: "utf8" },
-	);
 
 	try {
+		mkdirSync(assetsDir, { recursive: true });
+		for (const spec of targets) {
+			writeArchive(assetsDir, "v1.2.3", spec, tempRoot);
+		}
+
+		const result = spawnSync(
+			"pnpm",
+			["tsx", scriptPath, "--release-tag", "v1.2.3", "--assets-dir", assetsDir],
+			{ encoding: "utf8" },
+		);
+
 		assert.equal(result.status, 0, result.stderr || result.stdout);
-		assert.ok(existsSync(join(outDir, "root", "bin", "mdt.js")));
-		assert.ok(
-			existsSync(
-				join(outDir, "platform", "@m-d-t__cli-linux-x64-gnu", "bin", "mdt"),
-			),
+		assert.match(
+			result.stdout,
+			/Populated platform binaries/,
 		);
-		assert.ok(
-			existsSync(
-				join(
-					outDir,
-					"platform",
-					"@m-d-t__cli-win32-x64-msvc",
-					"bin",
-					"mdt.exe",
-				),
-			),
-		);
-
-		const rootPackage = JSON.parse(
-			readFileSync(join(outDir, "root", "package.json"), "utf8"),
-		);
-		assert.equal(rootPackage.name, "@m-d-t/cli");
-		assert.equal(rootPackage.version, "1.2.3");
-		assert.equal(rootPackage.bin.mdt, "bin/mdt.js");
-		assert.equal(
-			rootPackage.optionalDependencies["@m-d-t/cli-darwin-arm64"],
-			"1.2.3",
-		);
-
-		const linuxPackage = JSON.parse(
-			readFileSync(
-				join(outDir, "platform", "@m-d-t__cli-linux-x64-gnu", "package.json"),
-				"utf8",
-			),
-		);
-		assert.equal(linuxPackage.name, "@m-d-t/cli-linux-x64-gnu");
-		assert.deepEqual(linuxPackage.os, ["linux"]);
-		assert.deepEqual(linuxPackage.cpu, ["x64"]);
-		assert.deepEqual(linuxPackage.libc, ["glibc"]);
-
-		// Skills package assertions
-		assert.ok(
-			existsSync(join(outDir, "skills", "skills", "mdt", "SKILL.md")),
-			"skills package should contain skills/mdt/SKILL.md",
-		);
-		assert.ok(
-			existsSync(join(outDir, "skills", "skills", "mdt", "REFERENCE.md")),
-			"skills package should contain skills/mdt/REFERENCE.md",
-		);
-		assert.ok(
-			existsSync(join(outDir, "skills", "README.md")),
-			"skills package should contain README.md",
-		);
-		assert.ok(
-			existsSync(join(outDir, "skills", "LICENSE")),
-			"skills package should contain LICENSE",
-		);
-
-		const skillsPackage = JSON.parse(
-			readFileSync(join(outDir, "skills", "package.json"), "utf8"),
-		);
-		assert.equal(skillsPackage.name, "@m-d-t/skills");
-		assert.equal(skillsPackage.version, "1.2.3");
-		assert.ok(
-			skillsPackage.keywords.includes("pi-package"),
-			"skills package should have pi-package keyword",
-		);
-
-		// Summary should include skills package
-		const summary = JSON.parse(
-			readFileSync(join(outDir, "summary.json"), "utf8"),
-		);
-		assert.equal(summary.skillsPackage, "@m-d-t/skills");
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
 });
 
 test("build-packages requires the expected command line arguments", () => {
-	const result = spawnSync("node", [scriptPath], {
+	const result = spawnSync("pnpm", ["tsx", scriptPath], {
 		cwd: process.cwd(),
 		encoding: "utf8",
 	});
 	assert.notEqual(result.status, 0);
 	assert.match(
 		result.stderr,
-		/usage: build-packages.ts --release-tag <vX\.Y\.Z>/,
+		/usage: build-packages\.ts --release-tag <vX\.Y\.Z> --assets-dir <dir>/,
 	);
 });
 
@@ -189,30 +102,20 @@ test("build-packages reports missing release assets", () => {
 		`mdt-build-packages-missing-${process.pid}-${Date.now()}`,
 	);
 	const assetsDir = join(tempRoot, "assets");
-	const outDir = join(tempRoot, "out");
-	mkdirSync(assetsDir, { recursive: true });
-
-	const result = spawnSync(
-		"node",
-		[
-			scriptPath,
-			"--version",
-			"1.2.3",
-			"--release-tag",
-			"v1.2.3",
-			"--assets-dir",
-			assetsDir,
-			"--out-dir",
-			outDir,
-		],
-		{ encoding: "utf8" },
-	);
 
 	try {
+		mkdirSync(assetsDir, { recursive: true });
+
+		const result = spawnSync(
+			"pnpm",
+			["tsx", scriptPath, "--release-tag", "v1.2.3", "--assets-dir", assetsDir],
+			{ encoding: "utf8" },
+		);
+
 		assert.notEqual(result.status, 0);
 		assert.match(
 			result.stderr,
-			/missing release asset: mdt-aarch64-unknown-linux-gnu-v1.2.3.tar.gz/,
+			/missing release asset: mdt-aarch64-unknown-linux-gnu-v1\.2\.3\.tar\.gz/,
 		);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });

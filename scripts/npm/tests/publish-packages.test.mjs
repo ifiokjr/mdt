@@ -78,8 +78,8 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		createFakeNpm(fakeBinDir, publishLogPath);
 
 		const result = spawnSync(
-			"node",
-			[scriptPath, "--packages-dir", packagesDir],
+			"pnpm",
+			["tsx", scriptPath, "--packages-dir", packagesDir],
 			{
 				cwd: process.cwd(),
 				encoding: "utf8",
@@ -91,10 +91,10 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 		);
 
 		assert.equal(result.status, 0, result.stderr || result.stdout);
-		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/skills@1.2.3/);
-		assert.match(result.stdout, /Publishing @m-d-t\/cli@1.2.3/);
+		assert.match(result.stdout, /Skipping @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/cli-darwin-arm64@1\.2\.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/skills@1\.2\.3/);
+		assert.match(result.stdout, /Publishing @m-d-t\/cli@1\.2\.3/);
 
 		const publishedDirs = readFileSync(publishLogPath, "utf8")
 			.trim()
@@ -113,13 +113,13 @@ test("publish-packages publishes unpublished packages and skips existing ones", 
 });
 
 test("publish-packages requires a packages directory argument", () => {
-	const result = spawnSync("node", [scriptPath], {
+	const result = spawnSync("pnpm", ["tsx", scriptPath], {
 		cwd: process.cwd(),
 		encoding: "utf8",
 	});
 	assert.notEqual(result.status, 0);
 	assert.match(
 		result.stderr,
-		/usage: publish-packages.ts --packages-dir <dir>/,
+		/usage: publish-packages\.ts --packages-dir <dir>/,
 	);
 });
