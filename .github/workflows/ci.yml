@@ -110,7 +110,8 @@ jobs:
 
       - name: run npm integration tests
         run: |
-          node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
+          pnpm install && pnpm build
+          pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
 
   build:
     timeout-minutes: 60
@@ -358,8 +359,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: install monochange
-        run: cargo install monochange --locked
+      - name: install monochange from git
+        run: cargo install monochange --git https://github.com/ifiokjr/monochange.git --locked
         shell: devenv shell -c -- bash -e {0}
 
       - name: create release commit
@@ -411,8 +412,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: install monochange
-        run: cargo install monochange --locked
+      - name: install monochange from git
+        run: cargo install monochange --git https://github.com/ifiokjr/monochange.git --locked
         shell: devenv shell -c -- bash -e {0}
 
       - name: create release commit

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const scriptPath = join(process.cwd(), "scripts/npm/publish-packages.mjs");
+const scriptPath = join(process.cwd(), "scripts/npm/publish-packages.ts");
 
 function makeTempDir(name) {
 	return join(
