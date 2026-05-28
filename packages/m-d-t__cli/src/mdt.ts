@@ -58,10 +58,10 @@ function shouldTryNextPackage(result: ReturnType<typeof spawnSync>): boolean {
 
 function forwardOutput(result: ReturnType<typeof spawnSync>): void {
 	if (result.stdout) {
-		process.stdout.write(result.stdout);
+		process.stdout.write(String(result.stdout));
 	}
 	if (result.stderr) {
-		process.stderr.write(result.stderr);
+		process.stderr.write(String(result.stderr));
 	}
 }
 
