@@ -179,7 +179,7 @@ test("build-packages requires the expected command line arguments", () => {
 	assert.notEqual(result.status, 0);
 	assert.match(
 		result.stderr,
-		/usage: build-packages\.mjs --version <x\.y\.z> --release-tag <vX\.Y\.Z>/,
+		/usage: build-packages.ts --release-tag <vX\.Y\.Z>/,
 	);
 });
 

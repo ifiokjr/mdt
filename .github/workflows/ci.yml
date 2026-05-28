@@ -112,6 +112,7 @@ jobs:
         run: |
           pnpm install && pnpm build
           pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
+        shell: devenv shell -c -- bash -e {0}
 
   build:
     timeout-minutes: 60
@@ -344,98 +345,6 @@ jobs:
           echo "Please add a changeset with 'major' change type for each affected package."
           exit 1
 
-  release-lint:
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'monochange/release')
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: setup
-        uses: ./.github/actions/devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: install monochange from git
-        run: cargo install monochange --git https://github.com/ifiokjr/monochange.git --locked
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: create release commit
-        id: release_commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          before="$(git rev-parse HEAD)"
-          mc release --commit
-          after="$(git rev-parse HEAD)"
-          if [ "$before" != "$after" ]; then
-            echo "created=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "created=false" >> "$GITHUB_OUTPUT"
-          fi
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: lint clippy
-        if: steps.release_commit.outputs.created == 'true'
-        run: lint:clippy
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: lint formatting
-        if: steps.release_commit.outputs.created == 'true'
-        run: lint:format
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: check mdt blocks
-        if: steps.release_commit.outputs.created == 'true'
-        run: cargo run --bin mdt -- check
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: skip release lints when no release commit is created
-        if: steps.release_commit.outputs.created == 'false'
-        run: echo "No pull-request release commit was created; skipping release lint preflight."
-
-  release-test:
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'monochange/release')
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: setup
-        uses: ./.github/actions/devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: install monochange from git
-        run: cargo install monochange --git https://github.com/ifiokjr/monochange.git --locked
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: create release commit
-        id: release_commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          before="$(git rev-parse HEAD)"
-          mc release --commit
-          after="$(git rev-parse HEAD)"
-          if [ "$before" != "$after" ]; then
-            echo "created=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "created=false" >> "$GITHUB_OUTPUT"
-          fi
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: run cargo tests
-        if: steps.release_commit.outputs.created == 'true'
-        run: test:all
-        shell: devenv shell -c -- bash -e {0}
-
-      - name: skip release tests when no release commit is created
-        if: steps.release_commit.outputs.created == 'false'
-        run: echo "No pull-request release commit was created; skipping release test preflight."
+  # NOTE: release-lint and release-test jobs are disabled because monochange
+  # requires nightly Rust features and cannot be installed from source on stable.
+  # Re-enable once monochange is published to crates.io with stable Rust support.

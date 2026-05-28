@@ -120,6 +120,6 @@ test("publish-packages requires a packages directory argument", () => {
 	assert.notEqual(result.status, 0);
 	assert.match(
 		result.stderr,
-		/usage: publish-packages\.mjs --packages-dir <dir>/,
+		/usage: publish-packages.ts --packages-dir <dir>/,
 	);
 });
