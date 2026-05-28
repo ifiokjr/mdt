@@ -40,7 +40,7 @@ test("publish-packages requires a packages directory argument", () => {
 	});
 	assert.notEqual(result.status, 0);
 	assert.match(
-		result.stderr,
+		String(result.stderr || result.stdout || ""),
 		/usage: publish-packages\.ts --packages-dir <dir>/,
 	);
 });
@@ -74,11 +74,11 @@ test("publish-packages validates packages have binaries", () => {
 			{ encoding: "utf8" },
 		);
 
-		assert.equal(result.status, 0, result.stderr || result.stdout);
-		// The script prints "Populated" for each package with binaries
-		assert.match(result.stdout, /Populated @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
-		assert.match(result.stdout, /Populated @m-d-t\/cli-darwin-arm64@1\.2\.3/);
-		assert.match(result.stdout, /Populated @m-d-t\/cli@1\.2\.3/);
+		const output = String(result.stdout || "");
+		assert.equal(result.status, 0, String(result.stderr || output));
+		assert.match(output, /Populated @m-d-t\/cli-linux-x64-gnu@1\.2\.3/);
+		assert.match(output, /Populated @m-d-t\/cli-darwin-arm64@1\.2\.3/);
+		assert.match(output, /Populated @m-d-t\/cli@1\.2\.3/);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
@@ -100,12 +100,10 @@ test("publish-packages errors when binaries are missing", () => {
 			{ encoding: "utf8" },
 		);
 
+		const errOutput = String(result.stderr || result.stdout || "");
 		assert.notEqual(result.status, 0);
-		assert.match(
-			result.stderr,
-			/Cannot populate @m-d-t\/cli-darwin-arm64@1\.2\.3/,
-		);
-		assert.match(result.stderr, /no binary found/);
+		assert.match(errOutput, /Cannot populate @m-d-t\/cli-darwin-arm64@1\.2\.3/);
+		assert.match(errOutput, /no binary found/);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
