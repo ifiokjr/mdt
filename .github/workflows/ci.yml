@@ -79,7 +79,7 @@ jobs:
           version: 10
 
       - name: install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: build npm tooling
         run: pnpm build
