@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"allowJs": false,
+		"checkJs": false,
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"noEmit": true,
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"strict": false,
+		"target": "ES2024",
+		"types": [
+			"node"
+		]
+	},
+	"exclude": [
+		"dist",
+		"fixtures",
+		"node_modules",
+		"target"
+	],
+	"include": [
+		"scripts/**/*.ts",
+		"packages/m-d-t__cli/src/**/*.ts"
+	]
+}

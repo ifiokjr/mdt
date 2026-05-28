@@ -1,6 +1,5 @@
 ---
-mdt_cli: note
-mdt_lsp: note
+mdt_cli: none
 ---
 
 Improve automated coverage for the CLI npm distribution flow and add direct language-server lifecycle tests.
