@@ -7,7 +7,7 @@ import test from "node:test";
 
 const scriptPath = join(process.cwd(), "scripts/npm/publish-packages.ts");
 
-const ALL_PLATFORM_PACKAGES = [
+const ALL_PLATFORM_PACKAGES: string[] = [
 	"m-d-t__cli-darwin-arm64",
 	"m-d-t__cli-darwin-x64",
 	"m-d-t__cli-linux-arm64-gnu",
@@ -18,14 +18,14 @@ const ALL_PLATFORM_PACKAGES = [
 	"m-d-t__cli-win32-x64-msvc",
 ];
 
-function makeTempDir(name) {
+function makeTempDir(name: string): string {
 	return join(
 		tmpdir(),
 		`mdt-publish-packages-${name}-${process.pid}-${Date.now()}`,
 	);
 }
 
-function createPackage(dir, name, version) {
+function createPackage(dir: string, name: string, version: string): void {
 	mkdirSync(dir, { recursive: true });
 	writeFileSync(
 		join(dir, "package.json"),

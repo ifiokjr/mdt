@@ -7,6 +7,23 @@ import test from "node:test";
 
 const scriptPath = join(process.cwd(), "scripts/npm/build-packages.ts");
 
+interface TargetSpec {
+	target: string;
+	ext: "tar.gz" | "zip";
+	binary: string;
+}
+
+const targets: TargetSpec[] = [
+	{ target: "aarch64-unknown-linux-gnu", ext: "tar.gz", binary: "mdt" },
+	{ target: "aarch64-unknown-linux-musl", ext: "tar.gz", binary: "mdt" },
+	{ target: "aarch64-apple-darwin", ext: "tar.gz", binary: "mdt" },
+	{ target: "x86_64-unknown-linux-gnu", ext: "tar.gz", binary: "mdt" },
+	{ target: "x86_64-unknown-linux-musl", ext: "tar.gz", binary: "mdt" },
+	{ target: "x86_64-apple-darwin", ext: "tar.gz", binary: "mdt" },
+	{ target: "x86_64-pc-windows-msvc", ext: "zip", binary: "mdt.exe" },
+	{ target: "aarch64-pc-windows-msvc", ext: "zip", binary: "mdt.exe" },
+];
+
 test("build-packages requires the expected command line arguments", () => {
 	const result = spawnSync("pnpm", ["tsx", scriptPath], {
 		cwd: process.cwd(),
@@ -14,7 +31,7 @@ test("build-packages requires the expected command line arguments", () => {
 	});
 	assert.notEqual(result.status, 0);
 	assert.match(
-		result.stderr,
+		String(result.stderr || ""),
 		/usage: build-packages\.ts --release-tag <vX\.Y\.Z> --assets-dir <dir>/,
 	);
 });
@@ -37,7 +54,7 @@ test("build-packages reports missing release assets", () => {
 
 		assert.notEqual(result.status, 0);
 		assert.match(
-			result.stderr,
+			String(result.stderr || ""),
 			/missing release asset: mdt-aarch64-unknown-linux-gnu-v1\.2\.3\.tar\.gz/,
 		);
 	} finally {
@@ -49,22 +66,12 @@ test("build-packages processes release archives without error", () => {
 	// Clean up leftover temp directory from previous runs
 	const repoPackagesTmp = join(process.cwd(), "packages", ".tmp");
 	rmSync(repoPackagesTmp, { recursive: true, force: true });
+
 	const tempRoot = join(
 		tmpdir(),
 		`mdt-build-packages-${process.pid}-${Date.now()}`,
 	);
 	const assetsDir = join(tempRoot, "assets");
-
-	const targets = [
-		{ target: "aarch64-unknown-linux-gnu", ext: "tar.gz", binary: "mdt" },
-		{ target: "aarch64-unknown-linux-musl", ext: "tar.gz", binary: "mdt" },
-		{ target: "aarch64-apple-darwin", ext: "tar.gz", binary: "mdt" },
-		{ target: "x86_64-unknown-linux-gnu", ext: "tar.gz", binary: "mdt" },
-		{ target: "x86_64-unknown-linux-musl", ext: "tar.gz", binary: "mdt" },
-		{ target: "x86_64-apple-darwin", ext: "tar.gz", binary: "mdt" },
-		{ target: "x86_64-pc-windows-msvc", ext: "zip", binary: "mdt.exe" },
-		{ target: "aarch64-pc-windows-msvc", ext: "zip", binary: "mdt.exe" },
-	];
 
 	try {
 		mkdirSync(assetsDir, { recursive: true });
@@ -107,8 +114,8 @@ test("build-packages processes release archives without error", () => {
 		);
 
 		// Script should succeed when all assets are present
-		assert.equal(result.status, 0, result.stderr || result.stdout);
-		assert.match(result.stdout, /Populated platform binaries/);
+		assert.equal(result.status, 0, String(result.stderr || result.stdout));
+		assert.match(String(result.stdout || ""), /Populated platform binaries/);
 	} finally {
 		rmSync(tempRoot, { recursive: true, force: true });
 	}
