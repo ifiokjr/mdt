@@ -28,4 +28,4 @@ packages/*/bin/
 packages/.tmp/
 
 # old npm directory (migrated to packages/)
-/npm/bin/
+# npm/bin/ launcher is kept for mdt-bin tests (renamed to .cjs for CommonJS compatibility)

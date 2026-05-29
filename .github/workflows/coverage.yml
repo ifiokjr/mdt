@@ -55,7 +55,7 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm build
           NODE_V8_COVERAGE=.node-coverage \
-            pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
+            pnpm node --import tsx --test scripts/npm/tests/*.test.ts npm/tests/*.test.mjs
           c8 report \
             --all \
             --reporter=lcovonly \

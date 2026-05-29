@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const launcherPath = join(process.cwd(), "npm/bin/mdt.js");
+const launcherPath = join(process.cwd(), "npm/bin/mdt.cjs");
 
 const platformPackages = {
 	darwin: {
@@ -75,10 +75,10 @@ test("launcher executes the installed platform binary", () => {
 		createPackage(nodeModulesDir, pkgName, binary);
 
 		const result = runLauncher(nodeModulesDir, ["check", "--verbose"]);
-		assert.equal(result.status, 0, result.stderr);
-		assert.match(result.stdout, /launcher-ok/);
-		assert.match(result.stdout, /check/);
-		assert.match(result.stdout, /verbose/);
+		assert.equal(result.status, 0, String(result.stderr || ""));
+		assert.match(String(result.stdout || ""), /launcher-ok/);
+		assert.match(String(result.stdout || ""), /check/);
+		assert.match(String(result.stdout || ""), /verbose/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -89,42 +89,55 @@ test("launcher shows a helpful error when no platform package is installed", () 
 	try {
 		const result = runLauncher(nodeModulesDir, ["--help"]);
 		assert.notEqual(result.status, 0);
-		assert.match(result.stderr, /Unable to find a compatible mdt binary/);
-		assert.match(result.stderr, /Reinstall with `npm install -g @m-d-t\/cli`/);
+		assert.match(
+			String(result.stderr || ""),
+			/Unable to find a compatible mdt binary/,
+		);
+		assert.match(
+			String(result.stderr || ""),
+			/Reinstall with `npm install -g @m-d-t\/cli`/,
+		);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
 
-test("launcher reports unsupported platforms before attempting resolution", {
-	skip: currentCandidates().length === 0,
-}, () => {
-	const { root, nodeModulesDir } = setupNodePath("unsupported");
-	try {
-		const result = spawnSync(
-			"node",
-			[
-				"-e",
-				`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${
-					JSON.stringify(launcherPath)
-				});`,
-			],
-			{
-				cwd: process.cwd(),
-				encoding: "utf8",
-				env: {
-					...process.env,
-					NODE_PATH: nodeModulesDir,
+test(
+	"launcher reports unsupported platforms before attempting resolution",
+	{
+		skip: currentCandidates().length === 0,
+	},
+	() => {
+		const { root, nodeModulesDir } = setupNodePath("unsupported");
+		try {
+			const result = spawnSync(
+				"node",
+				[
+					"-e",
+					`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${
+						JSON.stringify(launcherPath)
+					});`,
+				],
+				{
+					cwd: process.cwd(),
+					encoding: "utf8",
+					env: {
+						...process.env,
+						NODE_PATH: nodeModulesDir,
+					},
 				},
-			},
-		);
-		assert.notEqual(result.status, 0);
-		assert.match(result.stderr, /does not currently publish npm binaries/);
-		assert.match(result.stderr, /sunos\/x64/);
-	} finally {
-		rmSync(root, { recursive: true, force: true });
-	}
-});
+			);
+			assert.notEqual(result.status, 0);
+			assert.match(
+				String(result.stderr || ""),
+				/does not currently publish npm binaries/,
+			);
+			assert.match(String(result.stderr || ""), /sunos\/x64/);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);
 
 test(
 	"launcher falls back to the secondary linux package when the first one fails to launch",
@@ -143,9 +156,9 @@ test(
 			);
 
 			const result = runLauncher(nodeModulesDir, ["doctor"]);
-			assert.equal(result.status, 0, result.stderr);
-			assert.match(result.stdout, /fallback-ok/);
-			assert.match(result.stdout, /doctor/);
+			assert.equal(result.status, 0, String(result.stderr || ""));
+			assert.match(String(result.stdout || ""), /fallback-ok/);
+			assert.match(String(result.stdout || ""), /doctor/);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

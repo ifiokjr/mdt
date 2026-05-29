@@ -122,7 +122,7 @@ jobs:
         run: |
           pnpm install --no-frozen-lockfile
           pnpm build
-          pnpm node --import tsx --test scripts/npm/tests/*.test.mjs
+          pnpm node --import tsx --test scripts/npm/tests/*.test.ts
 
   build:
     timeout-minutes: 60
