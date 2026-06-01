@@ -194,7 +194,7 @@ struct PreviewConsumerInfo {
 /// The MCP server for mdt.
 #[derive(Debug, Clone)]
 pub struct MdtMcpServer {
-	tool_router: ToolRouter<Self>,
+	pub tool_router: ToolRouter<Self>,
 }
 
 #[tool_handler]
