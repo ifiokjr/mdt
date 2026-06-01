@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::BuildHasher;
@@ -767,8 +768,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		let mut result = original.clone();
 		let mut had_update = false;
 		let mut sorted_consumers: Vec<&&ConsumerEntry> = consumers.iter().collect();
-		sorted_consumers
-			.sort_by(|a, b| b.block.opening.end.offset.cmp(&a.block.opening.end.offset));
+		sorted_consumers.sort_by_key(|b| Reverse(b.block.opening.end.offset));
 
 		for consumer in sorted_consumers {
 			let new_content = match consumer.block.r#type {
