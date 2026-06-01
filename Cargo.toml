@@ -37,8 +37,8 @@ serde = { default-features = false, version = "^1" }
 serde_ini = { default-features = false, version = "^0.2" }
 serde_json = { default-features = false, version = "^1" }
 serde_yaml_ng = { default-features = false, version = "^0.10" }
-similar = { default-features = false, version = "^2" }
-similar-asserts = { default-features = false, version = "^1" }
+similar = { default-features = false, version = "3.1.1" }
+similar-asserts = { default-features = false, version = "2.0.0" }
 snailquote = { default-features = false, version = "^0.3" }
 supports-color = { default-features = false, version = "^3" }
 tempfile = { default-features = false, version = "^3" }
@@ -56,11 +56,11 @@ mdt_lsp = { path = "./mdt_lsp", version = "0.7.0" }
 mdt_mcp = { path = "./mdt_mcp", version = "0.7.0" }
 
 [workspace.metadata.bin]
+cargo-deny = { version = "0.19.0" }
 cargo-insta = { version = "1.46.3" }
 cargo-llvm-cov = { version = "0.8.4" }
 cargo-nextest = { version = "0.9.129" }
 cargo-semver-checks = { version = "0.46.0" }
-cargo-deny = { version = "0.19.0" }
 cargo-workspaces = { version = "0.4.2" }
 
 [workspace.lints.rust]
