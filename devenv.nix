@@ -1,7 +1,6 @@
 {
   pkgs,
   lib,
-  config,
   inputs,
   ...
 }:
@@ -22,6 +21,8 @@ in
       extra.pnpm
       mdbook
       nixfmt
+      nodejs
+      pnpm
       rustup
       shfmt
     ]
