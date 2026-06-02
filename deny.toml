@@ -14,8 +14,6 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 allow = [
   "MIT",
   "Apache-2.0",
-  "BSD-2-Clause",
-  "BSD-3-Clause",
   "ISC",
   "Unlicense",
   "Zlib",
@@ -23,8 +21,6 @@ allow = [
   "BSL-1.0",
   "CC0-1.0",
   "MIT-0",
-  "Unicode-DFS-2016",
-  "OpenSSL",
 ]
 confidence-threshold = 0.8
 
@@ -33,7 +29,7 @@ allow = ["GPL-3.0-only"]
 crate = "snailquote"
 
 [bans]
-multiple-versions = "warn"
+multiple-versions = "allow"
 wildcards = "deny"
 highlight = "all"
 
