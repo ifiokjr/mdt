@@ -2,8 +2,17 @@
 mdt_core: major
 ---
 
-Add formatter-aware full-file normalization via opt-in `[[formatters]]` config in `mdt.toml`.
+# Add formatter-aware full-file normalization
 
-Public constructible structs gained new fields (`MdtConfig` and `ProjectContext`), which is a semver break for downstream crates that instantiate them with struct literals.
+`mdt_core` now supports opt-in `[[formatters]]` configuration in `mdt.toml`. Matching formatter commands run against the entire updated target file in declaration order using stdin/stdout, enabling formatter-aware drift detection and update output.
 
-When configured, the engine runs matching formatter commands on the entire updated target file, in declaration order, using stdin/stdout. This supports formatter-only file drift detection and surfaces formatter failures with dedicated diagnostics.
+This is a major release because public constructible structs such as `MdtConfig` and `ProjectContext` gained fields. Downstream crates that build these structs with literals must add the new fields or use defaults/builders where available.
+
+```rust
+let config = MdtConfig {
+    formatters: Vec::new(),
+    ..existing_config
+};
+```
+
+Formatter failures now surface as dedicated diagnostics so callers can distinguish rendering problems from formatter command failures.

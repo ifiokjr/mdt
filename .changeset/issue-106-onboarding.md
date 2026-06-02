@@ -2,6 +2,8 @@
 mdt_cli: docs
 ---
 
-Improve installation and quick-start documentation for first-time users.
+# Improve first-time installation and quick-start guidance
 
-The docs now recommend prebuilt release binaries for non-Rust projects, remove stale versioned install snippets, and show a 10-minute quick start that keeps a README section and a source-doc comment in sync from one provider.
+The installation and quick-start documentation now better serves users who want `mdt` without building Rust source locally. It recommends prebuilt release binaries for non-Rust projects, removes stale version-pinned snippets, and presents a concise first-run workflow.
+
+The new quick start shows how to keep a README section and a source-doc comment synchronized from a single provider, giving new users a practical end-to-end success path.

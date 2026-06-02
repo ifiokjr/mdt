@@ -2,6 +2,8 @@
 mdt_cli: none
 ---
 
-Improve automated coverage for the CLI npm distribution flow and add direct language-server lifecycle tests.
+# Expand CLI distribution and LSP coverage
 
-This adds integration coverage for the npm launcher and npm packaging scripts, updates the coverage workflow to include JavaScript coverage alongside Rust coverage, and exercises LSP initialize/open/change/close/shutdown paths more directly.
+The automated coverage suite now exercises more of the npm distribution path and language-server lifecycle. Integration tests cover the npm launcher, package-generation scripts, and direct LSP initialize/open/change/close/shutdown flows.
+
+Coverage reporting also includes JavaScript coverage alongside Rust coverage, making regressions in the generated npm tooling easier to spot before release.

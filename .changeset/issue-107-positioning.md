@@ -2,6 +2,8 @@
 mdt_cli: docs
 ---
 
-Sharpen the project positioning around the documentation drift problem for library and tool maintainers.
+# Clarify the documentation drift problem
 
-The README and documentation introduction now lead with keeping README sections, source-doc comments, and docs-site content synchronized, while clarifying that editor and agent integrations reinforce a human-first workflow.
+The README and guide introduction now lead with the core problem `mdt` solves: keeping README sections, source-doc comments, and docs-site content synchronized as projects evolve. The positioning is clearer for library and tool maintainers evaluating whether markdown templates fit their workflow.
+
+The updated copy also explains how editor and agent integrations support a human-first documentation process instead of replacing normal authoring practices.

@@ -2,6 +2,8 @@
 mdt_cli: minor
 ---
 
-Support `[check] comparison = "lenient"` in `mdt check` for whitespace-tolerant verification.
+# Support lenient whitespace comparison in check
 
-This makes the check tolerant of external formatter rewrites without needing to exclude template files from formatters.
+`mdt check` now honors `[check] comparison = "lenient"` for whitespace-tolerant verification. This mode allows projects to keep external formatters enabled without reporting stale blocks for harmless whitespace rewrites.
+
+The command still reports meaningful content drift, while `mdt update` continues to write exact rendered bytes regardless of the comparison setting.

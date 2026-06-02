@@ -2,27 +2,13 @@
 mdt_cli: minor
 ---
 
-Add `@m-d-t/skills` npm package — an official agent skill package for [Pi](https://github.com/badlogic/pi) and other harnesses supporting the [Agent Skills standard](https://agentskills.io).
+# Publish official agent skills for mdt
 
-The package includes a `skills/mdt/SKILL.md` with quick-start instructions and MCP tool guidance, plus a detailed `REFERENCE.md` covering the full template syntax, all transformers, data interpolation, inline blocks, configuration options, CLI commands, MCP server tools, and source-file patterns.
+`mdt` now publishes an official `@m-d-t/skills` npm package for Pi and other harnesses that support the Agent Skills standard. The package includes quick-start instructions, MCP tool guidance, and a detailed reference for template syntax, transformers, interpolation, inline blocks, configuration, CLI commands, MCP tools, and source-file patterns.
 
-Install with:
+The release tooling now generates and publishes the skills package alongside the CLI, and `mdt assist pi` points users toward the packaged skill.
 
 ```sh
 pi install npm:@m-d-t/skills
-```
-
-Or try it for a single session:
-
-```sh
 pi -e npm:@m-d-t/skills
 ```
-
-The skill is versioned alongside the CLI and published automatically during the npm publish workflow.
-
-Additional changes:
-
-- Updated `mdt assist pi` to mention the skill package in its notes.
-- Updated build and publish scripts to generate and publish the skills package.
-- Updated installation, assistant setup, and release documentation.
-- Added integration tests for skills package generation and publishing.
