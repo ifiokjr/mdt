@@ -94,10 +94,10 @@ Patterns for files and directories to skip during scanning. Uses **gitignore-sty
 ```toml
 [exclude]
 patterns = [
-	"vendor/",
-	"dist/",
-	"**/*.generated.md",
-	"!dist/important.md",
+  "vendor/",
+  "dist/",
+  "**/*.generated.md",
+  "!dist/important.md",
 ]
 ```
 
@@ -282,9 +282,9 @@ config = "config.yaml"
 # Skip these paths during scanning (gitignore-style patterns)
 [exclude]
 patterns = [
-	"vendor/",
-	"dist/",
-	"coverage/",
+  "vendor/",
+  "dist/",
+  "coverage/",
 ]
 blocks = ["draft-section"]
 markdown_codeblocks = true

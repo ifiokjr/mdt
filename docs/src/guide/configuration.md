@@ -23,13 +23,13 @@ patterns = ["vendor/", "dist/"]
 ```toml
 # mdt.toml
 
-#
+# 
 
 # Welcome to mdt. This starter config is intentionally fully annotated so you
 
 # can discover every supported option in one place.
 
-#
+# 
 
 # Uncomment only what your project needs. mdt works without a config file, but
 
@@ -37,7 +37,7 @@ patterns = ["vendor/", "dist/"]
 
 # rules, padding control, or formatter-aware convergence.
 
-#
+# 
 
 # When in doubt, start with a sample template + target block, run `mdt update`,
 
@@ -69,7 +69,7 @@ patterns = ["vendor/", "dist/"]
 
 # - 2+ -> add two or more blank lines
 
-#
+# 
 
 # Recommended when your targets live in source-code comments or when formatters
 
@@ -101,7 +101,7 @@ patterns = ["vendor/", "dist/"]
 
 # in source blocks through minijinja templates like `{{ package.version }}`.
 
-#
+# 
 
 # String values are file-backed sources. The parser is inferred from the file
 
@@ -115,13 +115,13 @@ patterns = ["vendor/", "dist/"]
 
 # config = "config.yaml"
 
-#
+# 
 
 # Typed data sources force a parser when the extension is missing or unusual.
 
 # release = { path = "release-info", format = "json" }
 
-#
+# 
 
 # Script-backed data sources run a shell command from the project root and parse
 
@@ -145,7 +145,7 @@ patterns = ["vendor/", "dist/"]
 
 # patterns = ["vendor/", "dist/", "generated/", "!generated/keep.md"]
 
-#
+# 
 
 # `markdown_codeblocks` only affects fenced code blocks inside source-file
 
@@ -165,7 +165,7 @@ patterns = ["vendor/", "dist/"]
 
 # markdown_codeblocks = ["ignore", "example"]
 
-#
+# 
 
 # `blocks` excludes specific block names everywhere, even if their files are
 
@@ -193,13 +193,13 @@ patterns = ["vendor/", "dist/"]
 
 # formatter's canonical output.
 
-#
+# 
 
 # This is the recommended fix when `mdt update`, your formatter, and
 
 # `mdt check` would otherwise bounce back and forth in CI.
 
-#
+# 
 
 # Formatter `command` values are rendered with minijinja before execution.
 
@@ -211,13 +211,13 @@ patterns = ["vendor/", "dist/"]
 
 # - `{{ rootDirectory }}` -> absolute path to the project root
 
-#
+# 
 
 # `patterns` and `ignore` are both ordered gitignore-style rule lists. A
 
 # leading `!` negates a prior match, so later rules can re-include paths.
 
-#
+# 
 
 # Start with one catch-all formatter when your repo already uses a router like
 
@@ -231,7 +231,7 @@ patterns = ["vendor/", "dist/"]
 
 # ignore = ["**/*.t.md", "**/*.snap"]
 
-#
+# 
 
 # [[formatters]]
 
@@ -276,11 +276,11 @@ Patterns for files and directories to skip during scanning. Uses **gitignore-sty
 ```toml
 [exclude]
 patterns = [
-	"vendor/",
-	"dist/",
-	"generated/",
-	"**/*.generated.md",
-	"!generated/keep-this.md",
+  "vendor/",
+  "dist/",
+  "generated/",
+  "**/*.generated.md",
+  "!generated/keep-this.md",
 ]
 ```
 
