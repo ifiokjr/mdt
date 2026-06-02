@@ -25,6 +25,7 @@ in
       pnpm
       rustup
       shfmt
+      taplo
     ]
     ++ lib.optionals stdenv.isDarwin [
       coreutils
@@ -32,8 +33,12 @@ in
 
   enterShell = ''
     set -e
-    # Ensure the nightly toolchain is available for rustfmt (used by dprint)
-    rustup toolchain install nightly --component rustfmt --no-self-update 2>/dev/null || true
+    # Ensure the nightly toolchain is available and healthy for rustfmt (used by dprint).
+    if ! rustup run nightly rustfmt --version >/dev/null 2>&1; then
+      rustup toolchain install nightly --component rustfmt --no-self-update --force 2>/dev/null \
+        || { rustup toolchain uninstall nightly >/dev/null 2>&1 && rustup toolchain install nightly --component rustfmt --no-self-update 2>/dev/null; } \
+        || true
+    fi
     # Ensure stable is at least 1.88 (required by rmcp/darling for mdt_mcp)
     rustup update stable --no-self-update 2>/dev/null || true
     eval "$(pnpm-activate-env)"
@@ -41,6 +46,10 @@ in
 
   # disable dotenv since it breaks the variable interpolation supported by `direnv`
   dotenv.disableHint = true;
+
+  # Disable devenv's Cachix integration so unauthenticated FlakeHub cache lookups
+  # do not warn during local validation commands.
+  cachix.enable = false;
 
   git-hooks.hooks = {
     mdt-pre-commit = {
