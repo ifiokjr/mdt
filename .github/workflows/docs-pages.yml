@@ -1,12 +1,12 @@
 name: "docs-pages"
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to build docs from (tag, branch, or commit SHA). Defaults to the default branch."
+        description: "Git ref to build docs from (tag, branch, or commit SHA). Defaults to the workflow ref."
         required: false
         type: string
 
@@ -27,7 +27,7 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.event.release.tag_name || github.ref }}
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: install mdbook
         uses: taiki-e/install-action@v2
