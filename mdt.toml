@@ -64,9 +64,9 @@ cargo = "Cargo.toml"
 # This repo excludes test-only fixtures and snapshot directories so mdt only
 # scans files that can contain real, maintained blocks.
 patterns = [
-	"**/tests/",
-	"**/__tests.rs",
-	"**/snapshots/",
+  "**/tests/",
+  "**/__tests.rs",
+  "**/snapshots/",
 ]
 
 # `markdown_codeblocks` only affects fenced code blocks that appear inside
