@@ -14,6 +14,10 @@ in
     with pkgs;
     [
       cargo-binstall
+      cargo-deny
+      cargo-insta
+      cargo-llvm-cov
+      cargo-nextest
       cargo-run-bin
       deno
       dprint
