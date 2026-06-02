@@ -2,6 +2,8 @@
 mdt_core: minor
 ---
 
-Add structured tracing instrumentation via the `tracing` crate.
+# Instrument core template processing with tracing
 
-`mdt_core` instruments key public API functions with `#[instrument]` spans and emits `debug!`, `trace!`, and `warn!` events at important processing boundaries.
+`mdt_core` now emits structured tracing spans and events around important template-processing boundaries. Public API entry points are annotated with `#[instrument]`, and the engine records `debug!`, `trace!`, and `warn!` events while loading projects, resolving providers, rendering consumers, and reporting notable processing states.
+
+This makes failures and performance issues easier to diagnose from CLI, LSP, and MCP callers without changing the core API or the rendered markdown output.

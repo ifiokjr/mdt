@@ -2,8 +2,15 @@
 mdt_cli: major
 ---
 
-Add an `mdt assist` command that prints official assistant setup profiles.
+# Add official assistant setup profiles
 
-This first slice focuses on practical adoption rather than a plugin marketplace: the command prints ready-to-copy MCP configuration snippets and suggested repo-local guidance for assistants like Claude, Cursor, Copilot, Pi, and generic MCP clients.
+The CLI now includes an `mdt assist` command that prints official assistant setup profiles. It focuses on practical adoption by producing ready-to-copy MCP configuration snippets and suggested repo-local guidance for Claude, Cursor, Copilot, Pi, and generic MCP clients.
 
-This is marked major because it adds a new public `Commands::Assist` variant to `mdt_cli`'s public CLI model.
+This is a major release because the public CLI command model gains a new `Commands::Assist` variant. Downstream crates that exhaustively match command variants will need to handle the new case.
+
+```rust
+match command {
+    Commands::Assist(args) => run_assist(args),
+    other => run_existing_command(other),
+}
+```

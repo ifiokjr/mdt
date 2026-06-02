@@ -2,11 +2,13 @@
 mdt_core: major
 ---
 
-Apply Rust best practices for error handling, memory optimization, and API design.
+# Tighten core error handling and API ergonomics
 
-- Remove `AnyError`, `AnyResult`, and `AnyEmptyResult` type aliases in favor of `MdtResult`
-- Add `# Errors` sections to public functions returning `MdtResult`
-- Add `#[must_use]` to result-returning public functions and small accessor methods
-- Pre-allocate vectors with known sizes in hot paths
-- Add `#[inline]` to small hot functions
-- Change `render_template` to return `Cow<'_, str>` to avoid allocations when no template syntax is present
+`mdt_core` now applies a set of Rust API and implementation best practices across error handling, allocation behavior, and public function documentation. The changes remove broad `AnyError` style aliases in favor of `MdtResult`, add `# Errors` documentation to result-returning public functions, mark useful return values with `#[must_use]`, and pre-allocate vectors in hot paths.
+
+This is a major release because public aliases were removed and `render_template` now returns `Cow<'_, str>` to avoid allocations when no template syntax is present. Downstream callers may need to adjust type annotations or convert borrowed results when an owned `String` is required.
+
+```rust
+let rendered = render_template(template, &data)?;
+let owned: String = rendered.into_owned();
+```

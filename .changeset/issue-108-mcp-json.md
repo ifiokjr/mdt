@@ -2,6 +2,8 @@
 mdt_mcp: minor
 ---
 
-Make the MCP server more agent-friendly with structured JSON-first responses.
+# Return structured JSON envelopes from MCP tools
 
-`mdt_check`, `mdt_update`, `mdt_preview`, and `mdt_init` now return consistent JSON-oriented envelopes in MCP `structured_content`, while still preserving text content for compatibility. `mdt_preview` now acts as an authoring workflow by returning per-consumer rendered output, including parameterized consumer previews and render/mismatch details. The MCP surface also exposes undefined-variable warnings in `check` and `update` results.
+MCP tools now return more consistent JSON-oriented `structured_content` envelopes for `mdt_check`, `mdt_update`, `mdt_preview`, and `mdt_init`. Text content is still preserved for clients that display plain tool messages.
+
+`mdt_preview` now behaves more like an authoring workflow by returning per-consumer rendered output, parameterized previews, render details, and mismatch information. Check and update responses also surface undefined-variable warnings so agents can reason about template problems without scraping text.

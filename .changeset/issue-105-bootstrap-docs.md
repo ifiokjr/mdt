@@ -2,6 +2,8 @@
 mdt_cli: none
 ---
 
-Align bootstrap documentation around the canonical `.templates/` layout.
+# Align bootstrap docs with the templates directory
 
-`mdt_init` now creates the same starter files as `mdt init`: a sample `.templates/template.t.md` file plus `mdt.toml` when no config exists yet.
+Bootstrap documentation now describes `.templates/` as the canonical starter layout. The generated examples and docs consistently point users toward `.templates/template.t.md` instead of older root-level template locations.
+
+This documentation-only change keeps onboarding guidance aligned with the current `mdt init` behavior and reduces confusion for users setting up their first provider and consumer blocks.

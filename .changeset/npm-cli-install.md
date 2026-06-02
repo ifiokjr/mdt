@@ -2,6 +2,8 @@
 mdt_cli: minor
 ---
 
-Add an official npm distribution channel for the `mdt` CLI.
+# Publish the CLI through npm packages
 
-Releases now prepare a top-level `@m-d-t/cli` package plus platform-specific binary packages for Linux, macOS, and Windows so users can install the CLI with `npm install -g @m-d-t/cli` or run it with `npx @m-d-t/cli`.
+`mdt` now has an official npm distribution channel. Releases prepare a top-level `@m-d-t/cli` package plus platform-specific binary packages for Linux, macOS, and Windows.
+
+Users can install the CLI globally with npm or run it on demand through npx, making adoption easier in JavaScript-heavy projects and environments that do not already have Rust tooling installed.

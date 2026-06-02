@@ -2,4 +2,8 @@
 mdt_cli: patch
 ---
 
-Improve `mdt check` text output color handling so diagnostics and stale block summaries render with ANSI colors when the terminal supports color or `CLICOLOR_FORCE` is set, while still honoring `--no-color`, `NO_COLOR`, and `CLICOLOR=0`.
+# Respect terminal color settings in check output
+
+`mdt check` now applies ANSI color handling consistently across diagnostics and stale-block summaries. Color is enabled when the terminal supports it or `CLICOLOR_FORCE` is set, and it remains disabled when users pass `--no-color`, set `NO_COLOR`, or set `CLICOLOR=0`.
+
+The result is clearer interactive output without surprising color in scripts or environments that explicitly request plain text.

@@ -2,6 +2,8 @@
 mdt_core: minor
 ---
 
-Add `[check] comparison = "lenient"` config option for whitespace-tolerant block comparison.
+# Add lenient block comparison to configuration
 
-When set to `"lenient"`, the engine normalizes whitespace (blank line count, trailing spaces) before comparing expected vs actual block content. `mdt update` always writes exact bytes regardless of this setting.
+`mdt_core` now supports `[check] comparison = "lenient"` for whitespace-tolerant block comparison. In lenient mode, the engine normalizes blank-line counts and trailing whitespace before comparing expected and actual consumer content.
+
+This reduces false-positive stale-block reports after external formatter rewrites. Update operations remain exact and continue to write the rendered provider output byte-for-byte.
