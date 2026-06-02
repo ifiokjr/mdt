@@ -1,14 +1,3 @@
-# =============================================================================
-# monochange.toml — repository configuration for monochange
-# =============================================================================
-#
-# Run `mc step:validate` to check this file against the workspace.
-# Run `mc init` to generate a starter config from detected packages.
-
-# =============================================================================
-# [defaults] — repository-wide defaults
-# =============================================================================
-
 [defaults]
 parent_bump = "patch"
 include_private = false
@@ -25,16 +14,12 @@ All notable changes to this project will be documented in this file.
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 """
 
-# =============================================================================
-# [changelog] — workspace-wide release-note rendering settings
-# =============================================================================
-
 [changelog]
 templates = [
-	"#### {{ summary }}\n\n{{ details }}\n\n{{ context }}",
-	"#### {{ summary }}\n\n{{ context }}",
-	"#### {{ summary }}\n\n{{ details }}",
-	"- {{ summary }}",
+  "#### {{ summary }}\n\n{{ details }}\n\n{{ context }}",
+  "#### {{ summary }}\n\n{{ context }}",
+  "#### {{ summary }}\n\n{{ details }}",
+  "- {{ summary }}",
 ]
 
 [changelog.style]
@@ -71,10 +56,6 @@ docs = { bump = "none", section = "docs", description = "Documentation updates a
 security = { bump = "none", section = "security", description = "Security improvements, advisories, and vulnerability fixes" }
 perf = { bump = "none", section = "perf", description = "Performance and benchmarking improvements" }
 
-# =============================================================================
-# [package.*] — declare each release-managed package explicitly
-# =============================================================================
-
 [package.mdt_core]
 path = "mdt_core"
 
@@ -86,14 +67,6 @@ path = "mdt_lsp"
 
 [package.mdt_mcp]
 path = "mdt_mcp"
-
-[package."@m-d-t/skills"]
-path = "npm/skills"
-type = "npm"
-
-[package.docs]
-path = "docs"
-publish = { enabled = false }
 
 [package."@m-d-t/cli"]
 path = "packages/m-d-t__cli"
@@ -135,40 +108,31 @@ type = "npm"
 path = "packages/m-d-t__skills"
 type = "npm"
 
-# =============================================================================
-# [group.*] — version groups that share a single release identity
-# =============================================================================
-
 [group.mdt]
 packages = [
-	"mdt_core",
-	"mdt_cli",
-	"mdt_lsp",
-	"mdt_mcp",
-	"@m-d-t/cli",
-	"@m-d-t/cli-darwin-arm64",
-	"@m-d-t/cli-darwin-x64",
-	"@m-d-t/cli-linux-arm64-gnu",
-	"@m-d-t/cli-linux-arm64-musl",
-	"@m-d-t/cli-linux-x64-gnu",
-	"@m-d-t/cli-linux-x64-musl",
-	"@m-d-t/cli-win32-x64-msvc",
-	"@m-d-t/cli-win32-arm64-msvc",
-	"@m-d-t/skills",
+  "mdt_core",
+  "mdt_cli",
+  "mdt_lsp",
+  "mdt_mcp",
+  "@m-d-t/cli",
+  "@m-d-t/cli-darwin-arm64",
+  "@m-d-t/cli-darwin-x64",
+  "@m-d-t/cli-linux-arm64-gnu",
+  "@m-d-t/cli-linux-arm64-musl",
+  "@m-d-t/cli-linux-x64-gnu",
+  "@m-d-t/cli-linux-x64-musl",
+  "@m-d-t/cli-win32-x64-msvc",
+  "@m-d-t/cli-win32-arm64-msvc",
+  "@m-d-t/skills",
 ]
 tag = true
 release = true
 version_format = "primary"
 versioned_files = [
-	{ path = "Cargo.toml", type = "cargo", fields = ["workspace.package.version"] },
-	{ path = "Cargo.lock", type = "cargo", fields = ["dependencies"] },
-	{ path = "packages/*/package.json", type = "npm", fields = ["dependencies", "devDependencies", "optionalDependencies"] },
+  { path = "Cargo.toml", type = "cargo", fields = ["workspace.package.version"] },
+  { path = "packages/*/package.json", type = "npm", fields = ["dependencies", "devDependencies", "optionalDependencies"] },
 ]
 changelog = { path = "changelog.md", format = "keep_a_changelog", include = "all" }
-
-# =============================================================================
-# [changesets.affected] — changeset verification settings
-# =============================================================================
 
 [changesets.affected]
 enabled = true
@@ -177,18 +141,14 @@ skip_labels = ["no-changeset-required", "release"]
 comment_on_failure = true
 
 ignored_paths = [
-	"**/tests/**",
-	"**/__tests.rs",
-	"**/snapshots/**",
-	"fixtures/tests/**",
-	"**/changelog.md",
-	"changelog.md",
-	"**/node_modules/**",
+  "**/tests/**",
+  "**/__tests.rs",
+  "**/snapshots/**",
+  "fixtures/tests/**",
+  "**/changelog.md",
+  "changelog.md",
+  "**/node_modules/**",
 ]
-
-# =============================================================================
-# [ecosystems.*] — per-ecosystem discovery and publishing settings
-# =============================================================================
 
 [ecosystems.cargo]
 enabled = true
@@ -207,10 +167,6 @@ enabled = true
 mode = "builtin"
 registry = "npm"
 trusted_publishing = true
-
-# =============================================================================
-# [source] — source-control provider configuration
-# =============================================================================
 
 [source]
 provider = "github"
@@ -232,46 +188,70 @@ labels = ["release", "automated"]
 auto_merge = false
 verified_commits = true
 
-# =============================================================================
-# [cli.*] — user-defined CLI commands
-# =============================================================================
-
 [cli.change]
 help_text = "Create a change file for one or more packages"
 inputs = [
-	{ name = "interactive", type = "boolean", default = false },
-	{ name = "package", type = "string_list", required = true },
-	{ name = "bump", type = "choice", choices = ["none", "patch", "minor", "major"], default = "patch" },
-	{ name = "reason", type = "string", required = true },
-	{ name = "version", type = "string" },
-	{ name = "type", type = "string" },
-	{ name = "caused_by", type = "string_list" },
-	{ name = "details", type = "string" },
-	{ name = "output", type = "path" },
+  { name = "interactive", type = "boolean", default = false },
+  { name = "package", type = "string_list", required = true },
+  { name = "bump", type = "choice", choices = ["none", "patch", "minor", "major"], default = "patch" },
+  { name = "reason", type = "string", required = true },
+  { name = "version", type = "string" },
+  { name = "type", type = "string" },
+  { name = "caused_by", type = "string_list" },
+  { name = "details", type = "string" },
+  { name = "output", type = "path" },
 ]
 steps = [
-	{ name = "create change file", type = "CreateChangeFile", inputs = ["interactive", "package", "bump", "version", "reason", "type", "details", "output"] },
+  { name = "create change file", type = "CreateChangeFile", inputs = ["interactive", "package", "bump", "version", "reason", "type", "details", "output"] },
 ]
 
 [cli.release]
 help_text = "Prepare a pull request release from discovered change files"
 inputs = [
-	{ name = "format", type = "choice", choices = ["text", "json", "markdown"], default = "markdown" },
-	{ name = "no_verify", type = "boolean", default = true },
-	{ name = "commit", help_text = "Whether to commit the changes", type = "boolean", default = false },
-	{ name = "create_pr", help_text = "Whether to create the PR after the commit", type = "boolean", default = false },
+  { name = "format", type = "choice", choices = ["text", "json", "markdown"], default = "markdown" },
+  { name = "no_verify", type = "boolean", default = true },
+  { name = "commit", help_text = "Whether to commit the changes", type = "boolean", default = false },
+  { name = "create_pr", help_text = "Whether to create the PR after the commit", type = "boolean", default = false },
 ]
 steps = [
-	{ type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
-	{ type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
-	{ type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
-	{ type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
-	{ type = "OpenReleaseRequest", name = "create the pr", when = "{{ number_of_changesets > 0 && inputs.commit && inputs.create_pr }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+  { type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
+  { type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
+  { type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
+  { type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+  { type = "OpenReleaseRequest", name = "create the pr", when = "{{ number_of_changesets > 0 && inputs.commit && inputs.create_pr }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
 ]
 
 [cli.publish-check]
 help_text = "Validate the release and preview package publishing in dry-run mode"
 dry_run = true
 steps = [
-	{ type = "PublishPackages", name = "publish packages dry run" },
+  { type = "PublishPackages", name = "publish packages dry run" },
 ]
+
+[lints]
+
+[lints.rules]
+"npm/workspace-protocol" = "off"
+"changesets/duplicate" = "error"
+"changesets/no_section_headings" = "error"
+"changesets/summary" = { level = "error", required = true, heading_level = 1, min_length = 8, max_length = 90, forbid_trailing_period = true, forbid_conventional_commit_prefix = true }
+"changesets/bump/major" = { level = "error", min_body_chars = 120, require_code_block = true }
+"changesets/types/breaking" = { level = "error", required_bump = "major", forbidden_headings = ["Breaking", "Breaking change", "Breaking changes"] }
+"changesets/types/major" = { level = "error", required_bump = "major", forbidden_headings = ["Major", "Breaking", "Breaking change", "Breaking changes"] }
+"changesets/types/feat" = { level = "error", required_bump = "minor", forbidden_headings = ["Feat", "Feature"] }
+"changesets/types/fix" = { level = "error", required_bump = "patch", forbidden_headings = ["Fix", "Fixed"] }
+
+[[lints.scopes]]
+name = "unpublished cargo packages"
+match = { paths = ["docs/Cargo.toml"] }
+rules = { "cargo/required-package-fields" = "off" }
+
+[[lints.scopes]]
+name = "npm fixture packages"
+match = { paths = ["mdt_cli/tests/fixtures/**/package.json"] }
+rules = { "npm/required-package-fields" = "off", "npm/unlisted-package-private" = "off" }
+
+[[lints.scopes]]
+name = "source skills package"
+match = { paths = ["npm/skills/package.json"] }
+rules = { "npm/unlisted-package-private" = "off" }
