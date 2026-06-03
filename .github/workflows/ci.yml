@@ -166,12 +166,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: setup
         uses: ./.github/actions/devenv
         with:
-          github-token: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: configure git
         env:
