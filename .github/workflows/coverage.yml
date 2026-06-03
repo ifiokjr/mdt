@@ -47,7 +47,7 @@ jobs:
 
       - name: generate Rust coverage report
         run: cargo llvm-cov nextest --lcov --output-path rust-lcov.info
-        shell: devenv shell -c -- bash -e {0}
+        shell: devenv shell -- bash -e {0}
 
       - name: generate JavaScript coverage report
         run: |
