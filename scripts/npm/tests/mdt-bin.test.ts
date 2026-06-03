@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const launcherPath = join(process.cwd(), "npm/bin/mdt.cjs");
+const launcherPath = join(process.cwd(), "packages/m-d-t__cli/bin/mdt.js");
 
 const platformPackages = {
 	darwin: {
