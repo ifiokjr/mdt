@@ -22,7 +22,6 @@
 	],
 	"include": [
 		"scripts/**/*.ts",
-		"npm/tests/**/*.ts",
 		"packages/m-d-t__cli/src/**/*.ts"
 	]
 }

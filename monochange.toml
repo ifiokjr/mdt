@@ -251,8 +251,3 @@ rules = { "cargo/required-package-fields" = "off" }
 name = "npm fixture packages"
 match = { paths = ["mdt_cli/tests/fixtures/**/package.json"] }
 rules = { "npm/required-package-fields" = "off", "npm/unlisted-package-private" = "off" }
-
-[[lints.scopes]]
-name = "source skills package"
-match = { paths = ["npm/skills/package.json"] }
-rules = { "npm/unlisted-package-private" = "off" }

@@ -11,6 +11,7 @@ cd "$ROOT"
 echo "pre-push: running CI-aligned checks"
 lint:all
 test:all
-node --test npm/tests/*.test.mjs scripts/npm/tests/*.test.mjs
+pnpm build
+node --import tsx --test scripts/npm/tests/*.test.ts
 cargo build --locked
 cargo build --all-features --locked

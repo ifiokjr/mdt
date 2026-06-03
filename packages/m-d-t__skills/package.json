@@ -6,7 +6,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/ifiokjr/mdt.git",
-		"directory": "npm/skills"
+		"directory": "packages/m-d-t__skills"
 	},
 	"homepage": "https://github.com/ifiokjr/mdt",
 	"bugs": {
