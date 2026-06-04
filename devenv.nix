@@ -2,10 +2,12 @@
   pkgs,
   lib,
   inputs,
+  config,
   ...
 }:
 
 let
+  currentDir = builtins.dirOf __curPos.file;
   extra = inputs.ifiokjr-nixpkgs.packages.${pkgs.stdenv.system};
 in
 
@@ -31,6 +33,7 @@ in
       rustup
       shfmt
       taplo
+      zizmor
     ]
     ++ lib.optionals stdenv.isDarwin [
       coreutils
@@ -61,7 +64,7 @@ in
       enable = true;
       name = "mdt pre-commit autofix";
       description = "Apply autofixable formatting and lint updates to staged changes.";
-      entry = "bash scripts/git-hooks/pre-commit.sh";
+      entry = "${config.env.DEVENV_PROFILE}/bin/lint:format";
       language = "system";
       pass_filenames = true;
       require_serial = true;
@@ -78,7 +81,7 @@ in
       enable = true;
       name = "mdt pre-push CI checks";
       description = "Run the local CI-equivalent checks before pushing.";
-      entry = "bash scripts/git-hooks/pre-push.sh";
+      entry = "${config.env.DEVENV_PROFILE}/bin/lint:push";
       language = "system";
       pass_filenames = false;
       require_serial = true;
@@ -99,6 +102,29 @@ in
         cargo run --quiet --bin mdt -- $@
       '';
       description = "The `mdt` executable";
+      binary = "bash";
+    };
+    "lint:push" = {
+      exec = ''
+        set -euo pipefail
+
+        ${currentDir}/.devenv/profile/bin/lint:clippy
+        ${currentDir}/.devenv/profile/bin/lint:format
+        ${currentDir}/.devenv/profile/bin/lint:actions
+        ${currentDir}/.devenv/profile/bin/lint:npm
+        ${currentDir}/.devenv/profile/bin/deny:check
+      '';
+      description = "Run pre-push CI-aligned checks.";
+      binary = "bash";
+    };
+    "lint:npm" = {
+      exec = ''
+        set -euo pipefail
+
+        pnpm check
+        pnpm lint
+      '';
+      description = "Run npm package type and lint checks.";
       binary = "bash";
     };
     "install:all" = {
@@ -226,6 +252,22 @@ in
         mdt check
       '';
       description = "Run all checks.";
+      binary = "bash";
+    };
+    "lint:workflows" = {
+      exec = ''
+        set -euo pipefail
+        zizmor .github/workflows/ .github/actions/
+      '';
+      description = "Scan GitHub Actions workflows and actions for security vulnerabilities with zizmor.";
+      binary = "bash";
+    };
+    "fix:workflows" = {
+      exec = ''
+        set -euo pipefail
+        zizmor --fix .github/workflows/ .github/actions/
+      '';
+      description = "Auto-fix zizmor findings in GitHub Actions workflows where possible.";
       binary = "bash";
     };
     "lint:format" = {
