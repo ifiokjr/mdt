@@ -19,7 +19,7 @@ Use repo scripts first when they exist:
 - `lint:format` — run `dprint check`
 - `lint:actions` — run `actionlint` against GitHub Actions workflows
 - `lint:npm` — run npm package type and lint checks
-- `lint:push` — run pre-push CI-aligned checks
+- `lint:push` — run pre-push CI-aligned checks, including npm package tests
 - `fix:all` — run clippy fixes, `mdt update`, formatting, and GitHub Actions linting
 - `fix:clippy` — run clippy fixes for the workspace
 - `fix:format` — format with dprint

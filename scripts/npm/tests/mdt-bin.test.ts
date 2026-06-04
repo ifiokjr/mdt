@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -29,8 +29,10 @@ function makeTempDir(name) {
 function setupNodePath(name) {
 	const root = makeTempDir(name);
 	const nodeModulesDir = join(root, "node_modules");
+	const testLauncherPath = join(root, "mdt.js");
 	mkdirSync(nodeModulesDir, { recursive: true });
-	return { root, nodeModulesDir };
+	copyFileSync(launcherPath, testLauncherPath);
+	return { root, nodeModulesDir, testLauncherPath };
 }
 
 function createPackage(nodeModulesDir, pkgName, binaryContent) {
@@ -49,8 +51,8 @@ function createPackage(nodeModulesDir, pkgName, binaryContent) {
 	}
 }
 
-function runLauncher(nodeModulesDir, args) {
-	return spawnSync("node", [launcherPath, ...args], {
+function runLauncher(testLauncherPath, nodeModulesDir, args) {
+	return spawnSync("node", [testLauncherPath, ...args], {
 		cwd: process.cwd(),
 		encoding: "utf8",
 		env: {
@@ -65,7 +67,7 @@ function currentCandidates() {
 }
 
 void test("launcher executes the installed platform binary", () => {
-	const { root, nodeModulesDir } = setupNodePath("run");
+	const { root, nodeModulesDir, testLauncherPath } = setupNodePath("run");
 	try {
 		const [pkgName] = currentCandidates();
 		assert.ok(pkgName, "expected a package mapping for the current platform");
@@ -74,7 +76,10 @@ void test("launcher executes the installed platform binary", () => {
 			: '#!/bin/sh\necho launcher-ok "$@"\n';
 		createPackage(nodeModulesDir, pkgName, binary);
 
-		const result = runLauncher(nodeModulesDir, ["check", "--verbose"]);
+		const result = runLauncher(testLauncherPath, nodeModulesDir, [
+			"check",
+			"--verbose",
+		]);
 		assert.equal(result.status, 0, String(result.stderr || ""));
 		assert.match(String(result.stdout || ""), /launcher-ok/);
 		assert.match(String(result.stdout || ""), /check/);
@@ -85,9 +90,9 @@ void test("launcher executes the installed platform binary", () => {
 });
 
 void test("launcher shows a helpful error when no platform package is installed", () => {
-	const { root, nodeModulesDir } = setupNodePath("missing");
+	const { root, nodeModulesDir, testLauncherPath } = setupNodePath("missing");
 	try {
-		const result = runLauncher(nodeModulesDir, ["--help"]);
+		const result = runLauncher(testLauncherPath, nodeModulesDir, ["--help"]);
 		assert.notEqual(result.status, 0);
 		assert.match(
 			String(result.stderr || ""),
@@ -108,14 +113,16 @@ void test(
 		skip: currentCandidates().length === 0,
 	},
 	() => {
-		const { root, nodeModulesDir } = setupNodePath("unsupported");
+		const { root, nodeModulesDir, testLauncherPath } = setupNodePath(
+			"unsupported",
+		);
 		try {
 			const result = spawnSync(
 				"node",
 				[
 					"-e",
 					`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${
-						JSON.stringify(launcherPath)
+						JSON.stringify(testLauncherPath)
 					});`,
 				],
 				{
@@ -145,7 +152,9 @@ void test(
 		skip: process.platform !== "linux" || currentCandidates().length < 2,
 	},
 	() => {
-		const { root, nodeModulesDir } = setupNodePath("fallback");
+		const { root, nodeModulesDir, testLauncherPath } = setupNodePath(
+			"fallback",
+		);
 		try {
 			const [firstPackage, secondPackage] = currentCandidates();
 			createPackage(nodeModulesDir, firstPackage, "#!/missing/interpreter\n");
@@ -155,7 +164,7 @@ void test(
 				'#!/bin/sh\necho fallback-ok "$@"\n',
 			);
 
-			const result = runLauncher(nodeModulesDir, ["doctor"]);
+			const result = runLauncher(testLauncherPath, nodeModulesDir, ["doctor"]);
 			assert.equal(result.status, 0, String(result.stderr || ""));
 			assert.match(String(result.stdout || ""), /fallback-ok/);
 			assert.match(String(result.stdout || ""), /doctor/);

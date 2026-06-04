@@ -112,6 +112,7 @@ in
         ${currentDir}/.devenv/profile/bin/lint:format
         ${currentDir}/.devenv/profile/bin/lint:actions
         ${currentDir}/.devenv/profile/bin/lint:npm
+        pnpm node --import tsx --test scripts/npm/tests/*.test.ts
         ${currentDir}/.devenv/profile/bin/deny:check
       '';
       description = "Run pre-push CI-aligned checks.";
