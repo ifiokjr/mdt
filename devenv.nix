@@ -17,10 +17,6 @@ in
     [
       actionlint
       cargo-binstall
-      cargo-deny
-      cargo-insta
-      cargo-llvm-cov
-      cargo-nextest
       cargo-run-bin
       deno
       dprint
@@ -102,6 +98,38 @@ in
         cargo run --quiet --bin mdt -- $@
       '';
       description = "The `mdt` executable";
+      binary = "bash";
+    };
+    "cargo-deny" = {
+      exec = ''
+        set -e
+        exec cargo bin cargo-deny "$@"
+      '';
+      description = "Run cargo-deny from workspace.metadata.bin.";
+      binary = "bash";
+    };
+    "cargo-insta" = {
+      exec = ''
+        set -e
+        exec cargo bin cargo-insta "$@"
+      '';
+      description = "Run cargo-insta from workspace.metadata.bin.";
+      binary = "bash";
+    };
+    "cargo-llvm-cov" = {
+      exec = ''
+        set -e
+        exec cargo bin cargo-llvm-cov "$@"
+      '';
+      description = "Run cargo-llvm-cov from workspace.metadata.bin.";
+      binary = "bash";
+    };
+    "cargo-nextest" = {
+      exec = ''
+        set -e
+        exec cargo bin cargo-nextest "$@"
+      '';
+      description = "Run cargo-nextest from workspace.metadata.bin.";
       binary = "bash";
     };
     "lint:push" = {
