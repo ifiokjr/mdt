@@ -216,7 +216,7 @@ jobs:
           fi
 
           echo "is_release_commit=false" >> "$GITHUB_OUTPUT"
-        shell: devenv shell -c -- bash -e {0}
+        shell: devenv shell -- bash -e {0}
 
       - name: refresh release pull request
         if: steps.release_record.outputs.is_release_commit != 'true'
@@ -255,7 +255,7 @@ jobs:
         id: tag_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: devenv shell -c -- bash -e {0}
+        shell: devenv shell -- bash -e {0}
         run: |
           set -euo pipefail
 
