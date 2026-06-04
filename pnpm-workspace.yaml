@@ -1,4 +1,6 @@
-useNodeVersion: 24.14.0
-nodeVersion: 24.14.0
 packages:
   - "packages/*"
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+allowBuilds:
+  esbuild: set this to true or false
