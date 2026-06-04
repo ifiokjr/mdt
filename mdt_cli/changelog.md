@@ -2,6 +2,131 @@
 
 This file is maintained by `knope`.
 
+## [0.8.0](https://github.com/ifiokjr/mdt/releases/tag/v0.8.0) (2026-06-04)
+
+### 💥 Breaking Change
+
+#### Add official assistant setup profiles
+
+The CLI now includes an `mdt assist` command that prints official assistant setup profiles. It focuses on practical adoption by producing ready-to-copy MCP configuration snippets and suggested repo-local guidance for Claude, Cursor, Copilot, Pi, and generic MCP clients.
+
+This is a major release because the public CLI command model gains a new `Commands::Assist` variant. Downstream crates that exhaustively match command variants will need to handle the new case.
+
+```rust
+match command {
+    Commands::Assist(args) => run_assist(args),
+    other => run_existing_command(other),
+}
+```
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #117](https://github.com/ifiokjr/mdt/pull/117) · _Closed issues:_ [#109](https://github.com/ifiokjr/mdt/issues/109)
+
+### 🚀 Feature
+
+#### Expose structured CLI logs with MDT_LOG
+
+The CLI now initializes `tracing-subscriber` with an `EnvFilter` sourced from `MDT_LOG`. This gives operators and contributors a consistent way to inspect command execution without adding ad-hoc debug output or changing normal terminal output.
+
+The subscriber is installed at process startup and defaults to quiet behavior unless the environment variable is set. Users can opt into targeted diagnostics for parser, project-loading, update, or check flows while preserving the existing user-facing command experience.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Support lenient whitespace comparison in check
+
+`mdt check` now honors `[check] comparison = "lenient"` for whitespace-tolerant verification. This mode allows projects to keep external formatters enabled without reporting stale blocks for harmless whitespace rewrites.
+
+The command still reports meaningful content drift, while `mdt update` continues to write exact rendered bytes regardless of the comparison setting.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Run configured formatters during check and update
+
+`mdt update` and `mdt check` now support opt-in `[[formatters]]` configuration. When a formatter matches a target file, `mdt` runs the formatter against the full updated file so template output converges with project tools such as dprint or Prettier.
+
+This lets teams keep normal formatting workflows enabled while still detecting formatter-aware template drift during checks.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Publish the CLI through npm packages
+
+`mdt` now has an official npm distribution channel. Releases prepare a top-level `@m-d-t/cli` package plus platform-specific binary packages for Linux, macOS, and Windows.
+
+Users can install the CLI globally with npm or run it on demand through npx, making adoption easier in JavaScript-heavy projects and environments that do not already have Rust tooling installed.
+
+```bash
+npx @m-d-t/cli init
+```
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #121](https://github.com/ifiokjr/mdt/pull/121)
+
+#### Publish official agent skills for mdt
+
+`mdt` now publishes an official `@m-d-t/skills` npm package for Pi and other harnesses that support the Agent Skills standard. The package includes quick-start instructions, MCP tool guidance, and a detailed reference for template syntax, transformers, interpolation, inline blocks, configuration, CLI commands, MCP tools, and source-file patterns.
+
+The release tooling now generates and publishes the skills package alongside the CLI, and `mdt assist pi` points users toward the packaged skill.
+
+```sh
+pi install npm:@m-d-t/skills
+pi -e npm:@m-d-t/skills
+```
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #128](https://github.com/ifiokjr/mdt/pull/128)
+
+### 🐛 Fixed
+
+#### Respect terminal color settings in check output
+
+`mdt check` now applies ANSI color handling consistently across diagnostics and stale-block summaries. Color is enabled when the terminal supports it or `CLICOLOR_FORCE` is set, and it remains disabled when users pass `--no-color`, set `NO_COLOR`, or set `CLICOLOR=0`.
+
+The result is clearer interactive output without surprising color in scripts or environments that explicitly request plain text.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #120](https://github.com/ifiokjr/mdt/pull/120)
+
+#### Reuse shared core helpers in CLI surfaces
+
+The CLI now uses shared `mdt_core` helpers for project-root resolution, relative path display, and similar-name scoring. This reduces duplicated logic between app surfaces while preserving the same command behavior and diagnostics users already expect.
+
+Keeping these concerns in one place makes future fixes less likely to drift between CLI, LSP, and MCP integrations.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Rename npm packages under the m-d-t scope
+
+The npm distribution has moved from the `@ifi` scope to the `@m-d-t` organization. The top-level CLI package is now `@m-d-t/cli`, the skills package is `@m-d-t/skills`, and all platform-specific binary packages now use the `@m-d-t/cli-*` naming pattern.
+
+This aligns npm package names with the project name and makes the distribution easier to recognize in package registries and install commands.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #130](https://github.com/ifiokjr/mdt/pull/130)
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Improve first-time installation and quick-start guidance
+
+The installation and quick-start documentation now better serves users who want `mdt` without building Rust source locally. It recommends prebuilt release binaries for non-Rust projects, removes stale version-pinned snippets, and presents a concise first-run workflow.
+
+The new quick start shows how to keep a README section and a source-doc comment synchronized from a single provider, giving new users a practical end-to-end success path.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #113](https://github.com/ifiokjr/mdt/pull/113) · _Closed issues:_ [#106](https://github.com/ifiokjr/mdt/issues/106)
+
+#### Clarify the documentation drift problem
+
+The README and guide introduction now lead with the core problem `mdt` solves: keeping README sections, source-doc comments, and docs-site content synchronized as projects evolve. The positioning is clearer for library and tool maintainers evaluating whether markdown templates fit their workflow.
+
+The updated copy also explains how editor and agent integrations support a human-first documentation process instead of replacing normal authoring practices.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #114](https://github.com/ifiokjr/mdt/pull/114) · _Closed issues:_ [#107](https://github.com/ifiokjr/mdt/issues/107)
+
+#### Add adoption walkthroughs for real documentation flows
+
+The documentation now includes proof-of-value and migration walkthroughs that show how to adopt `mdt` in realistic projects. The examples cover synchronizing README content, source documentation, and docs-site pages without forcing teams to rewrite their documentation process.
+
+These guides make it easier to evaluate the tool, migrate incrementally, and understand where provider and consumer blocks fit in existing markdown and source files.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #118](https://github.com/ifiokjr/mdt/pull/118) · _Closed issues:_ [#110](https://github.com/ifiokjr/mdt/issues/110)
+
+</details>
+
 ## 0.4.1 (2026-02-25)
 
 ### Features
