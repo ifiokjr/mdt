@@ -33,7 +33,7 @@ function createPackage(dir: string, name: string, version: string): void {
 	);
 }
 
-test("publish-packages requires a packages directory argument", () => {
+void test("publish-packages requires a packages directory argument", () => {
 	const result = spawnSync("pnpm", ["tsx", scriptPath], {
 		cwd: process.cwd(),
 		encoding: "utf8",
@@ -45,7 +45,7 @@ test("publish-packages requires a packages directory argument", () => {
 	);
 });
 
-test("publish-packages validates packages have binaries", () => {
+void test("publish-packages validates packages have binaries", () => {
 	const tempRoot = makeTempDir("happy");
 	const packagesDir = join(tempRoot, "packages");
 
@@ -84,7 +84,7 @@ test("publish-packages validates packages have binaries", () => {
 	}
 });
 
-test("publish-packages errors when binaries are missing", () => {
+void test("publish-packages errors when binaries are missing", () => {
 	const tempRoot = makeTempDir("missing-binary");
 	const packagesDir = join(tempRoot, "packages");
 

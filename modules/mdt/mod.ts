@@ -20,10 +20,3 @@ export interface MdtConfig {
 }
 
 export type WrappedConfig<C> = C | (() => C) | Promise<C> | (() => Promise<C>);
-type MaybePromise<P> = Promise<P> | P;
-type MaybeCallable<F> = IdentityFunction<F> | F;
-type IdentityFunction<V> = () => V;
-type Maybe<C> = number extends number
-	? MaybeCallable<number extends number ? MaybePromise<C> : never>
-	: never;
-type A = Maybe<number>;

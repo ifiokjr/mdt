@@ -64,7 +64,7 @@ function currentCandidates() {
 	return platformPackages[process.platform]?.[process.arch] ?? [];
 }
 
-test("launcher executes the installed platform binary", () => {
+void test("launcher executes the installed platform binary", () => {
 	const { root, nodeModulesDir } = setupNodePath("run");
 	try {
 		const [pkgName] = currentCandidates();
@@ -84,7 +84,7 @@ test("launcher executes the installed platform binary", () => {
 	}
 });
 
-test("launcher shows a helpful error when no platform package is installed", () => {
+void test("launcher shows a helpful error when no platform package is installed", () => {
 	const { root, nodeModulesDir } = setupNodePath("missing");
 	try {
 		const result = runLauncher(nodeModulesDir, ["--help"]);
@@ -102,7 +102,7 @@ test("launcher shows a helpful error when no platform package is installed", () 
 	}
 });
 
-test(
+void test(
 	"launcher reports unsupported platforms before attempting resolution",
 	{
 		skip: currentCandidates().length === 0,
@@ -139,7 +139,7 @@ test(
 	},
 );
 
-test(
+void test(
 	"launcher falls back to the secondary linux package when the first one fails to launch",
 	{
 		skip: process.platform !== "linux" || currentCandidates().length < 2,

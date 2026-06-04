@@ -24,7 +24,7 @@ const targets: TargetSpec[] = [
 	{ target: "aarch64-pc-windows-msvc", ext: "zip", binary: "mdt.exe" },
 ];
 
-test("build-packages requires the expected command line arguments", () => {
+void test("build-packages requires the expected command line arguments", () => {
 	const result = spawnSync("pnpm", ["tsx", scriptPath], {
 		cwd: process.cwd(),
 		encoding: "utf8",
@@ -36,7 +36,7 @@ test("build-packages requires the expected command line arguments", () => {
 	);
 });
 
-test("build-packages reports missing release assets", () => {
+void test("build-packages reports missing release assets", () => {
 	const tempRoot = join(
 		tmpdir(),
 		`mdt-build-packages-missing-${process.pid}-${Date.now()}`,
@@ -62,7 +62,7 @@ test("build-packages reports missing release assets", () => {
 	}
 });
 
-test("build-packages processes release archives without error", () => {
+void test("build-packages processes release archives without error", () => {
 	// Clean up leftover temp directory from previous runs
 	const repoPackagesTmp = join(process.cwd(), "packages", ".tmp");
 	rmSync(repoPackagesTmp, { recursive: true, force: true });

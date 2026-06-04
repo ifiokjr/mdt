@@ -8,7 +8,6 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
-	writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

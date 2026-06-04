@@ -9,6 +9,7 @@
 		"noImplicitAny": false,
 		"skipLibCheck": true,
 		"strict": false,
+		"strictNullChecks": true,
 		"target": "ES2024",
 		"types": [
 			"node"
