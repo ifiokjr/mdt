@@ -1,6 +1,6 @@
 {
 	"name": "@m-d-t/cli-win32-x64-msvc",
-	"version": "0.0.0",
+	"version": "0.8.0",
 	"description": "Prebuilt mdt binary for Windows x64",
 	"homepage": "https://github.com/ifiokjr/mdt",
 	"bugs": {

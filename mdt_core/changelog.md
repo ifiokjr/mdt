@@ -2,6 +2,76 @@
 
 This file is maintained by `knope`.
 
+## [0.8.0](https://github.com/ifiokjr/mdt/releases/tag/v0.8.0) (2026-06-04)
+
+### 💥 Breaking Change
+
+#### Add formatter-aware full-file normalization
+
+`mdt_core` now supports opt-in `[[formatters]]` configuration in `mdt.toml`. Matching formatter commands run against the entire updated target file in declaration order using stdin/stdout, enabling formatter-aware drift detection and update output.
+
+This is a major release because public constructible structs such as `MdtConfig` and `ProjectContext` gained fields. Downstream crates that build these structs with literals must add the new fields or use defaults/builders where available.
+
+```rust
+let config = MdtConfig {
+    formatters: Vec::new(),
+    ..existing_config
+};
+```
+
+Formatter failures now surface as dedicated diagnostics so callers can distinguish rendering problems from formatter command failures.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Tighten core error handling and API ergonomics
+
+`mdt_core` now applies a set of Rust API and implementation best practices across error handling, allocation behavior, and public function documentation. The changes remove broad `AnyError` style aliases in favor of `MdtResult`, add `# Errors` documentation to result-returning public functions, mark useful return values with `#[must_use]`, and pre-allocate vectors in hot paths.
+
+This is a major release because public aliases were removed and `render_template` now returns `Cow<'_, str>` to avoid allocations when no template syntax is present. Downstream callers may need to adjust type annotations or convert borrowed results when an owned `String` is required.
+
+```rust
+let rendered = render_template(template, &data)?;
+let owned: String = rendered.into_owned();
+```
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+### 🚀 Feature
+
+#### Instrument core template processing with tracing
+
+`mdt_core` now emits structured tracing spans and events around important template-processing boundaries. Public API entry points are annotated with `#[instrument]`, and the engine records `debug!`, `trace!`, and `warn!` events while loading projects, resolving providers, rendering consumers, and reporting notable processing states.
+
+This makes failures and performance issues easier to diagnose from CLI, LSP, and MCP callers without changing the core API or the rendered markdown output.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Add lenient block comparison to configuration
+
+`mdt_core` now supports `[check] comparison = "lenient"` for whitespace-tolerant block comparison. In lenient mode, the engine normalizes blank-line counts and trailing whitespace before comparing expected and actual consumer content.
+
+This reduces false-positive stale-block reports after external formatter rewrites. Update operations remain exact and continue to write the rendered provider output byte-for-byte.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+### 🐛 Fixed
+
+#### Extract shared app-surface helpers into core
+
+`mdt_core` now exposes shared helpers for project-root resolution, relative path display, and similar-name scoring. These utilities centralize behavior that was previously reimplemented by multiple application surfaces.
+
+The extraction keeps user-facing behavior stable while making CLI, LSP, and MCP code easier to maintain consistently.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
+#### Update logos and remove the empty skip regex
+
+`logos` has been updated to 0.16.1. The tokenizer no longer uses the `#[logos(skip r"")]` attribute because the newer release rejects empty regular expressions that can match the empty string.
+
+This keeps the lexer compatible with the current `logos` API without changing tokenization behavior for valid input.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
 ## 0.5.0 (2026-02-25)
 
 ### Breaking Changes

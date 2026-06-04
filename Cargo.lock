@@ -200,9 +200,9 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "num-traits",
@@ -911,7 +911,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_cli"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_core"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "derive_more",
  "float-cmp",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_lsp"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "insta",
  "mdt_core",
@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "mdt_mcp"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "mdt_core",
  "rmcp",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "monochange_book"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "mdt_core",
 ]
