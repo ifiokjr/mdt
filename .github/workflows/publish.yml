@@ -219,7 +219,7 @@ jobs:
           # Publish platform packages first (no dependencies to resolve)
           for dir in packages/m-d-t__cli-*/; do
             if [ -f "$dir/package.json" ]; then
-              echo "::group::Publishing $(basename $dir)"
+              echo "::group::Publishing $(basename "$dir")"
               npm publish "$dir" --access public --provenance
               echo "::endgroup::"
             fi

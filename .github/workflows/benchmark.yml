@@ -89,9 +89,11 @@ jobs:
           git worktree add --detach "${baseline_dir}" "${{ steps.refs.outputs.baseline_ref }}"
           git worktree add --detach "${candidate_dir}" "${{ steps.refs.outputs.candidate_ref }}"
 
-          echo "benchmark_root=${benchmark_root}" >> "${GITHUB_OUTPUT}"
-          echo "baseline_dir=${baseline_dir}" >> "${GITHUB_OUTPUT}"
-          echo "candidate_dir=${candidate_dir}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "benchmark_root=${benchmark_root}"
+            echo "baseline_dir=${baseline_dir}"
+            echo "candidate_dir=${candidate_dir}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: build baseline and candidate binaries
         id: build
@@ -150,10 +152,12 @@ jobs:
             --relative-threshold-pct "${BENCH_RELATIVE_THRESHOLD_PCT}" \
             --absolute-threshold-ms "${BENCH_ABSOLUTE_THRESHOLD_MS}"
 
-          echo "status=$(jq -r '.status' benchmark-results/compare.json)" >> "${GITHUB_OUTPUT}"
-          echo "regression_count=$(jq -r '.regression_count' benchmark-results/compare.json)" >> "${GITHUB_OUTPUT}"
-          echo "improvement_count=$(jq -r '.improvement_count' benchmark-results/compare.json)" >> "${GITHUB_OUTPUT}"
-          echo "missing_count=$(jq -r '.missing_count' benchmark-results/compare.json)" >> "${GITHUB_OUTPUT}"
+          {
+            echo "status=$(jq -r '.status' benchmark-results/compare.json)"
+            echo "regression_count=$(jq -r '.regression_count' benchmark-results/compare.json)"
+            echo "improvement_count=$(jq -r '.improvement_count' benchmark-results/compare.json)"
+            echo "missing_count=$(jq -r '.missing_count' benchmark-results/compare.json)"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: publish benchmark summary
         if: always()

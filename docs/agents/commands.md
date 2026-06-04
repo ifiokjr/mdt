@@ -14,12 +14,14 @@ Use repo scripts first when they exist:
 - `test:all` — run cargo tests and doc tests
 - `test:cargo` — run tests with `cargo nextest run`
 - `test:docs` — run doc tests
-- `lint:all` — run clippy, formatting, deny, and `mdt check`
+- `lint:all` — run clippy, formatting, GitHub Actions linting, deny, and `mdt check`
 - `lint:clippy` — run `cargo clippy --workspace --all-features --all-targets`
 - `lint:format` — run `dprint check`
-- `fix:all` — run clippy fixes, `mdt update`, and formatting
+- `lint:actions` — run `actionlint` against GitHub Actions workflows
+- `fix:all` — run clippy fixes, `mdt update`, formatting, and GitHub Actions linting
 - `fix:clippy` — run clippy fixes for the workspace
 - `fix:format` — format with dprint
+- `fix:actions` — run `actionlint` (actionlint has no autofix mode)
 - `coverage:all` — generate coverage with `cargo llvm-cov`
 - `deny:check` — run `cargo deny check`
 - `snapshot:review` — review insta snapshots

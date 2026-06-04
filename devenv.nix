@@ -13,6 +13,7 @@ in
   packages =
     with pkgs;
     [
+      actionlint
       cargo-binstall
       cargo-deny
       cargo-insta
@@ -186,6 +187,7 @@ in
         fix:clippy
         mdt update
         fix:format
+        fix:actions
       '';
       description = "Fix all autofixable problems.";
       binary = "bash";
@@ -219,6 +221,7 @@ in
         set -e
         lint:clippy
         lint:format
+        lint:actions
         deny:check
         mdt check
       '';
@@ -231,6 +234,22 @@ in
         dprint check
       '';
       description = "Check that all files are formatted.";
+      binary = "bash";
+    };
+    "lint:actions" = {
+      exec = ''
+        set -e
+        actionlint
+      '';
+      description = "Lint GitHub Actions workflows.";
+      binary = "bash";
+    };
+    "fix:actions" = {
+      exec = ''
+        set -e
+        lint:actions
+      '';
+      description = "Check GitHub Actions workflows (actionlint has no autofix mode).";
       binary = "bash";
     };
     "lint:clippy" = {
