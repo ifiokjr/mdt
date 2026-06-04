@@ -17,6 +17,10 @@ in
     [
       actionlint
       cargo-binstall
+      cargo-deny
+      cargo-insta
+      cargo-llvm-cov
+      cargo-nextest
       cargo-run-bin
       deno
       dprint
@@ -100,38 +104,6 @@ in
       description = "The `mdt` executable";
       binary = "bash";
     };
-    "cargo-deny" = {
-      exec = ''
-        set -e
-        exec cargo bin cargo-deny "$@"
-      '';
-      description = "Run cargo-deny from workspace.metadata.bin.";
-      binary = "bash";
-    };
-    "cargo-insta" = {
-      exec = ''
-        set -e
-        exec cargo bin cargo-insta "$@"
-      '';
-      description = "Run cargo-insta from workspace.metadata.bin.";
-      binary = "bash";
-    };
-    "cargo-llvm-cov" = {
-      exec = ''
-        set -e
-        exec cargo bin cargo-llvm-cov "$@"
-      '';
-      description = "Run cargo-llvm-cov from workspace.metadata.bin.";
-      binary = "bash";
-    };
-    "cargo-nextest" = {
-      exec = ''
-        set -e
-        exec cargo bin cargo-nextest "$@"
-      '';
-      description = "Run cargo-nextest from workspace.metadata.bin.";
-      binary = "bash";
-    };
     "lint:push" = {
       exec = ''
         set -euo pipefail
@@ -160,8 +132,14 @@ in
       exec = ''
         set -e
         install:cargo:bin
+
+        if [ -z "$CI" ]; then
+          pnpm install
+        else
+          pnpm install --frozen-lockfile
+        fi
       '';
-      description = "Install all packages.";
+      description = "Install cargo binaries and pnpm modules.";
       binary = "bash";
     };
     "install:cargo:bin" = {
