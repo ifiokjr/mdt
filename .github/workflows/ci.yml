@@ -223,8 +223,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_COMMIT_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: mc --log-level=debug release --commit --create-pr
-        shell: devenv shell -c -- bash -e {0}
+        run: |
+          devenv shell -- env \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_TOKEN="$GH_TOKEN" \
+            GITHUB_COMMIT_TOKEN="$GITHUB_COMMIT_TOKEN" \
+            mc --log-level=debug release --commit --create-pr
 
       - name: skip refresh on merged release commit
         if: steps.release_record.outputs.is_release_commit == 'true'
@@ -255,8 +259,12 @@ jobs:
         id: tag_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: devenv shell -- bash -e {0}
         run: |
+          devenv shell -- env \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_TOKEN="$GH_TOKEN" \
+            GITHUB_OUTPUT="$GITHUB_OUTPUT" \
+            bash -e <<'EOF'
           set -euo pipefail
 
           if is_release_commit="$(mc step:release-record --from HEAD --format json --jq '.resolvedCommit == .recordCommit')"; then
@@ -274,26 +282,37 @@ jobs:
             fi
             echo "is_release_commit=false" >> "$GITHUB_OUTPUT"
           fi
+          EOF
 
       - name: create draft releases
         if: steps.tag_release.outputs.is_release_commit == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mc step:publish-release --from-ref="HEAD" --draft --format json | tee /tmp/publish-release.json
-        shell: devenv shell -c -- bash -e {0}
+        run: |
+          devenv shell -- env \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_TOKEN="$GH_TOKEN" \
+            mc step:publish-release --from-ref="HEAD" --draft --format json | tee /tmp/publish-release.json
 
       - name: comment on released issues
         if: steps.tag_release.outputs.is_release_commit == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: mc step:comment-released-issues --from-ref="HEAD" --auto-close-issues
-        shell: devenv shell -c -- bash -e {0}
+        run: |
+          devenv shell -- env \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_TOKEN="$GH_TOKEN" \
+            mc step:comment-released-issues --from-ref="HEAD" --auto-close-issues
 
       - name: trigger release workflow
         if: steps.tag_release.outputs.is_release_commit == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          devenv shell -- env \
+            GH_TOKEN="$GH_TOKEN" \
+            GITHUB_TOKEN="$GH_TOKEN" \
+            bash -e <<'EOF'
           set -euo pipefail
           tag="$(jq -r '.tags.mdt // empty' /tmp/tag-report.json)"
           if [ -z "$tag" ]; then
@@ -304,6 +323,7 @@ jobs:
           gh workflow run release.yml \
             --repo "${{ github.repository }}" \
             -f "tag=$tag"
+          EOF
 
   release-test:
     if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'monochange/release')
