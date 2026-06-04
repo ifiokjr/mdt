@@ -1,6 +1,6 @@
 ---
-"@m-d-t/cli": none
-"@m-d-t/skills": none
+"@m-d-t/cli": refactor
+"@m-d-t/skills": refactor
 ---
 
 # Remove the legacy npm source folder
