@@ -224,7 +224,7 @@ fn scan_ctx(root: &Path) -> Result<ProjectContext, McpError> {
 fn json_result(value: serde_json::Value) -> CallToolResult {
 	let text = serde_json::to_string_pretty(&value)
 		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	let mut result = CallToolResult::success(vec![Content::text(text)]);
+	let mut result = CallToolResult::success(vec![ContentBlock::text(text)]);
 	result.structured_content = Some(value);
 	result
 }
@@ -232,7 +232,7 @@ fn json_result(value: serde_json::Value) -> CallToolResult {
 fn json_error_result(value: serde_json::Value) -> CallToolResult {
 	let text = serde_json::to_string_pretty(&value)
 		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	let mut result = CallToolResult::error(vec![Content::text(text)]);
+	let mut result = CallToolResult::error(vec![ContentBlock::text(text)]);
 	result.structured_content = Some(value);
 	result
 }

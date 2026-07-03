@@ -22,7 +22,7 @@ float-cmp = { default-features = false, version = "^0.10" }
 globset = { default-features = false, version = "^0.4" }
 ignore = { default-features = false, version = "^0.4" }
 insta = { default-features = false, version = "^1" }
-insta-cmd = { default-features = false, version = "^0.6" }
+insta-cmd = { default-features = false, version = "0.7.0" }
 kdl = { default-features = false, version = "^6" }
 logos = { default-features = false, version = "0.16.1" }
 markdown = { default-features = false, version = "^1" }
@@ -31,7 +31,7 @@ minijinja = { default-features = false, version = "^2" }
 notify = { default-features = false, version = "^8" }
 owo-colors = { default-features = false, version = "^4" }
 predicates = { default-features = false, version = "^3" }
-rmcp = { default-features = false, version = "1.3.0" }
+rmcp = { default-features = false, version = "2.1.0" }
 rstest = { default-features = false, version = "^0.26" }
 serde = { default-features = false, version = "^1" }
 serde_ini = { default-features = false, version = "^0.2" }

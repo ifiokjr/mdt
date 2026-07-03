@@ -7,10 +7,7 @@
 		"url": "https://github.com/ifiokjr/mdt/issues"
 	},
 	"license": "Unlicense",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/ifiokjr/mdt.git"
-	},
+	"repository": "https://github.com/ifiokjr/mdt/tree/main/packages/m-d-t__cli-linux-x64-musl",
 	"files": [
 		"bin"
 	],

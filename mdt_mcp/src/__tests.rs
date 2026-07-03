@@ -9,12 +9,15 @@ use super::*;
 // ---------------------------------------------------------------------------
 
 fn extract_text(result: &CallToolResult) -> &str {
-	result.content[0]
-		.raw
-		.as_text()
-		.unwrap_or_else(|| panic!("expected text content"))
-		.text
-		.as_str()
+	let content = result
+		.content
+		.first()
+		.unwrap_or_else(|| panic!("expected content"));
+	let ContentBlock::Text(text) = content else {
+		panic!("expected text content");
+	};
+
+	text.text.as_str()
 }
 
 fn extract_json(result: &CallToolResult) -> serde_json::Value {

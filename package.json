@@ -17,15 +17,15 @@
 		"build": "tsdown"
 	},
 	"devDependencies": {
-		"@rslint/tsgo": "^0.5.0",
-		"@types/node": "^25.9.1",
-		"oxfmt": "^0.53.0",
-		"oxlint": "^1.68.0",
-		"oxlint-tsgolint": "^0.23.0",
-		"tsdown": "^0.22.1",
+		"@rslint/tsgo": "^0.6.4",
+		"@types/node": "^26.1.0",
+		"oxfmt": "^0.57.0",
+		"oxlint": "^1.72.0",
+		"oxlint-tsgolint": "^0.24.0",
+		"tsdown": "^0.22.3",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"engines": {
 		"node": ">=24.0.0",
