@@ -2,28 +2,6 @@
 
 This file is maintained by `knope`.
 
-## [0.8.0](https://github.com/ifiokjr/mdt/releases/tag/v0.8.0) (2026-06-04)
-
-### 🚀 Feature
-
-#### Expose LSP diagnostics through MDT_LOG tracing
-
-The language server now initializes `tracing-subscriber` with an `EnvFilter` sourced from `MDT_LOG`. Logs are written to stderr so tracing never interferes with the JSON-RPC protocol carried over stdio.
-
-This gives editor integrations a safe opt-in diagnostics path for initialization, document updates, and template checks while preserving the default quiet behavior expected by LSP clients.
-
-_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
-
-### 🐛 Fixed
-
-#### Reuse shared core helpers in the LSP server
-
-The language server now uses shared `mdt_core` helpers for project-root resolution and relative path display. This keeps editor diagnostics aligned with the CLI and MCP surfaces without changing the LSP protocol behavior.
-
-Centralizing this logic reduces the chance that path formatting or project discovery diverges across integrations.
-
-_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
-
 ## 0.4.1 (2026-02-25)
 
 ### Features

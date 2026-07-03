@@ -1,6 +1,6 @@
 {
 	"name": "@m-d-t/cli-linux-arm64-gnu",
-	"version": "0.8.0",
+	"version": "0.0.0",
 	"description": "Prebuilt mdt binary for Linux arm64 (glibc)",
 	"homepage": "https://github.com/ifiokjr/mdt",
 	"bugs": {
