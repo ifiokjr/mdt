@@ -8,7 +8,7 @@ include = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "readme.md"]
 keywords = ["markdown", "templates", "cli"]
 license = { workspace = true }
 readme = "readme.md"
-repository = { workspace = true }
+repository = "https://github.com/ifiokjr/mdt/tree/main/mdt_cli"
 rust-version = { workspace = true }
 description = "Write docs once, sync everywhere — markdown templates that eliminate doc drift"
 

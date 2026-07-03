@@ -202,7 +202,7 @@ jobs:
           set -euo pipefail
 
           release_record_error="$(mktemp)"
-          if is_release_commit="$(mc step:release-record --from HEAD --format json --jq '.resolvedCommit == .recordCommit' 2>"$release_record_error")"; then
+          if is_release_commit="$(mc step release-record --from HEAD --format json --jq '.resolvedCommit == .recordCommit' 2>"$release_record_error")"; then
             echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -228,7 +228,7 @@ jobs:
             GH_TOKEN="$GH_TOKEN" \
             GITHUB_TOKEN="$GH_TOKEN" \
             GITHUB_COMMIT_TOKEN="$GITHUB_COMMIT_TOKEN" \
-            mc --log-level=debug release --commit --create-pr
+            mc --log-level=debug run release --commit --create-pr
 
       - name: skip refresh on merged release commit
         if: steps.release_record.outputs.is_release_commit == 'true'
@@ -267,17 +267,17 @@ jobs:
             bash -e <<'EOF'
           set -euo pipefail
 
-          if is_release_commit="$(mc step:release-record --from HEAD --format json --jq '.resolvedCommit == .recordCommit')"; then
+          if is_release_commit="$(mc step release-record --from HEAD --format json --jq '.resolvedCommit == .recordCommit')"; then
             echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
             if [ "${is_release_commit}" = "true" ]; then
-              mc step:tag-release --from HEAD --push=true --format json | tee /tmp/tag-report.json
+              mc step tag-release --from HEAD --push=true --format json | tee /tmp/tag-report.json
             fi
           else
             subject="$(git log -1 --pretty=%s)"
             body="$(git log -1 --pretty=%B)"
             if [[ "$subject" == chore\(release\):* ]] || grep -q '<!-- monochange:release-record:start -->' <<<"$body"; then
               echo "::error::Release-looking commit could not be read as a release record; failing instead of silently skipping release automation."
-              mc step:release-record --from HEAD --format json
+              mc step release-record --from HEAD --format json
               exit 1
             fi
             echo "is_release_commit=false" >> "$GITHUB_OUTPUT"
@@ -292,7 +292,7 @@ jobs:
           devenv shell -- env \
             GH_TOKEN="$GH_TOKEN" \
             GITHUB_TOKEN="$GH_TOKEN" \
-            mc step:publish-release --from-ref="HEAD" --draft --format json | tee /tmp/publish-release.json
+            mc step publish-release --from-ref="HEAD" --draft --format json | tee /tmp/publish-release.json
 
       - name: comment on released issues
         if: steps.tag_release.outputs.is_release_commit == 'true'
@@ -302,7 +302,7 @@ jobs:
           devenv shell -- env \
             GH_TOKEN="$GH_TOKEN" \
             GITHUB_TOKEN="$GH_TOKEN" \
-            mc step:comment-released-issues --from-ref="HEAD" --auto-close-issues
+            mc step comment-released-issues --from-ref="HEAD" --auto-close-issues
 
       - name: trigger release workflow
         if: steps.tag_release.outputs.is_release_commit == 'true'
@@ -346,7 +346,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           before="$(git rev-parse HEAD)"
-          mc release --commit
+          mc run release --commit
           after="$(git rev-parse HEAD)"
           if [ "$before" != "$after" ]; then
             echo "created=true" >> "$GITHUB_OUTPUT"
@@ -385,7 +385,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           before="$(git rev-parse HEAD)"
-          mc release --commit
+          mc run release --commit
           after="$(git rev-parse HEAD)"
           if [ "$before" != "$after" ]; then
             echo "created=true" >> "$GITHUB_OUTPUT"
