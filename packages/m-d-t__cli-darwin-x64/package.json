@@ -1,6 +1,6 @@
 {
 	"name": "@m-d-t/cli-darwin-x64",
-	"version": "0.8.0",
+	"version": "0.0.0",
 	"description": "Prebuilt mdt binary for macOS x64",
 	"homepage": "https://github.com/ifiokjr/mdt",
 	"bugs": {
