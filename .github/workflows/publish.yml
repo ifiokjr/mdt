@@ -120,7 +120,6 @@ jobs:
       - name: check publish readiness
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-oidc.outputs.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
         run: mc step publish-readiness --from HEAD --output "$RUNNER_TEMP/publish-readiness.json" --format json
         shell: devenv shell -- bash -e {0}
@@ -128,7 +127,6 @@ jobs:
       - name: publish packages with monochange
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-oidc.outputs.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
         run: |
           mc --log-level=info step publish-packages \
