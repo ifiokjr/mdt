@@ -38,28 +38,28 @@ importers:
   packages/m-d-t__cli:
     optionalDependencies:
       "@m-d-t/cli-darwin-arm64":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-darwin-arm64
       "@m-d-t/cli-darwin-x64":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-darwin-x64
       "@m-d-t/cli-linux-arm64-gnu":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-linux-arm64-gnu
       "@m-d-t/cli-linux-arm64-musl":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-linux-arm64-musl
       "@m-d-t/cli-linux-x64-gnu":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-linux-x64-gnu
       "@m-d-t/cli-linux-x64-musl":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-linux-x64-musl
       "@m-d-t/cli-win32-arm64-msvc":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-win32-arm64-msvc
       "@m-d-t/cli-win32-x64-msvc":
-        specifier: ^0.8.0
+        specifier: ^0.9.0
         version: link:../m-d-t__cli-win32-x64-msvc
 
   packages/m-d-t__cli-darwin-arm64: {}

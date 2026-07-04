@@ -216,6 +216,7 @@ inputs = [
 steps = [
   { type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
   { type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
+  { type = "Command", name = "generate pnpm lockfile", when = "{{ number_of_changesets > 0 }}", command = "pnpm install --lockfile-only --no-frozen-lockfile" },
   { type = "Command", name = "sync template blocks", when = "{{ number_of_changesets > 0 }}", command = "mdt update" },
   { type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
   { type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
