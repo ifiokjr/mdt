@@ -114,7 +114,7 @@ jobs:
         with:
           bin: mdt
           manifest-path: mdt_cli/Cargo.toml
-          profile: dist
+          profile: release
           ref: refs/tags/${{ env.RELEASE_TAG }}
           archive: $bin-$target-$tag
           target: ${{ matrix.target }}
