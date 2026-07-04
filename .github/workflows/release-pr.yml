@@ -110,12 +110,7 @@ jobs:
           set -euo pipefail
           export GITHUB_TOKEN="$GH_TOKEN"
 
-          mc --log-level=debug step prepare-release --format json
-          cargo generate-lockfile
-          mdt update
-          fix:format
-          mc --log-level=debug step commit-release --stage-all --no-verify
-          mc --log-level=debug step open-release-request --stage-all --no-verify
+          mc --log-level=debug run release --commit --create-pr --no-verify=true
         shell: devenv shell -- bash -e {0}
 
       - name: skip refresh without changesets
