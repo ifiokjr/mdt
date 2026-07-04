@@ -2,6 +2,68 @@
 
 This file is maintained by `knope`.
 
+## [0.9.0](https://github.com/ifiokjr/mdt/releases/tag/v0.9.0) (2026-07-04)
+
+### 🚀 Feature
+
+#### Expose MCP diagnostics through MDT_LOG tracing
+
+The MCP server now initializes `tracing-subscriber` with an `EnvFilter` sourced from `MDT_LOG`. Logs are emitted to stderr so tracing does not corrupt MCP stdio messages or structured tool responses.
+
+This makes agent-driven workflows easier to debug when a check, update, preview, or init call behaves unexpectedly, while leaving normal tool output unchanged unless logging is explicitly enabled.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141) · _Related issues:_ [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+#### Return structured JSON envelopes from MCP tools
+
+MCP tools now return more consistent JSON-oriented `structured_content` envelopes for `mdt_check`, `mdt_update`, `mdt_preview`, and `mdt_init`. Text content is still preserved for clients that display plain tool messages.
+
+`mdt_preview` now behaves more like an authoring workflow by returning per-consumer rendered output, parameterized previews, render details, and mismatch information. Check and update responses also surface undefined-variable warnings so agents can reason about template problems without scraping text.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #116](https://github.com/ifiokjr/mdt/pull/116) · _Closed issues:_ [#108](https://github.com/ifiokjr/mdt/issues/108) · _Related issues:_ [#112](https://github.com/ifiokjr/mdt/issues/112), [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+#### Support lenient comparison in MCP checks
+
+The MCP `mdt_check` tool now honors `[check] comparison = "lenient"`, matching the CLI behavior for whitespace-tolerant verification. Agent workflows can therefore distinguish real template drift from harmless formatter whitespace changes.
+
+The MCP response still reports mismatches when normalized content differs, and update behavior remains exact.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141) · _Related issues:_ [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+#### Run configured formatters from MCP tools
+
+MCP `mdt_update` and `mdt_check` now honor opt-in `[[formatters]]` configuration. Agent workflows can preview, update, and verify formatter-aware template output using the same configuration as the CLI.
+
+This keeps MCP-driven synchronization aligned with project formatters while preserving structured diagnostics for formatter failures.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141) · _Related issues:_ [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+### 🐛 Fixed
+
+#### Respect existing template locations during MCP init
+
+The MCP initialization flow now follows the same bootstrap rules as the CLI. It detects existing canonical and legacy template locations before writing starter content, avoiding unnecessary root-level `template.t.md` files in projects that already have a usable template directory.
+
+Generated READMEs and initialization guidance now consistently describe `.templates/template.t.md` as the preferred starter path.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141) · _Related issues:_ [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+#### Reuse shared core helpers in MCP tools
+
+MCP tools now use shared `mdt_core` helpers for project-root resolution and relative path display. Agent-facing responses therefore stay aligned with CLI and LSP behavior while preserving the existing MCP tool contract.
+
+The cleanup reduces duplicated app-surface code and makes future fixes easier to apply consistently.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141) · _Related issues:_ [#152](https://github.com/ifiokjr/mdt/issues/152)
+
+#### Update rmcp server result construction
+
+`rmcp` has been updated to 2.1.0. The MCP server now uses `ServerInfo::new().with_instructions()` for server metadata, the `CallToolResult::success()` and `CallToolResult::error()` constructors, and `ContentBlock` for text tool responses.
+
+This keeps the MCP integration aligned with the current `rmcp` API while preserving the same tool behavior for clients.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #141](https://github.com/ifiokjr/mdt/pull/141)
+
 ## 0.4.1 (2026-02-25)
 
 ### Features

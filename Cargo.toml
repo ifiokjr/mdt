@@ -3,7 +3,7 @@ members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp", "mdt_mcp"]
 resolver = "2"
 
 [workspace.package]
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["development-tools"]
 edition = "2024"
@@ -51,9 +51,9 @@ tracing-subscriber = { default-features = false, version = "^0.3", features = ["
 tracing-test = { default-features = false, version = "^0.2" }
 
 # Internal crates
-mdt_core = { path = "./mdt_core", version = "0.8.0" }
-mdt_lsp = { path = "./mdt_lsp", version = "0.8.0" }
-mdt_mcp = { path = "./mdt_mcp", version = "0.8.0" }
+mdt_core = { path = "./mdt_core", version = "0.9.0" }
+mdt_lsp = { path = "./mdt_lsp", version = "0.9.0" }
+mdt_mcp = { path = "./mdt_mcp", version = "0.9.0" }
 
 [workspace.metadata.bin]
 cargo-semver-checks = { version = "0.48.0" }
