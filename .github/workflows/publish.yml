@@ -1,12 +1,15 @@
-name: "publish"
+name: publish
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (for example `v0.7.0`)."
+        description: "Release tag to publish (for example v0.8.0)."
         required: true
         type: string
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.tag || github.run_id }}
@@ -19,8 +22,7 @@ jobs:
       actions: read
       contents: read
       id-token: write
-    if: >-
-      github.repository_owner == 'ifiokjr'
+    if: github.repository_owner == 'ifiokjr'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -29,18 +31,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           TAG='${{ inputs.tag }}'
-
-          repo_url="https://github.com/${GITHUB_REPOSITORY}.git"
-
-          # Validate the tag exists on the remote before proceeding.
-          if ! git ls-remote --exit-code --tags "$repo_url" "refs/tags/$TAG" >/dev/null 2>&1; then
+          if [[ "$TAG" != v* ]]; then
+            echo "::error::Tag '$TAG' must be an mdt release tag like v0.8.0" >&2
+            exit 1
+          fi
+          if ! git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "::error::Tag '$TAG' does not exist on the remote" >&2
             exit 1
           fi
-
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Resolved release tag: $TAG"
 
       - name: checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -53,27 +54,23 @@ jobs:
         run: |
           set -euo pipefail
           expected_tag="${{ steps.release_tag.outputs.tag }}"
-          actual_commit=$(git rev-parse HEAD)
-          tag_commit=$(git rev-list -n1 "$expected_tag")
+          actual_commit="$(git rev-parse HEAD)"
+          tag_commit="$(git rev-list -n1 "$expected_tag")"
           if [ "$actual_commit" != "$tag_commit" ]; then
             echo "::error::Checked-out commit $actual_commit does not match tag $expected_tag ($tag_commit)" >&2
             exit 1
           fi
-
-          # Ensure the tag has been merged into main (prevents orphaned/release-branch tags)
           if ! git merge-base --is-ancestor "$actual_commit" refs/remotes/origin/main 2>/dev/null; then
-            echo "::error::Tag $expected_tag ($actual_commit) is not on the main branch" >&2
+            echo "::error::Tag $expected_tag ($actual_commit) is not on main" >&2
             exit 1
           fi
 
-          echo "Verified: checked-out commit matches tag $expected_tag and is on main"
-
-      - name: install rust toolchain
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+      - name: setup
+        uses: ./.github/actions/devenv
         with:
-          toolchain: stable
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: setup node
+      - name: setup node for publish
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
@@ -93,22 +90,24 @@ jobs:
         id: crates-oidc
 
       - name: download release assets
-        if: startsWith(steps.release_tag.outputs.tag, 'v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/release-assets"
           gh release download "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --pattern "mdt-*-${RELEASE_TAG}.tar.gz" \
             --pattern "mdt-*-${RELEASE_TAG}.zip" \
             --dir "$RUNNER_TEMP/release-assets"
+          find "$RUNNER_TEMP/release-assets" -maxdepth 1 -type f -print
 
       - name: populate platform packages with release binaries
         env:
           RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
+          set -euo pipefail
           pnpm node --import tsx scripts/npm/build-packages.ts \
             --release-tag "$RELEASE_TAG" \
             --assets-dir "$RUNNER_TEMP/release-assets"
@@ -116,121 +115,24 @@ jobs:
       - name: populate cli npm package with launcher
         run: |
           set -euo pipefail
-
-          # tsdown already compiled the launcher to bin/mdt.js
-          # Just ensure it's executable
           chmod +x packages/m-d-t__cli/bin/mdt.js || true
 
       - name: check publish readiness
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-oidc.outputs.token }}
-        run: |
-          set -euo pipefail
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: mc step publish-readiness --from HEAD --output "$RUNNER_TEMP/publish-readiness.json" --format json
+        shell: devenv shell -- bash -e {0}
 
-          # Verify all platform packages have binaries
-          for dir in packages/m-d-t__cli-*/; do
-            if [ ! -f "$dir/bin/mdt" ] && [ ! -f "$dir/bin/mdt.exe" ]; then
-              echo "::error::Missing binary in $dir" >&2
-              exit 1
-            fi
-          done
-
-          echo "All platform packages have binaries. Ready to publish."
-
-      - name: setup cargo stable for publish
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        with:
-          toolchain: stable
-
-      - name: publish cargo crates
+      - name: publish packages with monochange
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-oidc.outputs.token }}
-        run: |
-          set -euo pipefail
-
-          # Publish in dependency order with retry logic
-          crates=("mdt_core" "mdt_lsp" "mdt_mcp" "mdt_cli")
-          for crate in "${crates[@]}"; do
-            echo "::group::Publishing $crate"
-            for attempt in 1 2 3 4 5; do
-              if cargo publish --package "$crate" --allow-dirty; then
-                echo "Successfully published $crate"
-                break
-              fi
-
-              if [ "$attempt" -eq 5 ]; then
-                echo "::error::Failed to publish $crate after 5 attempts" >&2
-                exit 1
-              fi
-
-              echo "Attempt $attempt failed for $crate; retrying in 30 seconds..."
-              sleep 30
-            done
-            echo "::endgroup::"
-
-            # Wait for crates.io to index before publishing the next crate
-            echo "Waiting 30s for crates.io to index $crate..."
-            sleep 30
-          done
-
-      - name: publish npm packages
-        env:
-          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
         run: |
-          set -euo pipefail
-
-          VERSION="${RELEASE_TAG#v}"
-
-          # Update version in all platform packages
-          for dir in packages/m-d-t__cli-*/; do
-            if [ -f "$dir/package.json" ]; then
-              node -e "
-                const fs = require('fs');
-                const path = require('path');
-                const pkgPath = path.join('$dir', 'package.json');
-                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                pkg.version = '$VERSION';
-                fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
-              "
-            fi
-          done
-
-          # Update version in root cli package
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('packages/m-d-t__cli/package.json', 'utf8'));
-            pkg.version = '$VERSION';
-            // Update optional dependency versions
-            for (const dep of Object.keys(pkg.optionalDependencies || {})) {
-              pkg.optionalDependencies[dep] = '^' + '$VERSION';
-            }
-            fs.writeFileSync('packages/m-d-t__cli/package.json', JSON.stringify(pkg, null, '\t') + '\n');
-          "
-
-          # Update version in skills package
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('packages/m-d-t__skills/package.json', 'utf8'));
-            pkg.version = '$VERSION';
-            fs.writeFileSync('packages/m-d-t__skills/package.json', JSON.stringify(pkg, null, '\t') + '\n');
-          "
-
-          # Publish platform packages first (no dependencies to resolve)
-          for dir in packages/m-d-t__cli-*/; do
-            if [ -f "$dir/package.json" ]; then
-              echo "::group::Publishing $(basename "$dir")"
-              npm publish "$dir" --access public --provenance
-              echo "::endgroup::"
-            fi
-          done
-
-          # Publish the main CLI package
-          echo "::group::Publishing @m-d-t/cli"
-          npm publish packages/m-d-t__cli --access public --provenance
-          echo "::endgroup::"
-
-          # Publish the skills package
-          echo "::group::Publishing @m-d-t/skills"
-          npm publish packages/m-d-t__skills --access public --provenance
-          echo "::endgroup::"
+          mc --log-level=info step publish-packages \
+            --all \
+            --output "$RUNNER_TEMP/publish-result.json" \
+            --format json
+        shell: devenv shell -- bash -e {0}

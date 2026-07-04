@@ -1,4 +1,4 @@
-name: "release"
+name: release
 
 on:
   push:
@@ -7,9 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.1.0). Must start with `v`."
+        description: "Release tag (for example v0.8.0). Must start with v."
         required: true
         type: string
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
@@ -20,7 +23,9 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     permissions:
+      attestations: write
       contents: write
+      id-token: write
     if: >-
       github.repository_owner == 'ifiokjr' &&
       startsWith(inputs.tag || github.ref_name, 'v')
@@ -56,14 +61,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_ref='${{ env.RELEASE_TAG }}'
           git fetch --force origin "+refs/heads/*:refs/remotes/origin/*"
           git fetch --tags --force origin "+refs/tags/*:refs/tags/*"
 
-          if git rev-parse --verify --quiet "refs/tags/$release_ref" >/dev/null; then
-            git checkout --detach "refs/tags/$release_ref"
+          if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG" >/dev/null; then
+            git checkout --detach "refs/tags/$RELEASE_TAG"
           else
-            echo "::error::Release ref '$release_ref' is not a valid tag. Releases must be created from tags." >&2
+            echo "::error::Release ref '$RELEASE_TAG' is not a valid tag. Releases must be created from tags." >&2
             exit 1
           fi
 
@@ -71,21 +75,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_tag="${{ env.RELEASE_TAG }}"
-          actual_commit=$(git rev-parse HEAD)
-          tag_commit=$(git rev-list -n1 "$expected_tag")
+          actual_commit="$(git rev-parse HEAD)"
+          tag_commit="$(git rev-list -n1 "$RELEASE_TAG")"
           if [ "$actual_commit" != "$tag_commit" ]; then
-            echo "::error::Checked-out commit $actual_commit does not match tag $expected_tag ($tag_commit)" >&2
+            echo "::error::Checked-out commit $actual_commit does not match tag $RELEASE_TAG ($tag_commit)" >&2
             exit 1
           fi
 
-          # Ensure the tag has been merged into main (prevents orphaned/release-branch tags)
           if ! git merge-base --is-ancestor "$actual_commit" refs/remotes/origin/main 2>/dev/null; then
-            echo "::error::Tag $expected_tag ($actual_commit) is not on the main branch" >&2
+            echo "::error::Tag $RELEASE_TAG ($actual_commit) is not on main" >&2
             exit 1
           fi
-
-          echo "Verified: checked-out commit matches tag $expected_tag and is on main"
 
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
@@ -93,21 +93,21 @@ jobs:
           toolchain: stable
 
       - name: setup cross toolchain
+        if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
         uses: taiki-e/setup-cross-toolchain-action@129361238c06ff2cc1c4ca5c5d2217af441ffdf6 # v1.40.1
         with:
           target: ${{ matrix.target }}
-        if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
 
       - name: install cross
+        if: contains(matrix.target, '-musl')
         uses: taiki-e/install-action@c070f87102a1c75b3183910f391c1cb887fe13c8 # v2
         with:
           tool: cross
-        if: contains(matrix.target, '-musl')
 
       - name: set static crt linkage
-        shell: bash
-        run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
         if: endsWith(matrix.target, 'windows-msvc')
+        shell: bash
+        run: echo "RUSTFLAGS=${RUSTFLAGS:-} -C target-feature=+crt-static" >> "$GITHUB_ENV"
 
       - name: upload binaries
         uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
@@ -123,8 +123,87 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checksum: sha256,sha512
 
-  trigger_publish:
+  attest_assets:
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      startsWith(inputs.tag || github.ref_name, 'v')
     needs: upload_assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: download all release archives for attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset_dir="$RUNNER_TEMP/release-asset-attestations"
+          mkdir -p "$asset_dir"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'mdt-*' \
+            --dir "$asset_dir"
+          shopt -s nullglob
+          archives=("$asset_dir"/*)
+          if [ ${#archives[@]} -eq 0 ]; then
+            echo "::error::No release archives downloaded for $RELEASE_TAG" >&2
+            exit 1
+          fi
+          sha256sum "$asset_dir"/*
+
+      - name: attest all release archives
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ runner.temp }}/release-asset-attestations/*
+
+      - name: verify all release archive attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for archive in "$RUNNER_TEMP/release-asset-attestations"/*; do
+            verified=false
+            for attempt in 1 2 3 4 5; do
+              if gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY"; then
+                verified=true
+                break
+              fi
+              echo "Attestation for $archive is not available yet (attempt $attempt/5)."
+              sleep 10
+            done
+            if [ "$verified" != true ]; then
+              echo "::error::Failed to verify attestation for $archive" >&2
+              exit 1
+            fi
+          done
+
+  publish_draft:
+    needs: attest_assets
+    environment: publisher
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    permissions:
+      contents: write
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      startsWith(inputs.tag || github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: publish draft release
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  trigger_publish:
+    needs: publish_draft
     environment: publisher
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
@@ -139,26 +218,20 @@ jobs:
       - name: trigger publish workflow
         run: |
           set -euo pipefail
-
-          repo_url="https://github.com/${GITHUB_REPOSITORY}.git"
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if git ls-remote --exit-code --tags "$repo_url" "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
-              echo "Release tag ${RELEASE_TAG} is visible on the remote."
+            if git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
               break
             fi
-
             if [ "$attempt" -eq 12 ]; then
               echo "::error::Tag ${RELEASE_TAG} was not visible on the remote after waiting." >&2
               exit 1
             fi
-
-            echo "Tag ${RELEASE_TAG} is not visible on the remote yet; retrying in 5 seconds..."
+            echo "Release tag ${RELEASE_TAG} is not visible yet (attempt $attempt/12)."
             sleep 5
           done
-
           gh workflow run publish.yml \
             --repo "${{ github.repository }}" \
-            --ref "${{ env.RELEASE_TAG }}" \
-            -f "tag=${{ env.RELEASE_TAG }}"
+            --ref "$RELEASE_TAG" \
+            -f "tag=$RELEASE_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
