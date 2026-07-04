@@ -231,7 +231,7 @@ jobs:
           done
           gh workflow run publish.yml \
             --repo "${{ github.repository }}" \
-            --ref "$RELEASE_TAG" \
+            --ref main \
             -f "tag=$RELEASE_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
