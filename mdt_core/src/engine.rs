@@ -27,6 +27,7 @@ use crate::project::ProviderEntry;
 use crate::project::extract_content_between_tags;
 use crate::project::is_markdown_path;
 use crate::project::normalize_line_endings;
+use crate::source_scanner::extract_line_comment_prefix;
 use crate::source_scanner::parse_source_with_diagnostics;
 
 /// A warning about undefined template variables in a provider block.
@@ -397,7 +398,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					);
 					expected = pad_content_with_config(
 						&expected,
-						&consumer.content,
+						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
 						effective_padding(ctx),
 					);
 					eligible[index] = true;
@@ -565,7 +566,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 					);
 					new_content = pad_content_with_config(
 						&new_content,
-						&consumer.content,
+						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
 						effective_padding(ctx),
 					);
 					new_content
@@ -644,7 +645,18 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 	let mut render_errors = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 
+	// Cache file contents so the closing-tag comment prefix can be recovered
+	// from the source when padding is enabled.
+	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
+
 	for consumer in &ctx.project.consumers {
+		if !file_contents.contains_key(&consumer.file) {
+			file_contents.insert(
+				consumer.file.clone(),
+				std::fs::read_to_string(&consumer.file)?,
+			);
+		}
+		let source = &file_contents[&consumer.file];
 		match consumer.block.r#type {
 			BlockType::Consumer => {
 				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
@@ -685,8 +697,11 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					&consumer.block.transformers,
 					Some(&render_data),
 				);
-				expected =
-					pad_content_with_config(&expected, &consumer.content, effective_padding(ctx));
+				expected = pad_content_with_config(
+					&expected,
+					extract_line_comment_prefix(source, consumer.block.closing.start.offset),
+					effective_padding(ctx),
+				);
 
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
@@ -791,7 +806,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 					);
 					new_content = pad_content_with_config(
 						&new_content,
-						&consumer.content,
+						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
 						effective_padding(ctx),
 					);
 					new_content
@@ -1339,17 +1354,15 @@ fn effective_padding(ctx: &ProjectContext) -> &PaddingConfig {
 	ctx.padding.as_ref().unwrap_or(&DEFAULT_PADDING)
 }
 
-fn pad_content_with_config(
+pub(crate) fn pad_content_with_config(
 	new_content: &str,
-	original_content: &str,
+	trailing_prefix: &str,
 	padding: &PaddingConfig,
 ) -> String {
-	// Extract the trailing prefix from the original content — everything after
-	// the last newline. For example, in "\n//! old\n//! " the trailing prefix
-	// is "//! ".
-	let trailing_prefix = original_content
-		.rfind('\n')
-		.map_or("", |idx| &original_content[idx + 1..]);
+	// The trailing prefix is the comment prefix (e.g., `//! `) that precedes
+	// the closing tag in the source file, extracted from the closing tag's
+	// line. It is preserved after replacement so the closing tag stays inside
+	// the comment. For markdown files this is empty.
 	// Trimmed prefix for blank padding lines — avoids trailing whitespace
 	// on empty lines (e.g., "//! " becomes "//!").
 	let blank_line_prefix = trailing_prefix.trim_end();

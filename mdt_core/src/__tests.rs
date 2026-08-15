@@ -11219,3 +11219,96 @@ fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 
 	Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// padding: comment prefix recovery when migrating from inline content
+// ---------------------------------------------------------------------------
+
+use crate::config::PaddingConfig;
+use crate::config::PaddingValue;
+use crate::engine::pad_content_with_config;
+use crate::source_scanner::extract_comment_prefix;
+use crate::source_scanner::extract_line_comment_prefix;
+
+fn padding_zero() -> PaddingConfig {
+	PaddingConfig {
+		before: PaddingValue::Lines(0),
+		after: PaddingValue::Lines(0),
+	}
+}
+
+#[test]
+fn pad_content_applies_trailing_prefix() {
+	// The closing-tag prefix (e.g., `//! `) is preserved after replacement so
+	// the closing tag stays inside the comment.
+	let new_content = "//! Seed-based APIs require deterministic seed ordering.";
+	let result = pad_content_with_config(new_content, "//! ", &padding_zero());
+	assert_eq!(
+		result,
+		"\n//! Seed-based APIs require deterministic seed ordering.\n//! "
+	);
+}
+
+#[test]
+fn pad_content_markdown_gets_no_prefix() {
+	// Markdown files have no comment prefix; the closing tag stays bare.
+	let new_content = "Seed-based APIs require deterministic seed ordering.";
+	let result = pad_content_with_config(new_content, "", &padding_zero());
+	assert_eq!(
+		result,
+		"\nSeed-based APIs require deterministic seed ordering.\n"
+	);
+}
+
+#[test]
+fn pad_content_applies_doc_comment_prefix() {
+	let new_content = "/// Greets the user by name.";
+	let result = pad_content_with_config(new_content, "/// ", &padding_zero());
+	assert_eq!(result, "\n/// Greets the user by name.\n/// ");
+}
+
+#[test]
+fn extract_comment_prefix_matches_common_markers() {
+	assert_eq!(extract_comment_prefix("/// docs"), "/// ");
+	assert_eq!(extract_comment_prefix("//! docs"), "//! ");
+	assert_eq!(extract_comment_prefix("// docs"), "// ");
+	assert_eq!(extract_comment_prefix("# docs"), "# ");
+	assert_eq!(extract_comment_prefix("## docs"), "## ");
+	assert_eq!(extract_comment_prefix(" * docs"), " * ");
+	assert_eq!(extract_comment_prefix("  //! indented"), "  //! ");
+	assert_eq!(extract_comment_prefix("plain text"), "");
+	assert_eq!(extract_comment_prefix("<!-- {/x} -->"), "");
+	assert_eq!(extract_comment_prefix(""), "");
+}
+
+#[test]
+fn extract_line_comment_prefix_recovers_prefix_from_inline_closing_tag() {
+	// Regression: a block previously rendered without padding has the closing
+	// tag on the same line as the opening tag. The prefix is recovered from
+	// the start of that line.
+	let source = "//! <!-- {=x|trim|linePrefix:\"//! \":true} -->//! old content<!-- {/x} -->";
+	let offset = source.find("<!-- {/x} -->").unwrap();
+	assert_eq!(extract_line_comment_prefix(source, offset), "//! ");
+}
+
+#[test]
+fn extract_line_comment_prefix_recovers_prefix_from_padded_closing_tag() {
+	let source = "//! <!-- {=x} -->\n//! old content\n//! <!-- {/x} -->";
+	let offset = source.find("<!-- {/x} -->").unwrap();
+	assert_eq!(extract_line_comment_prefix(source, offset), "//! ");
+}
+
+#[test]
+fn extract_line_comment_prefix_returns_empty_for_markdown() {
+	// Markdown closing tags sit on bare lines — no prefix to recover.
+	let source = "<!-- {=x} -->\ncontent\n<!-- {/x} -->";
+	let offset = source.find("<!-- {/x} -->").unwrap();
+	assert_eq!(extract_line_comment_prefix(source, offset), "");
+}
+
+#[test]
+fn extract_line_comment_prefix_handles_indented_comments() {
+	let source = "  //! <!-- {=x} -->\n  //! content\n  //! <!-- {/x} -->";
+	let offset = source.find("<!-- {/x} -->").unwrap();
+	assert_eq!(extract_line_comment_prefix(source, offset), "  //! ");
+}

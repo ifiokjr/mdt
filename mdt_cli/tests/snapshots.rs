@@ -878,6 +878,77 @@ fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// padding_inline_migration: inline blocks get comment prefixes when padding
+// is enabled (regression: closing tags lost their prefix when migrating from
+// the no-padding inline state)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn padding_inline_migration_check_stale() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("padding_inline_migration", tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_inline_migration_check_stale",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn padding_inline_migration_update() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("padding_inline_migration", tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_inline_migration_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
+
+	let lib_rs = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+	insta::assert_snapshot!("padding_inline_migration_update__lib_rs", lib_rs);
+
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	insta::assert_snapshot!("padding_inline_migration_update__readme_md", readme);
+
+	Ok(())
+}
+
+#[test]
+fn padding_inline_migration_check_after_update() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("padding_inline_migration", tmp.path());
+	run_update(tmp.path());
+
+	assert_cmd_snapshot!(
+		"padding_inline_migration_check_after_update",
+		common::mdt_cmd_for_path(tmp.path()).arg("check")
+	);
+
+	Ok(())
+}
+
+#[test]
+fn padding_inline_migration_update_idempotent() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("padding_inline_migration", tmp.path());
+	run_update(tmp.path());
+
+	let lib_after_first = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+
+	assert_cmd_snapshot!(
+		"padding_inline_migration_update_idempotent",
+		common::mdt_cmd_for_path(tmp.path()).arg("update")
+	);
+
+	let lib_after_second = std::fs::read_to_string(tmp.path().join("lib.rs"))?;
+	similar_asserts::assert_eq!(lib_after_first, lib_after_second);
+
+	Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // validation_errors: unclosed blocks produce error diagnostics
 // ---------------------------------------------------------------------------
 
