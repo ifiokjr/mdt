@@ -71,15 +71,13 @@ void test("launcher executes the installed platform binary", () => {
 	try {
 		const [pkgName] = currentCandidates();
 		assert.ok(pkgName, "expected a package mapping for the current platform");
-		const binary = process.platform === "win32"
-			? "@echo off\r\necho launcher-ok %*\r\n"
-			: '#!/bin/sh\necho launcher-ok "$@"\n';
+		const binary =
+			process.platform === "win32"
+				? "@echo off\r\necho launcher-ok %*\r\n"
+				: '#!/bin/sh\necho launcher-ok "$@"\n';
 		createPackage(nodeModulesDir, pkgName, binary);
 
-		const result = runLauncher(testLauncherPath, nodeModulesDir, [
-			"check",
-			"--verbose",
-		]);
+		const result = runLauncher(testLauncherPath, nodeModulesDir, ["check", "--verbose"]);
 		assert.equal(result.status, 0, String(result.stderr || ""));
 		assert.match(String(result.stdout || ""), /launcher-ok/);
 		assert.match(String(result.stdout || ""), /check/);
@@ -94,14 +92,8 @@ void test("launcher shows a helpful error when no platform package is installed"
 	try {
 		const result = runLauncher(testLauncherPath, nodeModulesDir, ["--help"]);
 		assert.notEqual(result.status, 0);
-		assert.match(
-			String(result.stderr || ""),
-			/Unable to find a compatible mdt binary/,
-		);
-		assert.match(
-			String(result.stderr || ""),
-			/Reinstall with `npm install -g @m-d-t\/cli`/,
-		);
+		assert.match(String(result.stderr || ""), /Unable to find a compatible mdt binary/);
+		assert.match(String(result.stderr || ""), /Reinstall with `npm install -g @m-d-t\/cli`/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -113,17 +105,15 @@ void test(
 		skip: currentCandidates().length === 0,
 	},
 	() => {
-		const { root, nodeModulesDir, testLauncherPath } = setupNodePath(
-			"unsupported",
-		);
+		const { root, nodeModulesDir, testLauncherPath } = setupNodePath("unsupported");
 		try {
 			const result = spawnSync(
 				"node",
 				[
 					"-e",
-					`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${
-						JSON.stringify(testLauncherPath)
-					});`,
+					`Object.defineProperty(process, "platform", { value: "sunos" }); Object.defineProperty(process, "arch", { value: "x64" }); require(${JSON.stringify(
+						testLauncherPath,
+					)});`,
 				],
 				{
 					cwd: process.cwd(),
@@ -135,10 +125,7 @@ void test(
 				},
 			);
 			assert.notEqual(result.status, 0);
-			assert.match(
-				String(result.stderr || ""),
-				/does not currently publish npm binaries/,
-			);
+			assert.match(String(result.stderr || ""), /does not currently publish npm binaries/);
 			assert.match(String(result.stderr || ""), /sunos\/x64/);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
@@ -152,17 +139,11 @@ void test(
 		skip: process.platform !== "linux" || currentCandidates().length < 2,
 	},
 	() => {
-		const { root, nodeModulesDir, testLauncherPath } = setupNodePath(
-			"fallback",
-		);
+		const { root, nodeModulesDir, testLauncherPath } = setupNodePath("fallback");
 		try {
 			const [firstPackage, secondPackage] = currentCandidates();
 			createPackage(nodeModulesDir, firstPackage, "#!/missing/interpreter\n");
-			createPackage(
-				nodeModulesDir,
-				secondPackage,
-				'#!/bin/sh\necho fallback-ok "$@"\n',
-			);
+			createPackage(nodeModulesDir, secondPackage, '#!/bin/sh\necho fallback-ok "$@"\n');
 
 			const result = runLauncher(testLauncherPath, nodeModulesDir, ["doctor"]);
 			assert.equal(result.status, 0, String(result.stderr || ""));

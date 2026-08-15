@@ -37,10 +37,7 @@ void test("build-packages requires the expected command line arguments", () => {
 });
 
 void test("build-packages reports missing release assets", () => {
-	const tempRoot = join(
-		tmpdir(),
-		`mdt-build-packages-missing-${process.pid}-${Date.now()}`,
-	);
+	const tempRoot = join(tmpdir(), `mdt-build-packages-missing-${process.pid}-${Date.now()}`);
 	const assetsDir = join(tempRoot, "assets");
 
 	try {
@@ -67,10 +64,7 @@ void test("build-packages processes release archives without error", () => {
 	const repoPackagesTmp = join(process.cwd(), "packages", ".tmp");
 	rmSync(repoPackagesTmp, { recursive: true, force: true });
 
-	const tempRoot = join(
-		tmpdir(),
-		`mdt-build-packages-${process.pid}-${Date.now()}`,
-	);
+	const tempRoot = join(tmpdir(), `mdt-build-packages-${process.pid}-${Date.now()}`);
 	const assetsDir = join(tempRoot, "assets");
 
 	try {
@@ -86,13 +80,7 @@ void test("build-packages processes release archives without error", () => {
 				});
 				const result = spawnSync(
 					"tar",
-					[
-						"-czf",
-						join(assetsDir, `mdt-${target}-v1.2.3.tar.gz`),
-						"-C",
-						workDir,
-						binary,
-					],
+					["-czf", join(assetsDir, `mdt-${target}-v1.2.3.tar.gz`), "-C", workDir, binary],
 					{ encoding: "utf8" },
 				);
 				assert.equal(result.status, 0, result.stderr);

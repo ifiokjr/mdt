@@ -89,8 +89,7 @@ function main(): void {
 		});
 
 		if (shouldTryNextPackage(result)) {
-			const detail = result.error?.message ?? result.stderr?.trim() ??
-				"failed to launch";
+			const detail = result.error?.message ?? result.stderr?.trim() ?? "failed to launch";
 			failures.push(`${pkgName}: ${detail}`);
 			continue;
 		}
@@ -99,9 +98,7 @@ function main(): void {
 		process.exit(result.status ?? 0);
 	}
 
-	console.error(
-		"Unable to find a compatible mdt binary in the installed npm packages.",
-	);
+	console.error("Unable to find a compatible mdt binary in the installed npm packages.");
 	console.error(`Tried: ${candidates.join(", ")}`);
 	if (failures.length > 0) {
 		console.error(failures.join("\n"));

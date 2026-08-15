@@ -19,18 +19,12 @@ const ALL_PLATFORM_PACKAGES: string[] = [
 ];
 
 function makeTempDir(name: string): string {
-	return join(
-		tmpdir(),
-		`mdt-publish-packages-${name}-${process.pid}-${Date.now()}`,
-	);
+	return join(tmpdir(), `mdt-publish-packages-${name}-${process.pid}-${Date.now()}`);
 }
 
 function createPackage(dir: string, name: string, version: string): void {
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(
-		join(dir, "package.json"),
-		JSON.stringify({ name, version }, null, 2),
-	);
+	writeFileSync(join(dir, "package.json"), JSON.stringify({ name, version }, null, 2));
 }
 
 void test("publish-packages requires a packages directory argument", () => {
@@ -68,11 +62,9 @@ void test("publish-packages validates packages have binaries", () => {
 			mode: 0o755,
 		});
 
-		const result = spawnSync(
-			"pnpm",
-			["tsx", scriptPath, "--packages-dir", packagesDir],
-			{ encoding: "utf8" },
-		);
+		const result = spawnSync("pnpm", ["tsx", scriptPath, "--packages-dir", packagesDir], {
+			encoding: "utf8",
+		});
 
 		const output = String(result.stdout || "");
 		assert.equal(result.status, 0, String(result.stderr || output));
@@ -94,11 +86,9 @@ void test("publish-packages errors when binaries are missing", () => {
 		createPackage(pkgDir, "@m-d-t/cli-darwin-arm64", "1.2.3");
 		// No bin/ directory created
 
-		const result = spawnSync(
-			"pnpm",
-			["tsx", scriptPath, "--packages-dir", packagesDir],
-			{ encoding: "utf8" },
-		);
+		const result = spawnSync("pnpm", ["tsx", scriptPath, "--packages-dir", packagesDir], {
+			encoding: "utf8",
+		});
 
 		const errOutput = String(result.stderr || result.stdout || "");
 		assert.notEqual(result.status, 0);

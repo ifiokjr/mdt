@@ -1,6 +1,9 @@
+#:schema https://monochange.github.io/monochange/schemas/monochange.schema.json
+
 [defaults]
 parent_bump = "patch"
 include_private = false
+warn_on_group_mismatch = true
 package_type = "cargo"
 
 [defaults.changelog]
@@ -152,6 +155,14 @@ ignored_paths = [
 
 [ecosystems.cargo]
 enabled = true
+# Refresh Cargo.lock after a release bumps workspace versions. monochange's
+# direct lockfile rewrite only updates released packages; workspace crates that
+# inherit the workspace version via `version.workspace = true` stay stale and
+# break `cargo build --locked` in CI. `cargo update --workspace` syncs exactly
+# those entries without touching dependencies.
+lockfile_commands = [
+  { command = "cargo update --workspace", cwd = ".", shell = "bash" },
+]
 
 [ecosystems.cargo.publish]
 enabled = true
@@ -161,6 +172,9 @@ trusted_publishing = true
 
 [ecosystems.npm]
 enabled = true
+lockfile_commands = [
+  { command = "pnpm install --lockfile-only --no-frozen-lockfile", cwd = ".", shell = "bash" },
+]
 
 [ecosystems.npm.publish]
 enabled = true
@@ -215,8 +229,6 @@ inputs = [
 ]
 steps = [
   { type = "PrepareRelease", name = "plan release", allow_empty_changesets = true },
-  { type = "Command", name = "generate cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo generate-lockfile" },
-  { type = "Command", name = "generate pnpm lockfile", when = "{{ number_of_changesets > 0 }}", command = "pnpm install --lockfile-only --no-frozen-lockfile" },
   { type = "Command", name = "sync template blocks", when = "{{ number_of_changesets > 0 }}", command = "mdt update" },
   { type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
   { type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },

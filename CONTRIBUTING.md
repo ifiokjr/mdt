@@ -77,7 +77,7 @@ Every change must be submitted via a pull request. Do not commit directly to `ma
 To create a changeset interactively:
 
 ```sh
-knope document-change
+mc create
 ```
 
 Or create one manually by adding a markdown file in `.changeset/` with the following format:

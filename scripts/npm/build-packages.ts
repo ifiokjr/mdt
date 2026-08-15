@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import {
-	chmodSync,
-	copyFileSync,
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-} from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -106,16 +99,14 @@ const platforms: PlatformSpec[] = [
 ];
 
 export const PLATFORM_PACKAGE_DIRS = platforms.map((spec) =>
-	packageNameToDirName(spec.packageName)
+	packageNameToDirName(spec.packageName),
 );
 
 export const CLI_PACKAGE_DIR = "m-d-t__cli";
 
 let _spawnSync = spawnSync;
 
-export function _setSpawnSync(
-	fn: typeof spawnSync,
-): void {
+export function _setSpawnSync(fn: typeof spawnSync): void {
 	_spawnSync = fn;
 }
 
@@ -152,8 +143,7 @@ export function run(
 		cwd: options.cwd,
 	});
 	if (result.status !== 0) {
-		const detail = result.stderr || result.stdout ||
-			`exit code ${result.status ?? "unknown"}`;
+		const detail = result.stderr || result.stdout || `exit code ${result.status ?? "unknown"}`;
 		throw new Error(`${command} ${args.join(" ")} failed: ${detail}`);
 	}
 	return result;
@@ -185,10 +175,7 @@ export function* walk(dir: string): Generator<string> {
 	}
 }
 
-export function extractArchive(
-	archivePath: string,
-	destinationDir: string,
-): void {
+export function extractArchive(archivePath: string, destinationDir: string): void {
 	ensureDirectory(destinationDir);
 	if (archivePath.endsWith(".zip")) {
 		run("unzip", ["-q", archivePath, "-d", destinationDir]);
@@ -201,10 +188,7 @@ export function extractArchive(
 	throw new Error(`unsupported archive: ${basename(archivePath)}`);
 }
 
-export function findBinary(
-	extractedDir: string,
-	binaryName: string,
-): string {
+export function findBinary(extractedDir: string, binaryName: string): string {
 	for (const filePath of walk(extractedDir)) {
 		if (basename(filePath) === binaryName) {
 			return filePath;
@@ -248,12 +232,7 @@ export function populatePlatformPackage({
 	assetsDir: string;
 	tmpDir: string;
 }): void {
-	const archivePath = findArchive(
-		assetsDir,
-		spec.target,
-		releaseTag,
-		spec.archiveExt,
-	);
+	const archivePath = findArchive(assetsDir, spec.target, releaseTag, spec.archiveExt);
 	const extractedDir = join(tmpDir, spec.target);
 	const packageDir = join(packagesDir, packageNameToDirName(spec.packageName));
 	const binDir = join(packageDir, "bin");
@@ -274,9 +253,7 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 	const assetsDir = resolve(args["assets-dir"] ?? "");
 
 	if (!releaseTag || !args["assets-dir"]) {
-		throw new Error(
-			"usage: build-packages.ts --release-tag <vX.Y.Z> --assets-dir <dir>",
-		);
+		throw new Error("usage: build-packages.ts --release-tag <vX.Y.Z> --assets-dir <dir>");
 	}
 
 	const packagesDir = join(repoRoot, "packages");
@@ -292,14 +269,9 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 		});
 	}
 
-	console.log(
-		`Populated platform binaries in ${packagesDir} for ${releaseTag}`,
-	);
+	console.log(`Populated platform binaries in ${packagesDir} for ${releaseTag}`);
 }
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
-) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
 	main();
 }

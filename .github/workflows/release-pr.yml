@@ -198,21 +198,3 @@ jobs:
           export GITHUB_TOKEN="$GH_TOKEN"
           mc --log-level=debug step comment-released-issues --from-ref="HEAD" --auto-close-issues
         shell: devenv shell -- bash -e {0}
-
-      - name: trigger release workflow
-        if: steps.tag_release.outputs.is_release_commit == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: |
-          set -euo pipefail
-          export GITHUB_TOKEN="$GH_TOKEN"
-          tag="$(jq -r '.tags.mdt // empty' /tmp/tag-report.json)"
-          if [ -z "$tag" ]; then
-            echo "No mdt group tag found in tag-report.json, skipping release trigger"
-            exit 0
-          fi
-          echo "Triggering release workflow for tag $tag"
-          gh workflow run release.yml \
-            --repo "${{ github.repository }}" \
-            -f "tag=$tag"
-        shell: devenv shell -- bash -e {0}

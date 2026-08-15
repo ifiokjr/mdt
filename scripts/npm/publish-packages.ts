@@ -33,9 +33,7 @@ export const FORBIDDEN_NPM_TOKEN_ENV_KEYS = [
 
 let _spawnSync = spawnSync;
 
-export function _setSpawnSync(
-	fn: typeof spawnSync,
-): void {
+export function _setSpawnSync(fn: typeof spawnSync): void {
 	_spawnSync = fn;
 }
 
@@ -78,8 +76,7 @@ export function run(
 	});
 
 	if (result.status !== 0) {
-		const detail = result.stderr || result.stdout ||
-			`exit code ${result.status ?? "unknown"}`;
+		const detail = result.stderr || result.stdout || `exit code ${result.status ?? "unknown"}`;
 		throw new Error(`${command} ${args.join(" ")} failed: ${detail}`);
 	}
 
@@ -100,24 +97,18 @@ export function hasBinary(dir: string): boolean {
 	return entries.some((entry) => entry.startsWith("mdt"));
 }
 
-export function assertTrustedPublishingContext(
-	env: NodeJS.ProcessEnv = process.env,
-): void {
-	const configuredTokenKeys = FORBIDDEN_NPM_TOKEN_ENV_KEYS.filter(
-		(key) => env[key],
-	);
+export function assertTrustedPublishingContext(env: NodeJS.ProcessEnv = process.env): void {
+	const configuredTokenKeys = FORBIDDEN_NPM_TOKEN_ENV_KEYS.filter((key) => env[key]);
 	if (configuredTokenKeys.length > 0) {
 		throw new Error(
-			`Refusing to publish npm packages with long-lived npm token environment variables: ${
-				configuredTokenKeys.join(", ")
-			}. ` +
-				"Remove npm token credentials so npm trusted publishing can use GitHub OIDC.",
+			`Refusing to publish npm packages with long-lived npm token environment variables: ${configuredTokenKeys.join(
+				", ",
+			)}. ` + "Remove npm token credentials so npm trusted publishing can use GitHub OIDC.",
 		);
 	}
 
 	const workflowRef = env.GITHUB_WORKFLOW_REF ?? "";
-	const expectedWorkflowPath =
-		`${TRUSTED_PUBLISHING_REPOSITORY}/.github/workflows/${TRUSTED_PUBLISHING_WORKFLOW}@`;
+	const expectedWorkflowPath = `${TRUSTED_PUBLISHING_REPOSITORY}/.github/workflows/${TRUSTED_PUBLISHING_WORKFLOW}@`;
 	const missing: string[] = [];
 
 	if (env.GITHUB_ACTIONS !== "true") {
@@ -158,9 +149,7 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 		const pkg = packageMetadata(dir) as { name: string; version: string };
 		if (hasBinary(dir) === false) {
 			throw new Error(
-				`Cannot populate ${pkg.name}@${pkg.version}: no binary found in ${
-					join(dir, "bin")
-				}. ` +
+				`Cannot populate ${pkg.name}@${pkg.version}: no binary found in ${join(dir, "bin")}. ` +
 					"Run build-packages.ts first to populate platform binaries.",
 			);
 		}
@@ -171,18 +160,15 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 	const cliPkg = packageMetadata(cliDir) as { name: string; version: string };
 	if (hasBinary(cliDir) === false) {
 		throw new Error(
-			`Cannot populate ${cliPkg.name}@${cliPkg.version}: no binary found in ${
-				join(cliDir, "bin")
-			}. ` +
-				"Run build-packages.ts first to populate platform binaries.",
+			`Cannot populate ${cliPkg.name}@${cliPkg.version}: no binary found in ${join(
+				cliDir,
+				"bin",
+			)}. ` + "Run build-packages.ts first to populate platform binaries.",
 		);
 	}
 	console.log(`Populated ${cliPkg.name}@${cliPkg.version}`);
 }
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
-) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
 	main();
 }
