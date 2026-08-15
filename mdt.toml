@@ -20,6 +20,8 @@
 # disable_gitignore = true
 
 # Padding controls the blank lines between tags and injected content.
+# When this section is absent, content starts on the very next line after
+# the opening tag and the closing tag stays inline with the content.
 # Supported values for both `before` and `after`:
 # - false -> keep content inline with the tag
 # - 0     -> move content to the next line with no blank line

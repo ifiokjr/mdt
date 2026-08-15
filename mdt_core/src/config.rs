@@ -156,8 +156,10 @@ pub struct MdtConfig {
 	#[serde(default = "default_max_file_size")]
 	pub max_file_size: u64,
 	/// Padding configuration controlling blank lines between tags and content.
-	/// When absent, no padding is applied. When present, `before` and `after`
-	/// control how many blank lines separate tags from content.
+	/// When absent, content starts on the very next line after the opening tag
+	/// and the closing tag stays inline with the content. When present,
+	/// `before` and `after` control how many blank lines separate tags from
+	/// content.
 	#[serde(default)]
 	pub padding: Option<PaddingConfig>,
 	/// Ordered formatter pipeline entries used to normalize full-file output.

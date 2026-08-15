@@ -4,7 +4,8 @@ expression: readme
 ---
 # Orphan Consumer Test
 
-<!-- {=greeting|trim} -->Hello from the template!<!-- {/greeting} -->
+<!-- {=greeting|trim} -->
+Hello from the template!<!-- {/greeting} -->
 
 ## Missing Section
 

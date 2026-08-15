@@ -2,4 +2,5 @@
 source: mdt_cli/tests/update.rs
 expression: content
 ---
-<!-- {=docs|trim} -->Some documentation content.<!-- {/docs} -->
+<!-- {=docs|trim} -->
+Some documentation content.<!-- {/docs} -->

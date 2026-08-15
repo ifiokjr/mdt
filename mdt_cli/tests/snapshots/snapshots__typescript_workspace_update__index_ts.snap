@@ -3,7 +3,8 @@ source: mdt_cli/tests/snapshots.rs
 expression: index_ts
 ---
 /**
- * <!-- {=apiDocs|trim|indent:" * "} --> * A sample TypeScript library.
+ * <!-- {=apiDocs|trim|indent:" * "} -->
+ * A sample TypeScript library.
 
  * ## Usage
 

@@ -170,7 +170,7 @@ By default (when this section is absent), mdt finds `*.t.md` files in the projec
 
 ### `[padding]`
 
-Controls blank lines between block tags and their content. When absent, no padding is applied. When present, `before` and `after` control how many blank lines separate tags from content.
+Controls blank lines between block tags and their content. When absent, content starts on the very next line after the opening tag and the closing tag stays inline with the content. When present, `before` and `after` control how many blank lines separate tags from content.
 
 ```toml
 [padding]

@@ -395,9 +395,11 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						&consumer.block.transformers,
 						Some(&render_data),
 					);
-					if let Some(padding) = &ctx.padding {
-						expected = pad_content_with_config(&expected, &consumer.content, padding);
-					}
+					expected = pad_content_with_config(
+						&expected,
+						&consumer.content,
+						effective_padding(ctx),
+					);
 					eligible[index] = true;
 					raw_expected[index] = Some(expected.clone());
 					if consumer.content != expected {
@@ -561,10 +563,11 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 						&consumer.block.transformers,
 						Some(&render_data),
 					);
-					if let Some(padding) = &ctx.padding {
-						new_content =
-							pad_content_with_config(&new_content, &consumer.content, padding);
-					}
+					new_content = pad_content_with_config(
+						&new_content,
+						&consumer.content,
+						effective_padding(ctx),
+					);
 					new_content
 				}
 				BlockType::Inline => {
@@ -682,9 +685,8 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					&consumer.block.transformers,
 					Some(&render_data),
 				);
-				if let Some(padding) = &ctx.padding {
-					expected = pad_content_with_config(&expected, &consumer.content, padding);
-				}
+				expected =
+					pad_content_with_config(&expected, &consumer.content, effective_padding(ctx));
 
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
@@ -787,10 +789,11 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 						&consumer.block.transformers,
 						Some(&render_data),
 					);
-					if let Some(padding) = &ctx.padding {
-						new_content =
-							pad_content_with_config(&new_content, &consumer.content, padding);
-					}
+					new_content = pad_content_with_config(
+						&new_content,
+						&consumer.content,
+						effective_padding(ctx),
+					);
 					new_content
 				}
 				BlockType::Inline => {
@@ -1320,6 +1323,22 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 /// - `0` — Content on the very next line (one newline, no blank lines).
 /// - `1` — One blank line between the tag and content.
 /// - `2` — Two blank lines, and so on.
+///
+/// Default padding applied when no `[padding]` section is configured.
+///
+/// Content starts on the very next line after the opening tag, and the
+/// closing tag stays inline with the content.
+static DEFAULT_PADDING: PaddingConfig = PaddingConfig {
+	before: crate::config::PaddingValue::Lines(0),
+	after: crate::config::PaddingValue::Bool(false),
+};
+
+/// Return the effective padding configuration, defaulting to
+/// [`DEFAULT_PADDING`] when no `[padding]` section is configured.
+fn effective_padding(ctx: &ProjectContext) -> &PaddingConfig {
+	ctx.padding.as_ref().unwrap_or(&DEFAULT_PADDING)
+}
+
 fn pad_content_with_config(
 	new_content: &str,
 	original_content: &str,

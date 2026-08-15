@@ -3064,6 +3064,46 @@ fn pad_blocks_prevents_squashed_content() -> MdtResult<()> {
 }
 
 #[test]
+fn default_padding_with_line_prefix_starts_content_on_new_line() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// No mdt.toml → default padding applies. A comment-prefixed consumer
+	// must place the injected content on a new line after the opening tag
+	// instead of joining it onto the tag line.
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@docs} -->\n\nSeed-based APIs require deterministic seed ordering.\n\nUse explicit \
+		 bumps when needed.\n\n<!-- {/docs} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib.rs"),
+		concat!(
+			"/// <!-- {=docs|trim|linePrefix:\"/// \":true} -->/// old content\n",
+			"/// <!-- {/docs} -->\n",
+		),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content.as_str(),
+		concat!(
+			"/// <!-- {=docs|trim|linePrefix:\"/// \":true} -->\n",
+			"/// Seed-based APIs require deterministic seed ordering.\n",
+			"///\n",
+			"/// Use explicit bumps when needed.<!-- {/docs} -->\n",
+		)
+	);
+
+	Ok(())
+}
+
+#[test]
 fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
@@ -3502,9 +3542,10 @@ fn pad_blocks_check_detects_stale() -> MdtResult<()> {
 }
 
 #[test]
-fn pad_blocks_disabled_does_not_pad() -> MdtResult<()> {
+fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	// No mdt.toml → pad_blocks defaults to false
+	// No mdt.toml → default padding: content on the next line after the
+	// opening tag, closing tag inline with the content.
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@info} -->\n\nHello.\n\n<!-- {/info} -->\n",
@@ -3530,10 +3571,11 @@ fn pad_blocks_disabled_does_not_pad() -> MdtResult<()> {
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
 	});
-	// Without pad_blocks, "Hello." goes directly between tags with no padding
+	// Default padding: "Hello." starts on the next line after the opening
+	// tag, and the closing tag stays inline with the content.
 	assert_eq!(
 		content.as_str(),
-		"<!-- {=info|trim} -->Hello.<!-- {/info} -->\n"
+		"<!-- {=info|trim} -->\nHello.<!-- {/info} -->\n"
 	);
 
 	Ok(())
