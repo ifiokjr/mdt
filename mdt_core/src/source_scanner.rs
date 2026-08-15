@@ -162,6 +162,32 @@ fn strip_comment_prefix(line: &str) -> &str {
 	trimmed
 }
 
+/// Extract the comment prefix (e.g., `/// `, `//! `, `# `) from the start of
+/// a line when it begins with a known comment marker. Returns `""` when the
+/// line is not a comment line. This is the inverse of
+/// [`strip_comment_prefix`]: it keeps the leading whitespace, the marker,
+/// and one optional trailing space.
+pub(crate) fn extract_comment_prefix(line: &str) -> &str {
+	let trimmed = line.trim_start();
+	let leading_ws_len = line.len() - trimmed.len();
+	for prefix in COMMENT_PREFIXES {
+		if let Some(rest) = trimmed.strip_prefix(prefix) {
+			// Include one optional space after the prefix.
+			let space_len = usize::from(rest.starts_with(' '));
+			return &line[..leading_ws_len + prefix.len() + space_len];
+		}
+	}
+	""
+}
+
+/// Extract the comment prefix (e.g., `/// `, `//! `, `# `) from the line
+/// containing `offset`, using the text before the offset on that line.
+/// Returns `""` when the line is not a comment line (e.g., markdown).
+pub(crate) fn extract_line_comment_prefix(source: &str, offset: usize) -> &str {
+	let line_start = source[..offset].rfind('\n').map_or(0, |i| i + 1);
+	extract_comment_prefix(&source[line_start..offset])
+}
+
 /// Find byte ranges of fenced code block content in raw source text.
 ///
 /// This detects fenced code blocks that appear inside doc comments (for
