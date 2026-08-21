@@ -3,7 +3,7 @@ mdt_core: docs
 mdt_cli: docs
 mdt_lsp: docs
 mdt_mcp: docs
-@m-d-t/skills: docs
+"@m-d-t/skills": docs
 ---
 
 # Summary
