@@ -36,7 +36,7 @@ A regression is only flagged when **both** are true:
 - Relative slowdown exceeds `BENCH_RELATIVE_THRESHOLD_PCT`
 - Absolute slowdown exceeds `BENCH_ABSOLUTE_THRESHOLD_MS`
 
-This avoids failing on tiny/noisy deltas.
+This avoids failing on tiny, noisy deltas.
 
 ## Regression policy
 

@@ -5,7 +5,7 @@ description: Manage markdown templates with mdt. Synchronize README sections, so
 
 # mdt — Markdown Template Management
 
-## Quick Start
+## Quick start
 
 ```sh
 # Initialize a project (creates .templates/template.t.md and mdt.toml)
@@ -21,7 +21,7 @@ mdt update
 mdt list
 ```
 
-## Core Workflow
+## Core workflow
 
 1. **Define once** — Create provider blocks in `*.t.md` files (canonical location: `.templates/`):
    ```markdown
@@ -59,7 +59,7 @@ When using the MCP server, **always call `mdt_find_reuse` before creating a new 
 | `mdt_get_block`  | Get a specific block's content                              |
 | `mdt_init`       | Initialize a new mdt project                                |
 
-## Key Rules
+## Key rules
 
 - Provider names are **globally unique** across all `*.t.md` files.
 - Providers live only in `*.t.md` files. Consumer tags in source files (`.rs`, `.ts`, `.py`, `.go`, etc.) work inside code comments.
@@ -68,6 +68,6 @@ When using the MCP server, **always call `mdt_find_reuse` before creating a new 
 - `.templates/` is the canonical template directory.
 - After editing providers, run `mdt check` then `mdt update`.
 
-## Detailed Reference
+## Detailed reference
 
 For transformer reference, data interpolation, inline blocks, configuration options, and source-file patterns, see [REFERENCE.md](REFERENCE.md).

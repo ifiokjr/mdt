@@ -58,7 +58,7 @@ Create `src/lib.rs` with a doc comment consumer that reuses the same source:
 pub fn hello() {}
 ```
 
-The `linePrefix:"//! "` transformer adapts the source content so it becomes valid Rust doc comments.
+The `linePrefix:"//! "` transformer turns the source content into valid Rust doc comments.
 
 > Not using Rust? The same pattern works in other source files too — use a comment style and transformers that match your language.
 
@@ -76,7 +76,7 @@ Output:
 Updated 2 block(s) in 2 file(s).
 ```
 
-Now both files are synchronized from the same source.
+Both files now draw from the same source.
 
 `readme.md` contains:
 
@@ -136,7 +136,7 @@ Stale targets:
 2 target block(s) are out of date. Run `mdt update` to fix.
 ```
 
-The check command exits with a non-zero status code when blocks are stale, making it useful in CI pipelines.
+The check command exits non-zero when blocks are stale, which makes it useful in CI pipelines.
 
 ## 6. See what changed
 

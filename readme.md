@@ -1,8 +1,8 @@
 # mdt
 
-**Write it once, sync it everywhere. Doc drift is dead.**
+**Write it once, sync it everywhere.**
 
-Markdown templates that keep your READMEs, doc comments, and docs sites in lockstep — with data interpolation, transformers, and CI verification.
+Markdown templates that keep your READMEs, doc comments, and docs sites in sync, with data interpolation, transformers, and CI verification.
 
 <br />
 
@@ -12,7 +12,7 @@ Markdown templates that keep your READMEs, doc comments, and docs sites in locks
 
 <!-- {=mdtPackageDocumentation} -->
 
-`mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more so your docs do not drift.
+`mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content in sync across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more, so your docs do not drift.
 
 <!-- {/mdtPackageDocumentation} -->
 
@@ -70,7 +70,7 @@ Use it everywhere:
 <!-- {/install} -->
 ```
 
-Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
+Run `mdt update` and all three files are in sync. Run `mdt check` in CI and drift is caught before merge.
 
 <!-- {/mdtBeforeAfter} -->
 
@@ -162,7 +162,7 @@ If you use a coding agent that supports the [Agent Skills standard](https://agen
 pi install npm:@m-d-t/skills
 ```
 
-The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration — so it can fully manage your project's documentation templates.
+The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration, so it can manage your project's documentation templates end to end.
 
 ## Crates
 
@@ -179,15 +179,14 @@ The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teach
 
 [`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
 
-To automatically load the environment you should [install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
+To load the environment automatically, [install direnv](https://devenv.sh/automatic-shell-activation/) and trust the repo's `.envrc`.
 
 ```bash
-# The security mechanism didn't allow to load the `.envrc`.
-# Since we trust it, let's allow it execution.
+# direnv blocks the `.envrc` until you trust it.
 direnv allow .
 ```
 
-At this point you should see the `nix` commands available in your terminal. Run `install:all` to install all tooling and dependencies.
+The `nix` commands should now be on your PATH. Run `install:all` to install the tooling and dependencies.
 
 <!-- {/mdtContributing} -->
 
@@ -195,5 +194,5 @@ At this point you should see the `nix` commands available in your terminal. Run 
 [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
 [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ifiokjr/mdt
-[unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg
+[unlicense-image]: https://img.shields.io/badge/license-Unlicense-blue.svg
 [unlicense-link]: https://opensource.org/license/unlicense

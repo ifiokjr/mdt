@@ -2,7 +2,7 @@
 
 Formatter entries make `mdt update` and `mdt check` converge with your formatter's canonical **full-file** output instead of comparing raw injected block text.
 
-This is the recommended long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and the best way to keep CI green when external formatters rewrite synced files.
+This is the long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and it keeps CI green when external formatters rewrite synced files.
 
 Each matching formatter entry:
 
@@ -21,7 +21,7 @@ Each matching formatter entry:
 
 `patterns` and `ignore` are ordered gitignore-style rule lists. Leading `!` entries negate a prior match, so later rules can re-include paths for a single formatter stage.
 
-If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error instead of silently falling back to unformatted output.
+If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error rather than silently falling back to unformatted output.
 
 ```toml
 [[formatters]]
@@ -38,7 +38,7 @@ Repositories without configured formatters keep the legacy fast path, so formatt
 
 Formatter-aware checking can also report **formatter-only** drift. This happens when the formatter would rewrite the full file, but no individual managed block body is stale.
 
-In that case mdt reports the file in `stale_files` so automation can distinguish surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
+In that case mdt reports the file in `stale_files` so automation can tell surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
 
 <!-- {/mdtFormatterOnlyStaleDocs} -->
 

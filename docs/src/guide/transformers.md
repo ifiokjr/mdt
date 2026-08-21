@@ -1,6 +1,6 @@
 # Transformers
 
-Transformers modify source content before it's injected into a target. They're specified as pipe-delimited filters on the target tag, letting each target adapt the same content for its specific context.
+Transformers modify source content before it's injected into a target. They're pipe-delimited filters on the target tag, letting each target adapt the same content to its own context.
 
 ## Syntax
 
@@ -11,7 +11,7 @@ Transformers appear after the block name, separated by `|`:
 <!-- {/blockName} -->
 ```
 
-Multiple transformers are applied left to right. Each receives the output of the previous one.
+Multiple transformers apply left to right, each receiving the output of the previous one.
 
 ### Arguments
 
@@ -247,7 +247,7 @@ Before: `foo is great, foo forever` After: `bar is great, bar forever`
 
 ## Chaining transformers
 
-Transformers compose left to right. This is powerful for adapting content to different contexts.
+Transformers compose left to right, which makes them useful for adapting content to different contexts.
 
 ### Example: Rust doc comments
 
@@ -274,7 +274,7 @@ The target receives:
 /// Supports async and blocking modes.
 ```
 
-Without `true`, the empty line would be left completely blank, which breaks the doc comment block in Rust.
+Without `true`, the empty line stays blank, which breaks the doc comment block in Rust.
 
 ### Example: JSDoc comments
 
@@ -283,7 +283,7 @@ Without `true`, the empty line would be left completely blank, which breaks the 
 <!-- {/docs} -->
 ```
 
-Each line (including empty lines) gets the `*` prefix, producing valid JSDoc content.
+Each line, including empty lines, gets the `*` prefix, producing valid JSDoc content.
 
 ### Example: Code block with trimming
 
@@ -292,7 +292,7 @@ Each line (including empty lines) gets the `*` prefix, producing valid JSDoc con
 <!-- {/example} -->
 ```
 
-Trims the whitespace first, then wraps in a fenced code block.
+Trims the whitespace first, then wraps the result in a fenced code block.
 
 ## Naming conventions
 

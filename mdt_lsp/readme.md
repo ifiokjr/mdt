@@ -10,7 +10,7 @@
 
 <!-- {=mdtLspOverview} -->
 
-`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides real-time editor integration for managing markdown template blocks.
+`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It brings diagnostics, completions, and navigation for template blocks into the editor.
 
 ### Capabilities
 
@@ -48,6 +48,6 @@ mdt_lsp = "0.9.0"
 
 <!-- {=mdtBadgeLinks:"mdt_lsp"} -->
 
-[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg [crate-link]: https://crates.io/crates/mdt_lsp [docs-image]: https://docs.rs/mdt_lsp/badge.svg [docs-link]: https://docs.rs/mdt_lsp/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg [coverage-link]: https://codecov.io/gh/ifiokjr/mdt [unlicense-image]: https://img.shields.io/badge/license-Unlicence-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
+[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg [crate-link]: https://crates.io/crates/mdt_lsp [docs-image]: https://docs.rs/mdt_lsp/badge.svg [docs-link]: https://docs.rs/mdt_lsp/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg [coverage-link]: https://codecov.io/gh/ifiokjr/mdt [unlicense-image]: https://img.shields.io/badge/license-Unlicense-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

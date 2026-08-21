@@ -1,14 +1,12 @@
 # Proof of Value
 
-If you want to know whether `mdt` is solving a real problem, this repository is the best example.
-
-The project already uses source blocks from `.templates/*.t.md` to keep repeated content synchronized across multiple surfaces:
+This repository is the best example of `mdt` solving a real problem. It uses source blocks from `.templates/*.t.md` to keep repeated content in sync across multiple surfaces:
 
 - root and crate READMEs
 - crate-level Rust docs
 - mdBook pages
 
-That is the core value proposition in one repo: write shared content once, then fan it out wherever people actually read it.
+The value proposition in one repo: write shared content once, then fan it out wherever people actually read it.
 
 ## 1. README synchronization
 
@@ -41,7 +39,7 @@ The same pattern is used for:
 - [`mdt_mcp/src/lib.rs`](../../../mdt_mcp/src/lib.rs)
 - [`mdt_core/src/parser.rs`](../../../mdt_core/src/parser.rs)
 
-This is the practical payoff: you do not maintain one explanation for README readers and a second explanation for API docs readers.
+The payoff: you do not maintain one explanation for README readers and a second for API docs readers.
 
 ## 3. Docs-site synchronization
 
@@ -98,10 +96,10 @@ If you are evaluating adoption, inspect these files together:
 - [`docs/src/reference/template-syntax.md`](../reference/template-syntax.md)
 - [`docs/src/advanced/inline-blocks.md`](../advanced/inline-blocks.md)
 
-## The shortest convincing story
+## The pitch
 
-A good way to describe `mdt` to a teammate is:
+Describe `mdt` to a teammate like this:
 
 > We keep a few pieces of documentation repeated across our README, crate docs, and docs site. `mdt` lets us define those pieces once, reuse them everywhere, and verify in CI that they never drift apart.
 
-If that story matches your project, the tool is probably worth trying.
+If that description matches your project, the tool is worth trying.

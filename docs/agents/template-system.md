@@ -44,6 +44,7 @@ Supported transformers:
 - `codeBlock`
 - `code`
 - `replace`
+- `if`
 
 Example:
 

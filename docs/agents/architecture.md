@@ -5,7 +5,7 @@
 - `mdt_core` — lexer, parser, pattern matcher, project scanner, source-file scanner, config loader, and template engine
 - `mdt_cli` — CLI entrypoints such as `init`, `check`, `update`, `info`, `doctor`, `lsp`, and `mcp`
 - `mdt_lsp` — language server support
-- `mdt_mcp` — MCP server support for AI integrations
+- `mdt_mcp` — MCP server for AI assistants
 - `docs/` — mdBook documentation
 
 ## Core concepts

@@ -6,7 +6,7 @@
 //! - **`mdt_check`** — Verify all target blocks are up-to-date.
 //! - **`mdt_update`** — Update all target blocks with latest source content.
 //! - **`mdt_list`** — List all sources and targets in the project.
-//! - **`mdt_find_reuse`** — Find similar providers and where they are already consumed in markdown and source files to encourage reuse.
+//! - **`mdt_find_reuse`** — Find similar providers and where they are already consumed, to encourage reuse.
 //! - **`mdt_get_block`** — Get the content of a specific block by name.
 //! - **`mdt_preview`** — Preview the result of applying transformers to a block.
 //! - **`mdt_init`** — Initialize a new mdt project with a sample `.templates/template.t.md` file and starter `mdt.toml`.
@@ -15,7 +15,7 @@
 //!
 //! - Prefer reuse before creation: call `mdt_find_reuse` (or `mdt_list`) before introducing a new source block.
 //! - Use the JSON-first tool responses as the source of truth. The MCP server returns structured payloads so agents can inspect results without parsing prose.
-//! - Use `mdt_preview` as an authoring workflow: inspect the source template plus each target's rendered output before deciding whether to reuse, edit, or sync.
+//! - Use `mdt_preview` while authoring: inspect the source template and each target's rendered output before deciding whether to reuse, edit, or sync.
 //! - Keep source names global and unique in the project to avoid collisions.
 //! - After edits, run `mdt_check` (and optionally `mdt_update`) so target blocks stay synchronized.
 //!

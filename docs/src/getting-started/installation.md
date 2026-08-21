@@ -16,13 +16,13 @@ You can also run it without a global install:
 npx @m-d-t/cli --help
 ```
 
-This path is ideal for JavaScript and TypeScript projects that already use npm and do not want to install the Rust toolchain.
+This path fits JavaScript and TypeScript projects that already use npm and do not want to install the Rust toolchain.
 
 ## Recommended for most non-Rust users
 
-Download the prebuilt binary for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and place the `mdt` binary somewhere on your `PATH`.
+Download the prebuilt binary for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and put the `mdt` binary somewhere on your `PATH`.
 
-This is the simplest option if you want to use mdt in a Python, Go, or other non-Rust project without installing the Rust toolchain first.
+The simplest option if you want to use mdt in a Python, Go, or other non-Rust project without installing the Rust toolchain.
 
 ## If you already use Cargo
 
@@ -48,10 +48,14 @@ cargo install --path mdt_cli
 
 To use the core engine in your own Rust project:
 
+<!-- {=mdtCoreInstall} -->
+
 ```toml
 [dependencies]
-mdt_core = "0.7.0"
+mdt_core = "0.9.0"
 ```
+
+<!-- {/mdtCoreInstall} -->
 
 ## Agent skill package
 
