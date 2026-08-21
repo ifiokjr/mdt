@@ -2,7 +2,7 @@
 
 ## Can I use mdt with non-markdown files?
 
-Yes. mdt scans source code files for target tags inside code comments. Supported languages include Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, Swift, C/C++, and C#. The target tag syntax (`<!-- {=name} -->` / `<!-- {/name} -->`) is the same — it just appears within the file's comment syntax.
+Yes. mdt scans source code files for target tags inside code comments. Supported languages include Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, Swift, C/C++, and C#. The target tag syntax (`<!-- {=name} -->` / `<!-- {/name} -->`) is the same; it just appears within the file's comment syntax.
 
 For example, in a Rust file:
 
@@ -12,11 +12,11 @@ For example, in a Rust file:
 //! <!-- {/packageDocs} -->
 ```
 
-See [Source File Support](./guide/source-files.md) for the full list of languages and examples.
+See [Source File Support](./guide/source-files.md) for the full language list and examples.
 
 ## What happens if a source is deleted?
 
-Consumers referencing the deleted source become **orphaned**. Their content is left unchanged — mdt does not clear or modify orphaned targets.
+Consumers referencing the deleted source become **orphaned**. Their content is left unchanged; mdt does not clear or modify orphaned targets.
 
 - `mdt check` warns about orphaned targets.
 - `mdt list` shows orphaned targets with the `[orphan]` status.
@@ -86,7 +86,7 @@ minijinja's built-in filters work in source content:
 {{ package.description | truncate(80) }}
 ```
 
-See [Data Interpolation](./guide/data-interpolation.md) for full details on template syntax.
+See [Data Interpolation](./guide/data-interpolation.md) for the full template syntax.
 
 ## Can targets appear inside other targets?
 
@@ -122,7 +122,7 @@ mdt only scans text files with recognized extensions (`.md`, `.mdx`, `.markdown`
 
 ## Can I run mdt on a subset of files?
 
-Not directly — mdt always scans the full project to build the source map. However, you can control the scan scope:
+Not directly. mdt always scans the full project to build the source map. You can control the scan scope, though:
 
 - Use `--path` to target a specific sub-project directory.
 - Use `[include]` patterns in `mdt.toml` to restrict which source files are scanned.

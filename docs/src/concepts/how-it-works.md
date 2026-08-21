@@ -1,6 +1,6 @@
 # How mdt Works
 
-mdt follows a straightforward pipeline: scan your project for template tags, match sources to targets, render any template variables, apply transformers, and replace content.
+mdt's pipeline is straightforward: scan the project for template tags, match sources to targets, render template variables, apply transformers, and replace content.
 
 ## The Pipeline
 
@@ -22,7 +22,7 @@ mdt follows a straightforward pipeline: scan your project for template tags, mat
 
 ## Tag anatomy
 
-All mdt tags live inside HTML comments. This means they're invisible when markdown is rendered — your docs look clean to readers.
+All mdt tags live inside HTML comments, so they're invisible when markdown is rendered. Readers never see the template machinery.
 
 A tag has three parts:
 
@@ -44,11 +44,11 @@ mdt determines how to treat files based on their names:
 | `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for target and inline blocks               |
 | `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for target and inline blocks inside comments |
 
-Source blocks found in non-template files are ignored. This prevents accidental content injection from arbitrary files.
+Source blocks found in non-template files are ignored, so arbitrary files can't inject content by accident.
 
 ## What gets skipped
 
-The scanner automatically ignores:
+The scanner skips:
 
 - Hidden directories (starting with `.`)
 - `node_modules/`

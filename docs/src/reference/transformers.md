@@ -4,20 +4,21 @@ Quick reference for all available transformers.
 
 ## Summary table
 
-| Transformer  | Arguments                               | Description                            |
-| ------------ | --------------------------------------- | -------------------------------------- |
-| `trim`       | none                                    | Remove whitespace from both ends       |
-| `trimStart`  | none                                    | Remove whitespace from the start       |
-| `trimEnd`    | none                                    | Remove whitespace from the end         |
-| `indent`     | `string` (optional), `bool` (optional)  | Prepend string to each line            |
-| `prefix`     | `string` (optional)                     | Prepend string to entire content       |
-| `suffix`     | `string` (optional)                     | Append string to entire content        |
-| `linePrefix` | `string` (optional), `bool` (optional)  | Prepend string to each line            |
-| `lineSuffix` | `string` (optional), `bool` (optional)  | Append string to each line             |
-| `wrap`       | `string` (optional)                     | Wrap content with string on both sides |
-| `code`       | none                                    | Wrap in inline code backticks          |
-| `codeBlock`  | `language` (optional)                   | Wrap in fenced code block              |
-| `replace`    | `search`, `replacement` (both required) | Replace all occurrences                |
+| Transformer  | Arguments                               | Description                                   |
+| ------------ | --------------------------------------- | --------------------------------------------- |
+| `trim`       | none                                    | Remove whitespace from both ends              |
+| `trimStart`  | none                                    | Remove whitespace from the start              |
+| `trimEnd`    | none                                    | Remove whitespace from the end                |
+| `indent`     | `string` (optional), `bool` (optional)  | Prepend string to each line                   |
+| `prefix`     | `string` (optional)                     | Prepend string to entire content              |
+| `suffix`     | `string` (optional)                     | Append string to entire content               |
+| `linePrefix` | `string` (optional), `bool` (optional)  | Prepend string to each line                   |
+| `lineSuffix` | `string` (optional), `bool` (optional)  | Append string to each line                    |
+| `wrap`       | `string` (optional)                     | Wrap content with string on both sides        |
+| `code`       | none                                    | Wrap in inline code backticks                 |
+| `codeBlock`  | `language` (optional)                   | Wrap in fenced code block                     |
+| `replace`    | `search`, `replacement` (both required) | Replace all occurrences                       |
+| `if`         | `condition` (required)                  | Include content only when condition is truthy |
 
 ## Alias table
 
@@ -274,6 +275,22 @@ To delete occurrences, use an empty replacement:
 |replace:"unwanted":""
 ```
 
+### `if`
+
+```
+|if:"condition"
+```
+
+Keeps the content only when the condition evaluates to truthy; otherwise the target block becomes empty.
+
+**Arguments:** exactly 1 (condition)
+
+**Example:**
+
+```
+|if:"cargo.package.name"
+```
+
 ## Argument validation
 
 mdt validates transformer arguments at runtime:
@@ -284,6 +301,7 @@ mdt validates transformer arguments at runtime:
 | `prefix`, `suffix`, `wrap`, `codeBlock` | 0-1           |
 | `indent`, `linePrefix`, `lineSuffix`    | 0-2           |
 | `replace`                               | exactly 2     |
+| `if`                                    | exactly 1     |
 
 Passing the wrong number of arguments produces an error:
 

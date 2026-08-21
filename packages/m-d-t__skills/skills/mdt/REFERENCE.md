@@ -1,8 +1,8 @@
 # mdt Reference
 
-## Tag Syntax
+## Tag syntax
 
-All mdt tags live inside HTML comments so they are invisible in rendered markdown.
+All mdt tags live inside HTML comments, so they are invisible in rendered markdown.
 
 ```
 <!-- {sigil name | transformers} -->
@@ -66,7 +66,7 @@ Transformers are pipe-delimited filters applied left-to-right on the consumer ta
 
 All transformers accept both camelCase and snake_case: `linePrefix` / `line_prefix`, `trimStart` / `trim_start`, etc.
 
-### Common Patterns
+### Common patterns
 
 **Rust `//!` doc comments:**
 
@@ -110,7 +110,7 @@ All transformers accept both camelCase and snake_case: `linePrefix` / `line_pref
 <!-- {/example} -->
 ```
 
-## Data Interpolation
+## Data interpolation
 
 Provider content supports [minijinja](https://docs.rs/minijinja) template variables populated from project files.
 
@@ -169,7 +169,7 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 - `watch` files control cache invalidation.
 - Cached in `.mdt/cache/data-v1.json` when watch files are unchanged.
 
-## Inline Blocks
+## Inline blocks
 
 Inline blocks render a template expression without a separate provider. Useful for single values like versions.
 
@@ -219,7 +219,7 @@ patterns = ["src/**", "docs/**"]
 paths = [".templates"]
 ```
 
-### `[padding]` — Required for source file consumers
+### `[padding]` for source-file consumers
 
 Controls blank lines between tags and content. **Always set this when using consumers in source files** to prevent content from merging with tags.
 
@@ -231,7 +231,7 @@ Controls blank lines between tags and content. **Always set this when using cons
 
 A directory with its own `mdt.toml` is treated as a separate mdt project. The parent project's scan skips it.
 
-## Source File Support
+## Source file support
 
 Consumer tags work inside code comments in any supported language.
 
@@ -254,7 +254,7 @@ Consumer tags work inside code comments in any supported language.
 - Parsing is lenient: unclosed tags are silently ignored.
 - Use `[padding]` to prevent content merging with tags.
 
-## CLI Commands
+## CLI commands
 
 | Command                            | Purpose                                                  |
 | ---------------------------------- | -------------------------------------------------------- |
@@ -274,7 +274,7 @@ Consumer tags work inside code comments in any supported language.
 - `--verbose` — Show detailed output
 - `--no-color` — Disable colored output
 
-## MCP Server Tools
+## MCP server tools
 
 The MCP server (`mdt mcp`) exposes these tools to AI assistants:
 
@@ -297,7 +297,7 @@ The MCP server (`mdt mcp`) exposes these tools to AI assistants:
 5. **Unique names** — Provider names must be globally unique across all `*.t.md` files.
 6. **Canonical layout** — Use `.templates/` as the template directory.
 
-## File Conventions
+## File conventions
 
 | Pattern                                       | Role                                                              |
 | --------------------------------------------- | ----------------------------------------------------------------- |

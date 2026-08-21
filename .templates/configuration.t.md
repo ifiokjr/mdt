@@ -72,11 +72,11 @@
 
 # 
 
-# This repo uses `lenient` so that dprint can reformat generated targets
+# This repo keeps the strict default and instead configures `[[formatters]]`
 
-# without tripping `mdt check`.
+# below, so dprint's output is the comparison baseline and `mdt check` stays
 
-[check] comparison = "lenient"
+# green after formatting.
 
 [data]
 

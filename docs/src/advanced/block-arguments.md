@@ -17,7 +17,7 @@ Add `:"param_name"` after the block name to declare parameters:
 <!-- {/badges} -->
 ```
 
-The parameter name `crate_name` becomes a template variable available in the source content via `{{ crate_name }}`.
+The parameter name `crate_name` becomes a template variable in the source content via `{{ crate_name }}`.
 
 ### Consumer: pass values
 
@@ -67,7 +67,7 @@ Arguments and transformers work together. Transformers come after the arguments,
 
 ### With data interpolation
 
-Block arguments and data interpolation variables coexist in the same source content. Arguments are resolved alongside the data context:
+Block arguments and data interpolation variables coexist in the same source content. Arguments resolve alongside the data context:
 
 ```toml
 # mdt.toml
@@ -98,7 +98,7 @@ Both single and double quotes work for argument values:
 
 ### Badge links for multiple crates
 
-A common monorepo pattern where each crate needs the same badge markup with different crate names:
+A common monorepo pattern: each crate needs the same badge markup with a different crate name.
 
 ```
 <!-- {@badgeLinks:"crateName"} -->
@@ -150,7 +150,7 @@ then run: {{ toolchain }} build --release
 
 ## Argument count mismatch
 
-The number of target arguments must match the number of source parameters. If they don't match, mdt reports a render error:
+The number of target arguments must match the number of source parameters. A mismatch is a render error:
 
 ```
 error: argument count mismatch: provider `badges` declares 1 parameter(s),
@@ -162,7 +162,7 @@ error: argument count mismatch: provider `badges` declares 1 parameter(s),
 
 ### Zero arguments on target
 
-A target referencing a parameterized source without arguments also triggers a mismatch. If the source declares parameters, every consumer must supply values:
+A target referencing a parameterized source without arguments is also a mismatch. If the source declares parameters, every consumer must supply values:
 
 ```
 <!-- Provider expects 1 argument -->

@@ -4,7 +4,7 @@ Describe what changed and why.
 
 ## Testing
 
-- [ ] `cargo test`
+- [ ] `cargo nextest run`
 - [ ] manual validation (if applicable)
 
 ## Benchmark Justification

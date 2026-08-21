@@ -1,8 +1,6 @@
 # Migration Walkthrough
 
-This walkthrough shows how to adopt `mdt` in a project that already has documentation drift.
-
-The example is intentionally realistic: the same installation instructions appear in a README, a Rust doc comment, and a docs page.
+This walkthrough adopts `mdt` in a project that already has documentation drift. The example mirrors reality: the same installation instructions appear in a README, a Rust doc comment, and a docs page.
 
 ## Before: three copies to maintain
 
@@ -32,9 +30,7 @@ npm install my-lib
 npm install my-lib
 ```
 
-At first this seems harmless. Then the command changes to `npm install my-lib@latest`, or the project switches to `pnpm`, or you want to add a second setup note.
-
-Now you have three edits to make, and one of them eventually gets missed.
+That seems harmless until the command changes to `npm install my-lib@latest`, the project switches to `pnpm`, or you want to add a second setup note. Now you have three edits to make, and one of them eventually gets missed.
 
 ## After: one source, three targets
 
@@ -127,7 +123,7 @@ Once the migration is done, the maintenance loop is simple:
 3. run `mdt check`
 4. commit the synchronized result
 
-That is the real adoption win: not just fewer edits, but a repeatable workflow that prevents drift from coming back.
+That is the real adoption win: a repeatable workflow that keeps drift from coming back, not a pile of one-off edits.
 
 ## A small migration strategy that works well
 

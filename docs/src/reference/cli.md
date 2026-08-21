@@ -25,7 +25,7 @@ mdt init
 mdt init --path ./my-project
 ```
 
-If `.templates/template.t.md` exists (or legacy `template.t.md`/`templates/template.t.md` exists), prints a message and exits without overwriting.
+If `.templates/template.t.md` exists (or legacy `template.t.md`/`templates/template.t.md`), it prints a message and exits without overwriting.
 
 Creates a file containing:
 
@@ -52,6 +52,7 @@ mdt check --format github
 | ------------------- | ----------------------------------------------------- |
 | `--diff`            | Show a unified diff for each stale block.             |
 | `--format <FORMAT>` | Output format: `text` (default), `json`, or `github`. |
+| `--watch`           | Re-run checks automatically when files change.        |
 
 **Exit codes:**
 
@@ -62,8 +63,8 @@ mdt check --format github
 
 **Output formats:**
 
-- **`text`** — Human-readable output. Lists stale blocks with file paths, colored headings, and colored diagnostics when the terminal supports color. Includes diff when `--diff` is set.
-- **`json`** — Machine-readable JSON. Includes `ok`, `stale`, and `stale_files` so automation can distinguish block drift from formatter-only file drift.
+- **`text`** — Human-readable output. Lists stale blocks with file paths, colored headings, and colored diagnostics when the terminal supports color. Includes the diff when `--diff` is set.
+- **`json`** — Machine-readable JSON. Includes `ok`, `stale`, and `stale_files` so automation can tell block drift from formatter-only file drift.
 - **`github`** — GitHub Actions `::warning` annotations. Produces inline warnings on PR diffs.
 
 #### JSON payload
@@ -224,7 +225,7 @@ Text output prints one line per check with a status tag (`PASS`, `WARN`, `FAIL`,
 
 ### `mdt assist`
 
-Print an official assistant setup profile. This first slice focuses on practical presets: mdt prints MCP configuration snippets and repo-local guidance rather than introducing a plugin marketplace.
+Print an official assistant setup profile. The first slice focuses on practical presets: MCP configuration snippets and repo-local guidance, not a plugin marketplace.
 
 ```sh
 mdt assist claude
@@ -248,11 +249,11 @@ Supported assistants:
 
 `json` output returns the same setup information in a machine-readable shape, including `mcp_config`, `repo_guidance`, and `notes`.
 
-Use this command when you want a quick, official starting point for wiring `mdt mcp` into an assistant workflow.
+Use this when you want a quick, official starting point for wiring `mdt mcp` into an assistant workflow.
 
 ### `mdt lsp`
 
-Start the language server for editor integration. Communicates over stdin/stdout using the Language Server Protocol.
+Start the language server for editor integration. It communicates over stdin/stdout using the Language Server Protocol.
 
 ```sh
 mdt lsp
@@ -269,13 +270,13 @@ The LSP provides:
 
 ### `mdt mcp`
 
-Start the MCP server for AI integrations. Communicates over stdin/stdout using the Model Context Protocol.
+Start the MCP server for AI integrations. It communicates over stdin/stdout using the Model Context Protocol.
 
 ```sh
 mdt mcp
 ```
 
-Use this command when you want an AI assistant to query template sources, targets, and render context directly from your project.
+Use this when you want an AI assistant to query template sources, targets, and render context directly from your project.
 
 ## Environment variables
 

@@ -1,6 +1,6 @@
 # CI Integration
 
-mdt's `check` command is designed for CI pipelines. It verifies that all target blocks are up to date and exits with a non-zero status code if any are stale.
+mdt's `check` command is built for CI pipelines. It verifies that all target blocks are up to date and exits non-zero if any are stale.
 
 ## Basic CI check
 
@@ -15,7 +15,7 @@ If any target blocks are out of date, the step fails and the pipeline reports wh
 
 ## CI diagnostics triage
 
-When `mdt check` fails in CI, add diagnostics commands so logs include root-cause context:
+When `mdt check` fails in CI, add diagnostics commands so the logs include root-cause context:
 
 ```yaml
 - name: diagnostics
@@ -24,7 +24,7 @@ When `mdt check` fails in CI, add diagnostics commands so logs include root-caus
     mdt doctor
 ```
 
-This gives you:
+This provides:
 
 - Project/config resolution details (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`)
 - Provider/consumer linkage summary (orphans, missing sources, duplicates)
@@ -56,7 +56,7 @@ jobs:
 
 ### GitHub Actions annotations
 
-Use `--format github` to produce GitHub Actions annotation output. This adds inline warnings on the pull request diff showing exactly which files have stale blocks:
+Use `--format github` to produce GitHub Actions annotations. These show up as inline warnings on the pull request diff, pointing at the files with stale blocks:
 
 ```yaml
 - name: check documentation sync
@@ -69,7 +69,7 @@ This produces output like:
 ::warning file=readme.md::Target block `install` is out of date
 ```
 
-GitHub renders these as yellow warning annotations directly on the affected lines in the PR diff.
+GitHub renders them as yellow warning annotations on the affected lines in the PR diff.
 
 ### With diff output
 
@@ -135,7 +135,7 @@ fi
 
 ## Automated fixes
 
-If you prefer to auto-fix in CI rather than just check, run `mdt update` and commit the result:
+To auto-fix in CI rather than just check, run `mdt update` and commit the result:
 
 ```yaml
 - name: update documentation

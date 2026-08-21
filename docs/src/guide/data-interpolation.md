@@ -1,6 +1,6 @@
 # Data Interpolation
 
-mdt can pull values from project files — `package.json`, `Cargo.toml`, YAML configs, and more — into your templates. This means version numbers, package names, and other metadata stay in one place and flow into your documentation automatically.
+mdt can pull values from project files into your templates: `package.json`, `Cargo.toml`, YAML configs, and more. Version numbers, package names, and other metadata stay in one place and flow into your documentation automatically.
 
 ## Setup
 
@@ -13,13 +13,13 @@ release = { path = "release-info", format = "json" }
 version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
-This maps the file `package.json` to the namespace `package`.
+This maps `package.json` to the namespace `package`.
 
 - String values are backward-compatible and infer format from extension.
 - Typed values (`{ path, format }`) let you explicitly declare a format for files without extensions.
 - Script values (`{ command, format, watch }`) execute commands and optionally cache stdout based on watched files.
 
-If your `package.json` contains:
+If `package.json` contains:
 
 ```json
 {
@@ -65,7 +65,7 @@ A great library.
 | `kdl`, `.kdl`      | KDL             |
 | `ini`, `.ini`      | INI             |
 
-All formats are converted to a common structure internally. You access values using dot notation regardless of the source format.
+All formats convert to a common structure internally. You access values with dot notation regardless of the source format.
 
 ## Script-backed data sources
 
@@ -96,7 +96,7 @@ When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cac
 
 ## Inline interpolation patterns
 
-Inline blocks are useful when you need one local value from your data scope without creating a reusable source.
+Inline blocks give you one local value from your data scope without creating a reusable source.
 
 <!-- {=mdtInlineBlocksExamples} -->
 

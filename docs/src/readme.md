@@ -1,10 +1,10 @@
 # Introduction
 
-**mdt** (manage **m**ark**d**own **t**emplates) helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized. Define content once in a template file, reference it from anywhere — READMEs, code comments, mdbook docs — and mdt keeps everything in sync.
+**mdt** (manage **m**ark**d**own **t**emplates) keeps README sections, source-doc comments, and docs-site content in sync. Define content once in a template file, reference it from anywhere, and mdt updates every copy for you, in READMEs, code comments, or mdbook docs.
 
 ## The Problem
 
-Documentation gets duplicated. Your README has installation instructions. Your library's doc comment has the same instructions. Your mdbook repeats them again. When something changes, you update one place and forget the others. The docs drift apart, and users find conflicting information.
+Documentation gets duplicated. Your README has installation instructions. Your library's doc comment has the same instructions. Your mdbook repeats them again. When something changes, you update one place and forget the others, and users end up reading conflicting information.
 
 This happens constantly for library and tool maintainers:
 
@@ -17,7 +17,7 @@ Manual synchronization doesn't scale. Copy-pasting is error-prone. The more plac
 
 ## The Solution
 
-mdt uses HTML comments as invisible template tags. You define content once in a **source** block inside a template file (`*.t.md` — the "t" stands for template). Then you place **target** tags wherever that content should appear. Running `mdt update` replaces the content between target tags with the source's content.
+mdt uses HTML comments as invisible template tags. You define content once in a **source** block inside a template file (`*.t.md`, where "t" stands for template). Then you place **target** tags wherever that content should appear. Running `mdt update` replaces the content between target tags with the source's content.
 
 <!-- {=mdtBeforeAfter} -->
 
@@ -73,7 +73,7 @@ Use it everywhere:
 <!-- {/install} -->
 ```
 
-Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drift is caught before merge.
+Run `mdt update` and all three files are in sync. Run `mdt check` in CI and drift is caught before merge.
 
 <!-- {/mdtBeforeAfter} -->
 
@@ -81,7 +81,7 @@ Run `mdt update` — all three files are in sync. Run `mdt check` in CI — drif
 
 If you want concrete adoption examples instead of abstract syntax:
 
-- read [Proof of Value](./getting-started/proof-of-value.md) to see how this repository already keeps README content, Rust source docs, and mdBook pages synchronized
+- read [Proof of Value](./getting-started/proof-of-value.md) to see how this repository keeps README content, Rust source docs, and mdBook pages synchronized
 - read [Migration Walkthrough](./getting-started/migration-walkthrough.md) for a before/after adoption path you can copy into your own project
 
 ## Key Features

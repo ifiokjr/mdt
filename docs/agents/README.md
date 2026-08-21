@@ -16,4 +16,4 @@ docs/
     workflow.md
 ```
 
-Keep `AGENTS.md` minimal and link to these files instead of duplicating detail in the root file.
+Keep `AGENTS.md` minimal and link to these files instead of duplicating detail in it.

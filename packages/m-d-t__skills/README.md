@@ -1,6 +1,6 @@
 # @m-d-t/skills
 
-Agent skills for [mdt](https://github.com/ifiokjr/mdt) — the markdown template synchronization tool.
+Agent skills for [mdt](https://github.com/ifiokjr/mdt), the markdown template synchronization tool.
 
 ## What's inside
 
@@ -36,7 +36,7 @@ Add to your `.pi/settings.json`:
 }
 ```
 
-Then any contributor running `pi` in the project will automatically get the skill.
+Then any contributor running `pi` in the project gets the skill automatically.
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 # Assistant Setup
 
-mdt's official assistant profiles are intentionally lightweight: they provide ready-to-copy MCP configuration snippets and repo-local guidance, not a marketplace or plugin registry.
+mdt's official assistant profiles are deliberately lightweight: ready-to-copy MCP configuration snippets and repo-local guidance, not a marketplace or plugin registry.
 
 ## Recommended workflow
 
@@ -72,4 +72,4 @@ For project-level adoption, add it to `.pi/settings.json` so every contributor g
 - `copilot`
 - `pi`
 
-As the project evolves, these profiles can grow into richer setup helpers, but the initial focus is pragmatic: make assistant setup reproducible and easy to adopt.
+These profiles can grow into richer setup helpers as the project evolves, but the initial focus is pragmatic: make assistant setup reproducible and easy to adopt.

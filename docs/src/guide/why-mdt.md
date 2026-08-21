@@ -1,6 +1,6 @@
 # Why mdt?
 
-Documentation drift is a familiar problem, and there are several ways to address it. This page explains where mdt fits and when it's the right choice.
+Documentation drift is a familiar problem with several solutions. This page explains where mdt fits and when it's the right choice.
 
 ## vs. Copy-paste
 
@@ -14,7 +14,7 @@ The simplest approach: copy content between files by hand.
 | Cross-surface      | Manual          | README + source docs + docs site from one source |
 | Scales with copies | Gets worse      | Stays constant                                   |
 
-Copy-paste works for a single duplication. Once the same content lives in three or more places, manual synchronization becomes the dominant maintenance cost.
+Copy-paste works for a single duplication. Once the same content lives in three or more places, manual synchronization dominates the maintenance cost.
 
 ## vs. Docs framework includes
 
@@ -29,7 +29,7 @@ Frameworks like mdBook, Docusaurus, and MkDocs support file includes or content 
 | Data interpolation           | Framework-specific | Built-in (`{{ pkg.version }}`) |
 | CI verification              | Framework-specific | `mdt check` exits non-zero     |
 
-Framework includes solve the problem within one surface. mdt solves it across surfaces — your README, your crate/package docs, and your docs site all stay in sync from the same source blocks.
+Framework includes solve the problem within one surface. mdt solves it across surfaces: your README, your crate/package docs, and your docs site all stay in sync from the same source blocks.
 
 ## vs. Custom scripts
 
@@ -46,7 +46,7 @@ A common approach is writing a script that reads a source file and injects conte
 | Transformers       | You build them        | Built-in (`trim`, `indent`, `linePrefix`, etc.)         |
 | Data interpolation | You build it          | Built-in (JSON, TOML, YAML, KDL, INI, scripts)          |
 
-Scripts work when you have one specific use case. mdt provides the same capability as a general-purpose tool with editor integration, CI support, and a growing feature set.
+Scripts work when you have one specific use case. mdt provides the same capability as a general-purpose tool, with editor integration, CI support, and an expanding feature set.
 
 ## vs. Template engines (Tera, Handlebars, Jinja)
 
@@ -60,7 +60,7 @@ General-purpose template engines are powerful but solve a different problem.
 | Learning curve                | Template language + config    | HTML comment tags                  |
 | Invisible in rendered docs    | N/A — generates output        | Yes — tags are HTML comments       |
 
-Template engines generate files. mdt synchronizes regions within files. If your docs are already written and you want to keep specific sections in sync, mdt fits without restructuring your project.
+Template engines generate files. mdt synchronizes regions within files. If your docs are already written and you want to keep specific sections in sync, mdt fits without restructuring.
 
 ## When mdt is the right choice
 

@@ -34,7 +34,7 @@ version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 - Typed entry with explicit format: `release = { path = "release-info", format = "json" }`
 - Script entry: `version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }`
 
-String paths infer format from file extension. Typed entries use `format` and are useful for files without extensions.
+String paths infer format from the file extension. Typed entries use `format` and are useful for files without extensions.
 
 ### Script-backed data sources
 
@@ -195,7 +195,7 @@ When `[padding]` is present but `before`/`after` are omitted, they default to `1
 
 In source code files with comment prefixes (e.g., `//!`, `///`, `*`), blank lines include the comment prefix to maintain valid syntax.
 
-This is especially important for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where target blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
+This matters most for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where target blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
 
 **Example:** `before = 0, after = 0` — content directly on the next line:
 

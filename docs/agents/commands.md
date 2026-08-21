@@ -18,12 +18,14 @@ Use repo scripts first when they exist:
 - `lint:clippy` — run `cargo clippy --workspace --all-features --all-targets`
 - `lint:format` — run `dprint check`
 - `lint:actions` — run `actionlint` against GitHub Actions workflows
+- `lint:workflows` — run `zizmor` over GitHub Actions workflows and actions (security scan)
 - `lint:npm` — run npm package type and lint checks
 - `lint:push` — run pre-push CI-aligned checks, including npm package tests
 - `fix:all` — run clippy fixes, `mdt update`, formatting, and GitHub Actions linting
 - `fix:clippy` — run clippy fixes for the workspace
 - `fix:format` — format with dprint
 - `fix:actions` — run `actionlint` (actionlint has no autofix mode)
+- `fix:workflows` — run `zizmor --fix` over GitHub Actions workflows
 - `coverage:all` — generate coverage with `cargo llvm-cov`
 - `deny:check` — run `cargo deny check`
 - `snapshot:review` — review insta snapshots
@@ -52,13 +54,9 @@ Use these when repo scripts are not enough:
 - Do not run `rustfmt` directly.
 - dprint delegates to `rustfmt`, `nixfmt`, and `shfmt` as needed.
 
-## Cargo aliases
+## Cargo subcommands
 
-Defined in `.cargo/config.toml`:
+`cargo deny`, `cargo insta`, `cargo llvm-cov`, and `cargo nextest` come from binaries installed by `install:all`; cargo picks them up automatically from your PATH. `.cargo/config.toml` defines the remaining aliases:
 
-- `cargo deny`
-- `cargo insta`
-- `cargo llvm-cov`
-- `cargo nextest`
 - `cargo semver-checks`
 - `cargo workspaces`

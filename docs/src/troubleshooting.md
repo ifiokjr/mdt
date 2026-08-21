@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page covers common errors, debugging techniques, and solutions for issues you might encounter with mdt.
+Common errors, debugging techniques, and solutions for issues you might hit with mdt.
 
 ## Common errors
 
@@ -14,7 +14,7 @@ warning: consumer `installGuide` in readme.md has no matching source
 
 **Solutions:**
 
-- Check for typos in the block name. Names are case-sensitive — `installGuide` and `installguide` are different.
+- Check for typos in the block name. Names are case-sensitive: `installGuide` and `installguide` are different.
 - Verify the source is in a `*.t.md` file. Source tags in regular `.md` files are ignored.
 - If you're in a monorepo, confirm the source is in the same project scope. Providers from a parent or sibling project are not visible across `mdt.toml` boundaries. See [Monorepo setups](./advanced/monorepos.md).
 - Run `mdt list` to see all discovered sources and targets.
@@ -59,7 +59,7 @@ Target block `install` in src/lib.rs is out of date.
 
 ### Use `mdt check --verbose`
 
-Verbose mode shows the full scan results — how many files were scanned, which sources and targets were found, and which blocks are stale:
+Verbose mode shows the full scan results: how many files were scanned, which sources and targets were found, and which blocks are stale:
 
 ```sh
 mdt check --verbose
@@ -95,7 +95,7 @@ When blocks are stale, `--diff` shows exactly what changed:
 mdt check --diff
 ```
 
-This produces a unified diff for each stale block, making it easy to see whether the change is expected.
+This produces a unified diff for each stale block, so you can see whether the change is expected.
 
 ### Use `mdt update --dry-run`
 
@@ -113,7 +113,7 @@ Dry run: would update 3 block(s) in 2 file(s):
 
 ## Cache observability and diagnostics
 
-If cache behavior looks suspicious (unexpected reparses, stale cache artifact, inconsistent local vs CI behavior), use:
+If cache behavior looks suspicious (unexpected reparses, stale cache artifacts, inconsistent local vs CI behavior), use:
 
 ```sh
 mdt info
@@ -182,7 +182,7 @@ This makes `mdt update` and `mdt check` use the same formatter-aware full-file p
 
 Formatter-aware checking can also report **formatter-only** drift. This happens when the formatter would rewrite the full file, but no individual managed block body is stale.
 
-In that case mdt reports the file in `stale_files` so automation can distinguish surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
+In that case mdt reports the file in `stale_files` so automation can tell surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
 
 <!-- {/mdtFormatterOnlyStaleDocs} -->
 

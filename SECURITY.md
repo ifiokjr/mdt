@@ -6,12 +6,12 @@ Only the latest minor release is actively supported with security fixes.
 
 | Version | Supported |
 | ------- | --------- |
-| 0.4.x   | Yes       |
-| < 0.4   | No        |
+| 0.9.x   | Yes       |
+| < 0.9   | No        |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly through one of the following channels:
+If you discover a security vulnerability, report it responsibly through one of the following channels:
 
 - **GitHub Security Advisories**: Open a [private security advisory](https://github.com/ifiokjr/mdt/security/advisories/new) on the repository. This is the preferred method.
 - **Email**: Send a detailed report to [ifiokotung@gmail.com](mailto:ifiokotung@gmail.com).

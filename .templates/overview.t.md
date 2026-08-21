@@ -1,6 +1,6 @@
 <!-- {@mdtPackageDocumentation} -->
 
-`mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content synchronized across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more so your docs do not drift.
+`mdt` helps library and tool maintainers keep README sections, source-doc comments, and docs-site content in sync across a project. Define content once with comment-based template tags, then reuse it across markdown files, code documentation comments, READMEs, mdbook docs, and more, so your docs do not drift.
 
 <!-- {/mdtPackageDocumentation} -->
 
@@ -11,8 +11,9 @@
 - `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
 - `mdt check [--path <dir>] [--verbose]` — Verify all target blocks are up-to-date. Exits non-zero if any are stale.
 - `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all target blocks with latest source content.
+- `mdt list [--path <dir>]` — List all provider and target blocks with their link status.
 - `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
-- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with actionable hints, including cache validity and efficiency.
+- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with hints for config, data, layout, and cache issues.
 - `mdt assist <assistant> [--format text|json]` — Print an official assistant setup profile with MCP config and repo-local guidance.
 - `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
 - `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
@@ -85,7 +86,7 @@ Content to inject
 
 <!-- {@mdtInlineBlocksGuide} -->
 
-Inline blocks are useful when you need dynamic content in-place without creating a separate source. Typical examples include versions, toolchain values, environment metadata, and short computed strings.
+Inline blocks interpolate small dynamic values in place, without a separate source. Typical uses: version numbers, toolchain values, environment metadata, short computed strings.
 
 Inline blocks render minijinja template content from the block's first argument:
 
@@ -93,9 +94,9 @@ Inline blocks render minijinja template content from the block's first argument:
 <!-- {~version:"{{ "{{" }} pkg.version {{ "}}" }}"} -->0.0.0<!-- {/version} -->
 ```
 
-During `mdt update`, mdt evaluates the template argument with your configured `[data]` context, then replaces the content between the opening and closing tags.
+During `mdt update`, mdt evaluates the template argument with your `[data]` context, then replaces the content between the opening and closing tags.
 
-Because inline blocks are source-free, they are ideal for one-off values that still need to stay synchronized.
+Because inline blocks are source-free, they fit one-off values that still need to stay in sync.
 
 <!-- {/mdtInlineBlocksGuide} -->
 

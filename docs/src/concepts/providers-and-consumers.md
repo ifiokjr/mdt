@@ -1,6 +1,6 @@
 # Sources and Targets
 
-mdt's template system has two roles: **sources** define content, and **targets** receive it.
+mdt's template system has two roles. **Sources** define content; **targets** receive it.
 
 ## Sources
 
@@ -22,7 +22,7 @@ The `@` sigil marks this as a source. The name `installGuide` is how consumers r
 
 - Providers can **only** appear in `*.t.md` files. A `{@name}` tag in `readme.md` is ignored.
 - Each source name must be unique across the entire project. Two template files defining `{@installGuide}` produces an error.
-- The content between the opening and closing tags is the source's content — including the surrounding whitespace.
+- The content between the opening and closing tags is the source's content, including the surrounding whitespace.
 
 ## Targets
 
@@ -71,7 +71,7 @@ The `/` sigil closes the block. The name must match the opening tag.
                                                                 transformers)
 ```
 
-The same source content feeds multiple targets. Each consumer can apply its own transformers to adapt the content for its context.
+The same source content feeds multiple targets. Each consumer can apply its own transformers to adapt the content.
 
 ## A complete example
 
@@ -112,4 +112,4 @@ A fast, type-safe HTTP client for Rust.
 //! <!-- {/projectDescription} -->
 ```
 
-After `mdt update`, all three files contain the same project description and usage example, each adapted for its context.
+After `mdt update`, all three files contain the same project description and usage example, each adapted to its context.

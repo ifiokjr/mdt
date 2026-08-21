@@ -1,6 +1,8 @@
 # Changelog
 
-This file is maintained by `knope`.
+All notable changes to this project will be documented in this file.
+
+This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
 ## [0.9.0](https://github.com/ifiokjr/mdt/releases/tag/v0.9.0) (2026-07-04)
 

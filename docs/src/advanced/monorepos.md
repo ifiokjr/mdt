@@ -1,6 +1,6 @@
 # Monorepo & Multi-Project Setups
 
-mdt supports monorepos where each package manages its own templates independently. The key mechanism is **sub-project boundaries**: any directory containing its own `mdt.toml` is treated as a separate mdt project.
+mdt supports monorepos where each package manages its own templates independently. The mechanism is **sub-project boundaries**: any directory containing its own `mdt.toml` is treated as a separate mdt project.
 
 ## How sub-project boundaries work
 
@@ -121,7 +121,7 @@ For sub-projects, duplicate the source in each sub-project's template file. This
 
 ### Option 2: Duplicate sources where needed
 
-Copy the source block into each sub-project's template file. While this creates duplication in template files, the target blocks throughout each project stay in sync with their local provider — which is mdt's primary guarantee.
+Copy the source block into each sub-project's template file. This duplicates content in template files, but target blocks throughout each project stay in sync with their local provider, which is mdt's primary guarantee.
 
 ### Option 3: Keep shared content at the root scope
 
@@ -166,4 +166,4 @@ cargo = "Cargo.toml" # resolves to packages/lib-a/Cargo.toml
 package = "package.json" # resolves to packages/lib-a/package.json
 ```
 
-This means `{{ cargo.package.name }}` in `lib-a`'s templates refers to `lib-a`'s `Cargo.toml`, not the root workspace `Cargo.toml`.
+So `{{ cargo.package.name }}` in `lib-a`'s templates refers to `lib-a`'s `Cargo.toml`, not the root workspace's.

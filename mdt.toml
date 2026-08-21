@@ -34,6 +34,18 @@
 before = 0
 after = 0
 
+# `[check]` controls how `mdt check` compares expected vs actual content.
+# - "strict" -> byte-for-byte comparison (default)
+# - "lenient" -> whitespace-normalized comparison; ignores differences in
+#   blank line count, trailing whitespace, and table/JSON formatting so
+#   external formatters do not cause false staleness.
+#
+# `mdt update` always writes exact bytes regardless of this setting.
+#
+# This repo keeps the strict default and instead configures `[[formatters]]`
+# below, so dprint's output is the comparison baseline and `mdt check` stays
+# green after formatting.
+
 [data]
 # String values are file-backed namespaces.
 # The parser is inferred from the extension: `.json`, `.toml`, `.yaml`,

@@ -2,13 +2,13 @@
 
 ## Release tooling
 
-This repo uses `knope` for changesets and releases.
+This repo uses `monochange` (`mc`) for changesets and releases.
 
 Common commands:
 
-- `knope document-change`
-- `knope release`
-- `knope publish`
+- `mc create --interactive`
+- `mc step:prepare-release --dry-run`
+- `mc step:publish-release`
 
 ## Changeset requirement
 
@@ -17,10 +17,18 @@ Any PR that changes code in a publishable crate must include at least one `.chan
 A changeset can use these change types:
 
 - `major`
+- `breaking`
 - `minor`
+- `feat`
+- `change`
 - `patch`
+- `refactor`
+- `test`
+- `fix`
+- `none`
 - `docs`
-- `note`
+- `security`
+- `perf`
 
 Publishable packages:
 

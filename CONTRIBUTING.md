@@ -1,6 +1,6 @@
 # Contributing to mdt
 
-Thank you for your interest in contributing to mdt. This guide covers everything you need to get started.
+Thanks for considering a contribution to mdt. This guide covers what you need to get started.
 
 ## Getting Started
 
@@ -16,8 +16,8 @@ install:all
 
 Entering the dev shell also installs the repository git hooks managed by `devenv`:
 
-- `pre-commit` applies autofixable `mdt`, formatting, and clippy updates to staged changes.
-- `pre-push` runs the CI-aligned lint, test, npm integration, and build checks.
+- `pre-commit` runs `lint:format` (dprint) over staged changes.
+- `pre-push` runs `lint:push`, the CI-aligned lint, test, npm integration, and build checks.
 
 ## Building and Testing
 
@@ -72,25 +72,25 @@ Every change must be submitted via a pull request. Do not commit directly to `ma
 
 ## Changeset Requirement
 
-**Every PR that modifies code in any crate must include at least one changeset file in `.changeset/`.** This ensures changes are tracked in changelogs and version bumps are applied correctly.
+**Every PR that modifies code in any crate must include at least one changeset file in `.changeset/`.** This keeps changelogs accurate and version bumps correct.
 
 To create a changeset interactively:
 
 ```sh
-knope document-change
+mc create --interactive
 ```
 
-Or create one manually by adding a markdown file in `.changeset/` with the following format:
+Or create one manually: add a markdown file in `.changeset/` with the following format:
 
 ```markdown
 ---
-package_name: change_type
+mdt_core: patch
 ---
 
 Detailed description of the change.
 ```
 
-**Change types:** `major`, `minor`, `patch`, `docs`, `note`
+**Change types:** `major`, `breaking`, `minor`, `feat`, `change`, `patch`, `refactor`, `test`, `fix`, `none`, `docs`, `security`, `perf`
 
 **Package names:** `mdt_core`, `mdt_cli`, `mdt_lsp`, `mdt_mcp`
 

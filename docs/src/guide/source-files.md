@@ -1,10 +1,10 @@
 # Source File Support
 
-mdt isn't limited to markdown files. Target tags work inside code comments in any language that supports `<!-- -->` HTML comments within its comment syntax.
+mdt isn't limited to markdown files. Target tags work inside code comments in any language whose comment syntax can hold `<!-- -->` HTML comments.
 
 ## How it works
 
-mdt scans source files for HTML comment patterns (`<!-- ... -->`) embedded within code comments. The same `{=name}` / `{/name}` consumer syntax works regardless of the surrounding comment style.
+mdt scans source files for HTML comment patterns (`<!-- ... -->`) embedded in code comments. The same `{=name}` / `{/name}` consumer syntax works regardless of the surrounding comment style.
 
 ## Supported languages
 
@@ -91,7 +91,7 @@ before = 0
 after = 0
 ```
 
-This ensures content is properly separated from the surrounding tags. The `before` and `after` values control how many blank lines appear between tags and content:
+The `before` and `after` values control how many blank lines appear between tags and content:
 
 - `false` — Content inline with tag (no newline)
 - `0` — Content on the very next line (recommended for projects using formatters)
@@ -127,7 +127,7 @@ With `before = 1, after = 1`, blank lines are added between tags and content:
 
 ### Lenient parsing
 
-Source file parsing is **lenient**. If an opening tag has no matching close tag, it's silently ignored rather than producing an error. This prevents false positives when HTML comments appear in strings or other non-tag contexts.
+Source file parsing is **lenient**. An opening tag without a matching close tag is silently ignored rather than producing an error. This avoids false positives when HTML comments appear in strings or other non-tag contexts.
 
 ### Source blocks in source files
 
@@ -135,7 +135,7 @@ Source files can only contain **consumer** blocks. Even if you write `{@name}` i
 
 ## Real-world example
 
-Consider a TypeScript library where you want the README, JSDoc, and mdbook docs to stay in sync.
+Consider a TypeScript library where the README, JSDoc, and mdbook docs need to stay in sync.
 
 **`.templates/*.t.md`** files define the content:
 
@@ -173,4 +173,4 @@ export function createClient() {
 }
 ```
 
-Running `mdt update` fills both targets. The readme gets the content as-is. The TypeScript file gets the content trimmed and indented with `*` for JSDoc formatting.
+Running `mdt update` fills both targets. The readme gets the content as-is; the TypeScript file gets it trimmed and indented with `*` for JSDoc formatting.

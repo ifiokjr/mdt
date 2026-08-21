@@ -1,6 +1,6 @@
 # Configuration
 
-mdt is configured through an `mdt.toml` file placed in the project root. Configuration is optional — mdt works without it using sensible defaults.
+mdt is configured through an `mdt.toml` file in the project root. Configuration is optional; mdt works without it using sensible defaults.
 
 ## Creating a config file
 
@@ -16,7 +16,7 @@ patterns = ["vendor/", "dist/"]
 
 ## What `mdt init` writes
 
-`mdt init` creates a fully annotated starter `mdt.toml` so new projects can see every currently supported option before uncommenting anything.
+`mdt init` writes a fully annotated starter `mdt.toml` so new projects can see every supported option before uncommenting anything.
 
 <!-- {=mdtInitAnnotatedConfiguration|trim|codeBlock:"toml"} -->
 
@@ -357,7 +357,7 @@ Without this setting, transformers like `trim` can cause content to merge direct
 
 Formatter entries make `mdt update` and `mdt check` converge with your formatter's canonical **full-file** output instead of comparing raw injected block text.
 
-This is the recommended long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and the best way to keep CI green when external formatters rewrite synced files.
+This is the long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and it keeps CI green when external formatters rewrite synced files.
 
 Each matching formatter entry:
 
@@ -376,7 +376,7 @@ Each matching formatter entry:
 
 `patterns` and `ignore` are ordered gitignore-style rule lists. Leading `!` entries negate a prior match, so later rules can re-include paths for a single formatter stage.
 
-If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error instead of silently falling back to unformatted output.
+If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error rather than silently falling back to unformatted output.
 
 ```toml
 [[formatters]]
@@ -516,11 +516,11 @@ The example below is synced from the repository's annotated `mdt.toml` so the co
 
 # 
 
-# This repo uses `lenient` so that dprint can reformat generated targets
+# This repo keeps the strict default and instead configures `[[formatters]]`
 
-# without tripping `mdt check`.
+# below, so dprint's output is the comparison baseline and `mdt check` stays
 
-[check] comparison = "lenient"
+# green after formatting.
 
 [data]
 
