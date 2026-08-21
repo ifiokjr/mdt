@@ -1,3 +1,5 @@
+<p align="center"><img src="mdt-lockup-light.svg" alt="mdt logo" width="180"></p>
+
 # Introduction
 
 **mdt** (manage **m**ark**d**own **t**emplates) keeps README sections, source-doc comments, and docs-site content in sync. Define content once in a template file, reference it from anywhere, and mdt updates every copy for you, in READMEs, code comments, or mdbook docs.

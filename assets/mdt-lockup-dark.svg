@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 72" role="img" aria-label="mdt wordmark lockup">
+  <defs>
+    <linearGradient id="mdt-g" x1="8" y1="20" x2="60" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4, 12) scale(0.5)" fill="none">
+    <g stroke="url(#mdt-g)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M30 36 L13 48 L30 60"/>
+      <path d="M66 36 L83 48 L66 60"/>
+      <path d="M48 35.5 L60.5 48 L48 60.5 L35.5 48 Z"/>
+    </g>
+  </g>
+  <text x="66" y="47" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="34" font-weight="600" letter-spacing="1" fill="#E2E8F0">mdt</text>
+</svg>

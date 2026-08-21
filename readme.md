@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mdt-mark.svg" alt="mdt logo" width="110">
+</p>
+
 # mdt
 
 **Write it once, sync it everywhere.**
