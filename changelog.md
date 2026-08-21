@@ -1,3 +1,30 @@
+## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)
+
+Grouped release for `mdt`.
+
+### 🐛 Fixed
+
+#### Fix comment prefix loss when migrating inline blocks to padded layout.
+
+_Packages:_ _mdt_
+
+When a project enables `[padding]` after previously rendering blocks without it, the closing tag was pushed to its own line without the comment prefix (e.g., `///`, `//!`), producing invalid source code. The closing-tag prefix is now recovered from the closing tag's line in the source file instead of from the block content, so the migration produces valid comments. Markdown files are unaffected.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #165](https://github.com/ifiokjr/mdt/pull/165)
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Documentation rewrite
+
+_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_, _mdt_mcp_, _@m-d-t/skills_
+
+Rewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)
+
+</details>
+
 ## [0.9.0](https://github.com/ifiokjr/mdt/releases/tag/v0.9.0) (2026-07-04)
 
 Grouped release for `mdt`.
