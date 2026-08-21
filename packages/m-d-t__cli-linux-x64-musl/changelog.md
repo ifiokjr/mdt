@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)
+
+### Changed
+
+- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.1 as part of group `mdt`.
+
 ## [0.9.0](https://github.com/ifiokjr/mdt/releases/tag/v0.9.0) (2026-07-04)
 
 ### 💥 Breaking Change

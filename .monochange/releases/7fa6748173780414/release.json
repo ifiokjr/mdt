@@ -1,0 +1,852 @@
+{
+  "schema_version": "0.4",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-08-21T03:59:40Z",
+  "command": "release",
+  "version": "0.9.1",
+  "versions": {
+    "mdt": "0.9.1"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.1",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.1",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.1",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/docs_unslop_and_align.md",
+    ".changeset/fix_padding_inline_migration_prefix.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/docs_unslop_and_align.md",
+      "summary": "Documentation rewrite",
+      "details": "Rewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        },
+        {
+          "id": "mdt_lsp",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        },
+        {
+          "id": "mdt_mcp",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "4d2d386d62a8d035da7f0533c05392e8df20eefe",
+            "short_sha": "4d2d386",
+            "url": "https://github.com/ifiokjr/mdt/commit/4d2d386d62a8d035da7f0533c05392e8df20eefe",
+            "authored_at": "2026-08-21T04:57:33+01:00",
+            "committed_at": "2026-08-21T04:57:33+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#167",
+            "title": "docs: unslop and align documentation across the repo",
+            "url": "https://github.com/ifiokjr/mdt/pull/167",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "4d2d386d62a8d035da7f0533c05392e8df20eefe",
+            "short_sha": "4d2d386",
+            "url": "https://github.com/ifiokjr/mdt/commit/4d2d386d62a8d035da7f0533c05392e8df20eefe",
+            "authored_at": "2026-08-21T04:57:33+01:00",
+            "committed_at": "2026-08-21T04:57:33+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#167",
+            "title": "docs: unslop and align documentation across the repo",
+            "url": "https://github.com/ifiokjr/mdt/pull/167",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/fix_padding_inline_migration_prefix.md",
+      "summary": "Fix comment prefix loss when migrating inline blocks to padded layout.",
+      "details": "When a project enables `[padding]` after previously rendering blocks without it, the closing tag was pushed to its own line without the comment prefix (e.g., `///`, `//!`), producing invalid source code. The closing-tag prefix is now recovered from the closing tag's line in the source file instead of from the block content, so the migration produces valid comments. Markdown files are unaffected.",
+      "targets": [
+        {
+          "id": "mdt",
+          "kind": "group",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "patch"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "77386cca8854aba4c574ac6548b72752b692fe66",
+            "short_sha": "77386cc",
+            "url": "https://github.com/ifiokjr/mdt/commit/77386cca8854aba4c574ac6548b72752b692fe66",
+            "authored_at": "2026-08-15T11:04:39+01:00",
+            "committed_at": "2026-08-15T11:04:39+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#165",
+            "title": "fix(mdt_core): preserve comment prefix when padding inline blocks",
+            "url": "https://github.com/ifiokjr/mdt/pull/165",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "77386cca8854aba4c574ac6548b72752b692fe66",
+            "short_sha": "77386cc",
+            "url": "https://github.com/ifiokjr/mdt/commit/77386cca8854aba4c574ac6548b72752b692fe66",
+            "authored_at": "2026-08-15T11:04:39+01:00",
+            "committed_at": "2026-08-15T11:04:39+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#165",
+            "title": "fix(mdt_core): preserve comment prefix when padding inline blocks",
+            "url": "https://github.com/ifiokjr/mdt/pull/165",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Fix comment prefix loss when migrating inline blocks to padded layout.\n_Packages:_ _mdt_\n\nWhen a project enables `[padding]` after previously rendering blocks without it, the closing tag was pushed to its own line without the comment prefix (e.g., `///`, `//!`), producing invalid source code. The closing-tag prefix is now recovered from the closing tag's line in the source file instead of from the block content, so the migration produces valid comments. Markdown files are unaffected.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #165](https://github.com/ifiokjr/mdt/pull/165)"
+            ]
+          },
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_, _mdt_mcp_, _@m-d-t/skills_\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\nGrouped release for `mdt`.\n### 🐛 Fixed\n\n#### Fix comment prefix loss when migrating inline blocks to padded layout.\n_Packages:_ _mdt_\n\nWhen a project enables `[padding]` after previously rendering blocks without it, the closing tag was pushed to its own line without the comment prefix (e.g., `///`, `//!`), producing invalid source code. The closing-tag prefix is now recovered from the closing tag's line in the source file instead of from the block content, so the migration produces valid comments. Markdown files are unaffected.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #165](https://github.com/ifiokjr/mdt/pull/165)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_, _mdt_mcp_, _@m-d-t/skills_\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.1 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.1 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Documentation rewrite\n\nRewrite documentation across the repo: tighten prose, drop AI-flavored phrasing, fix stale references (knope to monochange, version numbers, missing `mdt list` command, license badge typo), align the annotated config docs with the actual strict-default plus formatters setup, and add the missing `if` transformer docs. Template-driven content was updated in `.templates/` and synced via `mdt update`.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #167](https://github.com/ifiokjr/mdt/pull/167)\n</details>"
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}
