@@ -42,10 +42,18 @@ jobs:
       - name: build mdbook
         run: mdbook build docs
 
+      - name: assemble site
+        run: |
+          mkdir -p site/assets
+          cp docs/landing/index.html site/index.html
+          cp assets/mdt-demo.gif assets/mdt-icon.svg assets/mdt-lockup-dark.svg site/assets/
+          mv assets/mdt-lockup-dark.svg site/assets/mdt-lockup.svg
+          cp -r docs/book site/book
+
       - name: upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/book
+          path: site
 
   deploy:
     needs: build

@@ -3,3 +3,6 @@ authors = ["Ifiok Jr."]
 language = "en"
 src = "src"
 title = "mdt"
+
+[output.html]
+site-url = "/mdt/book/"
