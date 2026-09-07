@@ -262,7 +262,10 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let config_exists = MdtConfig::resolve_path(&root).is_some();
 
 	if template_exists {
-		println!("Template file already exists: {}", template_path.display());
+		println!(
+			"Template file already exists: {}",
+			display_path(&template_path)
+		);
 	} else {
 		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a source \
 		                      block.\n\n<!-- {/greeting} -->\n";
@@ -271,7 +274,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			std::fs::create_dir_all(parent)?;
 		}
 		std::fs::write(&template_path, sample_content)?;
-		println!("Created template file: {}", template_path.display());
+		println!("Created template file: {}", display_path(&template_path));
 	}
 
 	if config_exists {
@@ -298,7 +301,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		if readme_exists {
 			println!(
 				"  1. Edit {} to define your source blocks",
-				template_path.display()
+				display_path(&template_path)
 			);
 			println!("  2. Add target tags in your markdown files:");
 			println!("     <!-- {{=greeting}} -->");
@@ -309,7 +312,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			println!("  2. Open readme.md to see the result");
 			println!(
 				"  3. Edit {} to change your source blocks",
-				template_path.display()
+				display_path(&template_path)
 			);
 		}
 	}
@@ -375,10 +378,8 @@ fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
 
 fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String) {
 	match source {
-		mdt_core::DataSource::Path(path) => (path.display().to_string(), "file".to_string()),
-		mdt_core::DataSource::Typed(typed) => {
-			(typed.path.display().to_string(), "file".to_string())
-		}
+		mdt_core::DataSource::Path(path) => (display_path(path), "file".to_string()),
+		mdt_core::DataSource::Typed(typed) => (display_path(&typed.path), "file".to_string()),
 		mdt_core::DataSource::Script(script) => {
 			(
 				format!("script: {}", script.command),
@@ -433,8 +434,16 @@ fn load_config_summary(root: &Path) -> Result<ConfigSummary, Box<dyn std::error:
 	})
 }
 
+/// Format a path for user-facing output.
+///
+/// Forward slashes are used on every platform so printed diagnostics and
+/// JSON reports render identically across operating systems.
+fn display_path(path: impl AsRef<Path>) -> String {
+	path.as_ref().display().to_string().replace('\\', "/")
+}
+
 fn normalize_dir_hint(path: &Path) -> String {
-	let mut hint = path.display().to_string();
+	let mut hint = display_path(path);
 	if !hint.ends_with('/') {
 		hint.push('/');
 	}
@@ -501,7 +510,7 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 			names.sort();
 			for name in names {
 				let entry = &ctx.project.providers[name];
-				println!("    @{name} ({})", entry.file.display());
+				println!("    @{name} ({})", display_path(&entry.file));
 			}
 		}
 	}
@@ -1165,7 +1174,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let configured_template_dirs: Vec<String> = config
 		.template_dirs
 		.iter()
-		.map(|path| path.display().to_string())
+		.map(|path| display_path(path))
 		.collect();
 	let configured_template_dirs_display = if configured_template_dirs.is_empty() {
 		"default scan (*.t.md)".to_string()
@@ -1176,7 +1185,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let resolved_config = config
 		.path
 		.as_ref()
-		.map_or_else(|| "none".to_string(), |path| path.display().to_string());
+		.map_or_else(|| "none".to_string(), |path| display_path(path));
 
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
@@ -1194,7 +1203,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 
 	let report = InfoReport {
 		project: InfoProjectSection {
-			root: root.display().to_string(),
+			root: display_path(&root),
 			resolved_config,
 		},
 		blocks: InfoBlocksSection {
@@ -1221,7 +1230,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			missing_provider_names: missing_providers,
 		},
 		cache: InfoCacheSection {
-			path: cache_inspection.path.display().to_string(),
+			path: display_path(&cache_inspection.path),
 			artifact: InfoCacheArtifactStateSection {
 				exists: cache_inspection.artifact.exists,
 				readable: cache_inspection.artifact.readable,
@@ -1475,7 +1484,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			"config_discovery",
 			"Config Discovery",
 			DoctorStatus::Pass,
-			format!("resolved config at {}", path.display()),
+			format!("resolved config at {}", display_path(path)),
 			None,
 		);
 	} else {
@@ -1591,7 +1600,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	} else if !template_paths.is_empty() {
 		let configured = template_paths
 			.iter()
-			.map(|path| path.display().to_string())
+			.map(|path| display_path(path))
 			.collect::<Vec<_>>()
 			.join(", ");
 		add_doctor_check(
@@ -1818,7 +1827,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			"cache_artifact",
 			"Cache Artifact",
 			DoctorStatus::Warn,
-			format!("cache artifact not found at {}", cache.path.display()),
+			format!("cache artifact not found at {}", display_path(&cache.path)),
 			Some(
 				"run `mdt check` or `mdt info` to trigger a scan and write the cache artifact"
 					.to_string(),
@@ -1832,7 +1841,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			DoctorStatus::Fail,
 			format!(
 				"cache artifact exists but is not readable: {}",
-				cache.path.display()
+				display_path(&cache.path)
 			),
 			Some("verify filesystem permissions for `.mdt/cache/`".to_string()),
 		);
@@ -1873,7 +1882,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			DoctorStatus::Pass,
 			format!(
 				"cache artifact is readable and valid at {}",
-				cache.path.display()
+				display_path(&cache.path)
 			),
 			None,
 		);
