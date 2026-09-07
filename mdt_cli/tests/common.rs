@@ -42,7 +42,16 @@ fn regex_escape_path(path: &str) -> String {
 }
 
 fn add_temp_dir_filter(settings: &mut insta::Settings, path: &str) {
-	settings.add_filter(&regex_escape_path(path), "[TEMP_DIR]");
+	// The same separator reaches snapshots in several renderings: a forward
+	// slash (normalized CLI output and Unix paths), a single backslash
+	// (plain text on Windows), or two backslashes (PathBuf Debug and JSON
+	// string escaping on Windows). Match any run of separators so one filter
+	// redacts every form, and rewrite the trailing separator to `/` so the
+	// redacted output matches snapshots recorded on Unix.
+	let separator = r"(?:\\|/)+";
+	let pattern = regex_escape_path(path).replace('/', separator);
+	settings.add_filter(&(pattern.clone() + separator), "[TEMP_DIR]/");
+	settings.add_filter(&pattern, "[TEMP_DIR]");
 }
 
 pub fn with_redacted_temp_dir(tmp_path: &Path, f: impl FnOnce()) {
