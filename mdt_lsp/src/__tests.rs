@@ -95,6 +95,15 @@ fn test_uri(path: &std::path::Path) -> Uri {
 	})
 }
 
+/// The file path the server derives for a document URI. Mirrors
+/// `update_document_in_project`, which stores `Uri::to_file_path`, so
+/// fixture expectations stay consistent with the server on every platform.
+fn uri_file_path(uri: &Uri) -> PathBuf {
+	uri.to_file_path()
+		.map(std::borrow::Cow::into_owned)
+		.unwrap_or_else(|| PathBuf::from(uri.path().as_str()))
+}
+
 fn make_inline_test_state(
 	template_argument: Option<&str>,
 	consumer_content: &str,
@@ -1774,7 +1783,7 @@ fn update_document_in_project_template_updates_provider() {
 		provider.content.contains("Hello updated!"),
 		"expected provider content to contain updated text"
 	);
-	assert_eq!(provider.file, PathBuf::from("/tmp/test/template.t.md"));
+	assert_eq!(provider.file, uri_file_path(&provider_uri));
 }
 
 #[test]
@@ -1810,10 +1819,7 @@ fn update_document_in_project_consumer_file_updates_consumers() {
 
 	assert_eq!(state.consumers.len(), 1);
 	assert_eq!(state.consumers[0].block.name, "greeting");
-	assert_eq!(
-		state.consumers[0].file,
-		PathBuf::from("/tmp/test/readme.md")
-	);
+	assert_eq!(state.consumers[0].file, uri_file_path(&consumer_uri));
 }
 
 #[test]
@@ -1832,7 +1838,7 @@ fn update_document_in_project_replaces_existing_consumers() {
 			transformers: Vec::new(),
 			arguments: vec![],
 		},
-		file: PathBuf::from("/tmp/test/readme.md"),
+		file: uri_file_path(&consumer_uri),
 		content: "\n\nold\n\n".to_string(),
 	};
 
