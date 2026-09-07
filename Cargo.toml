@@ -31,8 +31,8 @@ minijinja = { default-features = false, version = "^2" }
 notify = { default-features = false, version = "^8" }
 owo-colors = { default-features = false, version = "^4" }
 predicates = { default-features = false, version = "^3" }
-rmcp = { default-features = false, version = "2.1.0" }
-rstest = { default-features = false, version = "^0.26" }
+rmcp = { default-features = false, version = "3.2.0" }
+rstest = { default-features = false, version = "^0.27" }
 serde = { default-features = false, version = "^1" }
 serde_ini = { default-features = false, version = "^0.2" }
 serde_json = { default-features = false, version = "^1" }
