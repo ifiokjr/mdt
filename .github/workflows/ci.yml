@@ -124,6 +124,29 @@ jobs:
           pnpm build
           pnpm node --import tsx --test scripts/npm/tests/*.test.ts
 
+  test-cross-platform:
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    name: test (${{ matrix.os }})
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: install nextest
+        uses: taiki-e/install-action@84f5ac3124727fb3d284d4d22ee9ab3654fd09a6 # v2.87.7
+        with:
+          tool: nextest
+
+      - name: run rust tests
+        run: cargo nextest run --workspace --all-features
+
   build:
     timeout-minutes: 60
     runs-on: ubuntu-latest
