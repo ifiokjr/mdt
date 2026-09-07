@@ -1087,6 +1087,26 @@ fn transformer_completions() -> Vec<CompletionItem> {
 // ---------------------------------------------------------------------------
 
 /// Compute go-to-definition: consumer → provider.
+/// Convert a workspace file path to a file URI.
+///
+/// `Uri::from_file_path` requires an absolute path (with a drive letter on
+/// Windows). Scanned project files always satisfy this, but synthetic
+/// Unix-style paths such as `/tmp/test/readme.md` are not absolute on
+/// Windows, so build the URI text directly in that case to keep behavior
+/// identical across platforms.
+fn path_to_uri(path: &std::path::Path) -> Option<Uri> {
+	if let Some(uri) = Uri::from_file_path(path) {
+		return Some(uri);
+	}
+
+	let text = path.display().to_string();
+	if text.starts_with('/') {
+		return format!("file://{text}").parse().ok();
+	}
+
+	None
+}
+
 fn compute_goto_definition(
 	state: &WorkspaceState,
 	uri: &Uri,
@@ -1099,7 +1119,7 @@ fn compute_goto_definition(
 		BlockType::Consumer => {
 			// Navigate to the provider definition.
 			let provider = state.providers.get(&block.name)?;
-			let target_uri = Uri::from_file_path(&provider.file)?;
+			let target_uri = path_to_uri(&provider.file)?;
 			let target_range = to_lsp_range(&provider.block.opening);
 
 			Some(GotoDefinitionResponse::Scalar(Location {
@@ -1114,7 +1134,7 @@ fn compute_goto_definition(
 				.iter()
 				.filter(|c| c.block.name == block.name)
 				.filter_map(|c| {
-					let consumer_uri = Uri::from_file_path(&c.file)?;
+					let consumer_uri = path_to_uri(&c.file)?;
 					Some(Location {
 						uri: consumer_uri,
 						range: to_lsp_range(&c.block.opening),
@@ -1327,7 +1347,7 @@ fn compute_references(
 		// Inline blocks only reference other inline blocks of the same name.
 		for consumer in &state.consumers {
 			if consumer.block.r#type == BlockType::Inline && consumer.block.name == *name {
-				if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+				if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 					locations.push(Location {
 						uri: consumer_uri,
 						range: to_lsp_range(&consumer.block.opening),
@@ -1338,7 +1358,7 @@ fn compute_references(
 	} else {
 		// Include the provider location if it exists.
 		if let Some(provider) = state.providers.get(name) {
-			if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+			if let Some(provider_uri) = path_to_uri(&provider.file) {
 				locations.push(Location {
 					uri: provider_uri,
 					range: to_lsp_range(&provider.block.opening),
@@ -1349,7 +1369,7 @@ fn compute_references(
 		// Include all consumer locations.
 		for consumer in &state.consumers {
 			if consumer.block.r#type == BlockType::Consumer && consumer.block.name == *name {
-				if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+				if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 					locations.push(Location {
 						uri: consumer_uri,
 						range: to_lsp_range(&consumer.block.opening),
@@ -1476,7 +1496,7 @@ fn compute_rename(
 
 	// Add the provider if it exists.
 	if let Some(provider) = state.providers.get(old_name) {
-		if let Some(provider_uri) = Uri::from_file_path(&provider.file) {
+		if let Some(provider_uri) = path_to_uri(&provider.file) {
 			blocks_to_rename.push((&provider.block, "", provider_uri));
 		}
 	}
@@ -1484,7 +1504,7 @@ fn compute_rename(
 	// Add all consumers with this name.
 	for consumer in &state.consumers {
 		if consumer.block.name == *old_name {
-			if let Some(consumer_uri) = Uri::from_file_path(&consumer.file) {
+			if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 				blocks_to_rename.push((&consumer.block, "", consumer_uri));
 			}
 		}
@@ -1533,7 +1553,7 @@ fn compute_rename(
 	// For the provider file, if not open we can try reading from disk via
 	// the stored file path.
 	if let Some(provider) = state.providers.get(old_name) {
-		let provider_uri_opt = Uri::from_file_path(&provider.file);
+		let provider_uri_opt = path_to_uri(&provider.file);
 		if let Some(provider_uri) = provider_uri_opt {
 			if !state.documents.contains_key(&provider_uri) {
 				// Read file from disk.
@@ -1577,7 +1597,7 @@ fn compute_rename(
 		if consumer.block.name != *old_name {
 			continue;
 		}
-		let consumer_uri_opt = Uri::from_file_path(&consumer.file);
+		let consumer_uri_opt = path_to_uri(&consumer.file);
 		if let Some(consumer_uri) = consumer_uri_opt {
 			if !state.documents.contains_key(&consumer_uri) {
 				if let Ok(content) = std::fs::read_to_string(&consumer.file) {
