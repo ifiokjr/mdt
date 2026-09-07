@@ -246,11 +246,19 @@ pub fn resolve_root(path: Option<&Path>) -> PathBuf {
 /// Render a path relative to the project root for user-facing display.
 ///
 /// If `path` is outside `root`, the full path is returned unchanged.
+/// Separators are normalized to forward slashes on every platform so
+/// diagnostics render identically across operating systems.
 pub fn relative_display_path(path: &Path, root: &Path) -> String {
-	path.strip_prefix(root)
+	let rendered = path
+		.strip_prefix(root)
 		.unwrap_or(path)
 		.display()
-		.to_string()
+		.to_string();
+	if rendered.contains('\\') {
+		rendered.replace('\\', "/")
+	} else {
+		rendered
+	}
 }
 
 /// Returns true if the path uses a markdown-style extension supported by mdt.

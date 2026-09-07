@@ -25,11 +25,10 @@ pub fn mdt_cmd_for_path(path: &Path) -> StdCommand {
 	cmd
 }
 
-pub fn with_redacted_temp_dir(tmp_path: &Path, f: impl FnOnce()) {
-	let path_str = tmp_path.display().to_string();
-	let mut escaped = String::with_capacity(path_str.len() * 2);
+fn regex_escape_path(path: &str) -> String {
+	let mut escaped = String::with_capacity(path.len() * 2);
 
-	for ch in path_str.chars() {
+	for ch in path.chars() {
 		if matches!(
 			ch,
 			'\\' | '.' | '+' | '*' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|'
@@ -39,8 +38,20 @@ pub fn with_redacted_temp_dir(tmp_path: &Path, f: impl FnOnce()) {
 		escaped.push(ch);
 	}
 
+	escaped
+}
+
+fn add_temp_dir_filter(settings: &mut insta::Settings, path: &str) {
+	settings.add_filter(&regex_escape_path(path), "[TEMP_DIR]");
+}
+
+pub fn with_redacted_temp_dir(tmp_path: &Path, f: impl FnOnce()) {
 	let mut settings = insta::Settings::clone_current();
-	settings.add_filter(&escaped, "[TEMP_DIR]");
+
+	// The CLI renders paths with forward slashes on every platform, so build
+	// the redaction filter from the normalized form.
+	let path = tmp_path.display().to_string().replace('\\', "/");
+	add_temp_dir_filter(&mut settings, &path);
 	settings.add_filter(
 		r#""timestamp_unix_ms": \d+"#,
 		r#""timestamp_unix_ms": [UNIX_MS]"#,
