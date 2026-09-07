@@ -8,6 +8,10 @@
 
 Markdown templates that keep your READMEs, doc comments, and docs sites in sync, with data interpolation, transformers, and CI verification.
 
+<p align="center">
+  <img src="assets/mdt-demo.gif" alt="mdt terminal demo: check catches doc drift, update syncs it" width="760">
+</p>
+
 <br />
 
 [![Status][ci-status-image]][ci-status-link] [![Coverage][coverage-image]][coverage-link] [![Unlicense][unlicense-image]][unlicense-link]
