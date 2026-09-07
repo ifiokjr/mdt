@@ -485,6 +485,21 @@ pub fn normalize_line_endings(content: &str) -> String {
 	}
 }
 
+/// Convert LF-normalized content back to the line-ending style of `raw`.
+///
+/// All block offsets are computed against LF-normalized text, so read paths
+/// must normalize before splicing. This restores the original file's line
+/// endings so writing an update does not churn the whole file's EOL style.
+pub fn restore_line_endings(normalized: &str, raw: &str) -> String {
+	if raw.contains("\r\n") {
+		normalized.replace('\n', "\r\n")
+	} else if raw.contains('\r') {
+		normalized.replace('\n', "\r")
+	} else {
+		normalized.to_string()
+	}
+}
+
 fn build_project_cache_key(options: &ScanOptions) -> String {
 	let mut exclude_patterns = options.exclude_patterns.clone();
 	exclude_patterns.sort();

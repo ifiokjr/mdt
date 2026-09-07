@@ -27,6 +27,7 @@ use crate::project::ProviderEntry;
 use crate::project::extract_content_between_tags;
 use crate::project::is_markdown_path;
 use crate::project::normalize_line_endings;
+use crate::project::restore_line_endings;
 use crate::source_scanner::extract_line_comment_prefix;
 use crate::source_scanner::parse_source_with_diagnostics;
 
@@ -342,7 +343,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 
 	for (file, consumers) in consumers_by_file {
 		trace!(file = %file.display(), consumers = consumers.len(), "checking file");
-		let original = std::fs::read_to_string(&file)?;
+		let original = normalize_line_endings(&std::fs::read_to_string(&file)?);
 		let ordered_consumers = sort_consumers_in_file(consumers);
 		let mut candidate = original.clone();
 		let mut eligible = vec![false; ordered_consumers.len()];
@@ -542,7 +543,8 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 
 	for (file, consumers) in consumers_by_file {
 		trace!(file = %file.display(), "processing file for updates");
-		let original = std::fs::read_to_string(&file)?;
+		let raw = std::fs::read_to_string(&file)?;
+		let original = normalize_line_endings(&raw);
 		let ordered_consumers = sort_consumers_in_file(consumers);
 		let mut candidate = original.clone();
 		let mut eligible = vec![false; ordered_consumers.len()];
@@ -624,7 +626,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 				.count();
 		}
 
-		file_contents.insert(file.clone(), candidate);
+		file_contents.insert(file.clone(), restore_line_endings(&candidate, &raw));
 	}
 
 	debug!(
@@ -653,7 +655,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 		if !file_contents.contains_key(&consumer.file) {
 			file_contents.insert(
 				consumer.file.clone(),
-				std::fs::read_to_string(&consumer.file)?,
+				normalize_line_endings(&std::fs::read_to_string(&consumer.file)?),
 			);
 		}
 		let source = &file_contents[&consumer.file];
@@ -776,11 +778,12 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
 	for (file, consumers) in &consumers_by_file {
-		let original = if let Some(content) = file_contents.get(file) {
+		let raw = if let Some(content) = file_contents.get(file) {
 			content.clone()
 		} else {
 			std::fs::read_to_string(file)?
 		};
+		let original = normalize_line_endings(&raw);
 
 		let mut result = original.clone();
 		let mut had_update = false;
@@ -843,7 +846,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		}
 
 		if had_update {
-			file_contents.insert(file.clone(), result);
+			file_contents.insert(file.clone(), restore_line_endings(&result, &raw));
 		}
 	}
 
