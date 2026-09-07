@@ -613,6 +613,66 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 }
 
 #[test]
+fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("install.t.md"),
+		"<!-- {@install} -->\r\n\r\nnpm install my-lib\r\n\r\n<!-- {/install} -->\r\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# my-lib\r\n\r\n<!-- {=install} -->\r\n\r\nstale content\r\n\r\n<!-- {/install} -->\r\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
+		root: tmp.path().to_path_buf(),
+	};
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	assert_eq!(updates.updated_files.len(), 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert_eq!(
+		content,
+		"# my-lib\r\n\r\n<!-- {=install} -->\r\n\r\nnpm install my-lib\r\n\r\n<!-- {/install} \
+		 -->\r\n"
+	);
+
+	write_updates(&updates)?;
+	let written = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+	assert_eq!(
+		written,
+		"# my-lib\r\n\r\n<!-- {=install} -->\r\n\r\nnpm install my-lib\r\n\r\n<!-- {/install} \
+		 -->\r\n"
+	);
+
+	// A second pass over the updated file must be a no-op.
+	let ctx = ProjectContext {
+		project: scan_project(tmp.path())?,
+		data: HashMap::new(),
+		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
+		root: tmp.path().to_path_buf(),
+	};
+	let updates = compute_updates(&ctx)?;
+	assert!(updates.updated_files.is_empty());
+
+	Ok(())
+}
+
+#[test]
 fn compute_updates_replaces_inline_content() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
