@@ -84,7 +84,15 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 }
 
 fn test_uri(path: &std::path::Path) -> Uri {
-	Uri::from_file_path(path).unwrap_or_else(|| panic!("expected file path URI"))
+	Uri::from_file_path(path).unwrap_or_else(|| {
+		// Fixtures use fake Unix-style paths such as /tmp/test, which are
+		// not absolute on Windows, where file URIs require a drive letter.
+		// Build the URI text directly so fixtures behave identically on
+		// every platform.
+		let text = format!("file://{}", path.display());
+		text.parse()
+			.unwrap_or_else(|_| panic!("expected file path URI"))
+	})
 }
 
 fn make_inline_test_state(
