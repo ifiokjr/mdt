@@ -1,0 +1,982 @@
+{
+  "schema_version": "0.5",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-09-07T02:54:15Z",
+  "command": "release",
+  "version": "0.9.2",
+  "versions": {
+    "mdt": "0.9.2"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.2",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.2",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.2",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/1788743776-mdt.md",
+    ".changeset/1788744079-mdt.md",
+    ".changeset/render-paths-with-forward-slashes.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/1788743776-mdt.md",
+      "summary": "Preserve CRLF line endings when updating consumer files",
+      "details": "mdt update parsed consumer files after LF-normalization but spliced into the raw CRLF text, truncating consumer tags and leaving residual old content. All read paths now normalize before splicing and written files keep their original line-ending style. Fixes #169.",
+      "targets": [
+        {
+          "id": "mdt",
+          "kind": "group",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "9584f88df414cf25fdc5949ac6fc1bd1718fb7a0",
+            "short_sha": "9584f88",
+            "url": "https://github.com/ifiokjr/mdt/commit/9584f88df414cf25fdc5949ac6fc1bd1718fb7a0",
+            "authored_at": "2026-09-07T03:14:38+01:00",
+            "committed_at": "2026-09-07T03:14:38+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#170",
+            "title": "fix(mdt_core): preserve CRLF line endings when updating consumer files",
+            "url": "https://github.com/ifiokjr/mdt/pull/170",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "9584f88df414cf25fdc5949ac6fc1bd1718fb7a0",
+            "short_sha": "9584f88",
+            "url": "https://github.com/ifiokjr/mdt/commit/9584f88df414cf25fdc5949ac6fc1bd1718fb7a0",
+            "authored_at": "2026-09-07T03:14:38+01:00",
+            "committed_at": "2026-09-07T03:14:38+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#170",
+            "title": "fix(mdt_core): preserve CRLF line endings when updating consumer files",
+            "url": "https://github.com/ifiokjr/mdt/pull/170",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": [
+          {
+            "provider": "github",
+            "host": "github.com",
+            "id": "#169",
+            "title": null,
+            "url": "https://github.com/ifiokjr/mdt/issues/169",
+            "relationship": "closed_by_review_request"
+          }
+        ]
+      }
+    },
+    {
+      "path": ".changeset/1788744079-mdt.md",
+      "summary": "Update rmcp to 3.2.0 and rstest to 0.27.0",
+      "details": "Bumps the MCP SDK (rmcp 2.x -> 3.2.0) and the test harness (rstest 0.26 -> 0.27), plus a devenv flake input refresh. No public API changes.",
+      "targets": [
+        {
+          "id": "mdt",
+          "kind": "group",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "change"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "59f145d69ed736d00cb908dbca42479968bfb2a3",
+            "short_sha": "59f145d",
+            "url": "https://github.com/ifiokjr/mdt/commit/59f145d69ed736d00cb908dbca42479968bfb2a3",
+            "authored_at": "2026-09-07T03:14:44+01:00",
+            "committed_at": "2026-09-07T03:14:44+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#171",
+            "title": "chore(deps): update rmcp to 3.2.0 and rstest to 0.27.0",
+            "url": "https://github.com/ifiokjr/mdt/pull/171",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "59f145d69ed736d00cb908dbca42479968bfb2a3",
+            "short_sha": "59f145d",
+            "url": "https://github.com/ifiokjr/mdt/commit/59f145d69ed736d00cb908dbca42479968bfb2a3",
+            "authored_at": "2026-09-07T03:14:44+01:00",
+            "committed_at": "2026-09-07T03:14:44+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#171",
+            "title": "chore(deps): update rmcp to 3.2.0 and rstest to 0.27.0",
+            "url": "https://github.com/ifiokjr/mdt/pull/171",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/render-paths-with-forward-slashes.md",
+      "summary": "Render paths with forward slashes on every platform",
+      "details": "CLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.",
+      "targets": [
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        },
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        },
+        {
+          "id": "mdt_lsp",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "b871df8c93b672169bc23018f1e654cbe24854fb",
+            "short_sha": "b871df8",
+            "url": "https://github.com/ifiokjr/mdt/commit/b871df8c93b672169bc23018f1e654cbe24854fb",
+            "authored_at": "2026-09-07T03:52:22+01:00",
+            "committed_at": "2026-09-07T03:52:22+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#172",
+            "title": "test(ci): add macOS and Windows jobs to the test matrix",
+            "url": "https://github.com/ifiokjr/mdt/pull/172",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "b871df8c93b672169bc23018f1e654cbe24854fb",
+            "short_sha": "b871df8",
+            "url": "https://github.com/ifiokjr/mdt/commit/b871df8c93b672169bc23018f1e654cbe24854fb",
+            "authored_at": "2026-09-07T03:52:22+01:00",
+            "committed_at": "2026-09-07T03:52:22+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#172",
+            "title": "test(ci): add macOS and Windows jobs to the test matrix",
+            "url": "https://github.com/ifiokjr/mdt/pull/172",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "output": "default",
+      "stream": "default",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "📝 Changed",
+            "collapsed": false,
+            "entries": [
+              "#### Update rmcp to 3.2.0 and rstest to 0.27.0\n_Packages:_ _mdt_\n\nBumps the MCP SDK (rmcp 2.x -> 3.2.0) and the test harness (rstest 0.26 -> 0.27), plus a devenv flake input refresh. No public API changes.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #171](https://github.com/ifiokjr/mdt/pull/171)"
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Preserve CRLF line endings when updating consumer files\n_Packages:_ _mdt_\n\nmdt update parsed consumer files after LF-normalization but spliced into the raw CRLF text, truncating consumer tags and leaving residual old content. All read paths now normalize before splicing and written files keep their original line-ending style. Fixes #169.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #170](https://github.com/ifiokjr/mdt/pull/170) · _Closed issues:_ [#169](https://github.com/ifiokjr/mdt/issues/169)",
+              "#### Render paths with forward slashes on every platform\n_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\nGrouped release for `mdt`.\n### 📝 Changed\n\n#### Update rmcp to 3.2.0 and rstest to 0.27.0\n_Packages:_ _mdt_\n\nBumps the MCP SDK (rmcp 2.x -> 3.2.0) and the test harness (rstest 0.26 -> 0.27), plus a devenv flake input refresh. No public API changes.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #171](https://github.com/ifiokjr/mdt/pull/171)\n\n### 🐛 Fixed\n\n#### Preserve CRLF line endings when updating consumer files\n_Packages:_ _mdt_\n\nmdt update parsed consumer files after LF-normalization but spliced into the raw CRLF text, truncating consumer tags and leaving residual old content. All read paths now normalize before splicing and written files keep their original line-ending style. Fixes #169.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #170](https://github.com/ifiokjr/mdt/pull/170) · _Closed issues:_ [#169](https://github.com/ifiokjr/mdt/issues/169)\n\n#### Render paths with forward slashes on every platform\n_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### 🐛 Fixed\n\n#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### 🐛 Fixed\n\n#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### 🐛 Fixed\n\n#### Render paths with forward slashes on every platform\n\nCLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)"
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.2 as part of group `mdt`."
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.2 as part of group `mdt`."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)\n\n### Changed\n\n- No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.2 as part of group `mdt`."
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}

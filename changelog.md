@@ -1,3 +1,35 @@
+## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)
+
+Grouped release for `mdt`.
+
+### 📝 Changed
+
+#### Update rmcp to 3.2.0 and rstest to 0.27.0
+
+_Packages:_ _mdt_
+
+Bumps the MCP SDK (rmcp 2.x -> 3.2.0) and the test harness (rstest 0.26 -> 0.27), plus a devenv flake input refresh. No public API changes.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #171](https://github.com/ifiokjr/mdt/pull/171)
+
+### 🐛 Fixed
+
+#### Preserve CRLF line endings when updating consumer files
+
+_Packages:_ _mdt_
+
+mdt update parsed consumer files after LF-normalization but spliced into the raw CRLF text, truncating consumer tags and leaving residual old content. All read paths now normalize before splicing and written files keep their original line-ending style. Fixes #169.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #170](https://github.com/ifiokjr/mdt/pull/170) · _Closed issues:_ [#169](https://github.com/ifiokjr/mdt/issues/169)
+
+#### Render paths with forward slashes on every platform
+
+_Packages:_ _mdt_core_, _mdt_cli_, _mdt_lsp_
+
+CLI diagnostics, JSON reports, and doctor messages now normalize path separators so output is identical across operating systems, keeping the Unix-recorded snapshot corpus valid on Windows. The LSP server also resolves file URIs for stored and synthetic paths consistently across platforms when computing goto definition, references, and duplicate provider diagnostics.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #172](https://github.com/ifiokjr/mdt/pull/172)
+
 ## [0.9.1](https://github.com/ifiokjr/mdt/releases/tag/v0.9.1) (2026-08-21)
 
 Grouped release for `mdt`.
