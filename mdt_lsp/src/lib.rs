@@ -172,6 +172,12 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 	let mut current_count = 0;
 	let mut other_files: Vec<PathBuf> = Vec::new();
 
+	// Track conflicts by URI as well as path: `Uri::to_file_path` strips the
+	// leading slash of host-less file URIs on Windows, so document-derived
+	// paths would never equal stored project paths there. URI comparison is
+	// stable across platforms.
+	let mut other_uris: Vec<Uri> = Vec::new();
+
 	for (doc_uri, doc) in &state.documents {
 		if !doc_uri.path().as_str().ends_with(".t.md") {
 			continue;
@@ -191,21 +197,30 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 			continue;
 		}
 
-		if let Some(path) = doc_uri.to_file_path().map(std::borrow::Cow::into_owned)
-			&& !other_files.contains(&path)
-		{
-			other_files.push(path);
+		if !other_uris.contains(doc_uri) {
+			other_uris.push(doc_uri.clone());
+			other_files.push(doc_uri.to_file_path().map_or_else(
+				|| PathBuf::from(doc_uri.path().as_str()),
+				std::borrow::Cow::into_owned,
+			));
 		}
 	}
 
 	if let Some(provider) = state.providers.get(name) {
-		let current_file = uri.to_file_path().map(std::borrow::Cow::into_owned);
-		if current_file
-			.as_ref()
-			.is_none_or(|file| *file != provider.file)
-			&& !other_files.contains(&provider.file)
-		{
-			other_files.push(provider.file.clone());
+		if let Some(provider_uri) = path_to_uri(&provider.file) {
+			if provider_uri != *uri && !other_uris.contains(&provider_uri) {
+				other_uris.push(provider_uri);
+				other_files.push(provider.file.clone());
+			}
+		} else {
+			let current_file = uri.to_file_path().map(std::borrow::Cow::into_owned);
+			if current_file
+				.as_ref()
+				.is_none_or(|file| *file != provider.file)
+				&& !other_files.contains(&provider.file)
+			{
+				other_files.push(provider.file.clone());
+			}
 		}
 	}
 
