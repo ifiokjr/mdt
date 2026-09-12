@@ -48,17 +48,17 @@ dprint fmt .changeset/* --allow-no-files
 - Use detailed, concrete changeset descriptions.
 - Conventional commit scopes should match the affected package when possible.
 
-## npm publishing
+## Publishing
 
-npm publishing is handled by a separate `npm-publish` workflow when `NPM_TOKEN` is configured.
+A single `publish` workflow handles the whole release pipeline, and the `release-pr` workflow dispatches it at two points:
 
-- The `release` workflow builds and uploads the GitHub release binaries, then publishes a small metadata artifact containing the release tag.
-- The `npm-publish` workflow runs after the `release` workflow completes successfully, downloads that metadata artifact, then repackages the exact release binaries into npm packages.
-- `npm-publish` checks out the default branch tooling rather than the release tag itself, so manual reruns can publish older release tags even if the npm packaging scripts were added later.
+- While the release PR is open, each push to `main` with pending changesets dispatches a dry run against the release PR branch itself (`dry_run=true` with `checkout_ref` set to the release branch). The dry run builds every release archive and validates the publish pipeline but creates no tag, no draft release, and publishes nothing.
+- After the release PR merges, the tag job pushes the release tags, creates the draft GitHub release, then dispatches the workflow for real. It uploads the archives to the draft release, attests them, checks publish readiness, publishes the cargo and npm packages via `monochange` with trusted publishing, and finally publishes the draft release.
+
+The publish workflow can also be dispatched manually with a `tag` input to retry a release. Re-running npm publish is safe: packages that are already published at the target version are skipped.
+
 - The top-level package is `@m-d-t/cli`.
 - The agent skill package is `@m-d-t/skills` (a pi-compatible skill package).
 - Platform packages are published first (for Linux, macOS, and Windows targets).
 - The skills package is published after platform packages.
 - The top-level package is published last and depends on those platform packages through `optionalDependencies`.
-- The `npm-publish` workflow can also be run manually with a `tag` input to republish or recover a specific release.
-- Re-running npm publish is safe: packages that are already published at the target version are skipped.
