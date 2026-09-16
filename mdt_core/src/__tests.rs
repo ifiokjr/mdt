@@ -111,6 +111,19 @@ content
 }
 
 #[test]
+fn parse_consumer_with_escaped_tab_indents_output() -> MdtResult<()> {
+	let input = r#"<!-- {=block|indent:"\t"} -->
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	let result = apply_transformers("one\ntwo\n", &blocks[0].transformers);
+	assert_eq!(result, "\tone\n\ttwo");
+
+	Ok(())
+}
+
+#[test]
 fn parse_inline_block_with_template_argument() -> MdtResult<()> {
 	let input = r#"<!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->"#;
 	let blocks = parse(input)?;
@@ -5806,19 +5819,83 @@ fn token_partial_eq_edge_cases() {
 
 // --- lexer.rs: escaped strings ---
 
+fn string_token_values(group: &TokenGroup) -> Vec<String> {
+	group
+		.tokens
+		.iter()
+		.filter_map(|token| {
+			match token {
+				tokens::Token::String(value, _) => Some(value.clone()),
+				_ => None,
+			}
+		})
+		.collect()
+}
+
 #[test]
 fn tokenize_string_with_escape_sequences() -> MdtResult<()> {
 	let input = r#"<!-- {=block|replace:"line1\nline2":"replaced"} -->"#;
 	let nodes = get_html_nodes(input)?;
 	let groups = tokenize(nodes)?;
 	assert_eq!(groups.len(), 1);
-	// Verify the first string was unescaped
-	let string_tokens: Vec<_> = groups[0]
-		.tokens
-		.iter()
-		.filter(|t| matches!(t, tokens::Token::String(..)))
-		.collect();
-	assert_eq!(string_tokens.len(), 2);
+	assert_eq!(
+		string_token_values(&groups[0]),
+		vec!["line1\nline2".to_string(), "replaced".to_string()]
+	);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_string_with_tab_escape() -> MdtResult<()> {
+	let input = r#"<!-- {=block|indent:"\t"} -->"#;
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	assert_eq!(string_token_values(&groups[0]), vec!["\t".to_string()]);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_string_with_escaped_backslash() -> MdtResult<()> {
+	let input = r#"<!-- {=block|replace:"a\\b":"c"} -->"#;
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	assert_eq!(
+		string_token_values(&groups[0]),
+		vec!["a\\b".to_string(), "c".to_string()]
+	);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_string_with_unknown_escape_stays_literal() -> MdtResult<()> {
+	// `unescape` rejects escapes it does not recognise, so the argument keeps
+	// its backslashes instead of dropping the whole tag.
+	let input = r#"<!-- {=block|replace:"a\qb":"c"} -->"#;
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	assert_eq!(
+		string_token_values(&groups[0]),
+		vec!["a\\qb".to_string(), "c".to_string()]
+	);
+
+	Ok(())
+}
+
+#[test]
+fn tokenize_single_quoted_string_keeps_escapes_literal() -> MdtResult<()> {
+	// snailquote only expands escapes inside double quotes, matching shell
+	// semantics, so single-quoted arguments stay literal.
+	let input = r"<!-- {=block|indent:'\t'} -->";
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	assert_eq!(string_token_values(&groups[0]), vec!["\\t".to_string()]);
 
 	Ok(())
 }

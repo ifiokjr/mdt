@@ -29,6 +29,8 @@ String arguments are quoted. Numeric arguments are unquoted:
 <!-- {=block|indent:4} -->
 ```
 
+Double-quoted arguments decode standard escape sequences, so `indent:"\t"` indents with a tab and `suffix:"\n"` appends a newline. Single-quoted arguments keep their backslashes literal, and an escape that is not recognised (such as `"\q"`) is left as-is instead of dropping the target.
+
 ## Available transformers
 
 ### `trim`
