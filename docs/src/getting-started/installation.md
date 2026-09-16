@@ -52,7 +52,7 @@ To use the core engine in your own Rust project:
 
 ```toml
 [dependencies]
-mdt_core = "0.9.4"
+mdt_core = "0.9.5"
 ```
 
 <!-- {/mdtCoreInstall} -->
