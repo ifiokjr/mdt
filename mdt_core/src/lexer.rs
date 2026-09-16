@@ -168,13 +168,13 @@ impl<'a> TokenWalker<'a> {
 		let inner = &slice[1..slice.len() - 1];
 
 		let has_escapes = inner.contains('\\');
+		// `unescape` only expands escapes while it is inside a quoted region, so
+		// decode from the full slice. Passing the already stripped `inner` text
+		// left every escape literal, which is why a tag such as `indent:"\t"`
+		// injected a backslash and a `t` instead of a tab. Unrecognised escapes
+		// keep their backslashes through the fallback.
 		let value = if has_escapes {
-			if let Ok(unescaped) = unescape(inner) {
-				unescaped
-			} else {
-				self.exit_comment_block();
-				return;
-			}
+			unescape(slice).unwrap_or_else(|_| inner.to_string())
 		} else {
 			inner.to_string()
 		};
