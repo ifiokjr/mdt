@@ -1,0 +1,858 @@
+{
+  "schema_version": "0.6",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-09-16T18:12:14Z",
+  "command": "release",
+  "version": "0.9.3",
+  "versions": {
+    "mdt": "0.9.3"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.3",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.3",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.3",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/decode-string-argument-escapes.md",
+    ".changeset/use-rmcp-server-config.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/decode-string-argument-escapes.md",
+      "summary": "Decode escape sequences in transformer string arguments",
+      "details": "Transformer string arguments kept their backslashes literal, so `indent:\"\\t\"` injected a backslash and a `t` instead of a tab, and `suffix:\"\\n\"` never appended a newline. The lexer stripped the surrounding quotes before handing the value to `snailquote`, which only expands escapes while it is inside a quoted region, so no escape was ever decoded. Arguments are now decoded from the full quoted slice, which makes `\\t`, `\\n`, `\\\\` and `\\\"` work inside double-quoted arguments; single-quoted arguments and unrecognised escapes keep their backslashes so existing tags are unaffected.",
+      "targets": [
+        {
+          "id": "mdt",
+          "kind": "group",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "457b6af6a2dbcdb4fd785ae645f3a691a3cc3263",
+            "short_sha": "457b6af",
+            "url": "https://github.com/ifiokjr/mdt/commit/457b6af6a2dbcdb4fd785ae645f3a691a3cc3263",
+            "authored_at": "2026-09-16T18:49:48+01:00",
+            "committed_at": "2026-09-16T18:49:48+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#181",
+            "title": "fix(core): decode escape sequences in transformer string arguments",
+            "url": "https://github.com/ifiokjr/mdt/pull/181",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "457b6af6a2dbcdb4fd785ae645f3a691a3cc3263",
+            "short_sha": "457b6af",
+            "url": "https://github.com/ifiokjr/mdt/commit/457b6af6a2dbcdb4fd785ae645f3a691a3cc3263",
+            "authored_at": "2026-09-16T18:49:48+01:00",
+            "committed_at": "2026-09-16T18:49:48+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#181",
+            "title": "fix(core): decode escape sequences in transformer string arguments",
+            "url": "https://github.com/ifiokjr/mdt/pull/181",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/use-rmcp-server-config.md",
+      "summary": "Use `rmcp::model::ServerConfig` instead of the deprecated `ServerInfo`",
+      "details": "`rmcp` renamed the `ServerInfo` type alias to `ServerConfig` and deprecated the old name. The `ci/test` jobs on macOS and Windows compile with `-D warnings`, so the deprecation became a hard build failure as soon as the release lockfile picked up `rmcp` 3.4.0, blocking the release. The workspace now requires `rmcp` 3.4.0 and `mdt_mcp` uses the new type name.",
+      "targets": [
+        {
+          "id": "mdt",
+          "kind": "group",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "9fa182bfe08c8cd856d1451fe424c95f2cac8a16",
+            "short_sha": "9fa182b",
+            "url": "https://github.com/ifiokjr/mdt/commit/9fa182bfe08c8cd856d1451fe424c95f2cac8a16",
+            "authored_at": "2026-09-16T19:10:34+01:00",
+            "committed_at": "2026-09-16T19:10:34+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#183",
+            "title": "fix(mcp): use rmcp ServerConfig instead of deprecated ServerInfo",
+            "url": "https://github.com/ifiokjr/mdt/pull/183",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "9fa182bfe08c8cd856d1451fe424c95f2cac8a16",
+            "short_sha": "9fa182b",
+            "url": "https://github.com/ifiokjr/mdt/commit/9fa182bfe08c8cd856d1451fe424c95f2cac8a16",
+            "authored_at": "2026-09-16T19:10:34+01:00",
+            "committed_at": "2026-09-16T19:10:34+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#183",
+            "title": "fix(mcp): use rmcp ServerConfig instead of deprecated ServerInfo",
+            "url": "https://github.com/ifiokjr/mdt/pull/183",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "output": "default",
+      "stream": "default",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Decode escape sequences in transformer string arguments.** Transformer string arguments kept their backslashes literal, so `indent:\"\\t\"` injected a backslash and a `t` instead of a tab, and `suffix:\"\\n\"` never appended a newline. The lexer stripped the surrounding quotes before handing the value to `snailquote`, which only expands escapes while it is inside a quoted region, so no escape was ever decoded. Arguments are now decoded from the full quoted slice, which makes `\\t`, `\\n`, `\\\\` and `\\\"` work inside double-quoted arguments; single-quoted arguments and unrecognised escapes keep their backslashes so existing tags are unaffected.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #181](https://github.com/ifiokjr/mdt/pull/181)",
+              "- **Use `rmcp::model::ServerConfig` instead of the deprecated `ServerInfo`.** `rmcp` renamed the `ServerInfo` type alias to `ServerConfig` and deprecated the old name. The `ci/test` jobs on macOS and Windows compile with `-D warnings`, so the deprecation became a hard build failure as soon as the release lockfile picked up `rmcp` 3.4.0, blocking the release. The workspace now requires `rmcp` 3.4.0 and `mdt_mcp` uses the new type name.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #183](https://github.com/ifiokjr/mdt/pull/183)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\nGrouped release for `mdt`.\n\n### 🐛 Fixed\n\n- **Decode escape sequences in transformer string arguments.** Transformer string arguments kept their backslashes literal, so `indent:\"\\t\"` injected a backslash and a `t` instead of a tab, and `suffix:\"\\n\"` never appended a newline. The lexer stripped the surrounding quotes before handing the value to `snailquote`, which only expands escapes while it is inside a quoted region, so no escape was ever decoded. Arguments are now decoded from the full quoted slice, which makes `\\t`, `\\n`, `\\\\` and `\\\"` work inside double-quoted arguments; single-quoted arguments and unrecognised escapes keep their backslashes so existing tags are unaffected.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #181](https://github.com/ifiokjr/mdt/pull/181)\n- **Use `rmcp::model::ServerConfig` instead of the deprecated `ServerInfo`.** `rmcp` renamed the `ServerInfo` type alias to `ServerConfig` and deprecated the old name. The `ci/test` jobs on macOS and Windows compile with `-D warnings`, so the deprecation became a hard build failure as soon as the release lockfile picked up `rmcp` 3.4.0, blocking the release. The workspace now requires `rmcp` 3.4.0 and `mdt_mcp` uses the new type name.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #183](https://github.com/ifiokjr/mdt/pull/183)"
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_core` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_core` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.3 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.3 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.3 as part of group `mdt`.**"
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}
