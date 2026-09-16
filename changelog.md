@@ -1,3 +1,12 @@
+## [0.9.3](https://github.com/ifiokjr/mdt/releases/tag/v0.9.3) (2026-09-16)
+
+Grouped release for `mdt`.
+
+### 🐛 Fixed
+
+- **Decode escape sequences in transformer string arguments.** Transformer string arguments kept their backslashes literal, so `indent:"\t"` injected a backslash and a `t` instead of a tab, and `suffix:"\n"` never appended a newline. The lexer stripped the surrounding quotes before handing the value to `snailquote`, which only expands escapes while it is inside a quoted region, so no escape was ever decoded. Arguments are now decoded from the full quoted slice, which makes `\t`, `\n`, `\\` and `\"` work inside double-quoted arguments; single-quoted arguments and unrecognised escapes keep their backslashes so existing tags are unaffected. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #181](https://github.com/ifiokjr/mdt/pull/181)
+- **Use `rmcp::model::ServerConfig` instead of the deprecated `ServerInfo`.** `rmcp` renamed the `ServerInfo` type alias to `ServerConfig` and deprecated the old name. The `ci/test` jobs on macOS and Windows compile with `-D warnings`, so the deprecation became a hard build failure as soon as the release lockfile picked up `rmcp` 3.4.0, blocking the release. The workspace now requires `rmcp` 3.4.0 and `mdt_mcp` uses the new type name. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #183](https://github.com/ifiokjr/mdt/pull/183)
+
 ## [0.9.2](https://github.com/ifiokjr/mdt/releases/tag/v0.9.2) (2026-09-07)
 
 Grouped release for `mdt`.
