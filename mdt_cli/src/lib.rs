@@ -6,6 +6,7 @@ use clap::ValueEnum;
 
 #[derive(Parser)]
 #[command(
+	name = "mdt",
 	author,
 	version,
 	about = "Keep documentation synchronized across your project using template tags.",
