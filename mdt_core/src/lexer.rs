@@ -110,12 +110,16 @@ impl<'a> TokenWalker<'a> {
 	fn push_token(&mut self, token: Token, update_start: bool) {
 		if update_start {
 			self.token_group.position.start = self.position.start;
-			self.token_group.position.end = self.position.start;
 		}
 
-		self.token_group.position.advance_end(&token);
 		self.token_group.tokens.push(token);
 		self.advance_cursor();
+		// Derive the group end from the cursor, which advances over the raw
+		// source slice. A token's `Display` output can be shorter than its
+		// source text (decoded string escapes, normalized floats), and
+		// advancing by it made every subsequent offset drift left, so
+		// `mdt update` spliced the opening tag's closing `>` away.
+		self.token_group.position.end = self.position.start;
 	}
 
 	/// Finalize the current token group: if valid, push to groups. Then reset.
