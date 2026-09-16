@@ -199,8 +199,8 @@ pub struct MdtMcpServer {
 
 #[tool_handler]
 impl ServerHandler for MdtMcpServer {
-	fn get_info(&self) -> ServerInfo {
-		ServerInfo::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
+	fn get_info(&self) -> ServerConfig {
+		ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
 			"mdt (manage markdown templates) keeps documentation synchronized across your project \
 			 using comment-based template tags. MCP tool responses are JSON-first and include \
 			 structured content for agent use. Use these tools to check, update, list, preview, \
