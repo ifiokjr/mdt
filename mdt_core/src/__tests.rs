@@ -124,6 +124,24 @@ fn parse_consumer_with_escaped_tab_indents_output() -> MdtResult<()> {
 }
 
 #[test]
+fn parse_consumer_with_escaped_tab_keeps_opening_tag_extent() -> MdtResult<()> {
+	// The opening tag's end offset must be derived from the raw source text.
+	// Deriving it from the decoded string argument shrinks the span by the
+	// escape overhead, and `mdt update` then splices the tag's closing `>`.
+	let input = r#"<!-- {=block|indent:"\t"} -->
+<!-- {/block} -->
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(
+		&input[..blocks[0].opening.end.offset],
+		r#"<!-- {=block|indent:"\t"} -->"#
+	);
+
+	Ok(())
+}
+
+#[test]
 fn parse_inline_block_with_template_argument() -> MdtResult<()> {
 	let input = r#"<!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->"#;
 	let blocks = parse(input)?;
@@ -5858,6 +5876,20 @@ fn tokenize_string_with_tab_escape() -> MdtResult<()> {
 }
 
 #[test]
+fn tokenize_string_with_escape_matches_source_length() -> MdtResult<()> {
+	// A token's `Display` re-renders decoded strings shorter than their raw
+	// source text, so the group's end offset must come from the raw slice.
+	// Otherwise `mdt update` splices the tag using a span that is too short.
+	let input = r#"<!-- {=block|indent:"\t"} -->"#;
+	let nodes = get_html_nodes(input)?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	assert_eq!(groups[0].position.end.offset, input.len());
+
+	Ok(())
+}
+
+#[test]
 fn tokenize_string_with_escaped_backslash() -> MdtResult<()> {
 	let input = r#"<!-- {=block|replace:"a\\b":"c"} -->"#;
 	let nodes = get_html_nodes(input)?;
@@ -9281,6 +9313,44 @@ fn update_preserves_multiline_link_definitions_with_template_vars() -> MdtResult
 	assert!(
 		newline_count >= 6,
 		"Content should have at least 6 newlines but got {newline_count}: {content:?}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn update_keeps_tag_intact_with_escaped_tab_argument() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let template_content = r"<!-- {@contract} -->
+
+Every container starts with fully initialized backing storage.
+
+<!-- {/contract} -->
+";
+	let consumer_content = "\t/// Shortens the active elements.\n\t///\n\t/// <!-- \
+	                        {=contract|trim|linePrefix:\"/// \":true|indent:\"\\t\"} -->\n\t/// \
+	                        stale\n\t/// <!-- {/contract} -->\n";
+	std::fs::write(tmp.path().join("template.t.md"), template_content)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(tmp.path().join("lib.rs"), consumer_content)
+		.unwrap_or_else(|e| panic!("write consumer: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+
+	let consumer_path = tmp.path().join("lib.rs");
+	let updated_content = updates
+		.updated_files
+		.get(&consumer_path)
+		.unwrap_or_else(|| panic!("lib.rs should be in updated files"));
+
+	assert!(
+		updated_content.contains(r#"indent:"\t"} -->"#),
+		"opening tag must keep its closing `>`:\n{updated_content}"
+	);
+	assert!(
+		updated_content.contains("\t/// Every container starts"),
+		"injected content must use real tabs:\n{updated_content}"
 	);
 
 	Ok(())
