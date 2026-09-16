@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-16)
+
+### 🐛 Fixed
+
+- **Show the mdt command name in version and help output.** `mdt --version` printed the crate name (`mdt_cli 0.9.4`) instead of the command users invoke. The clap command is now explicitly named `mdt`, so `--version`, `--help`, and usage errors all display `mdt`. The published crate and install command (`cargo install mdt_cli`) are unchanged. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #186](https://github.com/ifiokjr/mdt/pull/186)
+
 ## [0.9.4](https://github.com/ifiokjr/mdt/releases/tag/v0.9.4) (2026-09-16)
 
 ### Changed
