@@ -25,17 +25,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: install mdbook
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.87.14 # v2
         with:
           tool: mdbook
 
       - name: setup pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v5.0.0 # v5
         with:
           enablement: true
 
@@ -51,7 +51,7 @@ jobs:
           cp -r docs/book site/book
 
       - name: upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3.0.1 # v3
         with:
           path: site
 
@@ -65,4 +65,4 @@ jobs:
     steps:
       - name: deploy to github pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4.0.5 # v4

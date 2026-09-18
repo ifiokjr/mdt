@@ -25,15 +25,15 @@ jobs:
       id-token: write
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.4.0 # v4
         with:
           node-version: 24
 
       - name: install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v4.4.0 # v4
         with:
           version: 10
 
@@ -69,14 +69,14 @@ jobs:
         run: cat rust-lcov.info js-lcov.info > lcov.info
 
       - name: upload lcov artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2 # v4
         with:
           name: lcov
           path: lcov.info
           if-no-files-found: error
 
       - name: upload to codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v5.5.5 # v5
         with:
           files: ./lcov.info
           use_oidc: true

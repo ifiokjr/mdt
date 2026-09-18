@@ -23,7 +23,7 @@ jobs:
       pull-requests: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.1.0 # v6
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -32,7 +32,7 @@ jobs:
 
       - name: collect changed files
         id: changed
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v46.0.5 # v46
 
       - name: run changeset policy
         env:
