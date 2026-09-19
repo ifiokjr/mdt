@@ -29,7 +29,7 @@ jobs:
       actions: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v6.1.0 # v6
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: run zizmor
         uses: zizmorcore/zizmor-action@v0.6.4 # v0
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -66,15 +66,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: setup node
-        uses: actions/setup-node@v4.4.0 # v4
+        uses: actions/setup-node@v7.0.0 # v7
         with:
           node-version: 24
 
       - name: install pnpm
-        uses: pnpm/action-setup@v4.4.0 # v4
+        uses: pnpm/action-setup@v6.1.0 # v6
         with:
           version: 10
 
@@ -92,10 +92,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: setup node
-        uses: actions/setup-node@v4.4.0 # v4
+        uses: actions/setup-node@v7.0.0 # v7
         with:
           node-version: 22
 
@@ -109,12 +109,12 @@ jobs:
         shell: devenv shell -- bash -e {0}
 
       - name: setup node for npm tests
-        uses: actions/setup-node@v4.4.0 # v4
+        uses: actions/setup-node@v7.0.0 # v7
         with:
           node-version: 24
 
       - name: install pnpm for npm tests
-        uses: pnpm/action-setup@v4.4.0 # v4
+        uses: pnpm/action-setup@v6.1.0 # v6
         with:
           version: 10
 
@@ -134,10 +134,10 @@ jobs:
     name: test (${{ matrix.os }})
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: setup rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1.17.0 # v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2.0.0 # v2
 
       - name: install nextest
         uses: taiki-e/install-action@v2.87.14 # v2
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -172,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
 
       - name: run cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2.1.1 # v2
@@ -183,7 +183,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
         with:
           fetch-depth: 0
 
@@ -222,7 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
         with:
           fetch-depth: 0
 

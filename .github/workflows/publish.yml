@@ -95,7 +95,7 @@ jobs:
           exit 1
 
       - name: checkout release ref
-        uses: actions/checkout@v6.1.0 # v6
+        uses: actions/checkout@v7.0.1 # v7
         with:
           ref: ${{ inputs.checkout_ref || env.RELEASE_TAG }}
           fetch-depth: 0
@@ -254,7 +254,7 @@ jobs:
           fi
 
       - name: checkout release tag
-        uses: actions/checkout@v6.1.0 # v6
+        uses: actions/checkout@v7.0.1 # v7
         with:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
@@ -281,7 +281,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: setup node for publish
-        uses: actions/setup-node@v6.5.0 # v6
+        uses: actions/setup-node@v7.0.0 # v7
         with:
           node-version: 24
 

@@ -18,7 +18,7 @@ runs:
         prefix-key: "${{ inputs.cache-version }}"
 
     - name: cache cargo binaries
-      uses: actions/cache@v4.3.0 # v4
+      uses: actions/cache@v6.1.0 # v6
       with:
         path: ./.bin
         key: ${{ runner.os }}-cargo-bin-${{ inputs.cache-version }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.toml') }}

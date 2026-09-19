@@ -25,7 +25,7 @@ jobs:
       pull-requests: write
     steps:
       - name: checkout repository
-        uses: actions/checkout@v6.1.0 # v6
+        uses: actions/checkout@v7.0.1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -159,7 +159,7 @@ jobs:
       issues: write
     steps:
       - name: checkout repository
-        uses: actions/checkout@v6.1.0 # v6
+        uses: actions/checkout@v7.0.1 # v7
         with:
           fetch-depth: 0
           fetch-tags: true
