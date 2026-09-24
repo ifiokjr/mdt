@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-20)
+
+### Changed
+
+- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.5 as part of group `mdt`.**
+
 ## [0.9.4](https://github.com/ifiokjr/mdt/releases/tag/v0.9.4) (2026-09-16)
 
 ### Changed
