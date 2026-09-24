@@ -1141,13 +1141,20 @@ fn is_scannable_file(path: &Path) -> bool {
 		ext,
 		"md" | "mdx"
 			| "markdown"
-			| "rs" | "ts"
-			| "tsx" | "js"
-			| "jsx" | "py"
-			| "go" | "java"
-			| "kt" | "swift"
-			| "c" | "cpp"
-			| "h" | "cs"
+			| "rs"
+			| "ts"
+			| "tsx"
+			| "js"
+			| "jsx"
+			| "py"
+			| "go"
+			| "java"
+			| "kt"
+			| "swift"
+			| "c"
+			| "cpp"
+			| "h"
+			| "cs"
 	)
 }
 
