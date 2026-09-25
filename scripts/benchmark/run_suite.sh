@@ -283,6 +283,7 @@ fi
 
 for numeric_arg in iterations warmup file_count; do
 	value="${!numeric_arg}"
+
 	if ! [[ "$value" =~ ^[0-9]+$ ]]; then
 		case "$numeric_arg" in
 		file_count)

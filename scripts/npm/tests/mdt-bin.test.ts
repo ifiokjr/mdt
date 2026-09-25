@@ -32,6 +32,7 @@ function setupNodePath(name) {
 	const testLauncherPath = join(root, "mdt.js");
 	mkdirSync(nodeModulesDir, { recursive: true });
 	copyFileSync(launcherPath, testLauncherPath);
+
 	return { root, nodeModulesDir, testLauncherPath };
 }
 

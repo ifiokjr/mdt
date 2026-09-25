@@ -13,7 +13,6 @@ fn run_update(path: &std::path::Path) {
 // ---------------------------------------------------------------------------
 // init: create a sample template file
 // ---------------------------------------------------------------------------
-
 #[test]
 fn init_fresh_directory() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -55,7 +54,6 @@ fn init_existing_template() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // list: display all providers and consumers
 // ---------------------------------------------------------------------------
-
 #[test]
 fn list_blocks() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -105,7 +103,6 @@ fn list_blocks_verbose() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // info: project diagnostics summary
 // ---------------------------------------------------------------------------
-
 #[test]
 fn info_empty_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -173,7 +170,6 @@ fn info_project_json() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // check output formats: text (default), json, github
 // ---------------------------------------------------------------------------
-
 #[test]
 fn check_format_text_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -341,7 +337,6 @@ patterns = ["**/*.md"]
 // ---------------------------------------------------------------------------
 // verbose output: scan details during update and check
 // ---------------------------------------------------------------------------
-
 #[test]
 fn update_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -398,7 +393,6 @@ fn check_verbose_up_to_date() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // unused provider: diagnostic warning for orphaned providers
 // ---------------------------------------------------------------------------
-
 #[test]
 fn unused_provider_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -450,7 +444,6 @@ fn unused_provider_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // unknown transformer: diagnostic error for unrecognized transformer names
 // ---------------------------------------------------------------------------
-
 #[test]
 fn unknown_transformer_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -482,7 +475,6 @@ fn unknown_transformer_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // missing provider: consumer references non-existent provider
 // ---------------------------------------------------------------------------
-
 #[test]
 fn missing_provider_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -515,7 +507,6 @@ fn missing_provider_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // multiple providers: multiple blocks consumed by multiple files
 // ---------------------------------------------------------------------------
-
 #[test]
 fn multiple_providers_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -587,7 +578,6 @@ fn multiple_providers_list() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // no subcommand: running mdt with no subcommand should show an error
 // ---------------------------------------------------------------------------
-
 #[test]
 fn no_subcommand() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -600,7 +590,6 @@ fn no_subcommand() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // empty project: no providers or consumers
 // ---------------------------------------------------------------------------
-
 #[test]
 fn empty_project_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -628,7 +617,6 @@ fn empty_project_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // pad_blocks_rust: Rust doc comments with pad_blocks enabled
 // ---------------------------------------------------------------------------
-
 #[test]
 fn pad_blocks_rust_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -712,7 +700,6 @@ fn pad_blocks_rust_update_idempotent() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // pad_blocks_multi_lang: multiple source languages + data interpolation
 // ---------------------------------------------------------------------------
-
 #[test]
 fn pad_blocks_multi_lang_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -811,7 +798,6 @@ fn pad_blocks_multi_lang_dry_run() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // padding_zero_rust: Rust doc comments with before=0, after=0
 // ---------------------------------------------------------------------------
-
 #[test]
 fn padding_zero_rust_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -882,7 +868,6 @@ fn padding_zero_rust_update_idempotent() -> std::io::Result<()> {
 // is enabled (regression: closing tags lost their prefix when migrating from
 // the no-padding inline state)
 // ---------------------------------------------------------------------------
-
 #[test]
 fn padding_inline_migration_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -951,7 +936,6 @@ fn padding_inline_migration_update_idempotent() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // validation_errors: unclosed blocks produce error diagnostics
 // ---------------------------------------------------------------------------
-
 #[test]
 fn validation_errors_check() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -996,7 +980,6 @@ fn validation_errors_ignore_flag() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // include_empty: linePrefix with and without includeEmpty
 // ---------------------------------------------------------------------------
-
 #[test]
 fn include_empty_update() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -1033,7 +1016,6 @@ fn include_empty_check_after_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // orphan_consumer: consumer references non-existent provider + transformers
 // ---------------------------------------------------------------------------
-
 #[test]
 fn list_orphan_consumer() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -1098,7 +1080,6 @@ fn orphan_consumer_update() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // verbose check/update with stale content
 // ---------------------------------------------------------------------------
-
 #[test]
 fn check_verbose_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -1177,7 +1158,6 @@ fn update_verbose_multiple_providers() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // verbose diagnostics: warning display with ignore flags
 // ---------------------------------------------------------------------------
-
 #[test]
 fn validation_errors_check_verbose() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -1251,7 +1231,6 @@ fn unknown_transformer_ignore_verbose() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // typescript_workspace: data interpolation from package.json
 // ---------------------------------------------------------------------------
-
 #[test]
 fn typescript_workspace_check_stale() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
@@ -1350,7 +1329,6 @@ fn typescript_workspace_dry_run() -> std::io::Result<()> {
 // ---------------------------------------------------------------------------
 // doctor: project health diagnostics
 // ---------------------------------------------------------------------------
-
 #[test]
 fn doctor_empty_project() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;

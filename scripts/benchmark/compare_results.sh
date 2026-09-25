@@ -122,6 +122,7 @@ jq -n \
 			$scenario_names[] as $name
 			| ($baseline_map[$name]) as $base
 			| ($candidate_map[$name]) as $cand
+
 			| if ($base == null or $cand == null) then
 				{
 					name: $name,
@@ -131,6 +132,7 @@ jq -n \
 				($base.stats.median_ms) as $base_ms
 				| ($cand.stats.median_ms) as $cand_ms
 				| ($cand_ms - $base_ms) as $delta_ms
+
 				| (if $base_ms == 0 then 0 else ($delta_ms / $base_ms * 100) end) as $delta_pct
 				| {
 					name: $name,

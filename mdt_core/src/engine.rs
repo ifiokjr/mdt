@@ -150,6 +150,7 @@ pub fn render_template(
 	data: &HashMap<String, serde_json::Value>,
 ) -> MdtResult<String> {
 	trace!("rendering template");
+
 	if data.is_empty() || !has_template_syntax(content) {
 		return Ok(content.to_string());
 	}
@@ -251,11 +252,13 @@ pub fn normalize_whitespace(content: &str) -> String {
 			if !prev_blank && !result.is_empty() {
 				result.push('\n');
 			}
+
 			prev_blank = true;
 		} else {
 			if !result.is_empty() {
 				result.push('\n');
 			}
+
 			result.push_str(trimmed);
 			prev_blank = false;
 		}
@@ -307,6 +310,7 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 	}
 
 	let mut data = base_data.clone();
+
 	for (name, value) in provider
 		.block
 		.arguments
@@ -330,6 +334,7 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 ))]
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	debug!("checking project");
+
 	if ctx.formatters.is_empty() {
 		return check_project_without_formatters(ctx);
 	}
@@ -373,6 +378,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						});
 						continue;
 					};
+
 					let rendered = match render_template(&provider.content, &render_data) {
 						Ok(rendered) => rendered,
 						Err(error) => {
@@ -392,6 +398,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 							continue;
 						}
 					};
+
 					let mut expected = apply_transformers_with_data(
 						&rendered,
 						&consumer.block.transformers,
@@ -404,6 +411,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					);
 					eligible[index] = true;
 					raw_expected[index] = Some(expected.clone());
+
 					if consumer.content != expected {
 						replace_consumer_content(&mut candidate, consumer, &expected);
 					}
@@ -421,6 +429,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						});
 						continue;
 					};
+
 					let rendered = match render_template(template, &ctx.data) {
 						Ok(rendered) => rendered,
 						Err(error) => {
@@ -434,6 +443,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 							continue;
 						}
 					};
+
 					let expected = apply_transformers_with_data(
 						&rendered,
 						&consumer.block.transformers,
@@ -441,6 +451,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					);
 					eligible[index] = true;
 					raw_expected[index] = Some(expected.clone());
+
 					if consumer.content != expected {
 						replace_consumer_content(&mut candidate, consumer, &expected);
 					}
@@ -450,11 +461,13 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		}
 
 		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+
 		if formatter_commands.is_empty() {
 			for (index, consumer) in ordered_consumers.iter().enumerate() {
 				let Some(expected) = raw_expected[index].clone() else {
 					continue;
 				};
+
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(StaleEntry {
 						file: consumer.file.clone(),
@@ -466,6 +479,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					});
 				}
 			}
+
 			continue;
 		}
 
@@ -481,11 +495,14 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			&formatter_commands,
 		)?;
 		let mut file_stale_count = 0;
+
 		for (index, consumer) in ordered_consumers.iter().enumerate() {
 			if !eligible[index] {
 				continue;
 			}
+
 			let expected = final_contents[index].clone();
+
 			if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 				file_stale_count += 1;
 				stale.push(StaleEntry {
@@ -532,6 +549,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 ))]
 pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	debug!("computing updates");
+
 	if ctx.formatters.is_empty() {
 		return compute_updates_without_formatters(ctx);
 	}
@@ -589,12 +607,14 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 
 			eligible[index] = true;
 			raw_expected[index] = Some(new_content.clone());
+
 			if consumer.content != new_content {
 				replace_consumer_content(&mut candidate, consumer, &new_content);
 			}
 		}
 
 		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+
 		if candidate == original {
 			continue;
 		}
@@ -658,7 +678,9 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 				normalize_line_endings(&std::fs::read_to_string(&consumer.file)?),
 			);
 		}
+
 		let source = &file_contents[&consumer.file];
+
 		match consumer.block.r#type {
 			BlockType::Consumer => {
 				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
@@ -681,6 +703,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					});
 					continue;
 				};
+
 				let rendered = match render_template(&provider.content, &render_data) {
 					Ok(rendered) => rendered,
 					Err(error) => {
@@ -694,6 +717,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 						continue;
 					}
 				};
+
 				let mut expected = apply_transformers_with_data(
 					&rendered,
 					&consumer.block.transformers,
@@ -729,6 +753,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					});
 					continue;
 				};
+
 				let rendered = match render_template(template, &ctx.data) {
 					Ok(rendered) => rendered,
 					Err(error) => {
@@ -742,6 +767,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 						continue;
 					}
 				};
+
 				let expected = apply_transformers_with_data(
 					&rendered,
 					&consumer.block.transformers,
@@ -783,6 +809,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		} else {
 			std::fs::read_to_string(file)?
 		};
+
 		let original = normalize_line_endings(&raw);
 
 		let mut result = original.clone();
@@ -859,12 +886,14 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 
 fn group_consumers_by_file(consumers: &[ConsumerEntry]) -> HashMap<PathBuf, Vec<&ConsumerEntry>> {
 	let mut grouped: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
+
 	for consumer in consumers {
 		grouped
 			.entry(consumer.file.clone())
 			.or_default()
 			.push(consumer);
 	}
+
 	grouped
 }
 
@@ -882,6 +911,7 @@ fn sort_consumers_in_file(mut consumers: Vec<&ConsumerEntry>) -> Vec<&ConsumerEn
 fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_content: &str) {
 	let start = consumer.block.opening.end.offset;
 	let end = consumer.block.closing.start.offset;
+
 	if start > end || end > result.len() {
 		return;
 	}
@@ -906,6 +936,7 @@ fn apply_formatter_pipeline(
 		.collect();
 
 	let mut current = content.to_string();
+
 	for command in &matching_commands {
 		current = run_formatter_command(ctx, file, command, &current)?;
 	}
@@ -937,6 +968,7 @@ fn run_formatter_command(
 		command_builder.arg("-c").arg(&interpolated);
 		command_builder
 	};
+
 	let mut child = command_builder
 		.current_dir(&ctx.root)
 		.stdin(Stdio::piped())
@@ -949,6 +981,7 @@ fn run_formatter_command(
 	}
 
 	let output = child.wait_with_output()?;
+
 	if !output.status.success() {
 		let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 		let reason = if stderr.is_empty() {
@@ -962,6 +995,7 @@ fn run_formatter_command(
 		} else {
 			stderr
 		};
+
 		return Err(MdtError::Formatter {
 			file: relative_file.display().to_string(),
 			command: interpolated,
@@ -1035,6 +1069,7 @@ fn parse_candidate_consumer_contents(
 			}
 		})?
 	};
+
 	let consumer_contents: Vec<String> = blocks
 		.into_iter()
 		.filter(|block| matches!(block.r#type, BlockType::Consumer | BlockType::Inline))
@@ -1072,10 +1107,13 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 		if consumer.block.r#type != BlockType::Consumer {
 			continue;
 		}
+
 		let name = &consumer.block.name;
+
 		if checked_providers.contains(name) {
 			continue;
 		}
+
 		checked_providers.insert(name.clone());
 
 		let Some(provider) = ctx.project.providers.get(name) else {
@@ -1088,14 +1126,17 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 			std::borrow::Cow::Borrowed(&ctx.data)
 		} else {
 			let mut data = ctx.data.clone();
+
 			for param in &provider.block.arguments {
 				data.entry(param.clone())
 					.or_insert(serde_json::Value::String(String::new()));
 			}
+
 			std::borrow::Cow::Owned(data)
 		};
 
 		let undefined = find_undefined_variables(&provider.content, &data_with_params);
+
 		if !undefined.is_empty() {
 			warnings.push(TemplateWarning {
 				provider_file: provider.file.clone(),
@@ -1115,6 +1156,7 @@ pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 		trace!(path = %path.display(), "writing updated file");
 		std::fs::write(path, content)?;
 	}
+
 	Ok(())
 }
 
@@ -1227,6 +1269,7 @@ fn apply_transformer(
 		}
 		TransformerType::If => {
 			let path = get_string_arg(&transformer.args, 0).unwrap_or_default();
+
 			if is_data_path_truthy(data, &path) {
 				content.to_string()
 			} else {
@@ -1318,6 +1361,7 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 			} else {
 				format!("{min}-{max}")
 			};
+
 			return Err(MdtError::InvalidTransformerArgs {
 				name: t.r#type.to_string(),
 				expected,
@@ -1325,6 +1369,7 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 			});
 		}
 	}
+
 	Ok(())
 }
 
@@ -1388,6 +1433,7 @@ pub(crate) fn pad_content_with_config(
 			if !new_content.starts_with('\n') {
 				result.push('\n');
 			}
+
 			for _ in 0..n {
 				result.push_str(blank_line_prefix);
 				result.push('\n');
@@ -1407,16 +1453,19 @@ pub(crate) fn pad_content_with_config(
 			if !new_content.ends_with('\n') {
 				result.push('\n');
 			}
+
 			result.push_str(trailing_prefix);
 		}
 		Some(n) => {
 			if !new_content.ends_with('\n') {
 				result.push('\n');
 			}
+
 			for _ in 0..n {
 				result.push_str(blank_line_prefix);
 				result.push('\n');
 			}
+
 			result.push_str(trailing_prefix);
 		}
 	}

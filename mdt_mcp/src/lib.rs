@@ -198,6 +198,7 @@ pub struct MdtMcpServer {
 }
 
 #[tool_handler]
+
 impl ServerHandler for MdtMcpServer {
 	fn get_info(&self) -> ServerConfig {
 		ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
@@ -313,21 +314,26 @@ impl MdtMcpServer {
 			"All consumer blocks are up to date.".to_string()
 		} else {
 			let mut parts = Vec::new();
+
 			if !render_errors.is_empty() {
 				parts.push(format!("{} render error(s)", render_errors.len()));
 			}
+
 			if !stale.is_empty() {
 				parts.push(format!("{} stale consumer block(s)", stale.len()));
 			}
+
 			if !stale_files.is_empty() {
 				parts.push(format!(
 					"{} stale formatter-normalized file(s)",
 					stale_files.len()
 				));
 			}
+
 			if !missing.is_empty() {
 				parts.push(format!("{} missing provider name(s)", missing.len()));
 			}
+
 			if parts.is_empty() {
 				"Check completed with warnings.".to_string()
 			} else {
@@ -546,6 +552,7 @@ impl MdtMcpServer {
 						code_files.push(rel);
 					}
 				}
+
 				markdown_files.sort();
 				markdown_files.dedup();
 				code_files.sort();
@@ -578,6 +585,7 @@ impl MdtMcpServer {
 					.then_with(|| a.name.cmp(&b.name))
 			});
 		}
+
 		candidates.truncate(limit);
 
 		let output = serde_json::json!({
@@ -654,6 +662,7 @@ impl MdtMcpServer {
 		}
 
 		let mut entries = Vec::new();
+
 		for c in &consumer_entries {
 			let is_stale = ctx.project.providers.get(&c.block.name).is_some_and(|p| {
 				let render_data =
@@ -814,6 +823,7 @@ impl MdtMcpServer {
 				.cloned()
 				.unwrap_or_else(|| canonical_template_path.clone())
 		};
+
 		let template_exists = template_path.exists();
 
 		let config_path = root.join("mdt.toml");
@@ -835,6 +845,7 @@ impl MdtMcpServer {
 				std::fs::create_dir_all(parent)
 					.map_err(|e| McpError::internal_error(e.to_string(), None))?;
 			}
+
 			std::fs::write(&template_path, sample_content)
 				.map_err(|e| McpError::internal_error(e.to_string(), None))?;
 		}

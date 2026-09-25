@@ -62,11 +62,13 @@ struct LineTable {
 impl LineTable {
 	fn new(content: &str) -> Self {
 		let mut line_starts = vec![0];
+
 		for (i, byte) in content.bytes().enumerate() {
 			if byte == b'\n' {
 				line_starts.push(i + 1);
 			}
 		}
+
 		Self { line_starts }
 	}
 
@@ -78,6 +80,7 @@ impl LineTable {
 			Ok(exact) => exact,
 			Err(insert) => insert.saturating_sub(1),
 		};
+
 		let line = line_idx + 1; // 1-indexed
 		let column = offset - self.line_starts[line_idx] + 1; // 1-indexed
 
@@ -108,6 +111,7 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 		let abs_open = search_from + open_offset;
 
 		let after_open = abs_open + open_marker.len();
+
 		if after_open >= bytes.len() {
 			break;
 		}
@@ -153,12 +157,14 @@ const COMMENT_PREFIXES: &[&str] = &[
 /// returning the remaining text after stripping.
 fn strip_comment_prefix(line: &str) -> &str {
 	let trimmed = line.trim_start();
+
 	for prefix in COMMENT_PREFIXES {
 		if let Some(rest) = trimmed.strip_prefix(prefix) {
 			// Strip one optional space after the prefix.
 			return rest.strip_prefix(' ').unwrap_or(rest);
 		}
 	}
+
 	trimmed
 }
 
@@ -170,10 +176,12 @@ fn strip_comment_prefix(line: &str) -> &str {
 pub(crate) fn extract_comment_prefix(line: &str) -> &str {
 	let trimmed = line.trim_start();
 	let leading_ws_len = line.len() - trimmed.len();
+
 	for prefix in COMMENT_PREFIXES {
 		if let Some(rest) = trimmed.strip_prefix(prefix) {
 			// Include one optional space after the prefix.
 			let space_len = usize::from(rest.starts_with(' '));
+
 			return &line[..leading_ws_len + prefix.len() + space_len];
 		}
 	}
@@ -212,6 +220,7 @@ fn find_fenced_code_block_ranges(content: &str, filter: &CodeBlockFilter) -> Vec
 			// info string.
 			let closing_fence_len = stripped.chars().take_while(|&c| c == fence_char).count();
 			let after_fence = &stripped[closing_fence_len..];
+
 			if closing_fence_len >= fence_len && after_fence.trim().is_empty() {
 				if should_skip_current {
 					ranges.push(CodeBlockRange {
@@ -219,6 +228,7 @@ fn find_fenced_code_block_ranges(content: &str, filter: &CodeBlockFilter) -> Vec
 						end: line_end,
 					});
 				}
+
 				in_code_block = false;
 			}
 		} else {

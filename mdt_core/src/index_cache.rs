@@ -61,9 +61,11 @@ impl CacheTelemetry {
 		let total_files = u64::try_from(total_files).unwrap_or(u64::MAX);
 
 		self.scan_count = self.scan_count.saturating_add(1);
+
 		if full_project_hit {
 			self.full_project_hit_count = self.full_project_hit_count.saturating_add(1);
 		}
+
 		self.reused_file_count_total = self.reused_file_count_total.saturating_add(reused_files);
 		self.reparsed_file_count_total = self
 			.reparsed_file_count_total
@@ -101,6 +103,7 @@ impl ProjectIndexCache {
 			project_key,
 			files,
 			file_data,
+
 			telemetry: CacheTelemetry::default(),
 			project,
 		}

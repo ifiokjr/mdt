@@ -431,6 +431,7 @@ fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
 				"each [[formatters]] entry must define at least one pattern".to_string(),
 			));
 		}
+
 		for pattern in &formatter.patterns {
 			validate_formatter_pattern(pattern).map_err(|e| {
 				MdtError::ConfigParse(format!(
@@ -439,6 +440,7 @@ fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
 				))
 			})?;
 		}
+
 		for pattern in &formatter.ignore {
 			validate_formatter_pattern(pattern).map_err(|e| {
 				MdtError::ConfigParse(format!(
@@ -466,10 +468,12 @@ fn matches_formatter_rules(patterns: &[String], key: &str) -> bool {
 		} else {
 			(pattern.as_str(), false)
 		};
+
 		let Ok(glob) = Glob::new(glob_pattern) else {
 			continue;
 		};
 		let compiled = glob.compile_matcher();
+
 		if compiled.is_match(key) {
 			matched = !is_negated;
 		}
@@ -618,6 +622,7 @@ impl MdtConfig {
 	pub fn load(root: &Path) -> MdtResult<Option<MdtConfig>> {
 		let Some(config_path) = Self::resolve_path(root) else {
 			trace!("no config file found");
+
 			return Ok(None);
 		};
 
@@ -648,6 +653,7 @@ impl MdtConfig {
 				.data
 				.get(&namespace)
 				.unwrap_or_else(|| panic!("missing namespace `{namespace}`"));
+
 			let value = match source {
 				DataSource::Path(rel_path) => {
 					let abs_path = root.join(rel_path);
@@ -878,9 +884,11 @@ fn toml_to_json(value: toml::Value, path_display: &str) -> MdtResult<serde_json:
 		}
 		toml::Value::Table(table) => {
 			let mut map = serde_json::Map::new();
+
 			for (k, v) in table {
 				map.insert(k, toml_to_json(v, path_display)?);
 			}
+
 			serde_json::Value::Object(map)
 		}
 	};
@@ -925,8 +933,10 @@ fn kdl_node_to_value(node: &kdl::KdlNode, path_display: &str) -> MdtResult<serde
 
 	// If all entries are named, create an object
 	let all_named = entries.iter().all(|e| e.name().is_some());
+
 	if all_named {
 		let mut map = serde_json::Map::new();
+
 		for entry in &entries {
 			if let Some(name) = entry.name() {
 				map.insert(
@@ -935,6 +945,7 @@ fn kdl_node_to_value(node: &kdl::KdlNode, path_display: &str) -> MdtResult<serde
 				);
 			}
 		}
+
 		return Ok(serde_json::Value::Object(map));
 	}
 

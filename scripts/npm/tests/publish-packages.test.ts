@@ -93,7 +93,6 @@ void test("publish-packages errors when binaries are missing", () => {
 		const pkgDir = join(packagesDir, "m-d-t__cli-darwin-arm64");
 		createPackage(pkgDir, "@m-d-t/cli-darwin-arm64", "1.2.3");
 		// No bin/ directory created
-
 		const result = spawnSync(
 			"pnpm",
 			["tsx", scriptPath, "--packages-dir", packagesDir],

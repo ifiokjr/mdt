@@ -142,6 +142,7 @@ pub fn build_blocks_from_groups_with_diagnostics(
 			}
 			GroupKind::Close { name } => {
 				let pos = pending.iter().rposition(|bc| bc.name == name);
+
 				if let Some(idx) = pos {
 					let mut creator = pending.remove(idx);
 					creator.closing = Some(group.position);
@@ -215,11 +216,13 @@ fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<V
 			GroupKind::Close { name } => {
 				// Find the most recent matching open block (search from the end)
 				let pos = pending.iter().rposition(|bc| bc.name == name);
+
 				if let Some(idx) = pos {
 					let mut creator = pending.remove(idx);
 					creator.closing = Some(group.position);
 					blocks.push(creator.into_block()?);
 				}
+
 				// If no matching open block is found, silently ignore the close
 				// tag. This keeps parsing lenient.
 			}
@@ -288,6 +291,7 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments) =
 			extract_name_transformers_and_arguments(group, &Token::ProviderTag);
+
 		return GroupKind::Provider {
 			name,
 			transformers,
@@ -298,6 +302,7 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments) =
 			extract_name_transformers_and_arguments(group, &Token::ConsumerTag);
+
 		return GroupKind::Consumer {
 			name,
 			transformers,
@@ -308,6 +313,7 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments) =
 			extract_name_transformers_and_arguments(group, &Token::InlineTag);
+
 		return GroupKind::Inline {
 			name,
 			transformers,
@@ -317,6 +323,7 @@ fn classify_group(group: &TokenGroup) -> GroupKind {
 
 	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
 		let name = extract_close_name(group);
+
 		return GroupKind::Close { name };
 	}
 
@@ -332,6 +339,7 @@ fn classify_group_with_diagnostics(
 	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments, unknown) =
 			extract_name_transformers_arguments_with_diagnostics(group, &Token::ProviderTag);
+
 		for unknown_name in unknown {
 			diagnostics.push(ParseDiagnostic::UnknownTransformer {
 				name: unknown_name,
@@ -339,6 +347,7 @@ fn classify_group_with_diagnostics(
 				column: group.position.start.column,
 			});
 		}
+
 		return GroupKind::Provider {
 			name,
 			transformers,
@@ -349,6 +358,7 @@ fn classify_group_with_diagnostics(
 	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments, unknown) =
 			extract_name_transformers_arguments_with_diagnostics(group, &Token::ConsumerTag);
+
 		for unknown_name in unknown {
 			diagnostics.push(ParseDiagnostic::UnknownTransformer {
 				name: unknown_name,
@@ -356,6 +366,7 @@ fn classify_group_with_diagnostics(
 				column: group.position.start.column,
 			});
 		}
+
 		return GroupKind::Consumer {
 			name,
 			transformers,
@@ -366,6 +377,7 @@ fn classify_group_with_diagnostics(
 	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
 		let (name, transformers, arguments, unknown) =
 			extract_name_transformers_arguments_with_diagnostics(group, &Token::InlineTag);
+
 		for unknown_name in unknown {
 			diagnostics.push(ParseDiagnostic::UnknownTransformer {
 				name: unknown_name,
@@ -373,6 +385,7 @@ fn classify_group_with_diagnostics(
 				column: group.position.start.column,
 			});
 		}
+
 		return GroupKind::Inline {
 			name,
 			transformers,
@@ -382,6 +395,7 @@ fn classify_group_with_diagnostics(
 
 	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
 		let name = extract_close_name(group);
+
 		return GroupKind::Close { name };
 	}
 
@@ -411,6 +425,7 @@ fn extract_name_transformers_and_arguments(
 			if token.same_type(tag_token) {
 				found_tag = true;
 			}
+
 			continue;
 		}
 
@@ -419,6 +434,7 @@ fn extract_name_transformers_and_arguments(
 				name.clone_from(ident);
 				found_name = true;
 			}
+
 			continue;
 		}
 
@@ -429,16 +445,20 @@ fn extract_name_transformers_and_arguments(
 					while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
 						iter.next();
 					}
+
 					if let Some(Token::String(s, _)) = iter.next() {
 						arguments.push(s.clone());
 					}
+
 					continue;
 				}
 				Token::Pipe => {
 					in_transformers = true;
+
 					if let Some(transformer) = parse_transformer(&mut iter) {
 						transformers.push(transformer);
 					}
+
 					continue;
 				}
 				_ => continue,
@@ -476,6 +496,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 			if token.same_type(tag_token) {
 				found_tag = true;
 			}
+
 			continue;
 		}
 
@@ -484,6 +505,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 				name.clone_from(ident);
 				found_name = true;
 			}
+
 			continue;
 		}
 
@@ -493,13 +515,16 @@ fn extract_name_transformers_arguments_with_diagnostics(
 					while let Some(Token::Whitespace(_) | Token::Newline) = iter.peek() {
 						iter.next();
 					}
+
 					if let Some(Token::String(s, _)) = iter.next() {
 						arguments.push(s.clone());
 					}
+
 					continue;
 				}
 				Token::Pipe => {
 					in_transformers = true;
+
 					match parse_transformer_with_unknown(&mut iter) {
 						TransformerParseResult::Ok(transformer) => {
 							transformers.push(transformer);
@@ -509,6 +534,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 						}
 						TransformerParseResult::NoIdent => {}
 					}
+
 					continue;
 				}
 				_ => continue,
@@ -617,6 +643,7 @@ fn parse_transformer_args(
 					Some(Token::Float(n)) => {
 						args.push(Argument::Number(OrderedFloat(*n)));
 					}
+
 					Some(Token::Ident(s)) if s == "true" => args.push(Argument::Boolean(true)),
 					Some(Token::Ident(s)) if s == "false" => args.push(Argument::Boolean(false)),
 					_ => break,
@@ -635,18 +662,21 @@ fn extract_close_name(group: &TokenGroup) -> String {
 		if let Token::CloseTag = token {
 			// The name is the next Ident token after CloseTag
 			let mut found_close = false;
+
 			for t in &group.tokens {
 				if found_close {
 					if let Token::Ident(name) = t {
 						return name.clone();
 					}
 				}
+
 				if matches!(t, Token::CloseTag) {
 					found_close = true;
 				}
 			}
 		}
 	}
+
 	String::new()
 }
 

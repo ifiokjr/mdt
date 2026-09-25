@@ -167,6 +167,7 @@ fn main() {
 		if disable_miette_color {
 			opts = opts.color(false).unicode(false);
 		}
+
 		Box::new(opts.build())
 	}))
 	.ok();
@@ -203,6 +204,7 @@ fn main() {
 				eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 			}
 		}
+
 		process::exit(2);
 	}
 }
@@ -256,6 +258,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			.cloned()
 			.unwrap_or_else(|| canonical_template_path.clone())
 	};
+
 	let template_exists = template_path.exists();
 
 	let config_path = root.join("mdt.toml");
@@ -273,6 +276,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		if let Some(parent) = template_path.parent() {
 			std::fs::create_dir_all(parent)?;
 		}
+
 		std::fs::write(&template_path, sample_content)?;
 		println!("Created template file: {}", display_path(&template_path));
 	}
@@ -298,6 +302,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if !template_exists {
 		println!();
 		println!("Next steps:");
+
 		if readme_exists {
 			println!(
 				"  1. Edit {} to define your source blocks",
@@ -444,14 +449,17 @@ fn display_path(path: impl AsRef<Path>) -> String {
 
 fn normalize_dir_hint(path: &Path) -> String {
 	let mut hint = display_path(path);
+
 	if !hint.ends_with('/') {
 		hint.push('/');
 	}
+
 	hint
 }
 
 fn template_directory_hints(template_dirs: &[PathBuf]) -> Vec<String> {
 	let mut hints = BTreeSet::new();
+
 	for dir in template_dirs {
 		hints.insert(normalize_dir_hint(dir));
 	}
@@ -508,6 +516,7 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 			println!("  Providers:");
 			let mut names: Vec<_> = ctx.project.providers.keys().collect();
 			names.sort();
+
 			for name in names {
 				let entry = &ctx.project.providers[name];
 				println!("    @{name} ({})", display_path(&entry.file));
@@ -517,8 +526,10 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 
 	// Report diagnostics
 	let mut has_errors = false;
+
 	for diag in &ctx.project.diagnostics {
 		let rel = relative_display_path(&diag.file, &root);
+
 		if diag.is_error(&options) {
 			let report = diagnostic_to_report(diag, &rel, true);
 			eprintln!("{report:?}");
@@ -536,6 +547,7 @@ fn scan_and_warn(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Er
 	// Warn about consumers referencing non-existent providers.
 	let mut missing_providers = ctx.find_missing_providers();
 	missing_providers.sort();
+
 	for name in missing_providers {
 		eprintln!(
 			"{} consumer block `{name}` has no matching provider",
@@ -559,6 +571,7 @@ fn run_check(
 		if is_stale {
 			process::exit(1);
 		}
+
 		return Ok(());
 	}
 
@@ -589,6 +602,7 @@ fn run_check(
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
 		println!("\nFile change detected, checking...");
+
 		if let Err(e) = run_check_once(args, show_diff, format) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
@@ -629,6 +643,7 @@ fn run_check_once(
 				);
 			}
 		}
+
 		return Ok(false);
 	}
 
@@ -685,6 +700,7 @@ fn run_check_once(
 					err.line, err.column, err.block_name, err.message
 				);
 			}
+
 			for entry in &result.stale {
 				let rel = relative_display_path(&entry.file, &root);
 				println!(
@@ -692,10 +708,12 @@ fn run_check_once(
 					entry.line, entry.column, entry.block_name
 				);
 			}
+
 			for entry in &result.stale_files {
 				let rel = relative_display_path(&entry.file, &root);
 				println!("::warning file={rel}::Formatter-normalized file output is out of date");
 			}
+
 			eprintln!("{}", check_summary(&result));
 		}
 		OutputFormat::Text => {
@@ -710,6 +728,7 @@ fn run_check_once(
 				styled!(stderr, "stale consumers:", yellow_bold),
 				styled!(stderr, result.stale.len().to_string(), yellow)
 			);
+
 			if !result.stale_files.is_empty() {
 				eprintln!(
 					"  {} {}",
@@ -719,9 +738,11 @@ fn run_check_once(
 			}
 
 			let sorted_errors = sorted_render_errors(&result, &root);
+
 			if !sorted_errors.is_empty() {
 				eprintln!();
 				eprintln!("{}", styled!(stderr, "Render errors:", red_bold));
+
 				for err in sorted_errors {
 					let rel = relative_display_path(&err.file, &root);
 					eprintln!(
@@ -736,9 +757,11 @@ fn run_check_once(
 			}
 
 			let sorted_stale = sorted_stale_entries(&result, &root);
+
 			if !sorted_stale.is_empty() {
 				eprintln!();
 				eprintln!("{}", styled!(stderr, "Stale consumers:", yellow_bold));
+
 				for entry in sorted_stale {
 					let rel = relative_display_path(&entry.file, &root);
 					eprintln!(
@@ -756,12 +779,15 @@ fn run_check_once(
 			}
 
 			let sorted_stale_files = sorted_stale_files(&result, &root);
+
 			if !sorted_stale_files.is_empty() {
 				eprintln!();
 				eprintln!("{}", styled!(stderr, "Stale files:", yellow_bold));
+
 				for entry in sorted_stale_files {
 					let rel = relative_display_path(&entry.file, &root);
 					eprintln!("  file {}", styled!(stderr, rel, cyan));
+
 					if show_diff {
 						print_diff(&entry.current_content, &entry.expected_content);
 					}
@@ -778,21 +804,25 @@ fn run_check_once(
 
 fn check_summary(result: &mdt_core::CheckResult) -> String {
 	let mut parts = Vec::new();
+
 	if !result.render_errors.is_empty() {
 		parts.push(format!("{} render error(s)", result.render_errors.len()));
 	}
+
 	if !result.stale.is_empty() {
 		parts.push(format!(
 			"{} consumer block(s) are out of date",
 			result.stale.len()
 		));
 	}
+
 	if !result.stale_files.is_empty() {
 		parts.push(format!(
 			"{} formatter-normalized file(s) are out of date",
 			result.stale_files.len()
 		));
 	}
+
 	format!("{}. Run `mdt update` to fix.", parts.join(" and "))
 }
 
@@ -872,6 +902,7 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
 		println!("\nFile change detected, updating...");
+
 		if let Err(e) = run_update_once(args, false) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
@@ -890,6 +921,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 
 	if updates.updated_files.is_empty() {
 		println!("All consumer blocks are already up to date.");
+
 		return Ok(());
 	}
 
@@ -906,14 +938,17 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 				updates.updated_files.len()
 			);
 		}
+
 		let mut paths: Vec<_> = updates.updated_files.keys().collect();
 		paths.sort();
+
 		for path in paths {
 			let rel = relative_display_path(path, &root);
 			println!("  {rel}");
 		}
 	} else {
 		write_updates(&updates)?;
+
 		if updates.updated_count == 0 {
 			println!(
 				"Normalized {} file(s) via formatter integration.",
@@ -930,6 +965,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<(), Box<dyn std::erro
 		if args.verbose {
 			let mut paths: Vec<_> = updates.updated_files.keys().collect();
 			paths.sort();
+
 			for path in paths {
 				let rel = relative_display_path(path, &root);
 				println!("  {rel}");
@@ -946,6 +982,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 	if ctx.project.providers.is_empty() && ctx.project.consumers.is_empty() {
 		println!("No provider or consumer blocks found.");
+
 		return Ok(());
 	}
 
@@ -954,6 +991,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		println!("{}", styled!(stdout, "Providers:", bold));
 		let mut names: Vec<_> = ctx.project.providers.keys().collect();
 		names.sort();
+
 		for name in names {
 			let entry = &ctx.project.providers[name];
 			let rel = relative_display_path(&entry.file, &root);
@@ -973,9 +1011,12 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		if !ctx.project.providers.is_empty() {
 			println!();
 		}
+
 		println!("{}", styled!(stdout, "Consumers:", bold));
+
 		for consumer in &ctx.project.consumers {
 			let rel = relative_display_path(&consumer.file, &root);
+
 			let (sigil, status) = match consumer.block.r#type {
 				BlockType::Consumer => {
 					let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
@@ -997,6 +1038,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 					.collect();
 				format!(" |{}", names.join("|"))
 			};
+
 			println!(
 				"  {sigil}{} {rel}{transformers} [{status}]",
 				consumer.block.name
@@ -1271,6 +1313,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 
 			print_section("Data");
 			print_field("Namespaces", report.data.namespace_count);
+
 			if report.data.namespaces.is_empty() {
 				print_field("Source files", "none");
 			} else {
@@ -1289,6 +1332,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 				"Canonical hints",
 				report.templates.canonical_hints.join(", "),
 			);
+
 			if report.templates.discovered_files.is_empty() {
 				print_field("Discovered files", "none");
 			} else {
@@ -1305,6 +1349,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 				"Missing providers",
 				report.diagnostics.missing_provider_count,
 			);
+
 			if report.diagnostics.missing_provider_names.is_empty() {
 				print_field("Missing names", "none");
 			} else {
@@ -1325,6 +1370,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			} else {
 				"ok".to_string()
 			};
+
 			print_field("Artifact status", cache_status);
 			let schema_display = report.cache.schema_version.map_or_else(
 				|| "unknown".to_string(),
@@ -1370,6 +1416,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 					report.cache.file_reuse_rate
 				),
 			);
+
 			if let Some(last_scan) = &report.cache.last_scan {
 				print_field(
 					"Last scan mode",
@@ -1478,6 +1525,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	let options = validation_options(args);
 
 	let config_path = MdtConfig::resolve_path(&root);
+
 	if let Some(path) = &config_path {
 		add_doctor_check(
 			&mut checks,
@@ -1531,6 +1579,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				None,
 			);
 		}
+
 		Some(config) => {
 			match config.load_data(&root) {
 				Ok(loaded_data) => {
@@ -1633,6 +1682,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 
 	let scan_options = ScanOptions::from_config(config.as_ref());
 	let scan_result = scan_project_with_config(&root);
+
 	match scan_result {
 		Ok(ctx) => {
 			add_doctor_check(
@@ -1646,6 +1696,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 
 			let mut missing_providers = ctx.find_missing_providers();
 			missing_providers.sort();
+
 			if missing_providers.is_empty() {
 				add_doctor_check(
 					&mut checks,
@@ -1676,6 +1727,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 
 			let orphan_count =
 				count_orphan_consumers(&ctx.project.providers, &ctx.project.consumers);
+
 			if orphan_count == 0 {
 				add_doctor_check(
 					&mut checks,
@@ -1701,6 +1753,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 
 			let unused_provider_count =
 				count_unused_providers(&ctx.project.providers, &ctx.project.consumers);
+
 			if unused_provider_count == 0 {
 				add_doctor_check(
 					&mut checks,
@@ -1821,6 +1874,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	}
 
 	let cache = inspect_project_cache(&root, &scan_options);
+
 	if !cache.artifact.exists {
 		add_doctor_check(
 			&mut checks,
@@ -1893,6 +1947,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	} else {
 		"content-hash verification disabled (mtime + size fingerprints only)".to_string()
 	};
+
 	add_doctor_check(
 		&mut checks,
 		"cache_hash_mode",
@@ -1908,6 +1963,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		let total_files = telemetry
 			.reused_file_count_total
 			.saturating_add(telemetry.reparsed_file_count_total);
+
 		if telemetry.scan_count < 3 || total_files == 0 {
 			add_doctor_check(
 				&mut checks,
@@ -1920,6 +1976,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		} else {
 			let reparse_rate =
 				ratio_percent_string(telemetry.reparsed_file_count_total, total_files);
+
 			if telemetry.reparsed_file_count_total
 				> telemetry.reused_file_count_total.saturating_mul(3)
 			{
@@ -1989,6 +2046,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		}
 		DoctorOutputFormat::Text => {
 			println!("{}", styled!(stdout, "mdt doctor", bold));
+
 			for check in &report.checks {
 				println!(
 					"[{}] {:<22} {}",
@@ -1996,6 +2054,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 					check.title,
 					check.message
 				);
+
 				if let Some(hint) = &check.hint {
 					println!("       hint: {hint}");
 				}
@@ -2052,6 +2111,7 @@ fn assistant_setup_payload(assistant: Assistant) -> serde_json::Value {
 		"Use `mdt_preview` to inspect provider and consumer output before syncing changes."
 			.to_string(),
 	];
+
 	let notes = match assistant {
 		Assistant::Generic => {
 			vec![
@@ -2143,13 +2203,16 @@ fn run_assist(
 			println!("{mcp_config}");
 			println!();
 			println!("Suggested repo-local guidance:");
+
 			for item in payload["repo_guidance"].as_array().into_iter().flatten() {
 				if let Some(text) = item.as_str() {
 					println!("- {text}");
 				}
 			}
+
 			println!();
 			println!("Notes for {}:", assistant_display_name(assistant));
+
 			for item in payload["notes"].as_array().into_iter().flatten() {
 				if let Some(text) = item.as_str() {
 					println!("- {text}");
@@ -2186,6 +2249,7 @@ fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 /// Print a unified diff between two strings, colorized.
 fn print_diff(current: &str, expected: &str) {
 	let diff = TextDiff::from_lines(current, expected);
+
 	for change in diff.iter_all_changes() {
 		match change.tag() {
 			ChangeTag::Delete => {
@@ -2216,6 +2280,7 @@ fn diagnostic_to_report(
 	};
 
 	let message = format!("[{location}] {}", diag.message());
+
 	let help: String = match &diag.kind {
 		DiagnosticKind::UnclosedBlock { name } => {
 			format!("add `<!-- {{/{name}}} -->` to close this block")
@@ -2236,6 +2301,7 @@ fn diagnostic_to_report(
 		}
 		_ => diag.message(),
 	};
+
 	let code = match &diag.kind {
 		DiagnosticKind::UnclosedBlock { .. } => "mdt::unclosed_block",
 		DiagnosticKind::UnknownTransformer { .. } => "mdt::unknown_transformer",

@@ -92,11 +92,13 @@ export function packageMetadata(dir: string): Record<string, unknown> {
 
 export function hasBinary(dir: string): boolean {
 	const binDir = join(dir, "bin");
+
 	if (!existsSync(binDir)) {
 		return false;
 	}
 
 	const entries = readdirSync(binDir);
+
 	return entries.some((entry) => entry.startsWith("mdt"));
 }
 
@@ -106,6 +108,7 @@ export function assertTrustedPublishingContext(
 	const configuredTokenKeys = FORBIDDEN_NPM_TOKEN_ENV_KEYS.filter(
 		(key) => env[key],
 	);
+
 	if (configuredTokenKeys.length > 0) {
 		throw new Error(
 			`Refusing to publish npm packages with long-lived npm token environment variables: ${
@@ -123,15 +126,19 @@ export function assertTrustedPublishingContext(
 	if (env.GITHUB_ACTIONS !== "true") {
 		missing.push("GITHUB_ACTIONS=true");
 	}
+
 	if (env.GITHUB_REPOSITORY !== TRUSTED_PUBLISHING_REPOSITORY) {
 		missing.push(`GITHUB_REPOSITORY=${TRUSTED_PUBLISHING_REPOSITORY}`);
 	}
+
 	if (!workflowRef.startsWith(expectedWorkflowPath)) {
 		missing.push(`GITHUB_WORKFLOW_REF=${expectedWorkflowPath}<ref>`);
 	}
+
 	if (!env.ACTIONS_ID_TOKEN_REQUEST_URL) {
 		missing.push("ACTIONS_ID_TOKEN_REQUEST_URL");
 	}
+
 	if (!env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
 		missing.push("ACTIONS_ID_TOKEN_REQUEST_TOKEN");
 	}
@@ -147,6 +154,7 @@ export function assertTrustedPublishingContext(
 
 export function main(argv: string[] = process.argv.slice(2)): void {
 	const args = parseArgs(argv);
+
 	if (!args["packages-dir"]) {
 		throw new Error("usage: publish-packages.ts --packages-dir <dir>");
 	}
@@ -156,6 +164,7 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 	for (const dirName of PLATFORM_PACKAGE_DIRS) {
 		const dir = join(packagesDir, dirName);
 		const pkg = packageMetadata(dir) as { name: string; version: string };
+
 		if (hasBinary(dir) === false) {
 			throw new Error(
 				`Cannot populate ${pkg.name}@${pkg.version}: no binary found in ${
@@ -164,11 +173,13 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 					"Run build-packages.ts first to populate platform binaries.",
 			);
 		}
+
 		console.log(`Populated ${pkg.name}@${pkg.version}`);
 	}
 
 	const cliDir = join(packagesDir, CLI_PACKAGE_DIR);
 	const cliPkg = packageMetadata(cliDir) as { name: string; version: string };
+
 	if (hasBinary(cliDir) === false) {
 		throw new Error(
 			`Cannot populate ${cliPkg.name}@${cliPkg.version}: no binary found in ${
@@ -177,6 +188,7 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 				"Run build-packages.ts first to populate platform binaries.",
 		);
 	}
+
 	console.log(`Populated ${cliPkg.name}@${cliPkg.version}`);
 }
 

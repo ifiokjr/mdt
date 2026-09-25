@@ -156,10 +156,13 @@ impl<'a> TokenWalker<'a> {
 
 		while self.cursor < self.raw_tokens.len() {
 			let (result, _) = &self.raw_tokens[self.cursor];
+
 			if matches!(result, Ok(RawToken::HtmlCommentClose)) {
 				self.advance_cursor();
+
 				return;
 			}
+
 			self.advance_cursor();
 		}
 	}
@@ -222,6 +225,7 @@ impl<'a> TokenWalker<'a> {
 					}
 					None => break,
 				}
+
 				continue;
 			};
 
