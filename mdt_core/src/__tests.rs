@@ -6229,7 +6229,8 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
 			- 2.72)
-			.abs() < f64::EPSILON
+			.abs()
+			< f64::EPSILON
 	);
 	// Boolean conversion
 	assert_eq!(conf["bool_val"], serde_json::json!(true));
@@ -6366,7 +6367,8 @@ fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
 			- 2.72)
-			.abs() < 0.001
+			.abs()
+			< 0.001
 	);
 	// Boolean
 	assert_eq!(conf["bool_val"], serde_json::json!(true));
