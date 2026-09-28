@@ -274,7 +274,9 @@ fn content_matches(
 	match comparison {
 		crate::config::ComparisonMode::Strict => actual == expected,
 		crate::config::ComparisonMode::Lenient => {
-			normalize_whitespace(actual) == normalize_whitespace(expected)
+			// Most consumers are up to date; skip the normalizing allocations
+			// whenever the byte-for-byte comparison already succeeds.
+			actual == expected || normalize_whitespace(actual) == normalize_whitespace(expected)
 		}
 	}
 }
@@ -318,6 +320,74 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 	Some(data)
 }
 
+/// A provider rendered for one consumer.
+struct RenderedForConsumer<'a> {
+	/// The rendered content, or the render error message.
+	rendered: Result<String, String>,
+	/// Data context for data-aware transformers (e.g. `if`).
+	data: std::borrow::Cow<'a, HashMap<String, serde_json::Value>>,
+}
+
+/// Caches rendered provider content across consumers within a single run.
+///
+/// Providers without parameters render identically for every consumer, so
+/// the minijinja environment, template compile, and render run once per
+/// provider instead of once per consumer — and the base data map is no
+/// longer deep-cloned per consumer.
+struct RenderCache<'a> {
+	data: &'a HashMap<String, serde_json::Value>,
+	rendered: HashMap<String, Result<String, String>>,
+}
+
+impl<'a> RenderCache<'a> {
+	fn new(data: &'a HashMap<String, serde_json::Value>) -> Self {
+		Self {
+			data,
+			rendered: HashMap::new(),
+		}
+	}
+
+	/// Render `provider` content for `consumer`.
+	///
+	/// Returns `None` when the consumer's argument count does not match the
+	/// provider's parameter count. Parameterized providers render per
+	/// consumer with their argument values; providers without parameters use
+	/// the shared cache.
+	fn render(
+		&mut self,
+		provider: &ProviderEntry,
+		consumer: &ConsumerEntry,
+	) -> Option<RenderedForConsumer<'_>> {
+		let param_count = provider.block.arguments.len();
+		let arg_count = consumer.block.arguments.len();
+
+		if param_count != arg_count && (param_count > 0 || arg_count > 0) {
+			return None;
+		}
+
+		if provider.block.arguments.is_empty() {
+			let rendered = self
+				.rendered
+				.entry(provider.block.name.clone())
+				.or_insert_with(|| {
+					render_template(&provider.content, self.data).map_err(|e| e.to_string())
+				})
+				.clone();
+			return Some(RenderedForConsumer {
+				rendered,
+				data: std::borrow::Cow::Borrowed(self.data),
+			});
+		}
+
+		let render_data = build_render_context(self.data, provider, consumer)?;
+		let rendered = render_template(&provider.content, &render_data).map_err(|e| e.to_string());
+		Some(RenderedForConsumer {
+			rendered,
+			data: std::borrow::Cow::Owned(render_data),
+		})
+	}
+}
+
 /// Check whether all consumer blocks in the project are up to date.
 /// Consumer blocks that reference non-existent providers are silently skipped.
 /// Template render errors are collected rather than aborting, so the check
@@ -334,6 +404,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		return check_project_without_formatters(ctx);
 	}
 
+	let formatter_pipeline = FormatterPipeline::compile(&ctx.formatters);
+	let mut render_cache = RenderCache::new(&ctx.data);
 	let mut stale = Vec::new();
 	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
@@ -356,8 +428,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						continue;
 					};
 
-					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
-					else {
+					let Some(rendered) = render_cache.render(provider, consumer) else {
 						render_errors.push(RenderError {
 							file: consumer.file.clone(),
 							block_name: consumer.block.name.clone(),
@@ -373,19 +444,19 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						});
 						continue;
 					};
-					let rendered = match render_template(&provider.content, &render_data) {
-						Ok(rendered) => rendered,
-						Err(error) => {
+					let rendered_content = match rendered.rendered {
+						Ok(rendered_content) => rendered_content,
+						Err(message) => {
 							warn!(
 								file = %consumer.file.display(),
-								block = %consumer.block.name,
-								error = %error,
+								block = consumer.block.name,
+								error = %message,
 								"template render failed",
 							);
 							render_errors.push(RenderError {
 								file: consumer.file.clone(),
 								block_name: consumer.block.name.clone(),
-								message: error.to_string(),
+								message,
 								line: consumer.block.opening.start.line,
 								column: consumer.block.opening.start.column,
 							});
@@ -393,9 +464,9 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 						}
 					};
 					let mut expected = apply_transformers_with_data(
-						&rendered,
+						&rendered_content,
 						&consumer.block.transformers,
-						Some(&render_data),
+						Some(&rendered.data),
 					);
 					expected = pad_content_with_config(
 						&expected,
@@ -449,7 +520,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			}
 		}
 
-		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+		let (candidate, formatter_commands) =
+			apply_formatter_pipeline(&formatter_pipeline, ctx, &file, &candidate)?;
 		if formatter_commands.is_empty() {
 			for (index, consumer) in ordered_consumers.iter().enumerate() {
 				let Some(expected) = raw_expected[index].clone() else {
@@ -536,6 +608,8 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 		return compute_updates_without_formatters(ctx);
 	}
 
+	let formatter_pipeline = FormatterPipeline::compile(&ctx.formatters);
+	let mut render_cache = RenderCache::new(&ctx.data);
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 	let warnings = collect_template_warnings(ctx);
@@ -556,15 +630,14 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
 						continue;
 					};
-					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
-					else {
+					let Some(rendered) = render_cache.render(provider, consumer) else {
 						continue;
 					};
-					let rendered = render_template(&provider.content, &render_data)?;
+					let rendered_content = rendered.rendered.map_err(MdtError::TemplateRender)?;
 					let mut new_content = apply_transformers_with_data(
-						&rendered,
+						&rendered_content,
 						&consumer.block.transformers,
-						Some(&render_data),
+						Some(&rendered.data),
 					);
 					new_content = pad_content_with_config(
 						&new_content,
@@ -594,7 +667,8 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 			}
 		}
 
-		let (candidate, formatter_commands) = apply_formatter_pipeline(ctx, &file, &candidate)?;
+		let (candidate, formatter_commands) =
+			apply_formatter_pipeline(&formatter_pipeline, ctx, &file, &candidate)?;
 		if candidate == original {
 			continue;
 		}
@@ -650,6 +724,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 	// Cache file contents so the closing-tag comment prefix can be recovered
 	// from the source when padding is enabled.
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
+	let mut render_cache = RenderCache::new(&ctx.data);
 
 	for consumer in &ctx.project.consumers {
 		if !file_contents.contains_key(&consumer.file) {
@@ -665,7 +740,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					continue;
 				};
 
-				let Some(render_data) = build_render_context(&ctx.data, provider, consumer) else {
+				let Some(rendered) = render_cache.render(provider, consumer) else {
 					render_errors.push(RenderError {
 						file: consumer.file.clone(),
 						block_name: consumer.block.name.clone(),
@@ -681,13 +756,13 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					});
 					continue;
 				};
-				let rendered = match render_template(&provider.content, &render_data) {
-					Ok(rendered) => rendered,
-					Err(error) => {
+				let rendered_content = match rendered.rendered {
+					Ok(rendered_content) => rendered_content,
+					Err(message) => {
 						render_errors.push(RenderError {
 							file: consumer.file.clone(),
 							block_name: consumer.block.name.clone(),
-							message: error.to_string(),
+							message,
 							line: consumer.block.opening.start.line,
 							column: consumer.block.opening.start.column,
 						});
@@ -695,9 +770,9 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 					}
 				};
 				let mut expected = apply_transformers_with_data(
-					&rendered,
+					&rendered_content,
 					&consumer.block.transformers,
-					Some(&render_data),
+					Some(&rendered.data),
 				);
 				expected = pad_content_with_config(
 					&expected,
@@ -776,6 +851,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 	let mut updated_count = 0;
 	let warnings = collect_template_warnings(ctx);
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
+	let mut render_cache = RenderCache::new(&ctx.data);
 
 	for (file, consumers) in &consumers_by_file {
 		let raw = if let Some(content) = file_contents.get(file) {
@@ -797,15 +873,14 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 						continue;
 					};
 
-					let Some(render_data) = build_render_context(&ctx.data, provider, consumer)
-					else {
+					let Some(rendered) = render_cache.render(provider, consumer) else {
 						continue;
 					};
-					let rendered = render_template(&provider.content, &render_data)?;
+					let rendered_content = rendered.rendered.map_err(MdtError::TemplateRender)?;
 					let mut new_content = apply_transformers_with_data(
-						&rendered,
+						&rendered_content,
 						&consumer.block.transformers,
-						Some(&render_data),
+						Some(&rendered.data),
 					);
 					new_content = pad_content_with_config(
 						&new_content,
@@ -894,15 +969,15 @@ fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_c
 }
 
 fn apply_formatter_pipeline(
+	pipeline: &FormatterPipeline,
 	ctx: &ProjectContext,
 	file: &Path,
 	content: &str,
 ) -> MdtResult<(String, Vec<String>)> {
-	let matching_commands: Vec<String> = ctx
-		.formatters
-		.iter()
-		.filter(|formatter| formatter.matches_file(&ctx.root, file))
-		.map(|formatter| formatter.command.clone())
+	let matching_commands: Vec<String> = pipeline
+		.commands_for(&ctx.root, file)
+		.into_iter()
+		.map(str::to_string)
 		.collect();
 
 	let mut current = content.to_string();
@@ -911,6 +986,48 @@ fn apply_formatter_pipeline(
 	}
 
 	Ok((current, matching_commands))
+}
+
+/// Formatter pipeline with precompiled glob matchers, built once per
+/// check/update run so per-file routing does not recompile every pattern for
+/// every scanned file.
+struct FormatterPipeline {
+	entries: Vec<FormatterPipelineEntry>,
+}
+
+struct FormatterPipelineEntry {
+	command: String,
+	patterns: crate::config::FormatterRuleSet,
+	ignore: crate::config::FormatterRuleSet,
+}
+
+impl FormatterPipeline {
+	fn compile(formatters: &[crate::config::FormatterConfig]) -> Self {
+		Self {
+			entries: formatters
+				.iter()
+				.map(|formatter| {
+					FormatterPipelineEntry {
+						command: formatter.command.clone(),
+						patterns: crate::config::FormatterRuleSet::compile(&formatter.patterns),
+						ignore: crate::config::FormatterRuleSet::compile(&formatter.ignore),
+					}
+				})
+				.collect(),
+		}
+	}
+
+	/// Returns the commands matching `file`, in declaration order.
+	fn commands_for<'a>(&'a self, root: &Path, file: &Path) -> Vec<&'a str> {
+		let relative = file.strip_prefix(root).unwrap_or(file);
+		let key = relative.to_string_lossy().replace('\\', "/");
+
+		self.entries
+			.iter()
+			.filter(|entry| entry.patterns.is_match(&key) && !entry.ignore.is_match(&key))
+			.map(|entry| entry.command.as_str())
+			.collect()
+	}
 }
 
 fn run_formatter_command(
@@ -944,11 +1061,29 @@ fn run_formatter_command(
 		.stderr(Stdio::piped())
 		.spawn()?;
 
-	if let Some(mut stdin) = child.stdin.take() {
-		stdin.write_all(input.as_bytes())?;
-	}
+	// Feed stdin from a dedicated thread while the main thread drains stdout.
+	// Writing all input before reading output can deadlock when the formatter
+	// fills its stdout pipe while we are still writing a large file.
+	let stdin = child.stdin.take();
+	let output = std::thread::scope(|scope| {
+		let writer = stdin.map(|mut stdin| {
+			scope.spawn(move || {
+				// A write error here (e.g. formatter exited early) surfaces as
+				// a non-zero exit status below; dropping stdin closes the pipe
+				// so formatters reading to EOF still terminate.
+				let _ = stdin.write_all(input.as_bytes());
+			})
+		});
 
-	let output = child.wait_with_output()?;
+		let output = child.wait_with_output();
+
+		if let Some(writer) = writer {
+			let _ = writer.join();
+		}
+
+		output
+	})?;
+
 	if !output.status.success() {
 		let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 		let reason = if stderr.is_empty() {

@@ -41,7 +41,9 @@
 //! ```
 //! <!-- {/mdtMcpOverview} -->
 
+use std::path::Component;
 use std::path::Path;
+use std::path::PathBuf;
 
 use mdt_core::BlockType;
 use mdt_core::MdtConfig;
@@ -53,7 +55,6 @@ use mdt_core::project::ProjectContext;
 use mdt_core::project::is_markdown_path;
 use mdt_core::project::levenshtein_distance;
 use mdt_core::project::relative_display_path;
-use mdt_core::project::resolve_root;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::render_template;
 use mdt_core::write_updates;
@@ -76,14 +77,16 @@ use tracing_subscriber::fmt;
 /// Parameters for tools that accept an optional project path.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PathParam {
-	/// Path to the project root directory. Defaults to the current directory.
+	/// Path to the project root directory. Must resolve inside the server's
+	/// startup directory. Defaults to the server's startup directory.
 	pub path: Option<String>,
 }
 
 /// Parameters for tools that need a block name.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct BlockParam {
-	/// Path to the project root directory. Defaults to the current directory.
+	/// Path to the project root directory. Must resolve inside the server's
+	/// startup directory. Defaults to the server's startup directory.
 	pub path: Option<String>,
 	/// The name of the block to look up.
 	pub block_name: String,
@@ -92,7 +95,8 @@ pub struct BlockParam {
 /// Parameters for the update tool.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateParam {
-	/// Path to the project root directory. Defaults to the current directory.
+	/// Path to the project root directory. Must resolve inside the server's
+	/// startup directory. Defaults to the server's startup directory.
 	pub path: Option<String>,
 	/// If true, show what would change without writing files.
 	#[serde(default)]
@@ -102,14 +106,16 @@ pub struct UpdateParam {
 /// Parameters for the init tool.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct InitParam {
-	/// Path to the project root directory. Defaults to the current directory.
+	/// Path to the project root directory. Must resolve inside the server's
+	/// startup directory. Defaults to the server's startup directory.
 	pub path: Option<String>,
 }
 
 /// Parameters for reuse discovery.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ReuseParam {
-	/// Path to the project root directory. Defaults to the current directory.
+	/// Path to the project root directory. Must resolve inside the server's
+	/// startup directory. Defaults to the server's startup directory.
 	pub path: Option<String>,
 	/// Optional proposed block name to match against existing providers.
 	pub block_name: Option<String>,
@@ -195,6 +201,8 @@ struct PreviewConsumerInfo {
 #[derive(Debug, Clone)]
 pub struct MdtMcpServer {
 	pub tool_router: ToolRouter<Self>,
+	/// Startup directory that every tool path must resolve within.
+	base_root: PathBuf,
 }
 
 #[tool_handler]
@@ -217,8 +225,42 @@ fn default_reuse_limit() -> usize {
 	5
 }
 
+/// Lexically normalize `.` and `..` components out of `path`.
+fn normalize_lexically(path: &Path) -> PathBuf {
+	let mut components: Vec<Component<'_>> = Vec::new();
+
+	for component in path.components() {
+		match component {
+			Component::CurDir => {}
+			Component::ParentDir => {
+				// Preserve leading `..` so the containment check below is the
+				// component that rejects escapes, not the normalization.
+				if components.pop().is_none() {
+					components.push(component);
+				}
+			}
+			other => components.push(other),
+		}
+	}
+
+	components.iter().collect()
+}
+
 fn scan_ctx(root: &Path) -> Result<ProjectContext, McpError> {
 	scan_project_with_config(root).map_err(|e| McpError::internal_error(e.to_string(), None))
+}
+
+/// Run a blocking mdt operation on the blocking thread pool so the stdio
+/// transport keeps serving requests during directory walks, data-source
+/// script executions, and formatter subprocesses.
+async fn run_blocking<T, F>(operation: F) -> Result<T, McpError>
+where
+	T: Send + 'static,
+	F: FnOnce() -> Result<T, McpError> + Send + 'static,
+{
+	tokio::task::spawn_blocking(operation)
+		.await
+		.map_err(|e| McpError::internal_error(format!("blocking task failed: {e}"), None))?
 }
 
 fn json_result(value: serde_json::Value) -> CallToolResult {
@@ -250,9 +292,58 @@ fn warning_info(warning: &mdt_core::TemplateWarning, root: &Path) -> TemplateWar
 #[tool_router]
 impl MdtMcpServer {
 	pub fn new() -> Self {
+		Self::with_base_root(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+	}
+
+	/// Build a server whose tool paths must resolve within `base_root`.
+	///
+	/// Confinement matters because mdt executes config-declared shell
+	/// commands (`[data]` scripts, formatters) and writes files relative to
+	/// the project root: without it, a caller-supplied `path` could point the
+	/// tools at any directory on disk and run whatever `mdt.toml` it finds
+	/// there.
+	pub fn with_base_root(base_root: impl Into<PathBuf>) -> Self {
+		let base_root = base_root.into();
 		Self {
 			tool_router: Self::tool_router(),
+			base_root: base_root.canonicalize().unwrap_or(base_root),
 		}
+	}
+
+	/// Resolve a caller-supplied project path, confined to the server's
+	/// startup directory.
+	fn confined_root(&self, path: Option<&str>) -> Result<PathBuf, McpError> {
+		let base = &self.base_root;
+
+		let requested = match path {
+			Some(path) if !path.trim().is_empty() => Path::new(path),
+			_ => return Ok(base.clone()),
+		};
+
+		let resolved = if requested.is_absolute() {
+			requested.to_path_buf()
+		} else {
+			base.join(requested)
+		};
+
+		// Normalize `.`/`..` lexically, then canonicalize when the path
+		// exists so symlinks cannot escape the base root either.
+		let normalized = normalize_lexically(&resolved);
+		let canonical = normalized.canonicalize().unwrap_or(normalized);
+
+		if canonical == *base || canonical.starts_with(base) {
+			return Ok(canonical);
+		}
+
+		Err(McpError::invalid_params(
+			format!(
+				"path `{}` resolves outside the mdt MCP server root `{}`. Restart the server in \
+				 the project you want to manage.",
+				requested.display(),
+				base.display()
+			),
+			None,
+		))
 	}
 
 	#[tool(
@@ -264,14 +355,18 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<PathParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let scan_root = root.clone();
+		let (ctx, result) = run_blocking(move || {
+			let ctx = scan_ctx(&scan_root)?;
+			let result =
+				check_project(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			Ok((ctx, result))
+		})
+		.await?;
 
 		let mut missing = ctx.find_missing_providers();
 		missing.sort();
-		let result =
-			check_project(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
 		let warnings: Vec<_> = result
 			.warnings
 			.iter()
@@ -357,12 +452,23 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<UpdateParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let scan_root = root.clone();
+		let dry_run = params.dry_run;
+		let (ctx, updates) = run_blocking(move || {
+			let ctx = scan_ctx(&scan_root)?;
+			let updates =
+				compute_updates(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			if !updates.updated_files.is_empty() && !dry_run {
+				write_updates(&updates)
+					.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+			}
+			Ok((ctx, updates))
+		})
+		.await?;
+
 		let mut missing_provider_names = ctx.find_missing_providers();
 		missing_provider_names.sort();
-		let updates =
-			compute_updates(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
 		let warnings: Vec<_> = updates
 			.warnings
 			.iter()
@@ -386,10 +492,6 @@ impl MdtMcpServer {
 				"warnings": warnings,
 				"missing_provider_names": missing_provider_names,
 			})));
-		}
-
-		if !params.dry_run {
-			write_updates(&updates).map_err(|e| McpError::internal_error(e.to_string(), None))?;
 		}
 
 		let summary = if updates.updated_count == 0 {
@@ -439,8 +541,11 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<PathParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let ctx = {
+			let scan_root = root.clone();
+			run_blocking(move || scan_ctx(&scan_root)).await?
+		};
 
 		let mut providers: Vec<ProviderInfo> = ctx
 			.project
@@ -514,8 +619,11 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<ReuseParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let ctx = {
+			let scan_root = root.clone();
+			run_blocking(move || scan_ctx(&scan_root)).await?
+		};
 		let limit = params.limit.clamp(1, 20);
 		let query = params
 			.block_name
@@ -602,8 +710,11 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<BlockParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let ctx = {
+			let scan_root = root.clone();
+			run_blocking(move || scan_ctx(&scan_root)).await?
+		};
 
 		if let Some(provider) = ctx.project.providers.get(&params.block_name) {
 			let rendered = render_template(&provider.content, &ctx.data)
@@ -686,8 +797,11 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<BlockParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let ctx = scan_ctx(&root)?;
+		let root = self.confined_root(params.path.as_deref())?;
+		let ctx = {
+			let scan_root = root.clone();
+			run_blocking(move || scan_ctx(&scan_root)).await?
+		};
 
 		let Some(provider) = ctx.project.providers.get(&params.block_name) else {
 			return Ok(json_error_result(serde_json::json!({
@@ -799,50 +913,58 @@ impl MdtMcpServer {
 		&self,
 		Parameters(params): Parameters<InitParam>,
 	) -> Result<CallToolResult, McpError> {
-		let root = resolve_root(params.path.as_deref().map(Path::new));
-		let canonical_template_path = root.join(".templates/template.t.md");
-		let legacy_template_paths = [
-			root.join("template.t.md"),
-			root.join("templates/template.t.md"),
-		];
-		let template_path = if canonical_template_path.exists() {
-			canonical_template_path.clone()
-		} else {
-			legacy_template_paths
-				.iter()
-				.find(|path| path.exists())
-				.cloned()
-				.unwrap_or_else(|| canonical_template_path.clone())
+		let root = self.confined_root(params.path.as_deref())?;
+		let (template_path, template_exists, config_path, config_exists) = {
+			let root = root.clone();
+			run_blocking(move || {
+				let canonical_template_path = root.join(".templates/template.t.md");
+				let legacy_template_paths = [
+					root.join("template.t.md"),
+					root.join("templates/template.t.md"),
+				];
+				let template_path = if canonical_template_path.exists() {
+					canonical_template_path.clone()
+				} else {
+					legacy_template_paths
+						.iter()
+						.find(|path| path.exists())
+						.cloned()
+						.unwrap_or_else(|| canonical_template_path.clone())
+				};
+				let template_exists = template_path.exists();
+
+				let config_path = root.join("mdt.toml");
+				let config_exists = MdtConfig::resolve_path(&root).is_some();
+				let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
+				                      block.\n\n<!-- {/greeting} -->\n";
+				let sample_config =
+					"# mdt configuration\n# See \
+					 https://ifiokjr.github.io/mdt/reference/configuration.html for full \
+					 reference.\n\n# Map data files to template namespaces.\n# Values from these \
+					 files are available in provider blocks as {{ namespace.key }}.\n# [data]\n# \
+					 pkg = \"package.json\"\n# cargo = \"Cargo.toml\"\n# version = { command = \"cat \
+					 VERSION\", format = \"text\", watch = [\"VERSION\"] }\n\n# Control blank lines \
+					 between tags and content in source files.\n# Recommended when using formatters \
+					 (rustfmt, prettier, etc.).\n# [padding]\n# before = 0\n# after = 0\n";
+
+				if !template_exists {
+					if let Some(parent) = template_path.parent() {
+						std::fs::create_dir_all(parent)
+							.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+					}
+					std::fs::write(&template_path, sample_content)
+						.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+				}
+
+				if !config_exists {
+					std::fs::write(&config_path, sample_config)
+						.map_err(|e| McpError::internal_error(e.to_string(), None))?;
+				}
+
+				Ok((template_path, template_exists, config_path, config_exists))
+			})
+			.await?
 		};
-		let template_exists = template_path.exists();
-
-		let config_path = root.join("mdt.toml");
-		let config_exists = MdtConfig::resolve_path(&root).is_some();
-		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
-		                      block.\n\n<!-- {/greeting} -->\n";
-		let sample_config =
-			"# mdt configuration\n# See \
-			 https://ifiokjr.github.io/mdt/reference/configuration.html for full reference.\n\n# \
-			 Map data files to template namespaces.\n# Values from these files are available in \
-			 provider blocks as {{ namespace.key }}.\n# [data]\n# pkg = \"package.json\"\n# cargo \
-			 = \"Cargo.toml\"\n# version = { command = \"cat VERSION\", format = \"text\", watch \
-			 = [\"VERSION\"] }\n\n# Control blank lines between tags and content in source \
-			 files.\n# Recommended when using formatters (rustfmt, prettier, etc.).\n# \
-			 [padding]\n# before = 0\n# after = 0\n";
-
-		if !template_exists {
-			if let Some(parent) = template_path.parent() {
-				std::fs::create_dir_all(parent)
-					.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-			}
-			std::fs::write(&template_path, sample_content)
-				.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-		}
-
-		if !config_exists {
-			std::fs::write(&config_path, sample_config)
-				.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-		}
 
 		let next_steps = if template_exists {
 			Vec::new()

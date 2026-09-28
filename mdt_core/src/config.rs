@@ -325,8 +325,56 @@ impl FormatterConfig {
 	pub fn matches_file(&self, root: &Path, file: &Path) -> bool {
 		let relative = file.strip_prefix(root).unwrap_or(file);
 		let key = normalize_path_key(relative);
-		matches_formatter_rules(&self.patterns, &key)
-			&& !matches_formatter_rules(&self.ignore, &key)
+		FormatterRuleSet::compile(&self.patterns).is_match(&key)
+			&& !FormatterRuleSet::compile(&self.ignore).is_match(&key)
+	}
+}
+
+/// Precompiled glob rules for a formatter's `patterns` or `ignore` list.
+///
+/// Compiling a [`Glob`] matcher per pattern per file made formatter routing
+/// O(patterns × files) compilations; compile the rules once and reuse the
+/// matchers across every file instead.
+#[derive(Debug, Clone, Default)]
+pub struct FormatterRuleSet {
+	matchers: Vec<(globset::GlobMatcher, bool)>,
+}
+
+impl FormatterRuleSet {
+	/// Compile an ordered pattern list. A leading `!` marks a negated
+	/// pattern. Invalid globs are skipped, matching the lenient historical
+	/// behavior (config load rejects them outright via validation).
+	#[must_use]
+	pub fn compile(patterns: &[String]) -> Self {
+		let matchers = patterns
+			.iter()
+			.filter_map(|pattern| {
+				let (glob_pattern, negated) = match pattern.strip_prefix('!') {
+					Some(rest) => (rest, true),
+					None => (pattern.as_str(), false),
+				};
+				Glob::new(glob_pattern)
+					.ok()
+					.map(|glob| (glob.compile_matcher(), negated))
+			})
+			.collect();
+
+		Self { matchers }
+	}
+
+	/// Ordered last-match-wins matching with `!` negation, matching
+	/// gitignore-style semantics.
+	#[must_use]
+	pub fn is_match(&self, key: &str) -> bool {
+		let mut matched = false;
+
+		for (matcher, negated) in &self.matchers {
+			if matcher.is_match(key) {
+				matched = !negated;
+			}
+		}
+
+		matched
 	}
 }
 
@@ -455,27 +503,6 @@ fn validate_formatters(formatters: &[FormatterConfig]) -> MdtResult<()> {
 fn validate_formatter_pattern(pattern: &str) -> Result<(), globset::Error> {
 	let glob_pattern = pattern.strip_prefix('!').unwrap_or(pattern);
 	Glob::new(glob_pattern).map(|_| ())
-}
-
-fn matches_formatter_rules(patterns: &[String], key: &str) -> bool {
-	let mut matched = false;
-
-	for pattern in patterns {
-		let (glob_pattern, is_negated) = if let Some(glob_pattern) = pattern.strip_prefix('!') {
-			(glob_pattern, true)
-		} else {
-			(pattern.as_str(), false)
-		};
-		let Ok(glob) = Glob::new(glob_pattern) else {
-			continue;
-		};
-		let compiled = glob.compile_matcher();
-		if compiled.is_match(key) {
-			matched = !is_negated;
-		}
-	}
-
-	matched
 }
 
 fn watch_fingerprint(path: &Path) -> WatchFingerprint {

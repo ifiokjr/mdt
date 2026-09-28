@@ -1,8 +1,10 @@
 name: "ci"
 
+# Least privilege: every job runs untrusted PR code and only needs to read
+# the repository. Only the release preflight jobs (which create release
+# commits via `mc run release --commit`) get contents: write.
 permissions:
-  pull-requests: write
-  contents: write
+  contents: read
 
 on:
   push:
@@ -181,6 +183,8 @@ jobs:
     if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'monochange/release')
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -220,6 +224,8 @@ jobs:
     if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'monochange/release')
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

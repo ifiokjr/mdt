@@ -83,7 +83,7 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 	(state, consumer_uri)
 }
 
-fn test_uri(path: &std::path::Path) -> Uri {
+fn test_uri(path: &Path) -> Uri {
 	Uri::from_file_path(path).unwrap_or_else(|| {
 		// Fixtures use fake Unix-style paths such as /tmp/test, which are
 		// not absolute on Windows, where file URIs require a drive letter.
@@ -99,9 +99,10 @@ fn test_uri(path: &std::path::Path) -> Uri {
 /// `update_document_in_project`, which stores `Uri::to_file_path`, so
 /// fixture expectations stay consistent with the server on every platform.
 fn uri_file_path(uri: &Uri) -> PathBuf {
-	uri.to_file_path()
-		.map(std::borrow::Cow::into_owned)
-		.unwrap_or_else(|| PathBuf::from(uri.path().as_str()))
+	uri.to_file_path().map_or_else(
+		|| PathBuf::from(uri.path().as_str()),
+		std::borrow::Cow::into_owned,
+	)
 }
 
 fn make_inline_test_state(
@@ -115,7 +116,7 @@ fn make_inline_test_state(
 	);
 	let inline_doc = format!("{opening_tag}{consumer_content}<!-- {{/version}} -->\n");
 	let (blocks, parse_diagnostics) = parse_with_diagnostics(&inline_doc).unwrap_or_default();
-	let consumer_uri = test_uri(std::path::Path::new("/tmp/test/readme.md"));
+	let consumer_uri = test_uri(Path::new("/tmp/test/readme.md"));
 
 	let mut consumers = Vec::new();
 	for block in &blocks {
@@ -528,6 +529,77 @@ fn completion_inside_consumer_tag() {
 	assert!(!completions.is_empty());
 	assert!(
 		completions.iter().any(|c| c.label == "greeting"),
+		"expected 'greeting' completion item"
+	);
+}
+
+#[test]
+fn completion_after_multibyte_text_does_not_panic() {
+	// Regression: cursor columns are UTF-16 code units, but the completion
+	// context sliced the line by byte index — a cursor after multi-byte
+	// text sliced inside a character boundary and panicked the server.
+	let consumer_doc = "完美 <!-- {=";
+	let uri = "file:///tmp/test/readme.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let mut documents = HashMap::new();
+	documents.insert(
+		uri.clone(),
+		DocumentState {
+			content: consumer_doc.to_string(),
+			blocks: Vec::new(),
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let provider_entry = ProviderEntry {
+		block: Block {
+			name: "greeting".to_string(),
+			r#type: BlockType::Provider,
+			opening: mdt_core::Position::new(1, 1, 0, 1, 20, 19),
+			closing: mdt_core::Position::new(3, 1, 30, 3, 20, 49),
+			transformers: Vec::new(),
+			arguments: vec![],
+		},
+		file: PathBuf::from("/tmp/test/template.t.md"),
+		content: "\n\nHello!\n\n".to_string(),
+	};
+
+	let mut providers = HashMap::new();
+	providers.insert("greeting".to_string(), provider_entry);
+
+	let state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	// Cursor directly after the multi-byte text (byte index 2 sits inside
+	// `完`): must not panic.
+	let after_cjk = compute_completions(
+		&state,
+		&uri,
+		Position {
+			line: 0,
+			character: 2,
+		},
+	);
+	assert!(after_cjk.is_empty());
+
+	// Cursor after `{=`: block name completions are offered.
+	let in_tag = compute_completions(
+		&state,
+		&uri,
+		Position {
+			line: 0,
+			character: 10,
+		},
+	);
+	assert!(
+		in_tag.iter().any(|c| c.label == "greeting"),
 		"expected 'greeting' completion item"
 	);
 }
@@ -1740,6 +1812,61 @@ fn diagnostics_invalid_transformer_args() {
 }
 
 // ---- update_document_in_project tests ----
+
+#[test]
+fn update_document_in_project_removes_deleted_providers() {
+	// A provider registered by an earlier save must disappear once the
+	// template no longer defines it; keeping it would power completions and
+	// rename edits from stale offsets.
+	let stale_template = "<!-- {@old} -->\n\nBye!\n\n<!-- {/old} -->\n";
+	let new_template = "<!-- {@fresh} -->\n\nHello!\n\n<!-- {/fresh} -->\n";
+	let provider_uri = "file:///tmp/test/template.t.md"
+		.parse::<Uri>()
+		.unwrap_or_else(|_| panic!("invalid test URI"));
+
+	let stale_blocks = parse(stale_template).unwrap_or_default();
+	let stale_provider = ProviderEntry {
+		block: stale_blocks
+			.first()
+			.cloned()
+			.unwrap_or_else(|| panic!("expected stale provider block")),
+		file: uri_file_path(&provider_uri),
+		content: "\n\nBye!\n\n".to_string(),
+	};
+
+	let new_blocks = parse(new_template).unwrap_or_default();
+	let mut documents = HashMap::new();
+	documents.insert(
+		provider_uri.clone(),
+		DocumentState {
+			content: new_template.to_string(),
+			blocks: new_blocks,
+			parse_diagnostics: Vec::new(),
+		},
+	);
+
+	let mut providers = HashMap::new();
+	providers.insert("old".to_string(), stale_provider);
+
+	let mut state = WorkspaceState {
+		root: Some(PathBuf::from("/tmp/test")),
+		documents,
+		providers,
+		consumers: Vec::new(),
+		data: HashMap::new(),
+	};
+
+	state.update_document_in_project(&provider_uri);
+
+	assert!(
+		!state.providers.contains_key("old"),
+		"deleted provider must not linger after a template save"
+	);
+	assert!(
+		state.providers.contains_key("fresh"),
+		"newly added provider should be registered"
+	);
+}
 
 #[test]
 fn update_document_in_project_template_updates_provider() {
@@ -6188,7 +6315,7 @@ fn hover_inline_block_reports_missing_template_argument() {
 #[test]
 fn hover_inline_block_lists_transformers() {
 	let inline_doc = "<!-- {~version:\"{{ pkg.version }}\"|trim} --> 1.2.3 <!-- {/version} -->\n";
-	let uri = test_uri(std::path::Path::new("/tmp/test/inline.md"));
+	let uri = test_uri(Path::new("/tmp/test/inline.md"));
 	let (blocks, parse_diagnostics) = parse_with_diagnostics(inline_doc).unwrap_or_default();
 	let block = blocks[0].clone();
 	let state = WorkspaceState {
@@ -6283,8 +6410,8 @@ fn code_action_for_stale_inline_block_updates_rendered_content() {
 
 #[test]
 fn references_from_inline_returns_other_inline_blocks() {
-	let uri_a = test_uri(std::path::Path::new("/tmp/test/readme.md"));
-	let uri_b = test_uri(std::path::Path::new("/tmp/test/docs.md"));
+	let uri_a = test_uri(Path::new("/tmp/test/readme.md"));
+	let uri_b = test_uri(Path::new("/tmp/test/docs.md"));
 	let doc_a = "<!-- {~version:\"{{ pkg.version }}\"} -->0.0.0<!-- {/version} -->\n";
 	let doc_b = "<!-- {~version:\"{{ pkg.version }}\"} -->1.0.0<!-- {/version} -->\n";
 	let (blocks_a, diagnostics_a) = parse_with_diagnostics(doc_a).unwrap_or_default();
@@ -6617,7 +6744,7 @@ async fn language_server_request_wrappers_delegate_to_core_handlers() {
 			.is_some()
 	);
 
-	let completion_uri = test_uri(std::path::Path::new("/tmp/test/completion.md"));
+	let completion_uri = test_uri(Path::new("/tmp/test/completion.md"));
 	let completion_state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::from([(

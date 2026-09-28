@@ -25,6 +25,7 @@ insta = { default-features = false, version = "^1" }
 insta-cmd = { default-features = false, version = "0.7.0" }
 kdl = { default-features = false, version = "^6" }
 logos = { default-features = false, version = "0.16.1" }
+memchr = { default-features = false, version = "^2" }
 markdown = { default-features = false, version = "^1" }
 miette = { default-features = false, version = "^7" }
 minijinja = { default-features = false, version = "^2" }

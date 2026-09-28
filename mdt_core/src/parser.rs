@@ -1,3 +1,5 @@
+use std::cell::LazyCell;
+
 use markdown::ParseOptions;
 use markdown::mdast::Html;
 use markdown::mdast::Node;
@@ -11,10 +13,7 @@ use super::MdtError;
 use super::MdtResult;
 use crate::Position;
 use crate::lexer::tokenize;
-use crate::patterns::closing_pattern;
-use crate::patterns::consumer_pattern;
-use crate::patterns::inline_pattern;
-use crate::patterns::provider_pattern;
+use crate::patterns::with_pattern_set;
 use crate::tokens::Token;
 use crate::tokens::TokenGroup;
 
@@ -238,10 +237,17 @@ fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<V
 	Ok(blocks)
 }
 
+// Shared GFM parse options. Constructed once per thread instead of per file
+// — `ParseOptions::gfm()` builds several nested option structs (including
+// non-`Send` callbacks) on every call.
+thread_local! {
+	static GFM_PARSE_OPTIONS: LazyCell<ParseOptions> = LazyCell::new(ParseOptions::gfm);
+}
+
 pub fn get_html_nodes(content: impl AsRef<str>) -> MdtResult<Vec<Html>> {
-	let options = ParseOptions::gfm();
-	let mdast =
-		to_mdast(content.as_ref(), &options).map_err(|e| MdtError::Markdown(e.to_string()))?;
+	let mdast = GFM_PARSE_OPTIONS
+		.with(|options| to_mdast(content.as_ref(), options))
+		.map_err(|e| MdtError::Markdown(e.to_string()))?;
 	let mut html_nodes = vec![];
 	collect_html(&mdast, &mut html_nodes);
 
@@ -285,42 +291,44 @@ enum GroupKind {
 
 /// Classify a token group as a provider, consumer, close tag, or unknown.
 fn classify_group(group: &TokenGroup) -> GroupKind {
-	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments) =
-			extract_name_transformers_and_arguments(group, &Token::ProviderTag);
-		return GroupKind::Provider {
-			name,
-			transformers,
-			arguments,
-		};
-	}
+	with_pattern_set(|set| {
+		if group.matches_pattern(set.provider()).unwrap_or(false) {
+			let (name, transformers, arguments) =
+				extract_name_transformers_and_arguments(group, &Token::ProviderTag);
+			return GroupKind::Provider {
+				name,
+				transformers,
+				arguments,
+			};
+		}
 
-	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments) =
-			extract_name_transformers_and_arguments(group, &Token::ConsumerTag);
-		return GroupKind::Consumer {
-			name,
-			transformers,
-			arguments,
-		};
-	}
+		if group.matches_pattern(set.consumer()).unwrap_or(false) {
+			let (name, transformers, arguments) =
+				extract_name_transformers_and_arguments(group, &Token::ConsumerTag);
+			return GroupKind::Consumer {
+				name,
+				transformers,
+				arguments,
+			};
+		}
 
-	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments) =
-			extract_name_transformers_and_arguments(group, &Token::InlineTag);
-		return GroupKind::Inline {
-			name,
-			transformers,
-			arguments,
-		};
-	}
+		if group.matches_pattern(set.inline()).unwrap_or(false) {
+			let (name, transformers, arguments) =
+				extract_name_transformers_and_arguments(group, &Token::InlineTag);
+			return GroupKind::Inline {
+				name,
+				transformers,
+				arguments,
+			};
+		}
 
-	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
-		let name = extract_close_name(group);
-		return GroupKind::Close { name };
-	}
+		if group.matches_pattern(set.closing()).unwrap_or(false) {
+			let name = extract_close_name(group);
+			return GroupKind::Close { name };
+		}
 
-	GroupKind::Unknown
+		GroupKind::Unknown
+	})
 }
 
 /// Like `classify_group` but also collects diagnostics for unknown
@@ -329,63 +337,65 @@ fn classify_group_with_diagnostics(
 	group: &TokenGroup,
 	diagnostics: &mut Vec<ParseDiagnostic>,
 ) -> GroupKind {
-	if group.matches_pattern(&provider_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments, unknown) =
-			extract_name_transformers_arguments_with_diagnostics(group, &Token::ProviderTag);
-		for unknown_name in unknown {
-			diagnostics.push(ParseDiagnostic::UnknownTransformer {
-				name: unknown_name,
-				line: group.position.start.line,
-				column: group.position.start.column,
-			});
+	with_pattern_set(|set| {
+		if group.matches_pattern(set.provider()).unwrap_or(false) {
+			let (name, transformers, arguments, unknown) =
+				extract_name_transformers_arguments_with_diagnostics(group, &Token::ProviderTag);
+			for unknown_name in unknown {
+				diagnostics.push(ParseDiagnostic::UnknownTransformer {
+					name: unknown_name,
+					line: group.position.start.line,
+					column: group.position.start.column,
+				});
+			}
+			return GroupKind::Provider {
+				name,
+				transformers,
+				arguments,
+			};
 		}
-		return GroupKind::Provider {
-			name,
-			transformers,
-			arguments,
-		};
-	}
 
-	if group.matches_pattern(&consumer_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments, unknown) =
-			extract_name_transformers_arguments_with_diagnostics(group, &Token::ConsumerTag);
-		for unknown_name in unknown {
-			diagnostics.push(ParseDiagnostic::UnknownTransformer {
-				name: unknown_name,
-				line: group.position.start.line,
-				column: group.position.start.column,
-			});
+		if group.matches_pattern(set.consumer()).unwrap_or(false) {
+			let (name, transformers, arguments, unknown) =
+				extract_name_transformers_arguments_with_diagnostics(group, &Token::ConsumerTag);
+			for unknown_name in unknown {
+				diagnostics.push(ParseDiagnostic::UnknownTransformer {
+					name: unknown_name,
+					line: group.position.start.line,
+					column: group.position.start.column,
+				});
+			}
+			return GroupKind::Consumer {
+				name,
+				transformers,
+				arguments,
+			};
 		}
-		return GroupKind::Consumer {
-			name,
-			transformers,
-			arguments,
-		};
-	}
 
-	if group.matches_pattern(&inline_pattern()).unwrap_or(false) {
-		let (name, transformers, arguments, unknown) =
-			extract_name_transformers_arguments_with_diagnostics(group, &Token::InlineTag);
-		for unknown_name in unknown {
-			diagnostics.push(ParseDiagnostic::UnknownTransformer {
-				name: unknown_name,
-				line: group.position.start.line,
-				column: group.position.start.column,
-			});
+		if group.matches_pattern(set.inline()).unwrap_or(false) {
+			let (name, transformers, arguments, unknown) =
+				extract_name_transformers_arguments_with_diagnostics(group, &Token::InlineTag);
+			for unknown_name in unknown {
+				diagnostics.push(ParseDiagnostic::UnknownTransformer {
+					name: unknown_name,
+					line: group.position.start.line,
+					column: group.position.start.column,
+				});
+			}
+			return GroupKind::Inline {
+				name,
+				transformers,
+				arguments,
+			};
 		}
-		return GroupKind::Inline {
-			name,
-			transformers,
-			arguments,
-		};
-	}
 
-	if group.matches_pattern(&closing_pattern()).unwrap_or(false) {
-		let name = extract_close_name(group);
-		return GroupKind::Close { name };
-	}
+		if group.matches_pattern(set.closing()).unwrap_or(false) {
+			let name = extract_close_name(group);
+			return GroupKind::Close { name };
+		}
 
-	GroupKind::Unknown
+		GroupKind::Unknown
+	})
 }
 
 /// Extract the block name, positional arguments, and transformers from a

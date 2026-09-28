@@ -20,6 +20,7 @@ ignore = { workspace = true, default-features = true }
 kdl = { workspace = true, default-features = true }
 logos = { workspace = true, default-features = true }
 markdown = { workspace = true, default-features = true }
+memchr = { workspace = true, default-features = true }
 miette = { workspace = true, features = ["fancy"], default-features = true }
 minijinja = { workspace = true, default-features = true }
 serde = { workspace = true, features = ["derive"], default-features = true }

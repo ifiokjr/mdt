@@ -24,6 +24,7 @@
 //! <!-- {/mdtLspOverview} -->
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 
 use mdt_core::Block;
@@ -33,6 +34,7 @@ use mdt_core::apply_transformers_with_data;
 use mdt_core::parse_source_with_diagnostics;
 use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
+use mdt_core::project::ProjectContext;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
 use mdt_core::project::is_markdown_path;
@@ -75,22 +77,25 @@ struct WorkspaceState {
 }
 
 impl WorkspaceState {
-	/// Rescan the project from disk. Called on initialize, save, and
-	/// workspace changes.
+	/// Store the result of a successful project scan.
+	fn apply_scan(&mut self, ctx: ProjectContext) {
+		self.providers = ctx.project.providers;
+		self.consumers = ctx.project.consumers;
+		self.data = ctx.data;
+	}
+
+	/// Synchronous project scan used by tests. The server itself scans on
+	/// the blocking thread pool via
+	/// [`MdtLanguageServer::scan_project_offload`].
+	#[cfg(test)]
 	fn rescan_project(&mut self) {
 		let Some(root) = &self.root else {
 			return;
 		};
 
 		match scan_project_with_config(root) {
-			Ok(ctx) => {
-				self.providers = ctx.project.providers;
-				self.consumers = ctx.project.consumers;
-				self.data = ctx.data;
-			}
-			Err(e) => {
-				tracing::error!("failed to scan project: {e}");
-			}
+			Ok(ctx) => self.apply_scan(ctx),
+			Err(e) => tracing::error!("failed to scan project: {e}"),
 		}
 	}
 
@@ -106,7 +111,18 @@ impl WorkspaceState {
 			return;
 		};
 
-		let is_template = uri.path().as_str().ends_with(".t.md");
+		let is_template = file_path
+			.file_name()
+			.and_then(|name| name.to_str())
+			.is_some_and(|name| name.ends_with(".t.md"));
+
+		if is_template {
+			// Drop this file's previous providers first: providers removed or
+			// renamed in the document would otherwise linger (and power
+			// completions, goto-definition, and rename edits) until the next
+			// full rescan.
+			self.providers.retain(|_, entry| entry.file != file_path);
+		}
 
 		for block in &doc.blocks {
 			let block_content = extract_content_between_tags(&doc.content, block);
@@ -157,7 +173,7 @@ impl WorkspaceState {
 /// Returns both parsed blocks and any parse diagnostics (unclosed blocks,
 /// unknown transformers, etc.).
 fn parse_document_content(uri: &Uri, content: &str) -> (Vec<Block>, Vec<ParseDiagnostic>) {
-	let result = if is_markdown_path(std::path::Path::new(uri.path().as_str())) {
+	let result = if is_markdown_path(Path::new(uri.path().as_str())) {
 		parse_with_diagnostics(content)
 	} else {
 		parse_source_with_diagnostics(content, &mdt_core::CodeBlockFilter::default())
@@ -236,6 +252,11 @@ fn to_lsp_position(point: &mdt_core::Point) -> Position {
 	}
 }
 
+/// Length of `text` in UTF-16 code units, the unit LSP positions count.
+fn utf16_len(text: &str) -> u32 {
+	text.chars().map(|ch| ch.len_utf16() as u32).sum()
+}
+
 /// Convert an mdt `Position` to an LSP `Range`.
 fn to_lsp_range(pos: &mdt_core::Position) -> Range {
 	Range {
@@ -251,24 +272,29 @@ fn lsp_position_to_offset(content: &str, position: Position) -> Option<usize> {
 	let mut offset = 0;
 	for (i, line) in content.split('\n').enumerate() {
 		if i == position.line as usize {
-			// LSP character offsets are in UTF-16 code units, so we need to
-			// walk the line converting from UTF-16 units to byte indices.
-			let mut utf16_offset = 0u32;
-			for (byte_idx, c) in line.char_indices() {
-				if utf16_offset == position.character {
-					return Some(offset + byte_idx);
-				}
-				utf16_offset += c.len_utf16() as u32;
-			}
-			// Position at end of line (past last character).
-			if utf16_offset == position.character {
-				return Some(offset + line.len());
-			}
-			return None;
+			// LSP character offsets are UTF-16 code units, so convert to a
+			// byte index instead of slicing by code units.
+			return utf16_col_to_byte_offset(line, position.character).map(|col| offset + col);
 		}
 		offset += line.len() + 1; // +1 for '\n'
 	}
 	None
+}
+
+/// Convert a UTF-16 code-unit column to a byte offset within a single line.
+///
+/// Returns `None` when `character` lands inside a multi-byte character (e.g.
+/// between the surrogate halves of an emoji) or past the end of the line —
+/// such positions do not map to a character boundary.
+fn utf16_col_to_byte_offset(line: &str, character: u32) -> Option<usize> {
+	let mut utf16_offset = 0u32;
+	for (byte_idx, ch) in line.char_indices() {
+		if utf16_offset == character {
+			return Some(byte_idx);
+		}
+		utf16_offset += ch.len_utf16() as u32;
+	}
+	(utf16_offset == character).then_some(line.len())
 }
 
 /// The MDT language server.
@@ -284,6 +310,17 @@ impl MdtLanguageServer {
 			client,
 			state: RwLock::new(WorkspaceState::default()),
 		}
+	}
+
+	/// Scan the project from disk on the blocking thread pool so the async
+	/// runtime — and the stdio transport — keeps serving requests while the
+	/// directory walk, data-source scripts, and file reads run.
+	async fn scan_project_offload(root: &Path) -> Result<ProjectContext, String> {
+		let root = root.to_path_buf();
+		tokio::task::spawn_blocking(move || scan_project_with_config(&root))
+			.await
+			.map_err(|e| format!("scan task failed: {e}"))?
+			.map_err(|e| e.to_string())
 	}
 
 	/// Publish diagnostics for a single document.
@@ -326,10 +363,22 @@ impl LanguageServer for MdtLanguageServer {
 					.and_then(|uri| uri.to_file_path().map(std::borrow::Cow::into_owned))
 			});
 
+		// Scan off the async runtime (the walk reads every managed file and
+		// may run config-declared data scripts), then apply under a short
+		// write lock.
+		let scan = match &root {
+			Some(root) => Some(Self::scan_project_offload(root).await),
+			None => None,
+		};
+
 		{
 			let mut state = self.state.write().await;
 			state.root = root;
-			state.rescan_project();
+			match scan {
+				Some(Ok(ctx)) => state.apply_scan(ctx),
+				Some(Err(e)) => tracing::error!("failed to scan project: {e}"),
+				None => {}
+			}
 		}
 
 		Ok(InitializeResult {
@@ -407,7 +456,21 @@ impl LanguageServer for MdtLanguageServer {
 				let start = lsp_position_to_offset(&content, range.start);
 				let end = lsp_position_to_offset(&content, range.end);
 				if let (Some(start), Some(end)) = (start, end) {
-					content.replace_range(start..end, &change.text);
+					if start <= end {
+						content.replace_range(start..end, &change.text);
+					} else {
+						tracing::warn!(
+							"dropping incremental change with inverted range for {}",
+							uri.path().as_str()
+						);
+					}
+				} else {
+					// Silently dropping the change would desync the server's
+					// document from the editor's.
+					tracing::warn!(
+						"dropping incremental change with unmappable range for {}",
+						uri.path().as_str()
+					);
 				}
 			} else {
 				content = change.text;
@@ -421,13 +484,23 @@ impl LanguageServer for MdtLanguageServer {
 		let uri = &params.text_document.uri;
 		let is_config = uri.path().as_str().ends_with("mdt.toml");
 
-		{
-			let mut state = self.state.write().await;
-			if is_config {
-				// Config changed — full rescan needed for data and exclude changes.
-				state.rescan_project();
-			} else {
-				// Incrementally update this document's providers/consumers.
+		if is_config {
+			// Config changed — full rescan needed for data and exclude
+			// changes. Scan off the runtime, then apply under a short lock.
+			let root = { self.state.read().await.root.clone() };
+			if let Some(root) = root {
+				match Self::scan_project_offload(&root).await {
+					Ok(ctx) => {
+						let mut state = self.state.write().await;
+						state.apply_scan(ctx);
+					}
+					Err(e) => tracing::error!("failed to scan project: {e}"),
+				}
+			}
+		} else {
+			// Incrementally update this document's providers/consumers.
+			{
+				let mut state = self.state.write().await;
 				state.update_document_in_project(uri);
 			}
 		}
@@ -977,17 +1050,17 @@ fn compute_completions(
 	// Check if we're inside an HTML comment context by looking at text before
 	// cursor.
 	let line_idx = position.line as usize;
-	let col = position.character as usize;
 
 	let lines: Vec<&str> = doc.content.lines().collect();
 	let Some(line) = lines.get(line_idx) else {
 		return Vec::new();
 	};
 
-	let before_cursor = if col <= line.len() {
-		&line[..col]
-	} else {
-		line
+	// LSP character offsets are UTF-16 code units; slicing the line by them
+	// directly panics whenever the cursor follows a multi-byte character.
+	let before_cursor = match utf16_col_to_byte_offset(line, position.character) {
+		Some(byte_offset) => &line[..byte_offset],
+		None => line,
 	};
 
 	// Check if we're in a context where block name completion makes sense:
@@ -1109,7 +1182,7 @@ fn transformer_completions() -> Vec<CompletionItem> {
 /// Unix-style paths such as `/tmp/test/readme.md` are not absolute on
 /// Windows, so build the URI text directly in that case to keep behavior
 /// identical across platforms.
-fn path_to_uri(path: &std::path::Path) -> Option<Uri> {
+fn path_to_uri(path: &Path) -> Option<Uri> {
 	if let Some(uri) = Uri::from_file_path(path) {
 		return Some(uri);
 	}
@@ -1428,16 +1501,17 @@ fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Op
 	let name_byte_offset = search_start + name_start_in_tag;
 
 	// Calculate the LSP position of the name by counting characters from
-	// the tag start.
+	// the tag start. LSP positions count UTF-16 code units, so measure the
+	// prefix and name in code units rather than bytes.
 	let before_name = &tag_text[..name_byte_offset];
 	let lines_before: Vec<&str> = before_name.split('\n').collect();
 	let newline_count = lines_before.len() - 1;
 
 	let start_line = tag_start.line + newline_count as u32;
 	let start_character = if newline_count > 0 {
-		lines_before.last().map_or(0, |l| l.len() as u32)
+		lines_before.last().map_or(0, |line| utf16_len(line))
 	} else {
-		tag_start.character + before_name.len() as u32
+		tag_start.character + utf16_len(before_name)
 	};
 
 	let name_end = &tag_text[name_byte_offset..name_byte_offset + name.len()];
@@ -1446,9 +1520,9 @@ fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Op
 
 	let end_line = start_line + name_newlines as u32;
 	let end_character = if name_newlines > 0 {
-		name_lines.last().map_or(0, |l| l.len() as u32)
+		name_lines.last().map_or(0, |line| utf16_len(line))
 	} else {
-		start_character + name.len() as u32
+		start_character + utf16_len(name)
 	};
 
 	Some(Range {

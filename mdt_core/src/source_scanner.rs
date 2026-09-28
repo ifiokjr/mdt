@@ -97,7 +97,9 @@ pub fn extract_html_comments(content: &str) -> Vec<Html> {
 	let bytes = content.as_bytes();
 	let open_marker = b"<!--";
 	let close_marker = b"-->";
-	let mut nodes = Vec::with_capacity(content.len() / 50);
+	// Typical files contain only a handful of comments; sizing by content
+	// length over-allocated megabytes for large source files.
+	let mut nodes = Vec::new();
 	let mut search_from = 0;
 	let line_table = LineTable::new(content);
 

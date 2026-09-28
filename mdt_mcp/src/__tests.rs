@@ -192,7 +192,7 @@ fn server_default_creates_instance() {
 #[tokio::test]
 async fn init_creates_template_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 
 	let result = server
 		.init(Parameters(InitParam {
@@ -226,7 +226,7 @@ async fn init_reports_existing_template() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.init(Parameters(InitParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -257,7 +257,7 @@ async fn init_reports_existing_template() {
 #[tokio::test]
 async fn check_on_empty_project_reports_up_to_date() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 
 	let result = server
 		.check(Parameters(PathParam {
@@ -278,7 +278,7 @@ async fn check_on_synced_project_reports_up_to_date() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_synced_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -297,7 +297,7 @@ async fn check_on_stale_project_reports_stale_blocks() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -321,7 +321,7 @@ async fn check_reports_formatter_only_stale_files() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_formatter_only_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -344,7 +344,7 @@ async fn update_on_up_to_date_project_reports_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_synced_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -365,7 +365,7 @@ async fn update_on_stale_project_applies_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -402,7 +402,7 @@ async fn update_formatter_only_stale_project_normalizes_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_formatter_only_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -431,7 +431,7 @@ async fn update_dry_run_does_not_write() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -460,7 +460,7 @@ async fn update_dry_run_lists_affected_files() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -478,7 +478,7 @@ async fn update_includes_template_warnings_in_json() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_warning_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -499,7 +499,7 @@ async fn update_includes_template_warnings_in_json() {
 #[tokio::test]
 async fn list_on_empty_project_returns_empty() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 
 	let result = server
 		.list(Parameters(PathParam {
@@ -520,7 +520,7 @@ async fn list_on_project_with_blocks_returns_provider_and_consumer() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -551,7 +551,7 @@ async fn list_shows_synced_consumer_as_not_stale() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_synced_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -575,7 +575,7 @@ async fn list_with_multiple_blocks_returns_sorted_providers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -637,7 +637,7 @@ Old markdown content.
 	std::fs::write(tmp.path().join("src/lib.rs"), source)
 		.unwrap_or_else(|e| panic!("write source: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.find_reuse(Parameters(ReuseParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -727,7 +727,7 @@ Old changelog content.
 	std::fs::write(tmp.path().join("changelog.md"), changelog)
 		.unwrap_or_else(|e| panic!("write changelog: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.find_reuse(Parameters(ReuseParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -760,7 +760,7 @@ async fn get_block_for_provider_returns_provider_info() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -791,7 +791,7 @@ async fn get_block_for_provider_lists_consumer_files() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -834,7 +834,7 @@ Some orphan content.
 	// block)
 	std::fs::write(tmp.path().join("template.t.md"), "").unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -860,7 +860,7 @@ Some orphan content.
 async fn get_block_for_nonexistent_returns_error() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -893,7 +893,7 @@ async fn preview_for_existing_provider_returns_rendered_content() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -919,7 +919,7 @@ async fn preview_shows_consumer_info() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -943,7 +943,7 @@ async fn preview_shows_consumer_info() {
 async fn preview_for_nonexistent_provider_returns_error() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -982,7 +982,7 @@ Nobody references me.
 	std::fs::write(tmp.path().join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1024,7 +1024,7 @@ placeholder
 	std::fs::write(tmp.path().join("readme.md"), readme)
 		.unwrap_or_else(|e| panic!("write readme: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1042,7 +1042,7 @@ async fn check_includes_template_warnings_in_json() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_warning_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1064,7 +1064,7 @@ async fn list_shows_correct_consumer_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1097,7 +1097,7 @@ async fn list_includes_summary() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1131,7 +1131,7 @@ async fn update_fixes_multiple_stale_blocks() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1166,7 +1166,7 @@ async fn update_fixes_multiple_stale_blocks() {
 #[tokio::test]
 async fn init_creates_file_with_provider_block() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 
 	server
 		.init(Parameters(InitParam {
@@ -1251,7 +1251,7 @@ placeholder
 	std::fs::write(tmp.path().join("readme.md"), readme)
 		.unwrap_or_else(|e| panic!("write readme: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1274,7 +1274,7 @@ async fn update_writes_files_and_reports_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1318,7 +1318,7 @@ async fn get_block_for_provider_shows_stale_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1354,7 +1354,7 @@ async fn list_with_stale_and_synced_consumers() {
 	// Create project with one stale block (farewell) and one synced (greeting)
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1420,7 +1420,7 @@ async fn check_with_template_data_interpolation() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1465,7 +1465,7 @@ async fn update_with_data_interpolation_writes_rendered_content() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1515,7 +1515,7 @@ async fn get_block_consumer_with_provider_and_data() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1579,7 +1579,7 @@ Hello from mdt!
 	std::fs::write(tmp.path().join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write template: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1612,7 +1612,7 @@ Hello from mdt!
 	std::fs::write(tmp.path().join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write template: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1658,7 +1658,7 @@ Some content.
 	std::fs::write(tmp.path().join("template.t.md"), "")
 		.unwrap_or_else(|e| panic!("write template: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1712,7 +1712,7 @@ Hello from mdt!
 	std::fs::write(tmp.path().join("readme.md"), readme)
 		.unwrap_or_else(|e| panic!("write readme: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1751,7 +1751,7 @@ async fn update_dry_run_reports_block_and_file_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1783,7 +1783,7 @@ async fn update_dry_run_reports_block_and_file_count() {
 async fn update_empty_project_reports_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1808,7 +1808,7 @@ async fn update_dry_run_synced_project_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_synced_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1842,7 +1842,7 @@ Nobody references me.
 	std::fs::write(tmp.path().join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1889,7 +1889,7 @@ async fn get_block_provider_raw_vs_rendered_content() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1947,7 +1947,7 @@ async fn preview_with_data_interpolation() {
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -1993,7 +1993,7 @@ Hello from mdt!
 		.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2015,7 +2015,7 @@ async fn check_stale_project_reports_block_name_and_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2043,7 +2043,7 @@ async fn update_is_idempotent() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 
 	// First update.
 	let result1 = server
@@ -2094,7 +2094,7 @@ async fn init_in_nested_directory() {
 	let nested = tmp.path().join("a").join("b").join("c");
 	std::fs::create_dir_all(&nested).unwrap_or_else(|e| panic!("mkdir: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.init(Parameters(InitParam {
 			path: Some(nested.to_string_lossy().to_string()),
@@ -2126,7 +2126,7 @@ async fn check_multiple_stale_blocks_reports_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_multi_block_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2180,7 +2180,7 @@ Old content 2.
 	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2235,7 +2235,7 @@ Old docs content.
 	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2276,7 +2276,7 @@ async fn list_summary_format() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2310,7 +2310,7 @@ async fn list_provider_content_is_trimmed() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2345,7 +2345,7 @@ async fn list_uses_relative_file_paths() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2414,7 +2414,7 @@ Hello from mdt!
 	std::fs::write(tmp.path().join("readme.md"), readme).unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(tmp.path().join("docs.md"), docs).unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2450,7 +2450,7 @@ async fn check_with_invalid_config_handles_gracefully() {
 	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2475,7 +2475,7 @@ async fn update_with_invalid_config_handles_gracefully() {
 	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2500,7 +2500,7 @@ async fn list_with_invalid_config_handles_gracefully() {
 	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.list(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2524,7 +2524,7 @@ async fn get_block_with_invalid_config_handles_gracefully() {
 	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.get_block(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2549,7 +2549,7 @@ async fn preview_with_invalid_config_handles_gracefully() {
 	std::fs::write(tmp.path().join("mdt.toml"), "[data\nbad toml")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2582,7 +2582,7 @@ async fn check_with_missing_data_file() {
 	std::fs::write(tmp.path().join("template.t.md"), template)
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2657,7 +2657,7 @@ async fn check_with_block_arguments_detects_stale() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_args_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2681,7 +2681,7 @@ async fn check_reports_argument_count_mismatch() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_args_mismatch_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.check(Parameters(PathParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2705,7 +2705,7 @@ async fn update_with_block_arguments_applies_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_args_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.update(Parameters(UpdateParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2746,7 +2746,7 @@ async fn preview_with_block_arguments_shows_provider_template() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	create_stale_args_project(tmp.path());
 
-	let server = MdtMcpServer::new();
+	let server = MdtMcpServer::with_base_root(tmp.path());
 	let result = server
 		.preview(Parameters(BlockParam {
 			path: Some(tmp.path().to_string_lossy().to_string()),
@@ -2764,4 +2764,76 @@ async fn preview_with_block_arguments_shows_provider_template() {
 			.is_some_and(|value| value.contains("mdt_core")),
 		"expected argument-aware consumer preview, got: {json}"
 	);
+}
+
+// ===========================================================================
+// path confinement
+// ===========================================================================
+
+#[tokio::test]
+async fn tools_reject_paths_outside_server_root() {
+	let base = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let outside = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(outside.path());
+
+	let server = MdtMcpServer::with_base_root(base.path());
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(outside.path().to_string_lossy().to_string()),
+		}))
+		.await;
+
+	let error = result.unwrap_err();
+	assert!(
+		error.message.contains("outside the mdt MCP server root"),
+		"expected confinement error, got: {error:?}"
+	);
+}
+
+#[tokio::test]
+async fn tools_reject_parent_escape_paths() {
+	let base = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
+	let server = MdtMcpServer::with_base_root(base.path());
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some("../elsewhere".to_string()),
+		}))
+		.await;
+
+	assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn tools_accept_subdirectory_inside_server_root() {
+	let base = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let nested = base.path().join("docs");
+	std::fs::create_dir_all(&nested).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	create_synced_project(&nested);
+
+	let server = MdtMcpServer::with_base_root(base.path());
+	let result = server
+		.check(Parameters(PathParam {
+			path: Some(nested.to_string_lossy().to_string()),
+		}))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
+}
+
+#[tokio::test]
+async fn tools_default_to_server_root() {
+	let base = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_synced_project(base.path());
+
+	let server = MdtMcpServer::with_base_root(base.path());
+	let result = server
+		.check(Parameters(PathParam { path: None }))
+		.await
+		.unwrap_or_else(|e| panic!("check: {e:?}"));
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true);
 }

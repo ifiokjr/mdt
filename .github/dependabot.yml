@@ -1,0 +1,33 @@
+# Dependabot keeps the SHA-pinned actions and dependency manifests current.
+# Updating the pin comments alongside SHAs is what lets Dependabot bump
+# pinned actions; without a bumping bot a stale or vulnerable pin could
+# persist unnoticed.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"
