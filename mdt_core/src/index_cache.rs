@@ -170,7 +170,9 @@ pub(crate) fn save(root: &Path, cache: &ProjectIndexCache) {
 		return;
 	}
 
-	let Ok(payload) = serde_json::to_vec_pretty(cache) else {
+	// Compact JSON: the artifact is machine-read only, and pretty printing
+	// inflated both its size and serialization time for large projects.
+	let Ok(payload) = serde_json::to_vec(cache) else {
 		return;
 	};
 

@@ -827,6 +827,10 @@ fn build_project_from_file_data(
 pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
 	let mut files = collect_files(root, &options.exclude_patterns, options.disable_gitignore)?;
 
+	// Track seen files in a set alongside the Vec — the `contains` scan made
+	// template/include collection quadratic in project size.
+	let mut seen_files: HashSet<PathBuf> = files.iter().cloned().collect();
+
 	for template_dir in &options.template_paths {
 		let abs_dir = root.join(template_dir);
 		if abs_dir.is_dir() {
@@ -836,7 +840,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 				options.disable_gitignore,
 			)?;
 			for f in extra_files {
-				if !files.contains(&f) {
+				if seen_files.insert(f.clone()) {
 					files.push(f);
 				}
 			}
@@ -852,6 +856,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 			&options.include_set,
 			&custom_exclude,
 			&mut files,
+			&mut seen_files,
 			true,
 		)?;
 	}
@@ -1089,6 +1094,7 @@ fn collect_included_files(
 	include_set: &GlobSet,
 	exclude_matcher: &Gitignore,
 	files: &mut Vec<PathBuf>,
+	seen_files: &mut HashSet<PathBuf>,
 	is_root: bool,
 ) -> MdtResult<()> {
 	if !dir.is_dir() {
@@ -1115,7 +1121,7 @@ fn collect_included_files(
 		}
 
 		if let Ok(rel_path) = path.strip_prefix(root) {
-			if path.is_file() && include_set.is_match(rel_path) && !files.contains(&path) {
+			if path.is_file() && include_set.is_match(rel_path) && seen_files.insert(path.clone()) {
 				files.push(path.clone());
 			}
 		}
@@ -1124,7 +1130,15 @@ fn collect_included_files(
 			if !is_root && has_project_config(&path) {
 				continue;
 			}
-			collect_included_files(root, &path, include_set, exclude_matcher, files, false)?;
+			collect_included_files(
+				root,
+				&path,
+				include_set,
+				exclude_matcher,
+				files,
+				seen_files,
+				false,
+			)?;
 		}
 	}
 
@@ -1141,13 +1155,20 @@ fn is_scannable_file(path: &Path) -> bool {
 		ext,
 		"md" | "mdx"
 			| "markdown"
-			| "rs" | "ts"
-			| "tsx" | "js"
-			| "jsx" | "py"
-			| "go" | "java"
-			| "kt" | "swift"
-			| "c" | "cpp"
-			| "h" | "cs"
+			| "rs"
+			| "ts"
+			| "tsx"
+			| "js"
+			| "jsx"
+			| "py"
+			| "go"
+			| "java"
+			| "kt"
+			| "swift"
+			| "c"
+			| "cpp"
+			| "h"
+			| "cs"
 	)
 }
 

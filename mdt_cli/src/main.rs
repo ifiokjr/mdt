@@ -1,6 +1,7 @@
 mod default_mdt_toml;
 
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
@@ -467,7 +468,7 @@ fn template_directory_hints(template_dirs: &[PathBuf]) -> Vec<String> {
 }
 
 fn count_orphan_consumers(
-	providers: &std::collections::HashMap<String, ProviderEntry>,
+	providers: &HashMap<String, ProviderEntry>,
 	consumers: &[ConsumerEntry],
 ) -> usize {
 	consumers
@@ -478,7 +479,7 @@ fn count_orphan_consumers(
 }
 
 fn count_unused_providers(
-	providers: &std::collections::HashMap<String, ProviderEntry>,
+	providers: &HashMap<String, ProviderEntry>,
 	consumers: &[ConsumerEntry],
 ) -> usize {
 	let referenced: HashSet<&str> = consumers
@@ -568,20 +569,8 @@ fn run_check(
 	let root = resolve_root(args);
 	let (tx, rx) = mpsc::channel();
 
-	let mut watcher =
-		notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-			if let Ok(event) = res {
-				if matches!(
-					event.kind,
-					notify::EventKind::Modify(_) | notify::EventKind::Create(_)
-				) {
-					let _ = tx.send(());
-				}
-			}
-		})?;
-
-	use notify::Watcher;
-	watcher.watch(&root, notify::RecursiveMode::Recursive)?;
+	// Keep the watcher guard alive for the lifetime of the loop.
+	let _watcher = spawn_watcher(&root, tx)?;
 
 	loop {
 		rx.recv()?;
@@ -593,6 +582,40 @@ fn run_check(
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
 	}
+}
+
+/// Build a recursive file watcher for `root` that signals the sender on
+/// content changes.
+///
+/// Events inside `<root>/.mdt/` are ignored: every scan rewrites the index
+/// cache artifact there, so watching it would make each run trigger the
+/// next — an endless check/update loop in watch mode.
+fn spawn_watcher(
+	root: &Path,
+	tx: mpsc::Sender<()>,
+) -> Result<notify::RecommendedWatcher, Box<dyn std::error::Error>> {
+	use notify::Watcher as _;
+
+	let cache_dir = root.join(".mdt");
+	let mut watcher =
+		notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+			if let Ok(event) = res {
+				if matches!(
+					event.kind,
+					notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+				) {
+					let outside_cache = event
+						.paths
+						.iter()
+						.any(|path| path.strip_prefix(&cache_dir).is_err());
+					if outside_cache {
+						let _ = tx.send(());
+					}
+				}
+			}
+		})?;
+	watcher.watch(root, notify::RecursiveMode::Recursive)?;
+	Ok(watcher)
 }
 
 /// Run a single check and return whether any consumers are stale (true = stale).
@@ -851,20 +874,8 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 	let root = resolve_root(args);
 	let (tx, rx) = mpsc::channel();
 
-	let mut watcher =
-		notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-			if let Ok(event) = res {
-				if matches!(
-					event.kind,
-					notify::EventKind::Modify(_) | notify::EventKind::Create(_)
-				) {
-					let _ = tx.send(());
-				}
-			}
-		})?;
-
-	use notify::Watcher;
-	watcher.watch(&root, notify::RecursiveMode::Recursive)?;
+	// Keep the watcher guard alive for the lifetime of the loop.
+	let _watcher = spawn_watcher(&root, tx)?;
 
 	loop {
 		rx.recv()?;
@@ -952,18 +963,21 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	// Providers
 	if !ctx.project.providers.is_empty() {
 		println!("{}", styled!(stdout, "Providers:", bold));
+		// One pass over consumers instead of a scan per provider.
+		let mut consumer_counts: HashMap<&str, usize> = HashMap::new();
+		for consumer in &ctx.project.consumers {
+			if consumer.block.r#type == BlockType::Consumer {
+				*consumer_counts
+					.entry(consumer.block.name.as_str())
+					.or_default() += 1;
+			}
+		}
 		let mut names: Vec<_> = ctx.project.providers.keys().collect();
 		names.sort();
 		for name in names {
 			let entry = &ctx.project.providers[name];
 			let rel = relative_display_path(&entry.file, &root);
-			let consumer_count = ctx
-				.project
-				.consumers
-				.iter()
-				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
-				.filter(|c| c.block.name == *name)
-				.count();
+			let consumer_count = consumer_counts.get(name.as_str()).copied().unwrap_or(0);
 			println!("  @{name} {rel} ({consumer_count} consumer(s))");
 		}
 	}
@@ -1171,11 +1185,8 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	});
 
 	let template_hints = template_directory_hints(&config.template_dirs);
-	let configured_template_dirs: Vec<String> = config
-		.template_dirs
-		.iter()
-		.map(|path| display_path(path))
-		.collect();
+	let configured_template_dirs: Vec<String> =
+		config.template_dirs.iter().map(display_path).collect();
 	let configured_template_dirs_display = if configured_template_dirs.is_empty() {
 		"default scan (*.t.md)".to_string()
 	} else {
@@ -1185,7 +1196,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let resolved_config = config
 		.path
 		.as_ref()
-		.map_or_else(|| "none".to_string(), |path| display_path(path));
+		.map_or_else(|| "none".to_string(), display_path);
 
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
@@ -1600,7 +1611,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	} else if !template_paths.is_empty() {
 		let configured = template_paths
 			.iter()
-			.map(|path| display_path(path))
+			.map(display_path)
 			.collect::<Vec<_>>()
 			.join(", ");
 		add_doctor_check(

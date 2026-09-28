@@ -374,8 +374,23 @@ pub fn tokenize(nodes: Vec<Html>) -> MdtResult<Vec<TokenGroup>> {
 	Ok(groups)
 }
 
+/// Find the first occurrence of `needle` in `haystack`.
+///
+/// Scans for the first byte with `memchr` (SIMD-accelerated) and verifies
+/// candidates directly, instead of comparing a byte window at every offset.
+/// This runs over every scanned non-markdown file, so the naive
+/// `windows().position()` scan was the dominant cost of source scanning.
 pub fn memstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-	haystack
-		.windows(needle.len())
-		.position(|window| window == needle)
+	let &first = needle.first()?;
+	let mut search_from = 0;
+
+	while search_from + needle.len() <= haystack.len() {
+		let offset = search_from + memchr::memchr(first, &haystack[search_from..])?;
+		if haystack[offset..].starts_with(needle) {
+			return Some(offset);
+		}
+		search_from = offset + 1;
+	}
+
+	None
 }

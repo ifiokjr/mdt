@@ -41,6 +41,7 @@
 		"docs/book",
 		".devenv/**",
 		".monochange/**",
+		".changeset/**",
 		"**/fixtures",
 		"**/snapshots",
 		"**/target",

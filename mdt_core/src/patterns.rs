@@ -1,9 +1,63 @@
+use std::cell::LazyCell;
+
 use crate::MdtError;
 use crate::MdtResult;
 use crate::tokens::Token;
 use crate::tokens::TokenGroup;
 
 pub type PatternMatcher = Box<dyn Fn(&TokenGroup, usize) -> MdtResult<usize> + 'static>;
+
+/// The four grammar patterns used to classify token groups.
+///
+/// Building them allocates hundreds of closures and strings, so they are
+/// constructed once per thread and reused for every token group instead of
+/// being rebuilt for each HTML comment.
+pub struct PatternSet {
+	closing: Vec<PatternMatcher>,
+	provider: Vec<PatternMatcher>,
+	consumer: Vec<PatternMatcher>,
+	inline: Vec<PatternMatcher>,
+}
+
+impl PatternSet {
+	fn new() -> Self {
+		Self {
+			closing: closing_pattern(),
+			provider: provider_pattern(),
+			consumer: consumer_pattern(),
+			inline: inline_pattern(),
+		}
+	}
+
+	/// Pattern for closing tags.
+	pub fn closing(&self) -> &[PatternMatcher] {
+		&self.closing
+	}
+
+	/// Pattern for provider tags.
+	pub fn provider(&self) -> &[PatternMatcher] {
+		&self.provider
+	}
+
+	/// Pattern for consumer tags.
+	pub fn consumer(&self) -> &[PatternMatcher] {
+		&self.consumer
+	}
+
+	/// Pattern for inline tags.
+	pub fn inline(&self) -> &[PatternMatcher] {
+		&self.inline
+	}
+}
+
+thread_local! {
+	static PATTERN_SET: LazyCell<PatternSet> = LazyCell::new(PatternSet::new);
+}
+
+/// Run `f` with the cached pattern set, building it on first use.
+pub fn with_pattern_set<R>(f: impl FnOnce(&PatternSet) -> R) -> R {
+	PATTERN_SET.with(|set| f(set))
+}
 
 pub fn closing_pattern() -> Vec<PatternMatcher> {
 	vec![
@@ -234,24 +288,11 @@ impl TokenGroup {
 	}
 
 	pub fn is_valid(&self) -> bool {
-		let patterns = vec![
-			closing_pattern(),
-			provider_pattern(),
-			consumer_pattern(),
-			inline_pattern(),
-		];
-
-		for pattern in patterns {
-			let Some(result) = self.matches_pattern(&pattern).ok() else {
-				continue;
-			};
-
-			if result {
-				return true;
-			}
-		}
-
-		false
+		with_pattern_set(|set| {
+			[set.closing(), set.provider(), set.consumer(), set.inline()]
+				.into_iter()
+				.any(|pattern| self.matches_pattern(pattern).unwrap_or(false))
+		})
 	}
 }
 

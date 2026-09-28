@@ -44,9 +44,9 @@ jobs:
           mapfile -t labels < <(jq -r '.[]' <<<"$PR_LABELS_JSON")
           args=(step affected-packages --format json --verify)
 
-          for path in $CHANGED_FILES; do
+          while IFS= read -r path; do
             args+=(--changed-paths "$path")
-          done
+          done <<<"$CHANGED_FILES"
 
           for label in "${labels[@]}"; do
             args+=(--label "$label")
