@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpwOtTpp
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpL20L3Y
     - list
   env:
     NO_COLOR: "1"
@@ -13,13 +13,13 @@ success: true
 exit_code: 0
 ----- stdout -----
 Providers:
-  @apiDocs template.t.md (1 consumer(s))
-  @greeting template.t.md (2 consumer(s))
+  @apiDocs template.t.md:7 (1 consumer(s))
+  @greeting template.t.md:1 (2 consumer(s))
 
 Consumers:
-  =greeting lib.rs |trim|linePrefix [linked]
-  =greeting readme.md [linked]
-  =apiDocs readme.md |trim [linked]
+  =greeting lib.rs:1 |trim|linePrefix:"//! ":true [linked]
+  =greeting readme.md:3 [linked]
+  =apiDocs readme.md:11 |trim [linked]
 
 2 provider(s), 3 consumer(s)
 

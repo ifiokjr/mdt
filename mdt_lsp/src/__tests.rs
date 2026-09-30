@@ -21,6 +21,24 @@ use tower_lsp_server::ls_types::*;
 
 use super::*;
 
+/// A scanned project holding `providers`, `consumers`, and `data`, with
+/// default `mdt.toml` settings.
+fn project_context(
+	providers: HashMap<String, ProviderEntry>,
+	consumers: Vec<ConsumerEntry>,
+	data: HashMap<String, JsonValue>,
+) -> ProjectContext {
+	ProjectContext {
+		project: Project {
+			providers,
+			consumers,
+			diagnostics: Vec::new(),
+		},
+		data,
+		..empty_project_context()
+	}
+}
+
 fn make_test_state(provider_content: &str, consumer_content: &str) -> (WorkspaceState, Uri) {
 	let provider_template =
 		format!("<!-- {{@greeting}} -->\n\n{provider_content}\n\n<!-- {{/greeting}} -->\n");
@@ -75,9 +93,7 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	(state, consumer_uri)
@@ -143,9 +159,7 @@ fn make_inline_test_state(
 		WorkspaceState {
 			root: Some(PathBuf::from("/tmp/test")),
 			documents,
-			providers: HashMap::new(),
-			consumers,
-			data,
+			ctx: project_context(HashMap::new(), consumers, data),
 		},
 		consumer_uri,
 	)
@@ -182,7 +196,7 @@ fn diagnostics_up_to_date_consumer() {
 		.find(|b| b.r#type == BlockType::Consumer)
 		.unwrap();
 	let content = extract_content_between_tags(&doc.content, block);
-	let provider = state.providers.get("greeting").unwrap();
+	let provider = state.ctx.project.providers.get("greeting").unwrap();
 	let expected = apply_transformers(&provider.content, &block.transformers);
 
 	if content == expected {
@@ -212,14 +226,14 @@ fn diagnostics_missing_provider() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &consumer_uri);
 	assert_eq!(diagnostics.len(), 1);
 	assert!(diagnostics[0].message.contains("No provider found"));
+	// `mdt check` fails on orphan consumers, so the editor reports an error.
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
 	assert!(diagnostics[0].message.contains("orphan"));
 }
 
@@ -245,14 +259,14 @@ fn diagnostics_provider_in_non_template_file() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
 	assert_eq!(diagnostics.len(), 1);
 	assert!(diagnostics[0].message.contains("only recognized in *.t.md"));
+	// `mdt check` reports providers outside templates as warnings.
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
 }
 
 #[test]
@@ -304,9 +318,7 @@ fn diagnostics_duplicate_provider_across_template_files() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics_a = compute_diagnostics(&state, &uri_a);
@@ -350,9 +362,7 @@ fn diagnostics_duplicate_provider_in_same_file() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -449,9 +459,7 @@ fn hover_on_provider_shows_consumer_count() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -516,9 +524,7 @@ fn completion_inside_consumer_tag() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -572,9 +578,7 @@ fn completion_after_multibyte_text_does_not_panic() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	// Cursor directly after the multi-byte text (byte index 2 sits inside
@@ -624,9 +628,7 @@ fn completion_after_pipe_suggests_transformers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -663,9 +665,7 @@ fn completion_outside_tag_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -727,9 +727,7 @@ fn goto_definition_without_matching_provider_returns_none() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -765,9 +763,7 @@ fn document_symbols_lists_blocks() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -799,9 +795,7 @@ fn document_symbols_empty_for_no_blocks() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -878,9 +872,7 @@ fn code_action_not_offered_when_up_to_date() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -994,7 +986,7 @@ fn parse_document_content_markdown() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "greeting");
 	assert!(diagnostics.is_empty());
@@ -1006,7 +998,7 @@ fn parse_document_content_source_file() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "block");
 	assert!(diagnostics.is_empty());
@@ -1050,9 +1042,7 @@ fn diagnostics_unclosed_block() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -1109,9 +1099,7 @@ fn diagnostics_unknown_transformer() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -1163,18 +1151,16 @@ fn diagnostics_unused_provider() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
-	assert!(
-		diagnostics
-			.iter()
-			.any(|d| d.message.contains("has no consumers") && d.message.contains("greeting")),
-		"expected unused provider diagnostic, got: {diagnostics:?}"
-	);
+	let unused = diagnostics
+		.iter()
+		.find(|d| d.message.contains("has no consumers") && d.message.contains("greeting"))
+		.unwrap_or_else(|| panic!("expected unused provider diagnostic, got: {diagnostics:?}"));
+	// Unused providers do not fail `mdt check`, so they are only warnings.
+	assert_eq!(unused.severity, Some(DiagnosticSeverity::WARNING));
 }
 
 #[test]
@@ -1216,9 +1202,7 @@ fn diagnostics_missing_provider_with_suggestion() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -1269,9 +1253,7 @@ fn diagnostics_missing_provider_no_suggestion_when_too_different() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -1291,7 +1273,7 @@ fn parse_document_content_with_unclosed_block() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {=greeting} -->\n\nHello\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert!(
 		blocks.is_empty(),
 		"unclosed block should not produce a block"
@@ -1309,7 +1291,7 @@ fn parse_document_content_with_unknown_transformer() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {=greeting|unknownFilter} -->\n\nHello\n\n<!-- {/greeting} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(diagnostics.len(), 1);
 	assert!(matches!(
@@ -1369,9 +1351,7 @@ fn goto_definition_provider_to_single_consumer() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -1469,9 +1449,7 @@ fn goto_definition_provider_to_multiple_consumers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -1539,9 +1517,7 @@ fn goto_definition_provider_with_no_consumers_returns_none() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -1598,9 +1574,7 @@ fn code_action_consumer_without_matching_provider() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -1642,9 +1616,7 @@ fn completion_cursor_past_line_length_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Character is way past the line length.
@@ -1679,9 +1651,7 @@ fn completion_document_with_no_blocks() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -1712,9 +1682,7 @@ fn completion_cursor_on_nonexistent_line_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Line 5 doesn't exist in the document.
@@ -1734,9 +1702,7 @@ fn completion_for_unknown_document_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -1790,9 +1756,7 @@ fn diagnostics_invalid_transformer_args() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -1851,19 +1815,17 @@ fn update_document_in_project_removes_deleted_providers() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	state.update_document_in_project(&provider_uri);
 
 	assert!(
-		!state.providers.contains_key("old"),
+		!state.ctx.project.providers.contains_key("old"),
 		"deleted provider must not linger after a template save"
 	);
 	assert!(
-		state.providers.contains_key("fresh"),
+		state.ctx.project.providers.contains_key("fresh"),
 		"newly added provider should be registered"
 	);
 }
@@ -1890,22 +1852,20 @@ fn update_document_in_project_template_updates_provider() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Before update, no providers.
-	assert!(state.providers.is_empty());
+	assert!(state.ctx.project.providers.is_empty());
 
 	state.update_document_in_project(&provider_uri);
 
 	// After update, the provider should be registered.
 	assert!(
-		state.providers.contains_key("greeting"),
+		state.ctx.project.providers.contains_key("greeting"),
 		"expected 'greeting' provider to be registered"
 	);
-	let provider = state.providers.get("greeting").unwrap();
+	let provider = state.ctx.project.providers.get("greeting").unwrap();
 	assert!(
 		provider.content.contains("Hello updated!"),
 		"expected provider content to contain updated text"
@@ -1935,18 +1895,19 @@ fn update_document_in_project_consumer_file_updates_consumers() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
-	assert!(state.consumers.is_empty());
+	assert!(state.ctx.project.consumers.is_empty());
 
 	state.update_document_in_project(&consumer_uri);
 
-	assert_eq!(state.consumers.len(), 1);
-	assert_eq!(state.consumers[0].block.name, "greeting");
-	assert_eq!(state.consumers[0].file, uri_file_path(&consumer_uri));
+	assert_eq!(state.ctx.project.consumers.len(), 1);
+	assert_eq!(state.ctx.project.consumers[0].block.name, "greeting");
+	assert_eq!(
+		state.ctx.project.consumers[0].file,
+		uri_file_path(&consumer_uri)
+	);
 }
 
 #[test]
@@ -1999,31 +1960,45 @@ fn update_document_in_project_replaces_existing_consumers() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: vec![old_consumer, other_consumer],
-		data: HashMap::new(),
+		ctx: project_context(
+			HashMap::new(),
+			vec![old_consumer, other_consumer],
+			HashMap::new(),
+		),
 	};
 
-	assert_eq!(state.consumers.len(), 2);
+	assert_eq!(state.ctx.project.consumers.len(), 2);
 
 	state.update_document_in_project(&consumer_uri);
 
 	// old_consumer (same file) should be removed, other_consumer preserved,
 	// and one new consumer added for "greeting".
-	assert_eq!(state.consumers.len(), 2);
+	assert_eq!(state.ctx.project.consumers.len(), 2);
 	assert!(
 		state
+			.ctx
+			.project
 			.consumers
 			.iter()
 			.any(|c| c.block.name == "other_block"),
 		"consumer from other file should be preserved"
 	);
 	assert!(
-		state.consumers.iter().any(|c| c.block.name == "greeting"),
+		state
+			.ctx
+			.project
+			.consumers
+			.iter()
+			.any(|c| c.block.name == "greeting"),
 		"new consumer should be added"
 	);
 	assert!(
-		!state.consumers.iter().any(|c| c.block.name == "old_block"),
+		!state
+			.ctx
+			.project
+			.consumers
+			.iter()
+			.any(|c| c.block.name == "old_block"),
 		"old consumer from same file should be removed"
 	);
 }
@@ -2037,16 +2012,14 @@ fn update_document_in_project_unknown_document_is_noop() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Should not panic or crash.
 	state.update_document_in_project(&uri);
 
-	assert!(state.providers.is_empty());
-	assert!(state.consumers.is_empty());
+	assert!(state.ctx.project.providers.is_empty());
+	assert!(state.ctx.project.consumers.is_empty());
 }
 
 // ---- parse_document (WorkspaceState method) tests ----
@@ -2061,9 +2034,7 @@ fn workspace_parse_document_stores_state() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let blocks = state.parse_document(&uri, content.to_string());
@@ -2090,9 +2061,7 @@ fn workspace_parse_document_with_diagnostics() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let blocks = state.parse_document(&uri, content.to_string());
@@ -2121,9 +2090,7 @@ fn workspace_parse_document_replaces_previous() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let content_v1 = "# Version 1\n";
@@ -2159,9 +2126,7 @@ fn hover_consumer_without_provider_shows_no_matching() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -2226,9 +2191,7 @@ fn hover_consumer_with_transformers_shows_transformer_list() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -2585,9 +2548,7 @@ fn diagnostics_unknown_document_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -2666,9 +2627,7 @@ fn hover_provider_lists_consumer_files() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -2705,9 +2664,7 @@ fn code_actions_unknown_document_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -2739,9 +2696,7 @@ fn document_symbols_unknown_document_returns_empty() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -2762,9 +2717,7 @@ fn hover_unknown_document_returns_none() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -2789,9 +2742,7 @@ fn goto_definition_unknown_document_returns_none() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let uri = "file:///tmp/test/unknown.md"
@@ -2868,7 +2819,7 @@ fn parse_document_content_mdx_is_markdown() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "greeting");
 	assert!(diagnostics.is_empty());
@@ -2880,7 +2831,7 @@ fn parse_document_content_markdown_extension() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "<!-- {=block} -->\n\ncontent\n\n<!-- {/block} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "block");
 	assert!(diagnostics.is_empty());
@@ -2892,7 +2843,7 @@ fn parse_document_content_typescript_file() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "block");
 	assert!(diagnostics.is_empty());
@@ -2905,16 +2856,14 @@ fn rescan_project_without_root_is_noop() {
 	let mut state = WorkspaceState {
 		root: None,
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Should not panic; should be a no-op.
 	state.rescan_project();
 
-	assert!(state.providers.is_empty());
-	assert!(state.consumers.is_empty());
+	assert!(state.ctx.project.providers.is_empty());
+	assert!(state.ctx.project.consumers.is_empty());
 }
 
 // ===========================================================================
@@ -2968,9 +2917,7 @@ fn diagnostics_stale_consumer_with_template_data() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &consumer_uri);
@@ -3069,9 +3016,7 @@ Old farewell
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -3146,9 +3091,7 @@ fn completion_returns_all_provider_names() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -3246,9 +3189,7 @@ fn block_name_completions_have_reference_kind() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents: HashMap::new(),
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let completions = block_name_completions(&state);
@@ -3287,9 +3228,7 @@ fn document_symbols_full_range_spans_opening_to_closing() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -3387,7 +3326,7 @@ fn parse_document_content_python_file() {
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
 	let content = "# <!-- {=block} -->\n# content\n# <!-- {/block} -->\n";
-	let (blocks, diagnostics) = parse_document_content(&uri, content);
+	let (blocks, diagnostics) = parse_document_content(&uri, content, &CodeBlockFilter::default());
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].name, "block");
 	assert!(diagnostics.is_empty());
@@ -3402,7 +3341,7 @@ fn parse_document_content_empty_string() {
 	let uri = "file:///test/readme.md"
 		.parse::<Uri>()
 		.unwrap_or_else(|_| panic!("invalid URI"));
-	let (blocks, diagnostics) = parse_document_content(&uri, "");
+	let (blocks, diagnostics) = parse_document_content(&uri, "", &CodeBlockFilter::default());
 	assert!(blocks.is_empty());
 	assert!(diagnostics.is_empty());
 }
@@ -3450,9 +3389,7 @@ fn hover_provider_shows_content_in_code_block() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -3549,9 +3486,7 @@ Bye
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Position on line 8 "Some text between blocks." — not in any block's opening.
@@ -3626,9 +3561,7 @@ Old farewell
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	// Use a range that spans the entire document.
@@ -3676,9 +3609,9 @@ fn workspace_state_default() {
 	let state = WorkspaceState::default();
 	assert!(state.root.is_none());
 	assert!(state.documents.is_empty());
-	assert!(state.providers.is_empty());
-	assert!(state.consumers.is_empty());
-	assert!(state.data.is_empty());
+	assert!(state.ctx.project.providers.is_empty());
+	assert!(state.ctx.project.consumers.is_empty());
+	assert!(state.ctx.data.is_empty());
 }
 
 // ---- Completion: provider tag context ----
@@ -3719,9 +3652,7 @@ fn completion_inside_provider_tag_context() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -3775,9 +3706,7 @@ fn completion_inside_close_tag_context() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -3818,9 +3747,7 @@ fn code_action_skips_provider_blocks() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = &blocks[0];
@@ -3860,24 +3787,27 @@ fn rescan_project_with_valid_project_populates_state() {
 	let mut state = WorkspaceState {
 		root: Some(root.to_path_buf()),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	state.rescan_project();
 
 	assert!(
-		state.providers.contains_key("greeting"),
+		state.ctx.project.providers.contains_key("greeting"),
 		"expected 'greeting' provider after rescan, got: {:?}",
-		state.providers.keys().collect::<Vec<_>>()
+		state.ctx.project.providers.keys().collect::<Vec<_>>()
 	);
 	assert!(
-		!state.consumers.is_empty(),
+		!state.ctx.project.consumers.is_empty(),
 		"expected at least one consumer after rescan"
 	);
 	assert!(
-		state.consumers.iter().any(|c| c.block.name == "greeting"),
+		state
+			.ctx
+			.project
+			.consumers
+			.iter()
+			.any(|c| c.block.name == "greeting"),
 		"expected a 'greeting' consumer"
 	);
 }
@@ -3894,17 +3824,15 @@ fn rescan_project_with_invalid_config_prints_error_but_does_not_panic() {
 	let mut state = WorkspaceState {
 		root: Some(root.to_path_buf()),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Should not panic — the error is printed to stderr.
 	state.rescan_project();
 
 	// State should remain empty since the scan failed.
-	assert!(state.providers.is_empty());
-	assert!(state.consumers.is_empty());
+	assert!(state.ctx.project.providers.is_empty());
+	assert!(state.ctx.project.consumers.is_empty());
 }
 
 #[test]
@@ -3932,19 +3860,17 @@ fn rescan_project_with_data_from_config() {
 	let mut state = WorkspaceState {
 		root: Some(root.to_path_buf()),
 		documents: HashMap::new(),
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	state.rescan_project();
 
 	assert!(
-		!state.data.is_empty(),
+		!state.ctx.data.is_empty(),
 		"expected data to be populated from mdt.toml config"
 	);
 	assert!(
-		state.data.contains_key("pkg"),
+		state.ctx.data.contains_key("pkg"),
 		"expected 'pkg' namespace in data"
 	);
 }
@@ -3973,20 +3899,18 @@ fn update_document_in_project_non_file_uri_is_noop() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	// Should not panic; should be a no-op because untitled: URI has no file path.
 	state.update_document_in_project(&uri);
 
 	assert!(
-		state.providers.is_empty(),
+		state.ctx.project.providers.is_empty(),
 		"expected no providers for non-file URI"
 	);
 	assert!(
-		state.consumers.is_empty(),
+		state.ctx.project.consumers.is_empty(),
 		"expected no consumers for non-file URI"
 	);
 }
@@ -3994,9 +3918,8 @@ fn update_document_in_project_non_file_uri_is_noop() {
 // ---- Diagnostics with template render failure ----
 
 #[test]
-fn diagnostics_stale_consumer_with_render_template_failure() {
-	// Provider content with broken template syntax triggers the
-	// unwrap_or_else fallback path in compute_diagnostics (line 497).
+fn diagnostics_consumer_render_failure_is_an_error() {
+	// Provider content with broken template syntax cannot be rendered.
 	let provider_content = "{{ broken";
 	let consumer_content = "something else";
 
@@ -4046,27 +3969,27 @@ fn diagnostics_stale_consumer_with_render_template_failure() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
+	// `mdt update` skips a consumer whose provider fails to render, so the
+	// editor reports the render error instead of a stale block.
 	let diagnostics = compute_diagnostics(&state, &consumer_uri);
-	// Even though render_template fails, the fallback to raw content should
-	// still produce a stale diagnostic since the consumer content differs.
+	assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
 	assert!(
-		diagnostics
-			.iter()
-			.any(|d| d.message.contains("out of date")),
-		"expected stale consumer diagnostic even with template render failure, got: \
-		 {diagnostics:?}"
+		diagnostics[0]
+			.message
+			.starts_with("Consumer block `greeting` failed to render: "),
+		"{}",
+		diagnostics[0].message
 	);
 }
 
 // ---- Hover: consumer with render_template failure ----
 
 #[test]
-fn hover_consumer_with_render_template_failure_shows_fallback() {
+fn hover_consumer_with_render_template_failure_shows_the_error() {
 	// Provider content has broken template syntax.
 	let provider_content = "{{ broken";
 	let provider_template =
@@ -4112,9 +4035,7 @@ fn hover_consumer_with_render_template_failure_shows_fallback() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
 	let block = consumer_blocks
@@ -4125,7 +4046,7 @@ fn hover_consumer_with_render_template_failure_shows_fallback() {
 	let position = to_lsp_position(&block.opening.start);
 	let hover = compute_hover(&state, &consumer_uri, position);
 
-	assert!(hover.is_some(), "expected hover result with fallback");
+	assert!(hover.is_some(), "expected hover result");
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Consumer block"),
@@ -4137,10 +4058,15 @@ fn hover_consumer_with_render_template_failure_shows_fallback() {
 			"expected 'greeting' in hover, got: {}",
 			markup.value
 		);
-		// The fallback content should contain the raw template syntax.
+		// The raw template is never shown as if it were the rendered output.
 		assert!(
-			markup.value.contains("broken"),
-			"expected raw fallback content in hover, got: {}",
+			markup.value.contains("*Failed to render provider:*"),
+			"expected the render error in hover, got: {}",
+			markup.value
+		);
+		assert!(
+			!markup.value.contains("{{ broken"),
+			"expected no raw template in hover, got: {}",
 			markup.value
 		);
 	} else {
@@ -4151,7 +4077,7 @@ fn hover_consumer_with_render_template_failure_shows_fallback() {
 // ---- Code Actions: render_template failure path ----
 
 #[test]
-fn code_action_with_render_template_failure_uses_fallback() {
+fn code_action_not_offered_when_provider_fails_to_render() {
 	let provider_content = "{{ broken";
 	let provider_template =
 		format!("<!-- {{@greeting}} -->\n\n{provider_content}\n\n<!-- {{/greeting}} -->\n");
@@ -4195,9 +4121,7 @@ fn code_action_with_render_template_failure_uses_fallback() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
 	let block = consumer_blocks
@@ -4210,21 +4134,10 @@ fn code_action_with_render_template_failure_uses_fallback() {
 		end: to_lsp_position(&block.closing.end),
 	};
 
+	// `mdt update` skips a consumer whose provider fails to render, so there
+	// is nothing to fix; the raw template text is never offered as content.
 	let actions = compute_code_actions(&state, &consumer_uri, range);
-	// Even with render failure, the fallback content differs from current
-	// content, so a code action should be offered.
-	assert!(
-		!actions.is_empty(),
-		"expected code action even with render template failure"
-	);
-
-	let CodeActionOrCommand::CodeAction(action) = &actions[0] else {
-		panic!("expected CodeAction")
-	};
-
-	assert!(action.title.contains("Update block"));
-	assert!(action.title.contains("greeting"));
-	assert!(action.edit.is_some());
+	assert!(actions.is_empty(), "{actions:?}");
 }
 
 // ---- Diagnostics: stale consumer with transformers applied ----
@@ -4273,9 +4186,7 @@ fn diagnostics_stale_consumer_with_transformers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &consumer_uri);
@@ -4325,9 +4236,7 @@ fn hover_provider_with_zero_consumers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -4381,9 +4290,7 @@ fn document_symbols_provider_block_has_class_kind() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -4415,9 +4322,7 @@ fn document_symbols_consumer_block_has_variable_kind() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -4480,9 +4385,7 @@ fn diagnostics_provider_with_consumers_no_unused_warning() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -4544,9 +4447,7 @@ fn diagnostics_stale_consumer_with_successful_template_rendering() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &consumer_uri);
@@ -4616,9 +4517,7 @@ fn hover_consumer_with_transformers_shows_transformed_content() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -4706,9 +4605,7 @@ fn completion_lists_all_providers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = Position {
@@ -4776,9 +4673,7 @@ fn code_action_with_successful_template_rendering() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data,
+		ctx: project_context(providers, Vec::new(), data),
 	};
 
 	let block = consumer_blocks
@@ -4862,9 +4757,7 @@ fn hover_provider_shows_raw_content_with_template_syntax() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -4929,9 +4822,7 @@ fn diagnostics_multiple_blocks_mixed_states() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(providers, Vec::new(), HashMap::new()),
 	};
 
 	let diagnostics = compute_diagnostics(&state, &uri);
@@ -4975,16 +4866,14 @@ fn update_document_in_project_provider_in_non_template_file_not_registered() {
 	let mut state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	state.update_document_in_project(&uri);
 
 	// Provider blocks in non-template files should NOT be registered.
 	assert!(
-		state.providers.is_empty(),
+		state.ctx.project.providers.is_empty(),
 		"provider in non-template file should not be registered"
 	);
 }
@@ -5013,9 +4902,7 @@ fn document_symbols_multiple_blocks_correct_ranges() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let symbols = compute_document_symbols(&state, &uri);
@@ -5097,9 +4984,7 @@ fn make_args_test_state(consumer_arg: &str, consumer_body: &str) -> (WorkspaceSt
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	(state, consumer_uri)
@@ -5329,9 +5214,7 @@ fn references_from_provider_returns_provider_and_consumers() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let position = to_lsp_position(&provider_block.opening.start);
@@ -5400,9 +5283,7 @@ fn references_consumer_without_provider_returns_only_consumer() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), consumers, HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -5441,9 +5322,7 @@ fn prepare_rename_on_consumer_returns_name_range() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -5488,9 +5367,7 @@ fn prepare_rename_on_provider_returns_name_range() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers: HashMap::new(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(HashMap::new(), Vec::new(), HashMap::new()),
 	};
 
 	let block = provider_blocks
@@ -5589,9 +5466,7 @@ fn rename_consumer_renames_both_tags_in_open_document() {
 	let state = WorkspaceState {
 		root: Some(PathBuf::from("/tmp/test")),
 		documents,
-		providers,
-		consumers,
-		data: HashMap::new(),
+		ctx: project_context(providers, consumers, HashMap::new()),
 	};
 
 	let block = consumer_blocks
@@ -6222,9 +6097,11 @@ fn diagnostics_inline_block_requires_template_argument() {
 	assert_eq!(diagnostics.len(), 1);
 	assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
 	assert!(
-		diagnostics[0]
-			.message
-			.contains("requires a template argument")
+		diagnostics[0].message.starts_with(
+			"Inline block `version` failed to render: inline block requires one template argument"
+		),
+		"{}",
+		diagnostics[0].message
 	);
 }
 
@@ -6328,13 +6205,15 @@ fn hover_inline_block_lists_transformers() {
 				parse_diagnostics,
 			},
 		)]),
-		providers: HashMap::new(),
-		consumers: vec![ConsumerEntry {
-			block: block.clone(),
-			file: PathBuf::from("/tmp/test/inline.md"),
-			content: extract_content_between_tags(inline_doc, &block),
-		}],
-		data: HashMap::from([("pkg".to_string(), serde_json::json!({"version": " 1.2.3 "}))]),
+		ctx: project_context(
+			HashMap::new(),
+			vec![ConsumerEntry {
+				block: block.clone(),
+				file: PathBuf::from("/tmp/test/inline.md"),
+				content: extract_content_between_tags(inline_doc, &block),
+			}],
+			HashMap::from([("pkg".to_string(), serde_json::json!({"version": " 1.2.3 "}))]),
+		),
 	};
 	let hover = compute_hover(&state, &uri, to_lsp_position(&block.opening.start))
 		.unwrap_or_else(|| panic!("expected hover result"));
@@ -6439,20 +6318,22 @@ fn references_from_inline_returns_other_inline_blocks() {
 				},
 			),
 		]),
-		providers: HashMap::new(),
-		consumers: vec![
-			ConsumerEntry {
-				block: inline_a.clone(),
-				file: PathBuf::from("/tmp/test/readme.md"),
-				content: extract_content_between_tags(doc_a, &inline_a),
-			},
-			ConsumerEntry {
-				block: inline_b.clone(),
-				file: PathBuf::from("/tmp/test/docs.md"),
-				content: extract_content_between_tags(doc_b, &inline_b),
-			},
-		],
-		data: HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
+		ctx: project_context(
+			HashMap::new(),
+			vec![
+				ConsumerEntry {
+					block: inline_a.clone(),
+					file: PathBuf::from("/tmp/test/readme.md"),
+					content: extract_content_between_tags(doc_a, &inline_a),
+				},
+				ConsumerEntry {
+					block: inline_b.clone(),
+					file: PathBuf::from("/tmp/test/docs.md"),
+					content: extract_content_between_tags(doc_b, &inline_b),
+				},
+			],
+			HashMap::from([("pkg".to_string(), serde_json::json!({"version": "1.2.3"}))]),
+		),
 	};
 
 	let locations = compute_references(&state, &uri_a, to_lsp_position(&inline_a.opening.start))
@@ -6493,27 +6374,29 @@ fn rename_reads_unopened_provider_and_consumer_files_from_disk() {
 				parse_diagnostics: Vec::new(),
 			},
 		)]),
-		providers: HashMap::from([(
-			"greeting".to_string(),
-			ProviderEntry {
-				block: provider_block.clone(),
-				file: provider_path.clone(),
-				content: extract_content_between_tags(provider_doc, &provider_block),
-			},
-		)]),
-		consumers: vec![
-			ConsumerEntry {
-				block: consumer_block.clone(),
-				file: consumer_path.clone(),
-				content: extract_content_between_tags(consumer_doc, &consumer_block),
-			},
-			ConsumerEntry {
-				block: consumer_block.clone(),
-				file: extra_consumer_path.clone(),
-				content: extract_content_between_tags(consumer_doc, &consumer_block),
-			},
-		],
-		data: HashMap::new(),
+		ctx: project_context(
+			HashMap::from([(
+				"greeting".to_string(),
+				ProviderEntry {
+					block: provider_block.clone(),
+					file: provider_path.clone(),
+					content: extract_content_between_tags(provider_doc, &provider_block),
+				},
+			)]),
+			vec![
+				ConsumerEntry {
+					block: consumer_block.clone(),
+					file: consumer_path.clone(),
+					content: extract_content_between_tags(consumer_doc, &consumer_block),
+				},
+				ConsumerEntry {
+					block: consumer_block.clone(),
+					file: extra_consumer_path.clone(),
+					content: extract_content_between_tags(consumer_doc, &consumer_block),
+				},
+			],
+			HashMap::new(),
+		),
 	};
 
 	let edit = compute_rename(
@@ -6674,7 +6557,7 @@ async fn language_server_did_save_updates_template_provider_state() {
 		.await;
 
 	let state = service.inner().state.read().await;
-	assert!(state.providers.contains_key("greeting"));
+	assert!(state.ctx.project.providers.contains_key("greeting"));
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -6704,8 +6587,8 @@ async fn language_server_did_save_rescans_when_config_changes() {
 		.await;
 
 	let state = service.inner().state.read().await;
-	assert!(state.providers.contains_key("greeting"));
-	assert_eq!(state.consumers.len(), 1);
+	assert!(state.ctx.project.providers.contains_key("greeting"));
+	assert_eq!(state.ctx.project.consumers.len(), 1);
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -6755,9 +6638,19 @@ async fn language_server_request_wrappers_delegate_to_core_handlers() {
 				parse_diagnostics: Vec::new(),
 			},
 		)]),
-		providers: service.inner().state.read().await.providers.clone(),
-		consumers: Vec::new(),
-		data: HashMap::new(),
+		ctx: project_context(
+			service
+				.inner()
+				.state
+				.read()
+				.await
+				.ctx
+				.project
+				.providers
+				.clone(),
+			Vec::new(),
+			HashMap::new(),
+		),
 	};
 	*service.inner().state.write().await = completion_state;
 	assert!(matches!(
@@ -6877,4 +6770,281 @@ async fn language_server_request_wrappers_delegate_to_core_handlers() {
 			.unwrap_or_else(|e| panic!("rename: {e:?}"))
 			.is_some()
 	);
+}
+
+// ---- Parity with `mdt update` and `mdt check` ----
+
+const INSTALL_TEMPLATE: &str =
+	"<!-- {@installCommand} -->\n\nnpm install mdt\n\n<!-- {/installCommand} -->\n";
+
+/// Write `files` into a fresh project directory.
+fn write_fixture_project(files: &[(&str, &str)]) -> tempfile::TempDir {
+	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
+	for (path, content) in files {
+		std::fs::write(dir.path().join(path), content)
+			.unwrap_or_else(|e| panic!("failed to write {path}: {e}"));
+	}
+	dir
+}
+
+/// Scan the project at `root` the way the server does on initialize, then
+/// open `file` from disk.
+fn open_fixture_file(root: &Path, file: &str) -> (WorkspaceState, Uri) {
+	let mut state = WorkspaceState {
+		root: Some(root.to_path_buf()),
+		..Default::default()
+	};
+	state.rescan_project();
+	let path = root.join(file);
+	let content =
+		std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {file}: {e}"));
+	let uri = test_uri(&path);
+	state.parse_document(&uri, content);
+	(state, uri)
+}
+
+/// The content `mdt update` writes to `file` in the project at `root`.
+fn mdt_update_output(root: &Path, file: &str) -> String {
+	let ctx = scan_project_with_config(root).unwrap_or_else(|e| panic!("scan failed: {e}"));
+	let updates = mdt_core::compute_updates(&ctx).unwrap_or_else(|e| panic!("update failed: {e}"));
+	assert!(
+		updates.render_errors.is_empty(),
+		"{:?}",
+		updates.render_errors
+	);
+	let (_, content) = updates
+		.updated_files
+		.into_iter()
+		.find(|(path, _)| path.ends_with(file))
+		.unwrap_or_else(|| panic!("`mdt update` left {file} unchanged"));
+	content
+}
+
+/// A range covering the whole document.
+fn whole_document() -> Range {
+	Range {
+		start: Position {
+			line: 0,
+			character: 0,
+		},
+		end: Position {
+			line: u32::MAX,
+			character: 0,
+		},
+	}
+}
+
+/// The single edit of the single code action offered for `uri`.
+fn single_code_action_edit(actions: &[CodeActionOrCommand], uri: &Uri) -> TextEdit {
+	let [CodeActionOrCommand::CodeAction(action)] = actions else {
+		panic!("expected one code action, got: {actions:?}");
+	};
+	let edits = action
+		.edit
+		.as_ref()
+		.and_then(|edit| edit.changes.as_ref())
+		.and_then(|changes| changes.get(uri))
+		.unwrap_or_else(|| panic!("expected edits for {uri:?}, got: {action:?}"));
+	let [edit] = edits.as_slice() else {
+		panic!("expected one edit, got: {edits:?}");
+	};
+	edit.clone()
+}
+
+#[rstest::rstest]
+#[case::markdown_zero_padding(
+	"[padding]\nbefore = 0\nafter = 0\n",
+	"readme.md",
+	"# Install\n\n<!-- {=installCommand|trim|codeBlock:\"sh\"} -->\nnpm install old\n<!-- \
+	 {/installCommand} -->\n"
+)]
+#[case::markdown_default_padding(
+	"",
+	"readme.md",
+	"# Install\n\n<!-- {=installCommand|trim|codeBlock:\"sh\"} -->\nnpm install old\n<!-- \
+	 {/installCommand} -->\n"
+)]
+#[case::markdown_inline_padding(
+	"[padding]\nbefore = false\nafter = false\n",
+	"readme.md",
+	"Run <!-- {=installCommand|trim|code} -->`npm install old`<!-- {/installCommand} --> first.\n"
+)]
+#[case::typescript_zero_padding(
+	"[padding]\nbefore = 0\nafter = 0\n",
+	"index.ts",
+	"/**\n * <!-- {=installCommand|trim|linePrefix:\" * \":true} -->\n * npm install old\n * <!-- \
+	 {/installCommand} -->\n */\nexport function install() {}\n"
+)]
+#[case::markdown_non_ascii_before_the_tag(
+	"",
+	"readme.md",
+	"Version ☕ é <!-- {=installCommand|trim|code} -->`npm install old`<!-- {/installCommand} \
+	 -->\n"
+)]
+#[case::markdown_crlf(
+	"",
+	"readme.md",
+	"# Install\r\n\r\n<!-- {=installCommand|trim} -->\r\nnpm install old\r\n<!-- \
+	 {/installCommand} -->\r\n"
+)]
+#[case::markdown_heading(
+	"",
+	"readme.md",
+	"# Release <!-- {=installCommand|trim} -->old<!-- {/installCommand} -->\n"
+)]
+#[case::rust_one_line_padding(
+	"[padding]\nbefore = 1\nafter = 1\n",
+	"lib.rs",
+	"//! <!-- {=installCommand|trim|linePrefix:\"//! \":true} -->\n//! npm install old\n//! <!-- \
+	 {/installCommand} -->\n\npub fn install() {}\n"
+)]
+fn consumer_diagnostics_and_fix_match_mdt_update(
+	#[case] config: &str,
+	#[case] file: &str,
+	#[case] stale: &str,
+) {
+	let dir = write_fixture_project(&[
+		("mdt.toml", config),
+		("template.t.md", INSTALL_TEMPLATE),
+		(file, stale),
+	]);
+	let updated = mdt_update_output(dir.path(), file);
+
+	let (mut state, uri) = open_fixture_file(dir.path(), file);
+	let diagnostics = compute_diagnostics(&state, &uri);
+	let [diagnostic] = diagnostics.as_slice() else {
+		panic!("expected one stale diagnostic, got: {diagnostics:?}");
+	};
+	assert_eq!(diagnostic.severity, Some(DiagnosticSeverity::WARNING));
+	assert_eq!(
+		diagnostic.message,
+		"Consumer block `installCommand` is out of date"
+	);
+
+	// The quick fix writes exactly what `mdt update` writes.
+	let edit = single_code_action_edit(&compute_code_actions(&state, &uri, whole_document()), &uri);
+	let fixed = apply_incremental_change(stale, edit.range, &edit.new_text);
+	assert_eq!(fixed, updated);
+
+	// A file `mdt update` just wrote is in sync: nothing to report or fix.
+	state.parse_document(&uri, updated);
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(diagnostics.is_empty(), "{diagnostics:?}");
+	let actions = compute_code_actions(&state, &uri, whole_document());
+	assert!(actions.is_empty(), "{actions:?}");
+}
+
+#[test]
+fn formatted_files_are_left_to_mdt_check() {
+	// `mdt check` compares formatter output, which the server does not
+	// compute per keystroke; a guessed stale diagnostic or fix would be wrong.
+	let dir = write_fixture_project(&[
+		(
+			"mdt.toml",
+			"[[formatters]]\ncommand = \"cat\"\npatterns = [\"**/*.md\"]\n",
+		),
+		("template.t.md", INSTALL_TEMPLATE),
+		(
+			"readme.md",
+			"<!-- {=installCommand} -->\nnpm install old\n<!-- {/installCommand} -->\n",
+		),
+	]);
+
+	let (state, uri) = open_fixture_file(dir.path(), "readme.md");
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(diagnostics.is_empty(), "{diagnostics:?}");
+	let actions = compute_code_actions(&state, &uri, whole_document());
+	assert!(actions.is_empty(), "{actions:?}");
+}
+
+#[test]
+fn lenient_comparison_matches_mdt_check() {
+	// Extra blank lines around the content pass `mdt check` in lenient mode.
+	let dir = write_fixture_project(&[
+		("mdt.toml", "[check]\ncomparison = \"lenient\"\n"),
+		("template.t.md", INSTALL_TEMPLATE),
+		(
+			"readme.md",
+			"<!-- {=installCommand} -->\n\n\n\nnpm install mdt\n\n\n\n<!-- {/installCommand} -->\n",
+		),
+	]);
+	let ctx = scan_project_with_config(dir.path()).unwrap_or_else(|e| panic!("scan failed: {e}"));
+	let check = mdt_core::check_project(&ctx).unwrap_or_else(|e| panic!("check failed: {e}"));
+	assert!(check.is_ok(), "fixture must pass `mdt check`: {check:?}");
+
+	let (state, uri) = open_fixture_file(dir.path(), "readme.md");
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(diagnostics.is_empty(), "{diagnostics:?}");
+	let actions = compute_code_actions(&state, &uri, whole_document());
+	assert!(actions.is_empty(), "{actions:?}");
+}
+
+#[test]
+fn source_tags_in_ignored_code_blocks_are_not_diagnosed() {
+	// `markdown_codeblocks = true` makes the scanner skip tags inside fenced
+	// code blocks in source comments; the editor must skip them too.
+	let dir = write_fixture_project(&[
+		("mdt.toml", "[exclude]\nmarkdown_codeblocks = true\n"),
+		(
+			"lib.rs",
+			"//! ```md\n//! <!-- {=example} -->\n//! text\n//! <!-- {/example} -->\n//! ```\n",
+		),
+	]);
+
+	let (state, uri) = open_fixture_file(dir.path(), "lib.rs");
+	assert!(
+		state.documents[&uri].blocks.is_empty(),
+		"{:?}",
+		state.documents[&uri].blocks
+	);
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(diagnostics.is_empty(), "{diagnostics:?}");
+}
+
+#[rstest::rstest]
+#[case::unmatched_closing_tag(
+	"<!-- {/ghost} -->\n",
+	DiagnosticSeverity::ERROR,
+	"Closing tag `{/ghost}` has no matching opening tag. Check both tags for typos."
+)]
+#[case::space_before_sigil(
+	"<!-- { =greeting} -->\n",
+	DiagnosticSeverity::ERROR,
+	"`<!-- { =greeting} -->` looks like an mdt tag but cannot be parsed, so mdt ignores it. The \
+	 sigil (`@`, `=`, `~`, `/`) must directly follow `{`, and block names must match \
+	 `[A-Za-z_][A-Za-z0-9_-]*`."
+)]
+#[case::nested_block(
+	"<!-- {=a} -->\nx\n<!-- {=b} -->\ny\n<!-- {/b} -->\n<!-- {/a} -->\n",
+	DiagnosticSeverity::ERROR,
+	"Block `b` is inside block `a`, whose content `mdt update` replaces; move `b` outside `a`."
+)]
+fn structural_parse_diagnostics_are_published(
+	#[case] content: &str,
+	#[case] severity: DiagnosticSeverity,
+	#[case] message: &str,
+) {
+	let uri = test_uri(Path::new("/tmp/test/readme.md"));
+	let mut state = WorkspaceState::default();
+	state.parse_document(&uri, content.to_string());
+
+	let diagnostics = compute_diagnostics(&state, &uri);
+	let diagnostic = diagnostics
+		.iter()
+		.find(|d| d.message == message)
+		.unwrap_or_else(|| panic!("expected {message:?}, got: {diagnostics:?}"));
+	assert_eq!(diagnostic.severity, Some(severity));
+	assert_eq!(diagnostic.source.as_deref(), Some("mdt"));
+}
+
+#[test]
+fn init_tracing_keeps_an_existing_global_subscriber() {
+	// `MDT_LOG=info mdt lsp`: the CLI installs its subscriber before the
+	// server starts.
+	let _ = tracing::subscriber::set_global_default(
+		fmt::Subscriber::builder()
+			.with_writer(std::io::sink)
+			.finish(),
+	);
+	init_tracing();
 }

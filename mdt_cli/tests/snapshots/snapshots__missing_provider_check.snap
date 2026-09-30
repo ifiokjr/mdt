@@ -4,20 +4,26 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpGUpr0j
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp5teIfE
     - check
   env:
     NO_COLOR: "1"
 ---
 success: false
-exit_code: 2
+exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
 mdt::unused_provider
 
-  x [template.t.md:1:1] provider block `other_block` has no consumers
+  ! [template.t.md:1:1] provider block `other_block` has no consumers
   help: add a consumer block `<!-- {=other_block} -->...<!-- {/other_block}
-        -->` or remove the unused provider
+        -->`, remove the unused provider, or pass `--ignore-unused-blocks`
 
-error: validation errors found
+Check failed.
+  orphan consumers: 1
+
+Orphan consumers:
+  consumer `nonexistent_block` at readme.md:3:1 has no provider
+
+1 consumer block(s) have no provider. Rename those consumers or define the providers in `*.t.md` files.

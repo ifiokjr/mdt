@@ -176,7 +176,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "check", "--watch"]);
 	match cli.command {
-		Some(Commands::Check { watch, diff, .. }) => {
+		Commands::Check { watch, diff, .. } => {
 			assert!(watch);
 			assert!(!diff);
 		}
@@ -185,7 +185,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "check"]);
 	match cli.command {
-		Some(Commands::Check { watch, .. }) => {
+		Commands::Check { watch, .. } => {
 			assert!(!watch);
 		}
 		_ => panic!("expected Check command"),
@@ -215,7 +215,7 @@ fn info_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "info"]);
 	match cli.command {
-		Some(Commands::Info { format }) => {
+		Commands::Info { format } => {
 			assert!(matches!(format, InfoOutputFormat::Text));
 		}
 		_ => panic!("expected Info command"),
@@ -223,7 +223,7 @@ fn info_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "info", "--format", "json"]);
 	match cli.command {
-		Some(Commands::Info { format }) => {
+		Commands::Info { format } => {
 			assert!(matches!(format, InfoOutputFormat::Json));
 		}
 		_ => panic!("expected Info command"),
@@ -236,7 +236,7 @@ fn doctor_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "doctor"]);
 	match cli.command {
-		Some(Commands::Doctor { format }) => {
+		Commands::Doctor { format } => {
 			assert!(matches!(format, DoctorOutputFormat::Text));
 		}
 		_ => panic!("expected Doctor command"),
@@ -244,7 +244,7 @@ fn doctor_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "doctor", "--format", "json"]);
 	match cli.command {
-		Some(Commands::Doctor { format }) => {
+		Commands::Doctor { format } => {
 			assert!(matches!(format, DoctorOutputFormat::Json));
 		}
 		_ => panic!("expected Doctor command"),
@@ -257,7 +257,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "assist", "claude"]);
 	match cli.command {
-		Some(Commands::Assist { assistant, format }) => {
+		Commands::Assist { assistant, format } => {
 			assert!(matches!(assistant, Assistant::Claude));
 			assert!(matches!(format, AssistOutputFormat::Text));
 		}
@@ -266,7 +266,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 
 	let cli = MdtCli::parse_from(["mdt", "assist", "pi", "--format", "json"]);
 	match cli.command {
-		Some(Commands::Assist { assistant, format }) => {
+		Commands::Assist { assistant, format } => {
 			assert!(matches!(assistant, Assistant::Pi));
 			assert!(matches!(format, AssistOutputFormat::Json));
 		}

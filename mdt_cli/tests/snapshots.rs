@@ -213,7 +213,9 @@ fn check_format_github_stale() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"check_format_github_stale",
+		// Like CI, run from the checkout so annotation paths are relative.
 		common::mdt_cmd_for_path(tmp.path())
+			.current_dir(tmp.path())
 			.arg("check")
 			.arg("--format")
 			.arg("github")
@@ -247,7 +249,9 @@ fn check_format_github_up_to_date() -> std::io::Result<()> {
 
 	assert_cmd_snapshot!(
 		"check_format_github_up_to_date",
+		// Like CI, run from the checkout so annotation paths are relative.
 		common::mdt_cmd_for_path(tmp.path())
+			.current_dir(tmp.path())
 			.arg("check")
 			.arg("--format")
 			.arg("github")

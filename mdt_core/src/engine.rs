@@ -28,6 +28,7 @@ use crate::project::extract_content_between_tags;
 use crate::project::is_markdown_path;
 use crate::project::normalize_line_endings;
 use crate::project::restore_line_endings;
+use crate::project::suggest_similar_provider_names;
 use crate::source_scanner::extract_line_comment_prefix;
 use crate::source_scanner::parse_source_with_diagnostics;
 
@@ -43,6 +44,10 @@ pub struct TemplateWarning {
 	/// The undefined variable references found in the template (e.g.,
 	/// `["pkgg.version", "typo"]`).
 	pub undefined_variables: Vec<String>,
+	/// Whether the provider is rendered as a template at all. Providers are
+	/// only rendered when `[data]` is configured (or the provider declares
+	/// parameters); otherwise `{{ ... }}` is copied to consumers literally.
+	pub template_rendered: bool,
 }
 
 /// Result of checking a project for stale consumers.
@@ -57,14 +62,21 @@ pub struct CheckResult {
 	/// Errors encountered while rendering templates. These are collected
 	/// instead of aborting so that the check reports all problems at once.
 	pub render_errors: Vec<RenderError>,
+	/// Consumers whose block name matches no provider. `mdt update` cannot
+	/// sync them, so they fail the check like stale consumers do.
+	pub orphans: Vec<OrphanConsumer>,
 	/// Warnings about undefined template variables in provider blocks.
 	pub warnings: Vec<TemplateWarning>,
 }
 
 impl CheckResult {
-	/// Returns true if all consumers are up to date and no errors occurred.
+	/// Returns true if every consumer is linked and up to date and no errors
+	/// occurred.
 	pub fn is_ok(&self) -> bool {
-		self.stale.is_empty() && self.stale_files.is_empty() && self.render_errors.is_empty()
+		self.stale.is_empty()
+			&& self.stale_files.is_empty()
+			&& self.render_errors.is_empty()
+			&& self.orphans.is_empty()
 	}
 
 	/// Returns true if there are template render errors.
@@ -92,6 +104,23 @@ pub struct RenderError {
 	pub line: usize,
 	/// 1-indexed column number of the consumer's opening tag.
 	pub column: usize,
+}
+
+/// A consumer block whose name matches no provider — usually a misspelled
+/// name, or a provider defined outside a `*.t.md` file.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct OrphanConsumer {
+	/// Path to the file containing the consumer.
+	pub file: PathBuf,
+	/// The block name that matches no provider.
+	pub block_name: String,
+	/// 1-indexed line number of the consumer's opening tag.
+	pub line: usize,
+	/// 1-indexed column number of the consumer's opening tag.
+	pub column: usize,
+	/// Existing provider names close to `block_name`, best match first.
+	pub suggestions: Vec<String>,
 }
 
 /// A consumer entry that is out of date.
@@ -136,6 +165,8 @@ pub struct UpdateResult {
 	pub updated_files: HashMap<PathBuf, String>,
 	/// Number of consumer blocks that were updated.
 	pub updated_count: usize,
+	/// Consumers left untouched because their provider failed to render.
+	pub render_errors: Vec<RenderError>,
 	/// Warnings about undefined template variables in provider blocks.
 	pub warnings: Vec<TemplateWarning>,
 }
@@ -158,16 +189,27 @@ pub fn render_template(
 	env.set_keep_trailing_newline(true);
 	env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
 	env.add_template("__inline__", content)
-		.map_err(|e| MdtError::TemplateRender(e.to_string()))?;
+		.map_err(template_render_error)?;
 
 	let template = env
 		.get_template("__inline__")
-		.map_err(|e| MdtError::TemplateRender(e.to_string()))?;
+		.map_err(template_render_error)?;
 
 	let ctx = minijinja::Value::from_serialize(data);
-	template
-		.render(ctx)
-		.map_err(|e| MdtError::TemplateRender(e.to_string()))
+	template.render(ctx).map_err(template_render_error)
+}
+
+/// Describe a minijinja failure by kind, detail, and line within the
+/// template, leaving out the internal template name.
+#[allow(clippy::needless_pass_by_value)] // Matches `map_err`'s by-value closure.
+fn template_render_error(error: minijinja::Error) -> MdtError {
+	let detail = error
+		.detail()
+		.map_or_else(String::new, |detail| format!(": {detail}"));
+	let line = error
+		.line()
+		.map_or_else(String::new, |line| format!(" (template line {line})"));
+	MdtError::TemplateRender(format!("{}{detail}{line}", error.kind()))
 }
 
 /// Find template variables referenced in `content` that are not defined in
@@ -184,7 +226,23 @@ pub fn find_undefined_variables(
 	content: &str,
 	data: &HashMap<String, serde_json::Value>,
 ) -> Vec<String> {
-	if data.is_empty() || !has_template_syntax(content) {
+	if data.is_empty() {
+		return Vec::new();
+	}
+
+	undeclared_variables(content)
+		.into_iter()
+		// A variable is truly undefined if its top-level namespace is not
+		// present in the data context.
+		.filter(|var| !data.contains_key(var.split('.').next().unwrap_or(var)))
+		.collect()
+}
+
+/// Every variable a template reads without defining it, with nested access
+/// (`pkg.version`), sorted. Minijinja builtins such as `loop` are left out;
+/// unparsable templates yield nothing (rendering reports those).
+fn undeclared_variables(content: &str) -> Vec<String> {
+	if !has_template_syntax(content) {
 		return Vec::new();
 	}
 
@@ -199,27 +257,13 @@ pub fn find_undefined_variables(
 		return Vec::new();
 	};
 
-	// Get all undeclared variables with nested access (e.g., "pkg.version").
-	let undeclared: HashSet<String> = template.undeclared_variables(true);
-
-	// Also get top-level names so we can check both "pkg.version" (nested)
-	// and "pkg" (top-level).
-	let top_level_names: HashSet<String> = data.keys().cloned().collect();
-
-	let mut undefined: Vec<String> = undeclared
+	let mut undeclared: Vec<String> = template
+		.undeclared_variables(true)
 		.into_iter()
-		.filter(|var| {
-			// Extract the top-level namespace from the variable reference.
-			let top_level = var.split('.').next().unwrap_or(var);
-			// A variable is truly undefined if its top-level namespace is
-			// not present in the data context. Variables like "loop" or
-			// "range" are minijinja builtins that we should not warn about.
-			!top_level_names.contains(top_level) && !is_builtin_variable(top_level)
-		})
+		.filter(|var| !is_builtin_variable(var.split('.').next().unwrap_or(var)))
 		.collect();
-
-	undefined.sort();
-	undefined
+	undeclared.sort();
+	undeclared
 }
 
 /// Check whether a variable name is a minijinja builtin that should not
@@ -264,9 +308,9 @@ pub fn normalize_whitespace(content: &str) -> String {
 	result
 }
 
-/// Compare two content strings, using lenient normalization when the
-/// comparison mode is `Lenient`.
-fn content_matches(
+/// Whether a consumer's current content passes `mdt check` against the
+/// expected content under the configured `[check] comparison` mode.
+pub fn content_matches(
 	actual: &str,
 	expected: &str,
 	comparison: &crate::config::ComparisonMode,
@@ -370,7 +414,7 @@ impl<'a> RenderCache<'a> {
 				.rendered
 				.entry(provider.block.name.clone())
 				.or_insert_with(|| {
-					render_template(&provider.content, self.data).map_err(|e| e.to_string())
+					render_template(&provider.content, self.data).map_err(render_error_message)
 				})
 				.clone();
 			return Some(RenderedForConsumer {
@@ -380,7 +424,8 @@ impl<'a> RenderCache<'a> {
 		}
 
 		let render_data = build_render_context(self.data, provider, consumer)?;
-		let rendered = render_template(&provider.content, &render_data).map_err(|e| e.to_string());
+		let rendered =
+			render_template(&provider.content, &render_data).map_err(render_error_message);
 		Some(RenderedForConsumer {
 			rendered,
 			data: std::borrow::Cow::Owned(render_data),
@@ -388,8 +433,165 @@ impl<'a> RenderCache<'a> {
 	}
 }
 
+/// The content `mdt update` writes between one consumer's tags, before any
+/// `[[formatters]]` run.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ExpectedContent {
+	/// The rendered, transformed, and padded content.
+	Rendered(String),
+	/// The block names no provider, so mdt leaves its content untouched.
+	NoProvider,
+	/// The provider template could not be rendered for this consumer; the
+	/// message explains why.
+	RenderFailed(String),
+}
+
+/// Compute what `mdt update` would write between `consumer`'s tags.
+///
+/// `source` is the current text of the consumer's file: the comment prefix
+/// in front of the closing tag is re-applied after the configured padding.
+/// The CLI, MCP server, and language server all report staleness through
+/// this function, so they agree on data, transformers, and padding.
+pub fn expected_consumer_content(
+	ctx: &ProjectContext,
+	consumer: &ConsumerEntry,
+	source: &str,
+) -> ExpectedContent {
+	expected_content(ctx, &mut RenderCache::new(&ctx.data), consumer, source)
+}
+
+fn expected_content(
+	ctx: &ProjectContext,
+	render_cache: &mut RenderCache<'_>,
+	consumer: &ConsumerEntry,
+	source: &str,
+) -> ExpectedContent {
+	match consumer.block.r#type {
+		BlockType::Consumer => {
+			let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
+				return ExpectedContent::NoProvider;
+			};
+			let Some(rendered) = render_cache.render(provider, consumer) else {
+				return ExpectedContent::RenderFailed(format!(
+					"argument count mismatch: provider `{}` declares {} parameter(s), but \
+					 consumer passes {}",
+					consumer.block.name,
+					provider.block.arguments.len(),
+					consumer.block.arguments.len(),
+				));
+			};
+			let rendered_content = match rendered.rendered {
+				Ok(rendered_content) => rendered_content,
+				Err(message) => return ExpectedContent::RenderFailed(message),
+			};
+			let transformed = apply_transformers_with_data(
+				&rendered_content,
+				&consumer.block.transformers,
+				Some(&rendered.data),
+			);
+			ExpectedContent::Rendered(pad_content_with_config(
+				&transformed,
+				closing_tag_prefix(consumer, source),
+				effective_padding(ctx),
+			))
+		}
+		BlockType::Inline => {
+			let Some(template) = consumer.block.arguments.first() else {
+				return ExpectedContent::RenderFailed(
+					"inline block requires one template argument, e.g. <!-- {~name:\"{{ \
+					 pkg.version }}\"} -->"
+						.to_string(),
+				);
+			};
+			match render_template(template, &ctx.data) {
+				Ok(rendered) => {
+					ExpectedContent::Rendered(apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&ctx.data),
+					))
+				}
+				Err(error) => ExpectedContent::RenderFailed(render_error_message(error)),
+			}
+		}
+		// Scanning never records providers as consumers.
+		BlockType::Provider => ExpectedContent::NoProvider,
+	}
+}
+
+/// Whether a `[[formatters]]` entry formats `file`. For such files the
+/// content `mdt check` expects is only known after running the formatter.
+pub fn formatter_applies(ctx: &ProjectContext, file: &Path) -> bool {
+	!ctx.formatters.is_empty()
+		&& !FormatterPipeline::compile(&ctx.formatters)
+			.commands_for(&ctx.root, file)
+			.is_empty()
+}
+
+/// The text in front of a consumer's closing tag that padding re-applies.
+///
+/// In source files that is the comment prefix (`//! `, ` * `). Markdown has
+/// no comment prefixes — `#` starts a heading and `*` a list item — so only
+/// indentation carries over there.
+fn closing_tag_prefix<'a>(consumer: &ConsumerEntry, source: &'a str) -> &'a str {
+	let prefix = extract_line_comment_prefix(source, consumer.block.closing.start.offset);
+	if is_markdown_path(&consumer.file) && !prefix.trim().is_empty() {
+		""
+	} else {
+		prefix
+	}
+}
+
+/// The template engine's explanation of a render failure, without the
+/// generic "template rendering failed" prefix callers add themselves.
+fn render_error_message(error: MdtError) -> String {
+	match error {
+		MdtError::TemplateRender(message) => message,
+		other => other.to_string(),
+	}
+}
+
+fn render_error(consumer: &ConsumerEntry, message: String) -> RenderError {
+	RenderError {
+		file: consumer.file.clone(),
+		block_name: consumer.block.name.clone(),
+		message,
+		line: consumer.block.opening.start.line,
+		column: consumer.block.opening.start.column,
+	}
+}
+
+fn orphan_consumer(ctx: &ProjectContext, consumer: &ConsumerEntry) -> OrphanConsumer {
+	OrphanConsumer {
+		file: consumer.file.clone(),
+		block_name: consumer.block.name.clone(),
+		line: consumer.block.opening.start.line,
+		column: consumer.block.opening.start.column,
+		suggestions: suggest_similar_provider_names(
+			&consumer.block.name,
+			ctx.project.providers.keys().map(String::as_str),
+		)
+		.into_iter()
+		.map(str::to_string)
+		.collect(),
+	}
+}
+
+fn stale_entry(consumer: &ConsumerEntry, expected_content: String) -> StaleEntry {
+	StaleEntry {
+		file: consumer.file.clone(),
+		block_name: consumer.block.name.clone(),
+		current_content: consumer.content.clone(),
+		expected_content,
+		line: consumer.block.opening.start.line,
+		column: consumer.block.opening.start.column,
+	}
+}
+
 /// Check whether all consumer blocks in the project are up to date.
-/// Consumer blocks that reference non-existent providers are silently skipped.
+/// Consumer blocks that reference non-existent providers are skipped here;
+/// they are reported through [`ProjectContext::find_missing_providers`].
 /// Template render errors are collected rather than aborting, so the check
 /// reports all problems in a single pass.
 #[instrument(skip(ctx), fields(
@@ -409,6 +611,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
+	let mut orphans = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 	debug!(warnings = warnings.len(), "collected template warnings");
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
@@ -422,120 +625,39 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		let mut raw_expected: Vec<Option<String>> = vec![None; ordered_consumers.len()];
 
 		for (index, consumer) in ordered_consumers.iter().enumerate().rev() {
-			match consumer.block.r#type {
-				BlockType::Consumer => {
-					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-						continue;
-					};
-
-					let Some(rendered) = render_cache.render(provider, consumer) else {
-						render_errors.push(RenderError {
-							file: consumer.file.clone(),
-							block_name: consumer.block.name.clone(),
-							message: format!(
-								"argument count mismatch: provider `{}` declares {} parameter(s), \
-								 but consumer passes {}",
-								consumer.block.name,
-								provider.block.arguments.len(),
-								consumer.block.arguments.len(),
-							),
-							line: consumer.block.opening.start.line,
-							column: consumer.block.opening.start.column,
-						});
-						continue;
-					};
-					let rendered_content = match rendered.rendered {
-						Ok(rendered_content) => rendered_content,
-						Err(message) => {
-							warn!(
-								file = %consumer.file.display(),
-								block = consumer.block.name,
-								error = %message,
-								"template render failed",
-							);
-							render_errors.push(RenderError {
-								file: consumer.file.clone(),
-								block_name: consumer.block.name.clone(),
-								message,
-								line: consumer.block.opening.start.line,
-								column: consumer.block.opening.start.column,
-							});
-							continue;
-						}
-					};
-					let mut expected = apply_transformers_with_data(
-						&rendered_content,
-						&consumer.block.transformers,
-						Some(&rendered.data),
-					);
-					expected = pad_content_with_config(
-						&expected,
-						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
-						effective_padding(ctx),
-					);
-					eligible[index] = true;
-					raw_expected[index] = Some(expected.clone());
-					if consumer.content != expected {
-						replace_consumer_content(&mut candidate, consumer, &expected);
-					}
+			let expected = match expected_content(ctx, &mut render_cache, consumer, &original) {
+				ExpectedContent::Rendered(expected) => expected,
+				ExpectedContent::NoProvider => {
+					orphans.push(orphan_consumer(ctx, consumer));
+					continue;
 				}
-				BlockType::Inline => {
-					let Some(template) = consumer.block.arguments.first() else {
-						render_errors.push(RenderError {
-							file: consumer.file.clone(),
-							block_name: consumer.block.name.clone(),
-							message: "inline block requires one template argument, e.g. <!-- \
-							          {~name:\"{{ pkg.version }}\"} -->"
-								.to_string(),
-							line: consumer.block.opening.start.line,
-							column: consumer.block.opening.start.column,
-						});
-						continue;
-					};
-					let rendered = match render_template(template, &ctx.data) {
-						Ok(rendered) => rendered,
-						Err(error) => {
-							render_errors.push(RenderError {
-								file: consumer.file.clone(),
-								block_name: consumer.block.name.clone(),
-								message: error.to_string(),
-								line: consumer.block.opening.start.line,
-								column: consumer.block.opening.start.column,
-							});
-							continue;
-						}
-					};
-					let expected = apply_transformers_with_data(
-						&rendered,
-						&consumer.block.transformers,
-						Some(&ctx.data),
+				ExpectedContent::RenderFailed(message) => {
+					warn!(
+						file = %consumer.file.display(),
+						block = consumer.block.name,
+						error = %message,
+						"template render failed",
 					);
-					eligible[index] = true;
-					raw_expected[index] = Some(expected.clone());
-					if consumer.content != expected {
-						replace_consumer_content(&mut candidate, consumer, &expected);
-					}
+					render_errors.push(render_error(consumer, message));
+					continue;
 				}
-				BlockType::Provider => {}
+			};
+			eligible[index] = true;
+			if consumer.content != expected {
+				replace_consumer_content(&mut candidate, consumer, &expected);
 			}
+			raw_expected[index] = Some(expected);
 		}
 
 		let (candidate, formatter_commands) =
 			apply_formatter_pipeline(&formatter_pipeline, ctx, &file, &candidate)?;
 		if formatter_commands.is_empty() {
 			for (index, consumer) in ordered_consumers.iter().enumerate() {
-				let Some(expected) = raw_expected[index].clone() else {
+				let Some(expected) = raw_expected[index].take() else {
 					continue;
 				};
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
-					stale.push(StaleEntry {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						current_content: consumer.content.clone(),
-						expected_content: expected,
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
+					stale.push(stale_entry(consumer, expected));
 				}
 			}
 			continue;
@@ -549,7 +671,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			ctx,
 			&file,
 			&candidate,
-			ordered_consumers.len(),
+			&ordered_consumers,
 			&formatter_commands,
 		)?;
 		let mut file_stale_count = 0;
@@ -560,14 +682,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			let expected = final_contents[index].clone();
 			if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 				file_stale_count += 1;
-				stale.push(StaleEntry {
-					file: consumer.file.clone(),
-					block_name: consumer.block.name.clone(),
-					current_content: consumer.content.clone(),
-					expected_content: expected,
-					line: consumer.block.opening.start.line,
-					column: consumer.block.opening.start.column,
-				});
+				stale.push(stale_entry(consumer, expected));
 			}
 		}
 
@@ -580,10 +695,14 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		}
 	}
 
+	// Files are visited in hash order; report orphans in source order.
+	orphans.sort_by(|a, b| (&a.file, a.line, a.column).cmp(&(&b.file, b.line, b.column)));
+
 	debug!(
 		stale = stale.len(),
 		stale_files = stale_files.len(),
 		render_errors = render_errors.len(),
+		orphans = orphans.len(),
 		"check complete",
 	);
 
@@ -591,11 +710,15 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 		stale,
 		stale_files,
 		render_errors,
+		orphans,
 		warnings,
 	})
 }
 
 /// Compute the updated file contents for all consumer blocks.
+///
+/// Consumers whose provider fails to render are left untouched and reported
+/// in [`UpdateResult::render_errors`]; every other consumer is still updated.
 #[instrument(skip(ctx), fields(
 	root = %ctx.root.display(),
 	providers = ctx.project.providers.len(),
@@ -612,6 +735,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut render_cache = RenderCache::new(&ctx.data);
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
+	let mut render_errors = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
@@ -625,46 +749,20 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 		let mut raw_expected: Vec<Option<String>> = vec![None; ordered_consumers.len()];
 
 		for (index, consumer) in ordered_consumers.iter().enumerate().rev() {
-			let new_content = match consumer.block.r#type {
-				BlockType::Consumer => {
-					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-						continue;
-					};
-					let Some(rendered) = render_cache.render(provider, consumer) else {
-						continue;
-					};
-					let rendered_content = rendered.rendered.map_err(MdtError::TemplateRender)?;
-					let mut new_content = apply_transformers_with_data(
-						&rendered_content,
-						&consumer.block.transformers,
-						Some(&rendered.data),
-					);
-					new_content = pad_content_with_config(
-						&new_content,
-						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
-						effective_padding(ctx),
-					);
-					new_content
+			let new_content = match expected_content(ctx, &mut render_cache, consumer, &original) {
+				ExpectedContent::Rendered(new_content) => new_content,
+				ExpectedContent::NoProvider => continue,
+				ExpectedContent::RenderFailed(message) => {
+					render_errors.push(render_error(consumer, message));
+					continue;
 				}
-				BlockType::Inline => {
-					let Some(template) = consumer.block.arguments.first() else {
-						continue;
-					};
-					let rendered = render_template(template, &ctx.data)?;
-					apply_transformers_with_data(
-						&rendered,
-						&consumer.block.transformers,
-						Some(&ctx.data),
-					)
-				}
-				BlockType::Provider => continue,
 			};
 
 			eligible[index] = true;
-			raw_expected[index] = Some(new_content.clone());
 			if consumer.content != new_content {
 				replace_consumer_content(&mut candidate, consumer, &new_content);
 			}
+			raw_expected[index] = Some(new_content);
 		}
 
 		let (candidate, formatter_commands) =
@@ -688,7 +786,7 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 				ctx,
 				&file,
 				&candidate,
-				ordered_consumers.len(),
+				&ordered_consumers,
 				&formatter_commands,
 			)?;
 			updated_count += ordered_consumers
@@ -711,14 +809,15 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	Ok(UpdateResult {
 		updated_files: file_contents,
 		updated_count,
+		render_errors,
 		warnings,
 	})
 }
 
-#[allow(clippy::unnecessary_wraps)]
 fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale = Vec::new();
 	let mut render_errors = Vec::new();
+	let mut orphans = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 
 	// Cache file contents so the closing-tag comment prefix can be recovered
@@ -734,107 +833,16 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 			);
 		}
 		let source = &file_contents[&consumer.file];
-		match consumer.block.r#type {
-			BlockType::Consumer => {
-				let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-					continue;
-				};
-
-				let Some(rendered) = render_cache.render(provider, consumer) else {
-					render_errors.push(RenderError {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						message: format!(
-							"argument count mismatch: provider `{}` declares {} parameter(s), but \
-							 consumer passes {}",
-							consumer.block.name,
-							provider.block.arguments.len(),
-							consumer.block.arguments.len(),
-						),
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-					continue;
-				};
-				let rendered_content = match rendered.rendered {
-					Ok(rendered_content) => rendered_content,
-					Err(message) => {
-						render_errors.push(RenderError {
-							file: consumer.file.clone(),
-							block_name: consumer.block.name.clone(),
-							message,
-							line: consumer.block.opening.start.line,
-							column: consumer.block.opening.start.column,
-						});
-						continue;
-					}
-				};
-				let mut expected = apply_transformers_with_data(
-					&rendered_content,
-					&consumer.block.transformers,
-					Some(&rendered.data),
-				);
-				expected = pad_content_with_config(
-					&expected,
-					extract_line_comment_prefix(source, consumer.block.closing.start.offset),
-					effective_padding(ctx),
-				);
-
+		match expected_content(ctx, &mut render_cache, consumer, source) {
+			ExpectedContent::Rendered(expected) => {
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
-					stale.push(StaleEntry {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						current_content: consumer.content.clone(),
-						expected_content: expected,
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
+					stale.push(stale_entry(consumer, expected));
 				}
 			}
-			BlockType::Inline => {
-				let Some(template) = consumer.block.arguments.first() else {
-					render_errors.push(RenderError {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						message: "inline block requires one template argument, e.g. <!-- \
-						          {~name:\"{{ pkg.version }}\"} -->"
-							.to_string(),
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-					continue;
-				};
-				let rendered = match render_template(template, &ctx.data) {
-					Ok(rendered) => rendered,
-					Err(error) => {
-						render_errors.push(RenderError {
-							file: consumer.file.clone(),
-							block_name: consumer.block.name.clone(),
-							message: error.to_string(),
-							line: consumer.block.opening.start.line,
-							column: consumer.block.opening.start.column,
-						});
-						continue;
-					}
-				};
-				let expected = apply_transformers_with_data(
-					&rendered,
-					&consumer.block.transformers,
-					Some(&ctx.data),
-				);
-
-				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
-					stale.push(StaleEntry {
-						file: consumer.file.clone(),
-						block_name: consumer.block.name.clone(),
-						current_content: consumer.content.clone(),
-						expected_content: expected,
-						line: consumer.block.opening.start.line,
-						column: consumer.block.opening.start.column,
-					});
-				}
+			ExpectedContent::NoProvider => orphans.push(orphan_consumer(ctx, consumer)),
+			ExpectedContent::RenderFailed(message) => {
+				render_errors.push(render_error(consumer, message));
 			}
-			BlockType::Provider => {}
 		}
 	}
 
@@ -842,6 +850,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 		stale,
 		stale_files: Vec::new(),
 		render_errors,
+		orphans,
 		warnings,
 	})
 }
@@ -849,16 +858,13 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
+	let mut render_errors = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 	let mut render_cache = RenderCache::new(&ctx.data);
 
 	for (file, consumers) in &consumers_by_file {
-		let raw = if let Some(content) = file_contents.get(file) {
-			content.clone()
-		} else {
-			std::fs::read_to_string(file)?
-		};
+		let raw = std::fs::read_to_string(file)?;
 		let original = normalize_line_endings(&raw);
 
 		let mut result = original.clone();
@@ -867,40 +873,13 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		sorted_consumers.sort_by_key(|b| Reverse(b.block.opening.end.offset));
 
 		for consumer in sorted_consumers {
-			let new_content = match consumer.block.r#type {
-				BlockType::Consumer => {
-					let Some(provider) = ctx.project.providers.get(&consumer.block.name) else {
-						continue;
-					};
-
-					let Some(rendered) = render_cache.render(provider, consumer) else {
-						continue;
-					};
-					let rendered_content = rendered.rendered.map_err(MdtError::TemplateRender)?;
-					let mut new_content = apply_transformers_with_data(
-						&rendered_content,
-						&consumer.block.transformers,
-						Some(&rendered.data),
-					);
-					new_content = pad_content_with_config(
-						&new_content,
-						extract_line_comment_prefix(&original, consumer.block.closing.start.offset),
-						effective_padding(ctx),
-					);
-					new_content
+			let new_content = match expected_content(ctx, &mut render_cache, consumer, &original) {
+				ExpectedContent::Rendered(new_content) => new_content,
+				ExpectedContent::NoProvider => continue,
+				ExpectedContent::RenderFailed(message) => {
+					render_errors.push(render_error(consumer, message));
+					continue;
 				}
-				BlockType::Inline => {
-					let Some(template) = consumer.block.arguments.first() else {
-						continue;
-					};
-					let rendered = render_template(template, &ctx.data)?;
-					apply_transformers_with_data(
-						&rendered,
-						&consumer.block.transformers,
-						Some(&ctx.data),
-					)
-				}
-				BlockType::Provider => continue,
 			};
 
 			if consumer.content != new_content {
@@ -928,6 +907,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 	Ok(UpdateResult {
 		updated_files: file_contents,
 		updated_count,
+		render_errors,
 		warnings,
 	})
 }
@@ -1030,6 +1010,26 @@ impl FormatterPipeline {
 	}
 }
 
+/// Environment variables that carry the formatter template values.
+///
+/// `{{ filePath }}`, `{{ relativeFilePath }}`, and `{{ rootDirectory }}` render
+/// as references to these variables rather than as the raw paths, so the
+/// shell expands them as data. Pasting a path into `sh -c` would let a file
+/// named ``a$(cmd).md`` run `cmd`.
+const FORMATTER_FILE_PATH_ENV: &str = "MDT_FILE_PATH";
+const FORMATTER_RELATIVE_FILE_PATH_ENV: &str = "MDT_RELATIVE_FILE_PATH";
+const FORMATTER_ROOT_DIRECTORY_ENV: &str = "MDT_ROOT_DIRECTORY";
+
+/// Reference an environment variable in the shell that runs formatter
+/// commands (`sh` on Unix, `cmd` on Windows).
+fn shell_variable_reference(name: &str) -> String {
+	if cfg!(windows) {
+		format!("%{name}%")
+	} else {
+		format!("${{{name}}}")
+	}
+}
+
 fn run_formatter_command(
 	ctx: &ProjectContext,
 	file: &Path,
@@ -1037,14 +1037,13 @@ fn run_formatter_command(
 	input: &str,
 ) -> MdtResult<String> {
 	let relative_file = file.strip_prefix(&ctx.root).unwrap_or(file);
-	let interpolated = interpolate_formatter_command(command, file, relative_file, &ctx.root)
-		.map_err(|reason| {
-			MdtError::Formatter {
-				file: relative_file.display().to_string(),
-				command: command.to_string(),
-				reason,
-			}
-		})?;
+	let interpolated = interpolate_formatter_command(command).map_err(|reason| {
+		MdtError::Formatter {
+			file: relative_file.display().to_string(),
+			command: command.to_string(),
+			reason,
+		}
+	})?;
 	let mut command_builder = if cfg!(windows) {
 		let mut command_builder = Command::new("cmd");
 		command_builder.arg("/C").arg(&interpolated);
@@ -1056,6 +1055,9 @@ fn run_formatter_command(
 	};
 	let mut child = command_builder
 		.current_dir(&ctx.root)
+		.env(FORMATTER_FILE_PATH_ENV, file)
+		.env(FORMATTER_RELATIVE_FILE_PATH_ENV, relative_file)
+		.env(FORMATTER_ROOT_DIRECTORY_ENV, &ctx.root)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
@@ -1109,12 +1111,7 @@ fn run_formatter_command(
 	)))
 }
 
-fn interpolate_formatter_command(
-	command: &str,
-	file: &Path,
-	relative_file: &Path,
-	root: &Path,
-) -> Result<String, String> {
+fn interpolate_formatter_command(command: &str) -> Result<String, String> {
 	if !has_template_syntax(command) {
 		return Ok(command.to_string());
 	}
@@ -1130,20 +1127,27 @@ fn interpolate_formatter_command(
 
 	template
 		.render(minijinja::context! {
-			filePath => file.display().to_string(),
-			relativeFilePath => relative_file.display().to_string(),
-			rootDirectory => root.display().to_string(),
+			filePath => shell_variable_reference(FORMATTER_FILE_PATH_ENV),
+			relativeFilePath => shell_variable_reference(FORMATTER_RELATIVE_FILE_PATH_ENV),
+			rootDirectory => shell_variable_reference(FORMATTER_ROOT_DIRECTORY_ENV),
 		})
-		.map_err(|error| format!("invalid formatter command template: {error}"))
+		.map_err(|error| format!("failed to render formatter command template: {error}"))
 }
 
 fn parse_candidate_consumer_contents(
 	ctx: &ProjectContext,
 	file: &Path,
 	content: &str,
-	expected_consumer_count: usize,
+	consumers: &[&ConsumerEntry],
 	formatter_commands: &[String],
 ) -> MdtResult<Vec<String>> {
+	let expected_consumer_count = consumers.len();
+	// Blocks named in `[exclude] blocks` are never scanned, so keep only the
+	// names this file's scan produced when matching blocks back up.
+	let managed_names: HashSet<&str> = consumers
+		.iter()
+		.map(|consumer| consumer.block.name.as_str())
+		.collect();
 	let normalized = normalize_line_endings(content);
 	let (blocks, _) = if is_markdown_path(file) {
 		parse_with_diagnostics(&normalized).map_err(|error| {
@@ -1172,7 +1176,10 @@ fn parse_candidate_consumer_contents(
 	};
 	let consumer_contents: Vec<String> = blocks
 		.into_iter()
-		.filter(|block| matches!(block.r#type, BlockType::Consumer | BlockType::Inline))
+		.filter(|block| {
+			matches!(block.r#type, BlockType::Consumer | BlockType::Inline)
+				&& managed_names.contains(block.name.as_str())
+		})
 		.map(|block| extract_content_between_tags(&normalized, &block))
 		.collect();
 
@@ -1230,12 +1237,25 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 			std::borrow::Cow::Owned(data)
 		};
 
-		let undefined = find_undefined_variables(&provider.content, &data_with_params);
+		// Without data the provider is copied verbatim. Namespaced
+		// variables (`pkg.version`) are almost certainly meant to render —
+		// typically a sub-project reusing shared providers without its own
+		// `[data]` — so point them out instead of copying them silently.
+		let template_rendered = !data_with_params.is_empty();
+		let undefined = if template_rendered {
+			find_undefined_variables(&provider.content, &data_with_params)
+		} else {
+			undeclared_variables(&provider.content)
+				.into_iter()
+				.filter(|variable| variable.contains('.'))
+				.collect()
+		};
 		if !undefined.is_empty() {
 			warnings.push(TemplateWarning {
 				provider_file: provider.file.clone(),
 				block_name: name.clone(),
 				undefined_variables: undefined,
+				template_rendered,
 			});
 		}
 	}
@@ -1312,13 +1332,28 @@ fn apply_transformer(
 		}
 		TransformerType::CodeBlock => {
 			let lang = get_string_arg(&transformer.args, 0).unwrap_or_default();
-			format!("```{lang}\n{content}\n```")
+			// A fence closes at the first backtick run at least as long as the
+			// opener, so the fence must outrun any run inside the content.
+			let fence = "`".repeat(longest_backtick_run(content).max(2) + 1);
+			format!("{fence}{lang}\n{content}\n{fence}")
 		}
 		TransformerType::Code => {
-			format!("`{content}`")
+			// CommonMark code spans close at the first backtick run of the same
+			// length, and strip one space of padding when both ends have one.
+			let delimiter = "`".repeat(shortest_absent_backtick_run(content));
+			if content.starts_with('`') || content.ends_with('`') {
+				format!("{delimiter} {content} {delimiter}")
+			} else {
+				format!("{delimiter}{content}{delimiter}")
+			}
 		}
 		TransformerType::Replace => {
 			let search = get_string_arg(&transformer.args, 0).unwrap_or_default();
+			if search.is_empty() {
+				// `str::replace` with an empty pattern inserts the replacement
+				// between every character, which is never what a template means.
+				return content.to_string();
+			}
 			let replacement = get_string_arg(&transformer.args, 1).unwrap_or_default();
 			content.replace(&search, &replacement)
 		}
@@ -1369,6 +1404,29 @@ fn apply_transformer(
 			}
 		}
 	}
+}
+
+/// Lengths of every run of consecutive backticks in `content`.
+fn backtick_runs(content: &str) -> impl Iterator<Item = usize> + '_ {
+	content
+		.split(|character| character != '`')
+		.map(str::len)
+		.filter(|length| *length > 0)
+}
+
+fn longest_backtick_run(content: &str) -> usize {
+	backtick_runs(content).max().unwrap_or(0)
+}
+
+/// The shortest backtick delimiter that does not appear as a run in
+/// `content`, so a code span wrapping it cannot close early.
+fn shortest_absent_backtick_run(content: &str) -> usize {
+	let runs: HashSet<usize> = backtick_runs(content).collect();
+	// At most `runs.len()` lengths are taken, so one of the first
+	// `runs.len() + 1` is free.
+	(1..=runs.len() + 1)
+		.find(|length| !runs.contains(length))
+		.unwrap_or(1)
 }
 
 /// Look up a dot-separated path in the data context and return whether the
@@ -1463,6 +1521,24 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 	Ok(())
 }
 
+/// Default padding applied when no `[padding]` section is configured.
+///
+/// Content starts on the line after the opening tag and the closing tag
+/// starts on its own line. Keeping the closing tag off the last content line
+/// matters: a trimmed `codeBlock` would otherwise glue the closing tag to its
+/// closing fence, which then no longer closes the fence, and a source-file
+/// closing tag would lose its comment prefix.
+static DEFAULT_PADDING: PaddingConfig = PaddingConfig {
+	before: crate::config::PaddingValue::Lines(0),
+	after: crate::config::PaddingValue::Lines(0),
+};
+
+/// Return the effective padding configuration, defaulting to
+/// [`DEFAULT_PADDING`] when no `[padding]` section is configured.
+fn effective_padding(ctx: &ProjectContext) -> &PaddingConfig {
+	ctx.padding.as_ref().unwrap_or(&DEFAULT_PADDING)
+}
+
 /// Pad content according to the padding configuration while preserving the
 /// trailing line prefix from the original consumer content. When the closing
 /// tag is preceded by a comment prefix (e.g., `//! ` or `/// `) that prefix
@@ -1477,21 +1553,8 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 /// - `1` — One blank line between the tag and content.
 /// - `2` — Two blank lines, and so on.
 ///
-/// Default padding applied when no `[padding]` section is configured.
-///
-/// Content starts on the very next line after the opening tag, and the
-/// closing tag stays inline with the content.
-static DEFAULT_PADDING: PaddingConfig = PaddingConfig {
-	before: crate::config::PaddingValue::Lines(0),
-	after: crate::config::PaddingValue::Bool(false),
-};
-
-/// Return the effective padding configuration, defaulting to
-/// [`DEFAULT_PADDING`] when no `[padding]` section is configured.
-fn effective_padding(ctx: &ProjectContext) -> &PaddingConfig {
-	ctx.padding.as_ref().unwrap_or(&DEFAULT_PADDING)
-}
-
+/// Padding adds to newlines the content already starts or ends with, so
+/// untrimmed provider content keeps its own blank lines.
 pub(crate) fn pad_content_with_config(
 	new_content: &str,
 	trailing_prefix: &str,
@@ -1500,7 +1563,7 @@ pub(crate) fn pad_content_with_config(
 	// The trailing prefix is the comment prefix (e.g., `//! `) that precedes
 	// the closing tag in the source file, extracted from the closing tag's
 	// line. It is preserved after replacement so the closing tag stays inside
-	// the comment. For markdown files this is empty.
+	// the comment. For markdown files it is at most indentation.
 	// Trimmed prefix for blank padding lines — avoids trailing whitespace
 	// on empty lines (e.g., "//! " becomes "//!").
 	let blank_line_prefix = trailing_prefix.trim_end();
@@ -1519,10 +1582,10 @@ pub(crate) fn pad_content_with_config(
 			}
 		}
 		Some(n) => {
-			// N blank lines between opening tag and content
-			if !new_content.starts_with('\n') {
-				result.push('\n');
-			}
+			// N blank lines between opening tag and content. End the tag line
+			// first — with the content's own leading newline when it has one —
+			// so the first blank-line prefix never lands on the tag line.
+			result.push('\n');
 			for _ in 0..n {
 				result.push_str(blank_line_prefix);
 				result.push('\n');
@@ -1530,6 +1593,10 @@ pub(crate) fn pad_content_with_config(
 		}
 	}
 
+	let new_content = match padding.before.line_count() {
+		Some(n) if n > 0 => new_content.strip_prefix('\n').unwrap_or(new_content),
+		_ => new_content,
+	};
 	result.push_str(new_content);
 
 	// After padding: lines between content and closing tag

@@ -13,29 +13,34 @@ exit_code: 0
 ----- stdout -----
 mdt assist
 
-Assistant                 Claude
-Strategy                  mdt ships assistant setup presets and repo-local guidance, not a plugin marketplace.
+Assistant: Claude Code
 
-MCP config snippet:
+Load the mdt skill:
+  mdt skill --install .claude/skills
+  (or run `mdt skill` to print it into the conversation)
+
+MCP server:
+  claude mcp add --transport stdio --scope project mdt -- mdt mcp
+  or add to .mcp.json:
 {
   "mcpServers": {
     "mdt": {
       "args": [
         "mcp"
       ],
-      "command": "mdt"
+      "command": "mdt",
+      "type": "stdio"
     }
   }
 }
 
 Suggested repo-local guidance:
-- Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a new provider block.
-- Use `.templates/` as the canonical location for template files.
-- Run `mdt_check` after documentation edits and `mdt_update` when consumers are stale.
-- Use `mdt_preview` to inspect provider and consumer output before syncing changes.
+- Before editing mdt templates or synced docs, run `mdt skill` to load the mdt agent skill (tag syntax, transformers, configuration, and workflow for the installed version).
+- Edit providers in `.templates/*.t.md`, never the synced copies, and prefer reusing an existing provider (`mdt list` or `mdt_find_reuse`) over creating a new one.
+- After documentation edits, run `mdt check`; run `mdt update` when consumers are stale.
 
-Notes for Claude:
-- Add the MCP snippet to Claude's MCP server configuration.
-- Keep the repo-local guidance in your project instructions so Claude reuses providers before creating new ones.
+Notes for Claude Code:
+- `claude mcp add ... --scope project` writes `.mcp.json` at the repository root; commit it to share the server with your team.
+- `mdt skill --install .claude/skills` adds the skill for this project; use `~/.claude/skills` to install it for every project.
 
 ----- stderr -----

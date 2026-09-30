@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmppbermi
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpnd86SX
     - info
     - "--format"
     - json
@@ -54,7 +54,7 @@ exit_code: 0
     "exists": true,
     "readable": true,
     "valid": true,
-    "schema_version": 2,
+    "schema_version": 3,
     "schema_supported": true,
     "project_key_matches": true,
     "hash_verification_enabled": false,

@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpj91VZw
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpLoPdOl
     - init
   env:
     NO_COLOR: "1"
@@ -12,13 +12,14 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-Created template file: [TEMP_DIR]/.templates/template.t.md
+Initializing [TEMP_DIR]
 Created mdt.toml
-Created readme.md with a sample target block
+Created .templates/template.t.md with a sample `greeting` provider
+Created readme.md with a synced `greeting` consumer
 
 Next steps:
   1. Open readme.md to see the synced sample block
-  2. Edit [TEMP_DIR]/.templates/template.t.md to change your source blocks
-  3. Run `mdt update` to sync your edits
+  2. Edit .templates/template.t.md, then run `mdt update`
+  3. Run `mdt check` in CI to fail builds on stale docs
 
 ----- stderr -----

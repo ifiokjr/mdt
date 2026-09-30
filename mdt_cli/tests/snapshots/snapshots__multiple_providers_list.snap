@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpJpHBH7
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp9tOHvu
     - list
   env:
     NO_COLOR: "1"
@@ -13,17 +13,17 @@ success: true
 exit_code: 0
 ----- stdout -----
 Providers:
-  @header template.t.md (2 consumer(s))
-  @install template.t.md (2 consumer(s))
-  @usage template.t.md (2 consumer(s))
+  @header template.t.md:1 (2 consumer(s))
+  @install template.t.md:9 (2 consumer(s))
+  @usage template.t.md:17 (2 consumer(s))
 
 Consumers:
-  =header docs.md [linked]
-  =install docs.md [linked]
-  =usage docs.md [linked]
-  =header readme.md [linked]
-  =install readme.md [linked]
-  =usage readme.md [linked]
+  =header docs.md:3 [linked]
+  =install docs.md:11 [linked]
+  =usage docs.md:17 [linked]
+  =header readme.md:1 [linked]
+  =install readme.md:9 [linked]
+  =usage readme.md:17 [linked]
 
 3 provider(s), 6 consumer(s)
 

@@ -93,6 +93,7 @@ impl DataSource {
 
 /// Typed data source configuration for `[data]` entries.
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct TypedDataSource {
 	pub path: PathBuf,
 	pub format: String,
@@ -100,6 +101,7 @@ pub struct TypedDataSource {
 
 /// Script-backed data source configuration for `[data]` entries.
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ScriptDataSource {
 	pub command: String,
 	#[serde(default)]
@@ -138,6 +140,7 @@ pub struct ScriptDataSource {
 /// disable_gitignore = false
 /// ```
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MdtConfig {
 	/// Map of namespace name to relative file path for data sources.
 	#[serde(default)]
@@ -156,10 +159,10 @@ pub struct MdtConfig {
 	#[serde(default = "default_max_file_size")]
 	pub max_file_size: u64,
 	/// Padding configuration controlling blank lines between tags and content.
-	/// When absent, content starts on the very next line after the opening tag
-	/// and the closing tag stays inline with the content. When present,
-	/// `before` and `after` control how many blank lines separate tags from
-	/// content.
+	/// When absent, content starts on the line after the opening tag and the
+	/// closing tag starts on its own line (`before = 0`, `after = 0`). When
+	/// present, `before` and `after` control how many blank lines separate
+	/// tags from content.
 	#[serde(default)]
 	pub padding: Option<PaddingConfig>,
 	/// Ordered formatter pipeline entries used to normalize full-file output.
@@ -187,13 +190,14 @@ pub struct MdtConfig {
 /// comparison = "lenient"
 /// ```
 ///
-/// When `comparison` is `"lenient"`, `mdt check` normalizes whitespace
-/// before comparing expected and actual block content. This makes the check
-/// tolerant of formatter rewrites that only change insignificant whitespace
-/// (blank lines, trailing spaces, table padding, JSON indentation).
+/// When `comparison` is `"lenient"`, `mdt check` trims trailing whitespace
+/// on every line and collapses runs of blank lines before comparing expected
+/// and actual block content. It does not normalize indentation, table
+/// padding, or JSON layout; use `[[formatters]]` for those.
 ///
 /// `mdt update` always writes exact bytes regardless of this setting.
 #[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct CheckConfig {
 	/// Comparison mode: `"strict"` (default) or `"lenient"`.
 	#[serde(default)]
@@ -263,6 +267,7 @@ impl Default for PaddingValue {
 /// `1` (one blank line). Set values to `0` for content on the next line with
 /// no blank lines, or `false` for content inline with the tag.
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PaddingConfig {
 	/// Blank lines between the opening tag and the content.
 	#[serde(default)]
@@ -306,6 +311,7 @@ pub struct PaddingConfig {
 /// Repositories without configured formatters keep the legacy fast path, so formatter support only adds work when you opt in.
 /// <!-- {/mdtFormatterPipelineDocs} -->
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FormatterConfig {
 	/// Shell command that reads file content from stdin and writes formatted
 	/// content to stdout.
@@ -402,9 +408,14 @@ struct ScriptCacheEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct WatchFingerprint {
+	/// Whether the watched path is an existing file. Script output is only
+	/// cached while every watched path is one; a typo, glob, or directory
+	/// could never signal a change.
 	exists: bool,
 	size: u64,
 	modified_unix_ms: u64,
+	#[serde(default)]
+	changed_unix_ns: u64,
 }
 
 fn data_cache_path(root: &Path) -> PathBuf {
@@ -507,7 +518,7 @@ fn validate_formatter_pattern(pattern: &str) -> Result<(), globset::Error> {
 
 fn watch_fingerprint(path: &Path) -> WatchFingerprint {
 	match std::fs::metadata(path) {
-		Ok(metadata) => {
+		Ok(metadata) if metadata.is_file() => {
 			WatchFingerprint {
 				exists: true,
 				size: metadata.len(),
@@ -517,13 +528,15 @@ fn watch_fingerprint(path: &Path) -> WatchFingerprint {
 					.and_then(|time| time.duration_since(UNIX_EPOCH).ok())
 					.and_then(|duration| duration.as_millis().try_into().ok())
 					.unwrap_or(0),
+				changed_unix_ns: crate::index_cache::changed_unix_ns(&metadata),
 			}
 		}
-		Err(_) => {
+		_ => {
 			WatchFingerprint {
 				exists: false,
 				size: 0,
 				modified_unix_ms: 0,
+				changed_unix_ns: 0,
 			}
 		}
 	}
@@ -587,6 +600,7 @@ impl CodeBlockFilter {
 /// rules (unless `disable_gitignore` is set). Supports negation (`!pattern`),
 /// directory markers (trailing `/`), and all standard gitignore wildcards.
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ExcludeConfig {
 	/// Gitignore-style patterns for files and directories to skip during
 	/// scanning. These are relative to the project root.
@@ -613,6 +627,7 @@ pub struct ExcludeConfig {
 
 /// Configuration for including additional files in scanning.
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct IncludeConfig {
 	/// Additional glob patterns for files to scan.
 	/// These are relative to the project root.
@@ -622,6 +637,7 @@ pub struct IncludeConfig {
 
 /// Configuration for additional template search paths.
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TemplatesConfig {
 	/// Additional directories to search for `*.t.md` template files.
 	/// These are relative to the project root.
@@ -650,9 +666,18 @@ impl MdtConfig {
 
 		debug!(config_path = %config_path.display(), "loading config file");
 		let content = std::fs::read_to_string(&config_path)?;
-		let config: MdtConfig =
-			toml::from_str(&content).map_err(|e| MdtError::ConfigParse(e.to_string()))?;
+		let config: MdtConfig = toml::from_str(&content).map_err(|error| {
+			MdtError::ConfigParse(format!("{}: {error}", config_path.display()))
+		})?;
 		validate_formatters(&config.formatters)?;
+		for pattern in &config.include.patterns {
+			Glob::new(pattern).map_err(|error| {
+				MdtError::ConfigParse(format!(
+					"{}: invalid `[include] patterns` entry `{pattern}`: {error}",
+					config_path.display()
+				))
+			})?;
+		}
 
 		Ok(Some(config))
 	}
@@ -751,8 +776,10 @@ fn load_script_data_source(
 		})
 		.collect();
 
-	// Only use cache when explicit watch files are configured.
-	if !watch.is_empty() {
+	// Only use the cache when explicit watch files are configured and all of
+	// them exist; otherwise nothing could ever invalidate the cached output.
+	let cacheable = !watch.is_empty() && watch_fingerprints.values().all(|print| print.exists);
+	if cacheable {
 		if let Some(cached) = cache.entries.get(namespace) {
 			if cached.command == script.command
 				&& cached.format == format
@@ -827,7 +854,15 @@ fn parse_data_file(
 	path_display: &str,
 ) -> MdtResult<serde_json::Value> {
 	match format {
-		"text" | "string" | "raw" | "txt" => Ok(serde_json::Value::String(content.to_string())),
+		"text" | "string" | "raw" | "txt" => {
+			// Drop the single trailing newline that files and command output
+			// end with, as shell `$(...)` does, so `{{ release }}` fits inline.
+			let text = content
+				.strip_suffix("\r\n")
+				.or_else(|| content.strip_suffix('\n'))
+				.unwrap_or(content);
+			Ok(serde_json::Value::String(text.to_string()))
+		}
 		"json" => {
 			serde_json::from_str(content).map_err(|e| {
 				MdtError::DataFile {
@@ -878,14 +913,7 @@ fn parse_data_file(
 fn toml_to_json(value: toml::Value, path_display: &str) -> MdtResult<serde_json::Value> {
 	let json = match value {
 		toml::Value::String(s) => serde_json::Value::String(s),
-		toml::Value::Integer(i) => {
-			serde_json::Value::Number(serde_json::Number::from_f64(i as f64).ok_or_else(|| {
-				MdtError::UnconvertibleFloat {
-					path: path_display.to_string(),
-					value: i.to_string(),
-				}
-			})?)
-		}
+		toml::Value::Integer(i) => serde_json::Value::from(i),
 		toml::Value::Float(f) => {
 			serde_json::Value::Number(serde_json::Number::from_f64(f).ok_or_else(|| {
 				MdtError::UnconvertibleFloat {
@@ -921,11 +949,25 @@ fn kdl_document_to_value(
 	path_display: &str,
 ) -> MdtResult<serde_json::Value> {
 	let mut map = serde_json::Map::new();
+	let mut repeated_names = std::collections::HashSet::new();
 
 	for node in doc.nodes() {
-		let name = node.name().to_string();
 		let value = kdl_node_to_value(node, path_display)?;
-		map.insert(name, value);
+		// Repeated sibling nodes (`dep "a"`, `dep "b"`) collect into an array
+		// instead of the last one silently winning.
+		match map.entry(node.name().to_string()) {
+			serde_json::map::Entry::Vacant(entry) => {
+				entry.insert(value);
+			}
+			serde_json::map::Entry::Occupied(mut entry) => {
+				if repeated_names.insert(entry.key().clone()) {
+					let first = entry.get_mut().take();
+					entry.insert(serde_json::Value::Array(vec![first, value]));
+				} else if let serde_json::Value::Array(items) = entry.get_mut() {
+					items.push(value);
+				}
+			}
+		}
 	}
 
 	Ok(serde_json::Value::Object(map))
@@ -981,13 +1023,11 @@ fn kdl_entry_value_to_json(
 	match value {
 		kdl::KdlValue::String(s) => Ok(serde_json::Value::String(s.clone())),
 		kdl::KdlValue::Integer(i) => {
-			Ok(serde_json::Value::Number(
-				serde_json::Number::from_f64(*i as f64).ok_or_else(|| {
-					MdtError::UnconvertibleFloat {
-						path: path_display.to_string(),
-						value: i.to_string(),
-					}
-				})?,
+			// KDL integers are 128-bit; keep the rare value that JSON numbers
+			// cannot hold exactly as its decimal string rather than rounding.
+			Ok(serde_json::Number::from_i128(*i).map_or_else(
+				|| serde_json::Value::String(i.to_string()),
+				serde_json::Value::Number,
 			))
 		}
 		kdl::KdlValue::Float(f) => {

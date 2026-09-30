@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpf0LUS7
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpDF4Bm4
     - info
   env:
     NO_COLOR: "1"
@@ -38,15 +38,15 @@ template file                templates/main.t.md
 
 Diagnostics
 Total                        1
-Errors                       1
-Warnings                     0
+Errors                       0
+Warnings                     1
 Missing providers            1
 Missing names                missing_block
 
 Cache
 Artifact path                [TEMP_DIR]/.mdt/cache/index-v2.json
 Artifact status              ok
-Schema version               2 (supported)
+Schema version               3 (supported)
 Project key match            yes
 Hash verification            disabled
 Scans recorded               1

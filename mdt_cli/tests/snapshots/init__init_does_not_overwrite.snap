@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpN5H6EA
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpROCBZT
     - init
   env:
     NO_COLOR: "1"
@@ -12,6 +12,8 @@ info:
 success: true
 exit_code: 0
 ----- stdout -----
-Template file already exists: [TEMP_DIR]/template.t.md
+Initializing [TEMP_DIR]
+Using existing config mdt.toml
+Template file already exists: template.t.md
 
 ----- stderr -----

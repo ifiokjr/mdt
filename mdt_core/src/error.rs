@@ -41,8 +41,9 @@ pub enum MdtError {
 	#[diagnostic(
 		code(mdt::config_parse),
 		help(
-			"check that mdt.toml is valid TOML with supported sections like [data], [exclude], \
-			 [padding], and [[formatters]]"
+			"mdt.toml must be valid TOML using only supported keys (unknown keys are rejected to \
+			 catch typos): max_file_size, disable_gitignore, [data], [padding], [check], \
+			 [exclude], [include], [templates], and [[formatters]]"
 		)
 	)]
 	ConfigParse(String),
@@ -95,6 +96,23 @@ pub enum MdtError {
 		got: usize,
 	},
 
+	#[error("`[templates] paths` entry `{path}` is not a directory")]
+	#[diagnostic(
+		code(mdt::templates_path),
+		help("paths are relative to the project root; fix the path or remove the entry")
+	)]
+	TemplatesPath { path: String },
+
+	#[error("failed to read `{path}`: {reason}")]
+	#[diagnostic(
+		code(mdt::read_file),
+		help(
+			"mdt reads scanned files as UTF-8 text; exclude binary or generated files with \
+			 `[exclude] patterns`, or narrow `[include] patterns` to text file extensions"
+		)
+	)]
+	ReadFile { path: String, reason: String },
+
 	#[error("file too large: `{path}` is {size} bytes (limit: {limit} bytes)")]
 	#[diagnostic(
 		code(mdt::file_too_large),
@@ -102,6 +120,9 @@ pub enum MdtError {
 	)]
 	FileTooLarge { path: String, size: u64, limit: u64 },
 
+	/// No longer returned: scanning visits each directory once, so symlink
+	/// aliases and cycles are skipped instead of failing the scan.
+	#[deprecated(note = "scanning skips already-visited directories instead of failing")]
 	#[error("symlink cycle detected at: `{path}`")]
 	#[diagnostic(
 		code(mdt::symlink_cycle),

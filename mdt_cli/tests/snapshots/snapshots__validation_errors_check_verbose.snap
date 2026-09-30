@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpWV5gRg
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpkBTcJL
     - "--verbose"
     - check
   env:
@@ -15,12 +15,14 @@ exit_code: 2
 ----- stdout -----
 Scanned project: 1 provider(s), 1 consumer(s)
   Providers:
-    @valid_block ([TEMP_DIR]/template.t.md)
+    @valid_block (template.t.md)
 
 ----- stderr -----
 mdt::unclosed_block
 
   x [unclosed.md:3:1] missing closing tag for block `valid_block`
-  help: add `<!-- {/valid_block} -->` to close this block
+  help: add `<!-- {/valid_block} -->` to close this block, or, if a nearby
+        closing tag has a different name, fix the misspelled tag so the names
+        match
 
-error: validation errors found
+error: validation errors found; fix the errors above

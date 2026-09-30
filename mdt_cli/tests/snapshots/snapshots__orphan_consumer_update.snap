@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmprMSHQE
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpYuPbb8
     - update
   env:
     NO_COLOR: "1"
@@ -15,4 +15,4 @@ exit_code: 0
 Updated 1 block(s) in 1 file(s).
 
 ----- stderr -----
-warning: consumer block `nonexistent` has no matching provider
+warning: consumer `nonexistent` at readme.md:9:1 has no provider

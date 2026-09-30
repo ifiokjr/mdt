@@ -1,4 +1,5 @@
 use std::cell::LazyCell;
+use std::collections::HashSet;
 
 use markdown::ParseOptions;
 use markdown::mdast::Html;
@@ -42,6 +43,33 @@ pub enum ParseDiagnostic {
 		line: usize,
 		column: usize,
 	},
+	/// A closing tag (`{/name}`) has no open block with the same name —
+	/// usually a misspelled opening or closing tag.
+	UnmatchedClosingTag {
+		name: String,
+		line: usize,
+		column: usize,
+	},
+	/// An HTML comment that looks like an mdt tag (`{` followed by `@`, `=`,
+	/// `~`, or `/`) but does not parse, so mdt ignores it — for example a
+	/// space between `{` and the sigil, or a name containing `.`.
+	InvalidTag {
+		/// The comment text, shortened when long.
+		tag: String,
+		line: usize,
+		column: usize,
+	},
+	/// A block opens inside another block. Inside a consumer or inline
+	/// block, `mdt update` would destroy it; inside a provider, its tags
+	/// would be copied into every consumer, where they nest.
+	NestedBlock {
+		/// The enclosing block.
+		outer: String,
+		/// The first block found inside it.
+		inner: String,
+		line: usize,
+		column: usize,
+	},
 }
 
 /// Parse markdown content and return all blocks (provider and consumer) found
@@ -68,8 +96,78 @@ pub fn parse_with_diagnostics(
 		"parsing markdown with diagnostics"
 	);
 	let html_nodes = get_html_nodes(content)?;
+	let tag_like = find_tag_like_comments(&html_nodes);
 	let token_groups = tokenize(html_nodes)?;
-	build_blocks_from_groups_with_diagnostics(&token_groups)
+	let mut recognized = HashSet::new();
+	let (blocks, mut diagnostics) = build_blocks_recording_tags(
+		&token_groups,
+		(!tag_like.is_empty()).then_some(&mut recognized),
+	)?;
+	report_unparsed_tags(&tag_like, &recognized, &mut diagnostics);
+	Ok((blocks, diagnostics))
+}
+
+/// An HTML comment whose text starts like an mdt tag.
+struct TagLikeComment {
+	offset: usize,
+	line: usize,
+	column: usize,
+	text: String,
+}
+
+/// Find HTML comments that start like an mdt tag: `{`, optional whitespace,
+/// then one of the `@`, `=`, `~`, `/` sigils.
+fn find_tag_like_comments(nodes: &[Html]) -> Vec<TagLikeComment> {
+	let mut comments = Vec::new();
+	for node in nodes {
+		let Some(position) = &node.position else {
+			continue;
+		};
+		let mut search_from = 0;
+		while let Some(open) = node.value[search_from..].find("<!--") {
+			let start = search_from + open;
+			let end = node.value[start..]
+				.find("-->")
+				.map_or(node.value.len(), |close| start + close + 3);
+			let text = &node.value[start..end];
+			let looks_like_tag = text[4..]
+				.trim_start()
+				.strip_prefix('{')
+				.is_some_and(|rest| rest.trim_start().starts_with(['@', '=', '~', '/']));
+			if looks_like_tag {
+				let before = &node.value[..start];
+				let line = position.start.line + before.matches('\n').count();
+				let column = before
+					.rfind('\n')
+					.map_or(position.start.column + start, |newline| start - newline);
+				comments.push(TagLikeComment {
+					offset: position.start.offset + start,
+					line,
+					column,
+					text: text.chars().take(80).collect(),
+				});
+			}
+			search_from = end;
+		}
+	}
+	comments
+}
+
+/// Report tag-like comments that did not tokenize into a recognized tag.
+fn report_unparsed_tags(
+	tag_like: &[TagLikeComment],
+	recognized: &HashSet<usize>,
+	diagnostics: &mut Vec<ParseDiagnostic>,
+) {
+	for comment in tag_like {
+		if !recognized.contains(&comment.offset) {
+			diagnostics.push(ParseDiagnostic::InvalidTag {
+				tag: comment.text.clone(),
+				line: comment.line,
+				column: comment.column,
+			});
+		}
+	}
 }
 
 /// Build blocks from already-tokenized groups. This is the shared logic used
@@ -91,12 +189,31 @@ pub fn build_blocks_from_groups_lenient(token_groups: &[TokenGroup]) -> MdtResul
 pub fn build_blocks_from_groups_with_diagnostics(
 	token_groups: &[TokenGroup],
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	build_blocks_recording_tags(token_groups, None)
+}
+
+/// Build blocks and diagnostics, recording the start offset of every group
+/// that forms a tag into `recognized` when given.
+fn build_blocks_recording_tags(
+	token_groups: &[TokenGroup],
+	mut recognized: Option<&mut HashSet<usize>>,
+) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
 	let mut pending: Vec<BlockCreator> = Vec::with_capacity(token_groups.len());
 	let mut blocks: Vec<Block> = Vec::with_capacity(token_groups.len());
 	let mut diagnostics: Vec<ParseDiagnostic> = Vec::with_capacity(token_groups.len() / 4);
+	// Index into `blocks` of the first block completed after each pending
+	// block opened; anything completed since then lies inside it.
+	let mut completed_before: Vec<usize> = Vec::with_capacity(token_groups.len());
 
 	for group in token_groups {
-		match classify_group_with_diagnostics(group, &mut diagnostics) {
+		let pending_before = pending.len();
+		let kind = classify_group_with_diagnostics(group, &mut diagnostics);
+		if let Some(recognized) = recognized.as_deref_mut() {
+			if !matches!(kind, GroupKind::Unknown) {
+				recognized.insert(group.position.start.offset);
+			}
+		}
+		match kind {
 			GroupKind::Provider {
 				name,
 				transformers,
@@ -140,14 +257,47 @@ pub fn build_blocks_from_groups_with_diagnostics(
 				});
 			}
 			GroupKind::Close { name } => {
-				let pos = pending.iter().rposition(|bc| bc.name == name);
-				if let Some(idx) = pos {
-					let mut creator = pending.remove(idx);
-					creator.closing = Some(group.position);
-					blocks.push(creator.into_block()?);
+				let Some(idx) = pending.iter().rposition(|bc| bc.name == name) else {
+					diagnostics.push(ParseDiagnostic::UnmatchedClosingTag {
+						name,
+						line: group.position.start.line,
+						column: group.position.start.column,
+					});
+					continue;
+				};
+				let first_inner_completed = completed_before.remove(idx);
+				let mut creator = pending.remove(idx);
+				// Blocks never nest. Inside a consumer or inline block,
+				// `mdt update` overwrites the inner block; inside a provider,
+				// its tags are copied into every consumer and nest there. A
+				// block opened after this one sits between its tags, whether
+				// it is still open (overlap) or already closed (nesting).
+				let opened_inside =
+					|opening: &Position| opening.start.offset > creator.opening.start.offset;
+				let inner = pending[idx..]
+					.iter()
+					.map(|inner| (&inner.name, inner.opening))
+					.chain(
+						blocks[first_inner_completed..]
+							.iter()
+							.map(|inner| (&inner.name, inner.opening)),
+					)
+					.find(|(_, opening)| opened_inside(opening));
+				if let Some((inner, inner_opening)) = inner {
+					diagnostics.push(ParseDiagnostic::NestedBlock {
+						outer: creator.name.clone(),
+						inner: inner.clone(),
+						line: inner_opening.start.line,
+						column: inner_opening.start.column,
+					});
 				}
+				creator.closing = Some(group.position);
+				blocks.push(creator.into_block()?);
 			}
 			GroupKind::Unknown => {}
+		}
+		if pending.len() > pending_before {
+			completed_before.push(blocks.len());
 		}
 	}
 
@@ -813,6 +963,26 @@ pub enum TransformerType {
 	/// included unchanged. Otherwise, the content is replaced with an empty
 	/// string.
 	If,
+}
+
+impl TransformerType {
+	/// The canonical camelCase name of every transformer, in documentation
+	/// order. Each also accepts a `snake_case` alias (`trim_start`).
+	pub const NAMES: [&'static str; 13] = [
+		"trim",
+		"trimStart",
+		"trimEnd",
+		"indent",
+		"prefix",
+		"suffix",
+		"linePrefix",
+		"lineSuffix",
+		"wrap",
+		"codeBlock",
+		"code",
+		"replace",
+		"if",
+	];
 }
 
 impl std::fmt::Display for TransformerType {

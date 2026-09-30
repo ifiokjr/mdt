@@ -48,7 +48,33 @@ pub fn parse_source_with_diagnostics(
 	}
 
 	let token_groups = tokenize(html_nodes)?;
-	build_blocks_from_groups_with_diagnostics(&token_groups)
+	let (blocks, mut diagnostics) = build_blocks_from_groups_with_diagnostics(&token_groups)?;
+
+	// Source code often mentions a closing tag in a string literal or a
+	// backtick code span (`"<!-- {/x} -->"`). That text is not a tag, so it
+	// must not fail the check as an unmatched closing tag.
+	let line_table = LineTable::new(content);
+	diagnostics.retain(|diagnostic| {
+		let ParseDiagnostic::UnmatchedClosingTag { line, column, .. } = diagnostic else {
+			return true;
+		};
+		let offset = line
+			.checked_sub(1)
+			.and_then(|index| line_table.line_starts.get(index))
+			.map(|line_start| line_start + column.saturating_sub(1))
+			.filter(|offset| *offset <= content.len() && content.is_char_boundary(*offset));
+		offset.is_none_or(|offset| !is_quoted(content, offset))
+	});
+
+	Ok((blocks, diagnostics))
+}
+
+/// Whether `offset` sits inside a string literal or an inline code span on
+/// its line: an odd number of `"` or backticks precede it.
+fn is_quoted(content: &str, offset: usize) -> bool {
+	let line_start = content[..offset].rfind('\n').map_or(0, |index| index + 1);
+	let before = &content[line_start..offset];
+	before.matches('"').count() % 2 == 1 || before.matches('`').count() % 2 == 1
 }
 
 /// Pre-computed table of line-start byte offsets for efficient offset-to-point
@@ -165,13 +191,19 @@ fn strip_comment_prefix(line: &str) -> &str {
 }
 
 /// Extract the comment prefix (e.g., `/// `, `//! `, `# `) from the start of
-/// a line when it begins with a known comment marker. Returns `""` when the
-/// line is not a comment line. This is the inverse of
+/// a line when it begins with a known comment marker. This is the inverse of
 /// [`strip_comment_prefix`]: it keeps the leading whitespace, the marker,
 /// and one optional trailing space.
+///
+/// A line of only whitespace is its own prefix, so an indented closing tag
+/// (in a markdown list item or a docstring) keeps its indentation. Any other
+/// line is not a comment line and yields `""`.
 pub(crate) fn extract_comment_prefix(line: &str) -> &str {
 	let trimmed = line.trim_start();
 	let leading_ws_len = line.len() - trimmed.len();
+	if trimmed.is_empty() {
+		return line;
+	}
 	for prefix in COMMENT_PREFIXES {
 		if let Some(rest) = trimmed.strip_prefix(prefix) {
 			// Include one optional space after the prefix.

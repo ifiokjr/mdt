@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmphXQU7y
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpkzTv7A
     - "--verbose"
     - check
     - "--diff"
@@ -16,12 +16,11 @@ exit_code: 1
 ----- stdout -----
 Scanned project: 2 provider(s), 2 consumer(s)
   Providers:
-    @intro ([TEMP_DIR]/template.t.md)
-    @version ([TEMP_DIR]/template.t.md)
+    @intro (template.t.md)
+    @version (template.t.md)
 
 ----- stderr -----
 Check failed.
-  render errors: 0
   stale consumers: 2
 
 Stale consumers:
@@ -36,4 +35,4 @@ Stale consumers:
   +
   +v1.0.0
 
-2 consumer block(s) are out of date. Run `mdt update` to fix.
+2 consumer block(s) are out of date. Run `mdt update`.

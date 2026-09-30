@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpGkFIhb
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpGtg3NT
     - check
   env:
     NO_COLOR: "1"
@@ -15,11 +15,10 @@ exit_code: 1
 
 ----- stderr -----
 Check failed.
-  render errors: 0
   stale consumers: 2
 
 Stale consumers:
   block `a` at readme.md:1:1
   block `b` at readme.md:7:1
 
-2 consumer block(s) are out of date. Run `mdt update` to fix.
+2 consumer block(s) are out of date. Run `mdt update`.

@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpsyymwl
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpgzsv59
     - doctor
   env:
     NO_COLOR: "1"
@@ -18,19 +18,18 @@ mdt doctor
 [WARN] Template Layout        configured template directories: templates, shared/templates
        hint: prefer `.templates/` as the canonical location for template files
 [PASS] Duplicate Providers    provider names are unique
-[FAIL] Missing Providers      1 missing provider name(s): missing_block
-       hint: define the missing provider blocks in template files or rename orphan consumers
-[FAIL] Orphan Consumers       found 1 orphan consumer block(s)
-       hint: add matching provider blocks or remove stale consumer references
+[FAIL] Orphan Consumers       1 consumer block(s) have no provider: consumer `missing_block` at docs/readme.md:9:1 has no provider
+       hint: rename the consumers to match a provider, or define the providers in `*.t.md` files
 [WARN] Unused Providers       found 1 unused provider block(s)
        hint: reuse existing providers from consumer blocks or remove dead templates
-[FAIL] Parser Diagnostics     1 error(s), 0 warning(s)
-       hint: fix malformed blocks and invalid transformers reported by `mdt check`
+[PASS] Parser Diagnostics     no parser diagnostics found
+[WARN] Consumer Sync          1 stale consumer block(s), 0 stale formatted file(s)
+       hint: run `mdt update`, then `mdt check`
 [PASS] Cache Artifact         cache artifact is readable and valid at [TEMP_DIR]/.mdt/cache/index-v2.json
 [PASS] Cache Hash Mode        content-hash verification disabled (mtime + size fingerprints only)
        hint: set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while troubleshooting
 [SKIP] Cache Efficiency       insufficient history for trend analysis (need at least 3 scans)
 
-summary: 5 pass, 2 warn, 3 fail, 1 skip
+summary: 6 pass, 3 warn, 1 fail, 1 skip
 
 ----- stderr -----
