@@ -31,3 +31,5 @@ Evaluations of the CLI showed several ways a broken setup reported success. The 
 **`mdt assist`** prints the correct setup for each client: `claude mcp add ... -- mdt mcp` and `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` with the `servers` key for GitHub Copilot in VS Code (it previously printed `mcpServers`), and CLI-plus-skill setup for Pi, which has no built-in MCP client. Every profile explains how to load the agent skill with `mdt skill` or `mdt skill --install <dir>`. JSON output adds `id`, `skill`, `mcp_config_file`, and `mcp_install_command`.
 
 **Smaller fixes:** running `mdt` without a subcommand prints help; `update --dry-run` describes what it actually prints and conflicts with `--watch`; `--verbose` prints provider paths relative to the project.
+
+**`mdt mcp --path <DIR>`** now serves that directory instead of ignoring the flag, so user-level MCP configs can pin a project.
