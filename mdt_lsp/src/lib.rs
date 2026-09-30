@@ -29,19 +29,22 @@ use std::path::PathBuf;
 
 use mdt_core::Block;
 use mdt_core::BlockType;
+use mdt_core::CodeBlockFilter;
+use mdt_core::ComparisonMode;
+use mdt_core::ExpectedContent;
 use mdt_core::ParseDiagnostic;
-use mdt_core::apply_transformers_with_data;
+use mdt_core::expected_consumer_content;
+use mdt_core::normalize_whitespace;
 use mdt_core::parse_source_with_diagnostics;
 use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
+use mdt_core::project::Project;
 use mdt_core::project::ProjectContext;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
 use mdt_core::project::is_markdown_path;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::project::suggest_similar_provider_names;
-use mdt_core::render_template;
-use serde_json::Value;
 use tokio::sync::RwLock;
 use tower_lsp_server::Client;
 use tower_lsp_server::LanguageServer;
@@ -62,26 +65,51 @@ struct DocumentState {
 }
 
 /// Workspace-level state shared across all LSP requests.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct WorkspaceState {
 	/// The workspace root path.
 	root: Option<PathBuf>,
 	/// Open documents keyed by URI.
 	documents: HashMap<Uri, DocumentState>,
-	/// Cached providers from the last project scan.
-	providers: HashMap<String, ProviderEntry>,
-	/// Cached consumers from the last project scan.
-	consumers: Vec<ConsumerEntry>,
-	/// Template data from mdt.toml config.
-	data: HashMap<String, Value>,
+	/// The last successful project scan: providers, consumers, template
+	/// data, and the `mdt.toml` settings that decide what `mdt update`
+	/// writes and what `mdt check` accepts. Saved documents update the
+	/// providers and consumers incrementally.
+	ctx: ProjectContext,
+}
+
+impl Default for WorkspaceState {
+	fn default() -> Self {
+		Self {
+			root: None,
+			documents: HashMap::new(),
+			ctx: empty_project_context(),
+		}
+	}
+}
+
+/// A project with no blocks, no data, and default settings, used until the
+/// first successful scan.
+fn empty_project_context() -> ProjectContext {
+	ProjectContext {
+		root: PathBuf::new(),
+		project: Project {
+			providers: HashMap::new(),
+			consumers: Vec::new(),
+			diagnostics: Vec::new(),
+		},
+		data: HashMap::new(),
+		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
+	}
 }
 
 impl WorkspaceState {
 	/// Store the result of a successful project scan.
 	fn apply_scan(&mut self, ctx: ProjectContext) {
-		self.providers = ctx.project.providers;
-		self.consumers = ctx.project.consumers;
-		self.data = ctx.data;
+		self.ctx = ctx;
 	}
 
 	/// Synchronous project scan used by tests. The server itself scans on
@@ -121,14 +149,17 @@ impl WorkspaceState {
 			// renamed in the document would otherwise linger (and power
 			// completions, goto-definition, and rename edits) until the next
 			// full rescan.
-			self.providers.retain(|_, entry| entry.file != file_path);
+			self.ctx
+				.project
+				.providers
+				.retain(|_, entry| entry.file != file_path);
 		}
 
 		for block in &doc.blocks {
 			let block_content = extract_content_between_tags(&doc.content, block);
 
 			if block.r#type == BlockType::Provider && is_template {
-				self.providers.insert(
+				self.ctx.project.providers.insert(
 					block.name.clone(),
 					ProviderEntry {
 						block: block.clone(),
@@ -140,11 +171,12 @@ impl WorkspaceState {
 		}
 
 		// Update consumers for this file: remove existing then re-add.
-		self.consumers.retain(|c| c.file != file_path);
+		let consumers = &mut self.ctx.project.consumers;
+		consumers.retain(|c| c.file != file_path);
 		for block in &doc.blocks {
 			if matches!(block.r#type, BlockType::Consumer | BlockType::Inline) {
 				let block_content = extract_content_between_tags(&doc.content, block);
-				self.consumers.push(ConsumerEntry {
+				consumers.push(ConsumerEntry {
 					block: block.clone(),
 					file: file_path.clone(),
 					content: block_content,
@@ -156,7 +188,8 @@ impl WorkspaceState {
 	/// Parse a single document and update its cached state. Returns the
 	/// parsed blocks.
 	fn parse_document(&mut self, uri: &Uri, content: String) -> Vec<Block> {
-		let (blocks, parse_diagnostics) = parse_document_content(uri, &content);
+		let (blocks, parse_diagnostics) =
+			parse_document_content(uri, &content, &self.ctx.markdown_codeblocks);
 		self.documents.insert(
 			uri.clone(),
 			DocumentState {
@@ -172,11 +205,19 @@ impl WorkspaceState {
 /// Parse document content, choosing the right parser based on file extension.
 /// Returns both parsed blocks and any parse diagnostics (unclosed blocks,
 /// unknown transformers, etc.).
-fn parse_document_content(uri: &Uri, content: &str) -> (Vec<Block>, Vec<ParseDiagnostic>) {
+///
+/// `markdown_codeblocks` is the configured `[exclude] markdown_codeblocks`
+/// filter, so tags the scanner ignores in source-comment code blocks are
+/// ignored here too.
+fn parse_document_content(
+	uri: &Uri,
+	content: &str,
+	markdown_codeblocks: &CodeBlockFilter,
+) -> (Vec<Block>, Vec<ParseDiagnostic>) {
 	let result = if is_markdown_path(Path::new(uri.path().as_str())) {
 		parse_with_diagnostics(content)
 	} else {
-		parse_source_with_diagnostics(content, &mdt_core::CodeBlockFilter::default())
+		parse_source_with_diagnostics(content, markdown_codeblocks)
 	};
 
 	result.unwrap_or_default()
@@ -222,7 +263,7 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 		}
 	}
 
-	if let Some(provider) = state.providers.get(name) {
+	if let Some(provider) = state.ctx.project.providers.get(name) {
 		if let Some(provider_uri) = path_to_uri(&provider.file) {
 			if provider_uri != *uri && !other_uris.contains(&provider_uri) {
 				other_uris.push(provider_uri);
@@ -614,205 +655,215 @@ impl LanguageServer for MdtLanguageServer {
 // Diagnostics
 // ---------------------------------------------------------------------------
 
-/// Compute diagnostics for a single document. This includes:
-/// - Stale consumer blocks (content doesn't match provider)
-/// - Missing providers (consumer references a non-existent provider)
-/// - Name suggestions for missing providers (Levenshtein distance)
-/// - Provider blocks in non-template files
-/// - Unused provider blocks (no consumers reference them)
-/// - Unclosed blocks (opening tag without matching close)
-/// - Unknown transformer names
-/// - Invalid transformer arguments
+/// The content currently between a consumer or inline block's tags in the
+/// open document `doc`, and what `mdt update` would write there.
+///
+/// The expected content comes from [`expected_consumer_content`], the same
+/// computation `mdt check` and `mdt update` use (data, transformers,
+/// `[padding]`, and the closing tag's comment prefix). The document's
+/// in-memory text stands in for the file on disk, so unsaved edits are
+/// checked as they are typed.
+fn expected_block_content(
+	ctx: &ProjectContext,
+	doc: &DocumentState,
+	block: &Block,
+) -> (String, ExpectedContent) {
+	let consumer = ConsumerEntry {
+		block: block.clone(),
+		// The expected content does not depend on the file path.
+		file: PathBuf::new(),
+		content: extract_content_between_tags(&doc.content, block),
+	};
+	let expected = expected_consumer_content(ctx, &consumer, &doc.content);
+	(consumer.content, expected)
+}
+
+/// Whether `current` passes `mdt check` against `expected` under the
+/// configured `[check] comparison` mode.
+fn content_matches(current: &str, expected: &str, comparison: &ComparisonMode) -> bool {
+	current == expected
+		|| (*comparison == ComparisonMode::Lenient
+			&& normalize_whitespace(current) == normalize_whitespace(expected))
+}
+
+/// How diagnostics and hovers name a block of the given type.
+fn block_label(block_type: BlockType) -> &'static str {
+	match block_type {
+		BlockType::Provider => "Provider block",
+		BlockType::Inline => "Inline block",
+		BlockType::Consumer => "Consumer block",
+		_ => "Block",
+	}
+}
+
+/// The diagnostic for a consumer or inline block whose content differs from
+/// what `mdt update` would write. `data.expected_content` carries the
+/// replacement text.
+fn stale_diagnostic(block: &Block, expected: &str) -> Diagnostic {
+	Diagnostic {
+		range: to_lsp_range(&block.opening),
+		severity: Some(DiagnosticSeverity::WARNING),
+		source: Some("mdt".to_string()),
+		message: format!(
+			"{} `{}` is out of date",
+			block_label(block.r#type),
+			block.name
+		),
+		data: Some(serde_json::json!({
+			"kind": "stale",
+			"block_name": block.name,
+			"expected_content": expected,
+		})),
+		..Default::default()
+	}
+}
+
+/// Convert a parser diagnostic to an LSP diagnostic at the position it
+/// reports. Returns `None` for kinds this server does not know yet.
+fn parse_diagnostic_to_lsp(diagnostic: &ParseDiagnostic) -> Option<Diagnostic> {
+	let (line, column, severity, message) = match diagnostic {
+		ParseDiagnostic::UnclosedBlock { name, line, column } => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::ERROR,
+				format!("Missing closing tag for block `{name}`"),
+			)
+		}
+		ParseDiagnostic::UnknownTransformer { name, line, column } => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::ERROR,
+				format!("Unknown transformer `{name}`"),
+			)
+		}
+		ParseDiagnostic::InvalidTransformerArgs {
+			name,
+			expected,
+			got,
+			line,
+			column,
+		} => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::ERROR,
+				format!("Transformer `{name}` expects {expected} argument(s), got {got}"),
+			)
+		}
+		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::WARNING,
+				format!(
+					"Closing tag `{{/{name}}}` has no matching opening tag. Check both tags for \
+					 typos."
+				),
+			)
+		}
+		ParseDiagnostic::InvalidTag { tag, line, column } => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::ERROR,
+				format!(
+					"`{tag}` looks like an mdt tag but cannot be parsed, so mdt ignores it. The \
+					 sigil (`@`, `=`, `~`, `/`) must directly follow `{{`, and block names must \
+					 match `[A-Za-z_][A-Za-z0-9_-]*`."
+				),
+			)
+		}
+		ParseDiagnostic::NestedBlock {
+			outer,
+			inner,
+			line,
+			column,
+		} => {
+			(
+				line,
+				column,
+				DiagnosticSeverity::ERROR,
+				format!(
+					"Block `{inner}` is inside block `{outer}`, whose content `mdt update` \
+					 replaces; move `{inner}` outside `{outer}`."
+				),
+			)
+		}
+		_ => return None,
+	};
+	let position = Position {
+		line: line.saturating_sub(1) as u32,
+		character: column.saturating_sub(1) as u32,
+	};
+	Some(Diagnostic {
+		range: Range {
+			start: position,
+			end: position,
+		},
+		severity: Some(severity),
+		source: Some("mdt".to_string()),
+		message,
+		..Default::default()
+	})
+}
+
+/// Compute diagnostics for a single document, matching what `mdt check`
+/// reports for it:
+/// - Parse problems: unclosed blocks, closing tags without an opening tag,
+///   tag-like comments that do not parse, blocks nested inside consumers,
+///   unknown transformers, and invalid transformer arguments
+/// - Stale consumer and inline blocks (content differs from what `mdt update`
+///   would write)
+/// - Blocks whose template fails to render
+/// - Consumers without a provider, with did-you-mean suggestions
+/// - Duplicate and unused providers, and providers outside `*.t.md` files
 fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 	let Some(doc) = state.documents.get(uri) else {
 		return Vec::new();
 	};
 
-	let mut diagnostics = Vec::new();
+	let mut diagnostics: Vec<Diagnostic> = doc
+		.parse_diagnostics
+		.iter()
+		.filter_map(parse_diagnostic_to_lsp)
+		.collect();
 	let is_template = uri.path().as_str().ends_with(".t.md");
-
-	// Surface parse diagnostics (unclosed blocks, unknown transformers).
-	for parse_diag in &doc.parse_diagnostics {
-		match parse_diag {
-			ParseDiagnostic::UnclosedBlock { name, line, column } => {
-				let position = Position {
-					line: line.saturating_sub(1) as u32,
-					character: column.saturating_sub(1) as u32,
-				};
-				diagnostics.push(Diagnostic {
-					range: Range {
-						start: position,
-						end: position,
-					},
-					severity: Some(DiagnosticSeverity::ERROR),
-					source: Some("mdt".to_string()),
-					message: format!("Missing closing tag for block `{name}`"),
-					..Default::default()
-				});
-			}
-			ParseDiagnostic::UnknownTransformer { name, line, column } => {
-				let position = Position {
-					line: line.saturating_sub(1) as u32,
-					character: column.saturating_sub(1) as u32,
-				};
-				diagnostics.push(Diagnostic {
-					range: Range {
-						start: position,
-						end: position,
-					},
-					severity: Some(DiagnosticSeverity::ERROR),
-					source: Some("mdt".to_string()),
-					message: format!("Unknown transformer `{name}`"),
-					..Default::default()
-				});
-			}
-			ParseDiagnostic::InvalidTransformerArgs {
-				name,
-				expected,
-				got,
-				line,
-				column,
-			} => {
-				let position = Position {
-					line: line.saturating_sub(1) as u32,
-					character: column.saturating_sub(1) as u32,
-				};
-				diagnostics.push(Diagnostic {
-					range: Range {
-						start: position,
-						end: position,
-					},
-					severity: Some(DiagnosticSeverity::ERROR),
-					source: Some("mdt".to_string()),
-					message: format!(
-						"Transformer `{name}` expects {expected} argument(s), got {got}"
-					),
-					..Default::default()
-				});
-			}
-			_ => {}
-		}
-	}
 
 	for block in &doc.blocks {
 		match block.r#type {
-			BlockType::Consumer => {
-				let consumer_content = extract_content_between_tags(&doc.content, block);
-
-				if let Some(provider) = state.providers.get(&block.name) {
-					// Check if the consumer is stale.
-					let render_data = mdt_core::build_render_context(
-						&state.data,
-						provider,
-						&ConsumerEntry {
-							block: block.clone(),
-							file: PathBuf::new(),
-							content: String::new(),
-						},
-					)
-					.unwrap_or_else(|| state.data.clone());
-					let rendered = render_template(&provider.content, &render_data)
-						.unwrap_or_else(|_| provider.content.clone());
-					let expected = apply_transformers_with_data(
-						&rendered,
-						&block.transformers,
-						Some(&render_data),
-					);
-
-					if consumer_content != expected {
+			BlockType::Consumer | BlockType::Inline => {
+				let (current, expected) = expected_block_content(&state.ctx, doc, block);
+				match expected {
+					ExpectedContent::Rendered(expected) => {
+						if !content_matches(&current, &expected, &state.ctx.comparison) {
+							diagnostics.push(stale_diagnostic(block, &expected));
+						}
+					}
+					ExpectedContent::NoProvider => {
 						diagnostics.push(Diagnostic {
 							range: to_lsp_range(&block.opening),
-							severity: Some(DiagnosticSeverity::WARNING),
+							severity: Some(DiagnosticSeverity::ERROR),
 							source: Some("mdt".to_string()),
-							message: format!("Consumer block `{}` is out of date", block.name),
-							data: Some(serde_json::json!({
-								"kind": "stale",
-								"block_name": block.name,
-								"expected_content": expected,
-							})),
+							message: missing_provider_message(state, &block.name),
 							..Default::default()
 						});
 					}
-				} else {
-					// Missing provider — suggest similar names.
-					let suggestions = suggest_similar_provider_names(
-						&block.name,
-						state.providers.keys().map(String::as_str),
-					);
-					let message = if suggestions.is_empty() {
-						format!("No provider found for consumer block `{}`", block.name)
-					} else {
-						format!(
-							"No provider found for consumer block `{}`. Did you mean: {}?",
-							block.name,
-							suggestions
-								.iter()
-								.map(|s| format!("`{s}`"))
-								.collect::<Vec<_>>()
-								.join(", ")
-						)
-					};
-
-					diagnostics.push(Diagnostic {
-						range: to_lsp_range(&block.opening),
-						severity: Some(DiagnosticSeverity::WARNING),
-						source: Some("mdt".to_string()),
-						message,
-						..Default::default()
-					});
-				}
-			}
-			BlockType::Inline => {
-				let consumer_content = extract_content_between_tags(&doc.content, block);
-				let Some(template) = block.arguments.first() else {
-					diagnostics.push(Diagnostic {
-						range: to_lsp_range(&block.opening),
-						severity: Some(DiagnosticSeverity::ERROR),
-						source: Some("mdt".to_string()),
-						message: format!(
-							"Inline block `{}` requires a template argument, e.g. <!-- \
-							 {{~{}:\"{{{{ pkg.version }}}}\"}} -->",
-							block.name, block.name
-						),
-						..Default::default()
-					});
-					continue;
-				};
-
-				match render_template(template, &state.data) {
-					Ok(rendered) => {
-						let expected = apply_transformers_with_data(
-							&rendered,
-							&block.transformers,
-							Some(&state.data),
-						);
-						if consumer_content != expected {
-							diagnostics.push(Diagnostic {
-								range: to_lsp_range(&block.opening),
-								severity: Some(DiagnosticSeverity::WARNING),
-								source: Some("mdt".to_string()),
-								message: format!("Inline block `{}` is out of date", block.name),
-								data: Some(serde_json::json!({
-									"kind": "stale",
-									"block_name": block.name,
-									"expected_content": expected,
-								})),
-								..Default::default()
-							});
-						}
-					}
-					Err(err) => {
+					ExpectedContent::RenderFailed(message) => {
 						diagnostics.push(Diagnostic {
 							range: to_lsp_range(&block.opening),
 							severity: Some(DiagnosticSeverity::ERROR),
 							source: Some("mdt".to_string()),
 							message: format!(
-								"Inline block `{}` failed to render: {err}",
+								"{} `{}` failed to render: {message}",
+								block_label(block.r#type),
 								block.name
 							),
 							..Default::default()
 						});
 					}
+					_ => {}
 				}
 			}
 			BlockType::Provider => {
@@ -845,9 +896,9 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 						continue;
 					}
 
-					// Check for unused providers (no consumers reference this
-					// block).
-					let has_consumers = state.consumers.iter().any(|consumer| {
+					// Unused providers do not fail `mdt check`; they are
+					// warnings.
+					let has_consumers = state.ctx.project.consumers.iter().any(|consumer| {
 						consumer.block.r#type == BlockType::Consumer
 							&& consumer.block.name == block.name
 					});
@@ -863,7 +914,7 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 				} else {
 					diagnostics.push(Diagnostic {
 						range: to_lsp_range(&block.opening),
-						severity: Some(DiagnosticSeverity::INFORMATION),
+						severity: Some(DiagnosticSeverity::WARNING),
 						source: Some("mdt".to_string()),
 						message: format!(
 							"Provider block `{}` is only recognized in *.t.md template files",
@@ -878,6 +929,27 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 	}
 
 	diagnostics
+}
+
+/// The message for a consumer whose name matches no provider, suggesting
+/// similarly named providers.
+fn missing_provider_message(state: &WorkspaceState, name: &str) -> String {
+	let suggestions = suggest_similar_provider_names(
+		name,
+		state.ctx.project.providers.keys().map(String::as_str),
+	);
+	if suggestions.is_empty() {
+		return format!("No provider found for consumer block `{name}`");
+	}
+
+	format!(
+		"No provider found for consumer block `{name}`. Did you mean: {}?",
+		suggestions
+			.iter()
+			.map(|suggestion| format!("`{suggestion}`"))
+			.collect::<Vec<_>>()
+			.join(", ")
+	)
 }
 
 // ---------------------------------------------------------------------------
@@ -919,42 +991,23 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 			let mut parts = Vec::new();
 			parts.push(format!("**Consumer block:** `{}`", block.name));
 
-			if let Some(provider) = state.providers.get(&block.name) {
-				let render_data = mdt_core::build_render_context(
-					&state.data,
-					provider,
-					&ConsumerEntry {
-						block: block.clone(),
-						file: PathBuf::new(),
-						content: String::new(),
-					},
-				)
-				.unwrap_or_else(|| state.data.clone());
-				let rendered = render_template(&provider.content, &render_data)
-					.unwrap_or_else(|_| provider.content.clone());
-				let expected = apply_transformers_with_data(
-					&rendered,
-					&block.transformers,
-					Some(&render_data),
-				);
-
+			if let Some(provider) = state.ctx.project.providers.get(&block.name) {
 				parts.push(format!(
 					"\n**Provider source:** `{}`",
 					provider.file.display()
 				));
+				parts.extend(transformer_chain(block));
+			}
 
-				if !block.transformers.is_empty() {
-					let names: Vec<String> = block
-						.transformers
-						.iter()
-						.map(|t| t.r#type.to_string())
-						.collect();
-					parts.push(format!("\n**Transformers:** {}", names.join(" | ")));
+			match expected_block_content(&state.ctx, doc, block).1 {
+				ExpectedContent::Rendered(expected) => parts.push(content_preview(&expected)),
+				ExpectedContent::NoProvider => {
+					parts.push("\n*No matching provider found*".to_string());
 				}
-
-				parts.push(format!("\n---\n\n```\n{}\n```", expected.trim()));
-			} else {
-				parts.push("\n*No matching provider found*".to_string());
+				ExpectedContent::RenderFailed(message) => {
+					parts.push(format!("\n*Failed to render provider:* {message}"));
+				}
+				_ => {}
 			}
 
 			parts.join("")
@@ -965,26 +1018,13 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 
 			if let Some(template) = block.arguments.first() {
 				parts.push(format!("\n**Template:** `{template}`"));
-				match render_template(template, &state.data) {
-					Ok(rendered) => {
-						let expected = apply_transformers_with_data(
-							&rendered,
-							&block.transformers,
-							Some(&state.data),
-						);
-						if !block.transformers.is_empty() {
-							let names: Vec<String> = block
-								.transformers
-								.iter()
-								.map(|t| t.r#type.to_string())
-								.collect();
-							parts.push(format!("\n**Transformers:** {}", names.join(" | ")));
-						}
-						parts.push(format!("\n---\n\n```\n{}\n```", expected.trim()));
+				parts.extend(transformer_chain(block));
+				match expected_block_content(&state.ctx, doc, block).1 {
+					ExpectedContent::Rendered(expected) => parts.push(content_preview(&expected)),
+					ExpectedContent::RenderFailed(message) => {
+						parts.push(format!("\n*Failed to render inline template:* {message}"));
 					}
-					Err(err) => {
-						parts.push(format!("\n*Failed to render inline template:* `{err}`"));
-					}
+					_ => {}
 				}
 			} else {
 				parts.push("\n*Missing inline template argument*".to_string());
@@ -998,6 +1038,8 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 
 			let content = extract_content_between_tags(&doc.content, block);
 			let consumer_count = state
+				.ctx
+				.project
 				.consumers
 				.iter()
 				.filter(|c| c.block.name == block.name)
@@ -1007,6 +1049,8 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 
 			// List consumer locations
 			let consumer_files: Vec<String> = state
+				.ctx
+				.project
 				.consumers
 				.iter()
 				.filter(|c| c.block.name == block.name)
@@ -1017,7 +1061,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 				parts.push(format!("\n**Consumers in:** {}", consumer_files.join(", ")));
 			}
 
-			parts.push(format!("\n---\n\n```\n{}\n```", content.trim()));
+			parts.push(content_preview(&content));
 
 			parts.join("")
 		}
@@ -1031,6 +1075,26 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 		}),
 		range: Some(to_lsp_range(&block.opening)),
 	})
+}
+
+/// The `**Transformers:**` hover line for a block with a transformer chain.
+fn transformer_chain(block: &Block) -> Option<String> {
+	if block.transformers.is_empty() {
+		return None;
+	}
+
+	let names: Vec<String> = block
+		.transformers
+		.iter()
+		.map(|transformer| transformer.r#type.to_string())
+		.collect();
+	Some(format!("\n**Transformers:** {}", names.join(" | ")))
+}
+
+/// A hover section showing `text` in a code block, without surrounding
+/// whitespace.
+fn content_preview(text: &str) -> String {
+	format!("\n---\n\n```\n{}\n```", text.trim())
 }
 
 // ---------------------------------------------------------------------------
@@ -1095,6 +1159,8 @@ fn compute_completions(
 /// Generate completion items for all known block names.
 fn block_name_completions(state: &WorkspaceState) -> Vec<CompletionItem> {
 	state
+		.ctx
+		.project
 		.providers
 		.iter()
 		.map(|(name, entry)| {
@@ -1206,7 +1272,7 @@ fn compute_goto_definition(
 	match block.r#type {
 		BlockType::Consumer => {
 			// Navigate to the provider definition.
-			let provider = state.providers.get(&block.name)?;
+			let provider = state.ctx.project.providers.get(&block.name)?;
 			let target_uri = path_to_uri(&provider.file)?;
 			let target_range = to_lsp_range(&provider.block.opening);
 
@@ -1218,6 +1284,8 @@ fn compute_goto_definition(
 		BlockType::Provider => {
 			// Navigate to all consumers of this provider.
 			let locations: Vec<Location> = state
+				.ctx
+				.project
 				.consumers
 				.iter()
 				.filter(|c| c.block.name == block.name)
@@ -1293,8 +1361,10 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSy
 // Code Actions
 // ---------------------------------------------------------------------------
 
-/// Compute code actions for a range. Offers "Update block" for stale
-/// consumers.
+/// Compute code actions for a range. Offers "Update block" for consumer and
+/// inline blocks whose content differs from what `mdt update` would write.
+/// Blocks that fail to render or have no provider get no fix: `mdt update`
+/// leaves them untouched too.
 fn compute_code_actions(
 	state: &WorkspaceState,
 	uri: &Uri,
@@ -1311,7 +1381,6 @@ fn compute_code_actions(
 			continue;
 		}
 
-		let opening_range = to_lsp_range(&block.opening);
 		// Check if the user's selection/cursor overlaps with this block.
 		if !ranges_overlap(
 			range,
@@ -1323,58 +1392,21 @@ fn compute_code_actions(
 			continue;
 		}
 
-		let (expected, diagnostic_message) = match block.r#type {
-			BlockType::Consumer => {
-				let Some(provider) = state.providers.get(&block.name) else {
-					continue;
-				};
-				let render_data = mdt_core::build_render_context(
-					&state.data,
-					provider,
-					&ConsumerEntry {
-						block: block.clone(),
-						file: PathBuf::new(),
-						content: String::new(),
-					},
-				)
-				.unwrap_or_else(|| state.data.clone());
-				let rendered = render_template(&provider.content, &render_data)
-					.unwrap_or_else(|_| provider.content.clone());
-				(
-					apply_transformers_with_data(
-						&rendered,
-						&block.transformers,
-						Some(&render_data),
-					),
-					format!("Consumer block `{}` is out of date", block.name),
-				)
-			}
-			BlockType::Inline => {
-				let Some(template) = block.arguments.first() else {
-					continue;
-				};
-				let rendered = render_template(template, &state.data).unwrap_or_default();
-				(
-					apply_transformers_with_data(&rendered, &block.transformers, Some(&state.data)),
-					format!("Inline block `{}` is out of date", block.name),
-				)
-			}
-			_ => continue,
+		let (current, ExpectedContent::Rendered(expected)) =
+			expected_block_content(&state.ctx, doc, block)
+		else {
+			continue;
 		};
-		let current = extract_content_between_tags(&doc.content, block);
-
-		if current == expected {
+		if content_matches(&current, &expected, &state.ctx.comparison) {
 			continue;
 		}
 
+		let diagnostic = stale_diagnostic(block, &expected);
 		// Build a text edit that replaces the content between the tags.
-		let content_start = to_lsp_position(&block.opening.end);
-		let content_end = to_lsp_position(&block.closing.start);
-
 		let edit = TextEdit {
 			range: Range {
-				start: content_start,
-				end: content_end,
+				start: to_lsp_position(&block.opening.end),
+				end: to_lsp_position(&block.closing.start),
 			},
 			new_text: expected,
 		};
@@ -1385,13 +1417,7 @@ fn compute_code_actions(
 		actions.push(CodeActionOrCommand::CodeAction(CodeAction {
 			title: format!("Update block `{}`", block.name),
 			kind: Some(CodeActionKind::QUICKFIX),
-			diagnostics: Some(vec![Diagnostic {
-				range: opening_range,
-				severity: Some(DiagnosticSeverity::WARNING),
-				source: Some("mdt".to_string()),
-				message: diagnostic_message,
-				..Default::default()
-			}]),
+			diagnostics: Some(vec![diagnostic]),
 			edit: Some(WorkspaceEdit {
 				changes: Some(changes),
 				..Default::default()
@@ -1433,7 +1459,7 @@ fn compute_references(
 
 	if block.r#type == BlockType::Inline {
 		// Inline blocks only reference other inline blocks of the same name.
-		for consumer in &state.consumers {
+		for consumer in &state.ctx.project.consumers {
 			if consumer.block.r#type == BlockType::Inline && consumer.block.name == *name {
 				if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 					locations.push(Location {
@@ -1445,7 +1471,7 @@ fn compute_references(
 		}
 	} else {
 		// Include the provider location if it exists.
-		if let Some(provider) = state.providers.get(name) {
+		if let Some(provider) = state.ctx.project.providers.get(name) {
 			if let Some(provider_uri) = path_to_uri(&provider.file) {
 				locations.push(Location {
 					uri: provider_uri,
@@ -1455,7 +1481,7 @@ fn compute_references(
 		}
 
 		// Include all consumer locations.
-		for consumer in &state.consumers {
+		for consumer in &state.ctx.project.consumers {
 			if consumer.block.r#type == BlockType::Consumer && consumer.block.name == *name {
 				if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 					locations.push(Location {
@@ -1584,14 +1610,14 @@ fn compute_rename(
 	let mut blocks_to_rename: Vec<(&Block, &str, Uri)> = Vec::new();
 
 	// Add the provider if it exists.
-	if let Some(provider) = state.providers.get(old_name) {
+	if let Some(provider) = state.ctx.project.providers.get(old_name) {
 		if let Some(provider_uri) = path_to_uri(&provider.file) {
 			blocks_to_rename.push((&provider.block, "", provider_uri));
 		}
 	}
 
 	// Add all consumers with this name.
-	for consumer in &state.consumers {
+	for consumer in &state.ctx.project.consumers {
 		if consumer.block.name == *old_name {
 			if let Some(consumer_uri) = path_to_uri(&consumer.file) {
 				blocks_to_rename.push((&consumer.block, "", consumer_uri));
@@ -1641,7 +1667,7 @@ fn compute_rename(
 	// Also handle files that are not currently open in the editor.
 	// For the provider file, if not open we can try reading from disk via
 	// the stored file path.
-	if let Some(provider) = state.providers.get(old_name) {
+	if let Some(provider) = state.ctx.project.providers.get(old_name) {
 		let provider_uri_opt = path_to_uri(&provider.file);
 		if let Some(provider_uri) = provider_uri_opt {
 			if !state.documents.contains_key(&provider_uri) {
@@ -1682,7 +1708,7 @@ fn compute_rename(
 	}
 
 	// For consumer files not currently open.
-	for consumer in &state.consumers {
+	for consumer in &state.ctx.project.consumers {
 		if consumer.block.name != *old_name {
 			continue;
 		}
@@ -1734,14 +1760,25 @@ fn compute_rename(
 	}
 }
 
+/// Log to stderr (stdout carries the protocol), filtered by `MDT_LOG`.
+///
+/// `mdt lsp` runs inside the CLI, which may already have installed a global
+/// subscriber (for example with `MDT_LOG=info mdt lsp`); that one is kept.
+fn init_tracing() {
+	let filter = EnvFilter::try_from_env("MDT_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+	let installed = fmt::Subscriber::builder()
+		.with_env_filter(filter)
+		.with_writer(std::io::stderr)
+		.try_init();
+	if installed.is_err() {
+		tracing::debug!("keeping the tracing subscriber that is already installed");
+	}
+}
+
 /// Start the LSP server on stdin/stdout. This is used by both the standalone
 /// `mdt-lsp` binary and the `mdt lsp` CLI subcommand.
 pub async fn run_server() {
-	let filter = EnvFilter::try_from_env("MDT_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
-	fmt::Subscriber::builder()
-		.with_env_filter(filter)
-		.with_writer(std::io::stderr)
-		.init();
+	init_tracing();
 
 	let stdin = tokio::io::stdin();
 	let stdout = tokio::io::stdout();
