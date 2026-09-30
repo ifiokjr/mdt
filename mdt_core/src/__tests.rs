@@ -1711,9 +1711,9 @@ fn parse_reports_misspelled_opening_tag_as_unclosed_and_unmatched() {
 	"<!-- {=a} -->\nv<!-- {~v:\"1\"} -->1<!-- {/v} -->\n<!-- {/a} -->\n",
 	vec!["nested v in a L2"]
 )]
-#[case::consumer_inside_provider_is_composition(
+#[case::consumer_inside_provider(
 	"<!-- {@a} -->\nx\n<!-- {=b} -->\ny\n<!-- {/b} -->\n<!-- {/a} -->\n",
-	vec![]
+	vec!["nested b in a L3"]
 )]
 #[case::siblings(
 	"<!-- {=a} -->\nx\n<!-- {/a} -->\n<!-- {=b} -->\ny\n<!-- {/b} -->\n",
@@ -2188,7 +2188,8 @@ fn template_paths_add_only_template_files() -> MdtResult<()> {
 	write_file(
 		tmp.path(),
 		"shared/templates/shared.t.md",
-		"<!-- {@block} -->\n\nshared\n\n<!-- {/block} -->\n",
+		"<!-- {@block} -->\n\nshared\n\n<!-- {/block} -->\n\n<!-- {=block} -->\nroot's own \
+		 consumer\n<!-- {/block} -->\n",
 	);
 	write_file(tmp.path(), "shared/templates/readme.md", CONSUMER);
 	write_file(&project_root, "readme.md", CONSUMER);

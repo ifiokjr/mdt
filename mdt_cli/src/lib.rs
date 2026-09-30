@@ -26,8 +26,11 @@ pub struct MdtCli {
 	#[command(subcommand)]
 	pub command: Commands,
 
-	/// Path to the project root directory (default: the current directory).
-	/// Must exist, except for `mdt init`, which creates it.
+	/// Path to the project root directory. Must exist, except for `mdt
+	/// init`, which creates it. Defaults to the nearest directory, from the
+	/// current one upward, that contains an mdt config file (or the current
+	/// directory when there is none; `mdt init` always uses the current
+	/// directory).
 	#[arg(long, short, global = true)]
 	pub path: Option<PathBuf>,
 

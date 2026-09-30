@@ -134,6 +134,7 @@ fn check_github_annotates_orphans_as_errors_with_suggestions() -> std::io::Resul
 	);
 
 	common::mdt_cmd_for_path(tmp.path())
+		.current_dir(tmp.path())
 		.args(["check", "--format", "github", "--ignore-unused-blocks"])
 		.assert()
 		.code(1)
@@ -231,6 +232,61 @@ fn commands_find_the_project_root_from_a_subdirectory() -> std::io::Result<()> {
 		.assert()
 		.success();
 	assert!(tmp.path().join("docs/mdt.toml").is_file());
+
+	Ok(())
+}
+
+#[test]
+fn check_github_paths_are_relative_to_the_checkout_for_sub_projects() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "packages/lib/mdt.toml", "");
+	write(
+		tmp.path(),
+		"packages/lib/.templates/intro.t.md",
+		"<!-- {@intro} -->\n\nHello\n\n<!-- {/intro} -->\n",
+	);
+	write(
+		tmp.path(),
+		"packages/lib/readme.md",
+		"<!-- {=intro} -->\n\nstale\n\n<!-- {/intro} -->\n",
+	);
+
+	common::mdt_cmd()
+		.current_dir(tmp.path())
+		.args(["check", "--path", "packages/lib", "--format", "github"])
+		.assert()
+		.code(1)
+		.stdout(predicate::str::contains(
+			"::error file=packages/lib/readme.md,line=1,col=1::",
+		));
+
+	Ok(())
+}
+
+#[test]
+fn check_machine_formats_report_scan_errors() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "mdt.toml", "[paddding]\nbefore = 0\n");
+
+	let output = common::mdt_cmd_for_path(tmp.path())
+		.args(["check", "--format", "json"])
+		.output()?;
+	assert_eq!(output.status.code(), Some(2));
+	let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+		.unwrap_or_else(|e| panic!("stdout is not JSON: {e}"));
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["diagnostics"][0]["code"], "mdt::config_parse");
+
+	let output = common::mdt_cmd_for_path(tmp.path())
+		.args(["check", "--format", "github"])
+		.output()?;
+	assert_eq!(output.status.code(), Some(2));
+	let stdout = String::from_utf8_lossy(&output.stdout);
+	assert!(stdout.starts_with("::error::"), "{stdout}");
+	assert!(
+		!stdout.trim_end().contains('\n'),
+		"multi-line errors must stay one workflow command: {stdout}"
+	);
 
 	Ok(())
 }

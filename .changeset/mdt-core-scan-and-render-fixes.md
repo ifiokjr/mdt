@@ -26,3 +26,4 @@
 - Files without any `<!--` are no longer parsed, which removes the dominant cost of scanning large tag-free markdown files.
 - `TransformerType::NAMES` lists every transformer's canonical name, so help text can no longer drift from the implementation.
 - `content_matches` is public, so tools compare consumer content exactly as `mdt check` does under `[check] comparison`.
+- Consumers inside a shared `*.t.md` read through `[templates] paths` from outside the project are no longer treated as the project's consumers, so `mdt update --path <sub-project>` can never rewrite files outside that project.

@@ -58,11 +58,11 @@ pub enum ParseDiagnostic {
 		line: usize,
 		column: usize,
 	},
-	/// A block opens inside a consumer or inline block. `mdt update`
-	/// replaces everything between the outer block's tags, so the inner
-	/// block would be destroyed.
+	/// A block opens inside another block. Inside a consumer or inline
+	/// block, `mdt update` would destroy it; inside a provider, its tags
+	/// would be copied into every consumer, where they nest.
 	NestedBlock {
-		/// The enclosing consumer or inline block.
+		/// The enclosing block.
 		outer: String,
 		/// The first block found inside it.
 		inner: String,
@@ -255,29 +255,29 @@ pub fn build_blocks_from_groups_with_diagnostics(
 				};
 				let first_inner_completed = completed_before.remove(idx);
 				let mut creator = pending.remove(idx);
-				if matches!(creator.r#type, BlockType::Consumer | BlockType::Inline) {
-					// A block opened after this one sits between its tags,
-					// whether it is still open (overlap) or already closed
-					// (nesting).
-					let opened_inside =
-						|opening: &Position| opening.start.offset > creator.opening.start.offset;
-					let inner = pending[idx..]
-						.iter()
-						.map(|inner| (&inner.name, inner.opening))
-						.chain(
-							blocks[first_inner_completed..]
-								.iter()
-								.map(|inner| (&inner.name, inner.opening)),
-						)
-						.find(|(_, opening)| opened_inside(opening));
-					if let Some((inner, inner_opening)) = inner {
-						diagnostics.push(ParseDiagnostic::NestedBlock {
-							outer: creator.name.clone(),
-							inner: inner.clone(),
-							line: inner_opening.start.line,
-							column: inner_opening.start.column,
-						});
-					}
+				// Blocks never nest. Inside a consumer or inline block,
+				// `mdt update` overwrites the inner block; inside a provider,
+				// its tags are copied into every consumer and nest there. A
+				// block opened after this one sits between its tags, whether
+				// it is still open (overlap) or already closed (nesting).
+				let opened_inside =
+					|opening: &Position| opening.start.offset > creator.opening.start.offset;
+				let inner = pending[idx..]
+					.iter()
+					.map(|inner| (&inner.name, inner.opening))
+					.chain(
+						blocks[first_inner_completed..]
+							.iter()
+							.map(|inner| (&inner.name, inner.opening)),
+					)
+					.find(|(_, opening)| opened_inside(opening));
+				if let Some((inner, inner_opening)) = inner {
+					diagnostics.push(ParseDiagnostic::NestedBlock {
+						outer: creator.name.clone(),
+						inner: inner.clone(),
+						line: inner_opening.start.line,
+						column: inner_opening.start.column,
+					});
 				}
 				creator.closing = Some(group.position);
 				blocks.push(creator.into_block()?);

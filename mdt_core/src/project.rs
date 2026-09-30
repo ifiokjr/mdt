@@ -145,8 +145,9 @@ pub enum DiagnosticKind {
 	/// A comment that looks like an mdt tag but does not parse, so mdt
 	/// ignores it.
 	InvalidTag { tag: String },
-	/// A block opens inside a consumer or inline block, where `mdt update`
-	/// would overwrite it.
+	/// A block opens inside another block. Blocks cannot be nested: inside a
+	/// consumer `mdt update` would overwrite the inner block, and inside a
+	/// provider its tags would be copied into every consumer.
 	NestedBlock { outer: String, inner: String },
 	/// A provider tag outside a `*.t.md` template file, which mdt ignores.
 	ProviderOutsideTemplate { name: String },
@@ -242,9 +243,7 @@ impl ProjectDiagnostic {
 				format!("`{tag}` looks like an mdt tag but cannot be parsed, so it is ignored")
 			}
 			DiagnosticKind::NestedBlock { outer, inner } => {
-				format!(
-					"block `{inner}` is inside consumer `{outer}`; `mdt update` would overwrite it"
-				)
+				format!("block `{inner}` is nested inside block `{outer}`; blocks cannot be nested")
 			}
 			DiagnosticKind::ProviderOutsideTemplate { name } => {
 				format!(
@@ -959,7 +958,16 @@ fn build_project_from_file_data(
 
 			providers.insert(provider.block.name.clone(), provider.clone());
 		}
-		consumers.extend(entry.consumers.iter().cloned());
+		// Only the project's own files are consumers: a shared `*.t.md` read
+		// through `[templates] paths` may contain consumers of its own, and
+		// updating them would write outside the project.
+		consumers.extend(
+			entry
+				.consumers
+				.iter()
+				.filter(|consumer| consumer.file.starts_with(root))
+				.cloned(),
+		);
 	}
 
 	let referenced_names: HashSet<&str> = consumers

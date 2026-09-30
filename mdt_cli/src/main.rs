@@ -754,7 +754,36 @@ fn run_check_once(
 	show_diff: bool,
 	format: OutputFormat,
 ) -> Result<CheckStatus, Box<dyn std::error::Error>> {
-	let ctx = scan(args)?;
+	let ctx = match (scan(args), format) {
+		(Ok(ctx), _) => ctx,
+		(Err(error), OutputFormat::Text) => return Err(error),
+		// Machine formats report scan failures (bad config, duplicate
+		// providers, unreadable files) in their own shape instead of
+		// leaving stdout empty.
+		(Err(error), OutputFormat::Json) => {
+			let output = serde_json::json!({
+				"ok": false,
+				"stale": [],
+				"stale_files": [],
+				"orphans": [],
+				"errors": [],
+				"diagnostics": [{
+					"severity": "error",
+					"code": error_code(error.as_ref()),
+					"file": null,
+					"line": null,
+					"column": null,
+					"message": error.to_string(),
+				}],
+			});
+			println!("{output}");
+			return Ok(CheckStatus::Invalid);
+		}
+		(Err(error), OutputFormat::Github) => {
+			println!("{}", github_annotation("error", None, &error.to_string()));
+			return Ok(CheckStatus::Invalid);
+		}
+	};
 	let root = resolve_root(args);
 	let options = validation_options(args);
 
@@ -787,7 +816,7 @@ fn run_check_once(
 			}
 			OutputFormat::Github => {
 				for diag in &visible_diagnostics {
-					print_github_diagnostic(diag, &root, &options);
+					print_github_diagnostic(diag, &options);
 				}
 				eprintln!("Check aborted by validation errors.");
 			}
@@ -849,6 +878,20 @@ fn run_check_once(
 			let diagnostics: Vec<_> = visible_diagnostics
 				.iter()
 				.map(|diag| diagnostic_json(diag, &root, &options))
+				.chain(
+					template_warning_locations(&result.warnings, &ctx)
+						.into_iter()
+						.map(|(warning, location)| {
+							serde_json::json!({
+								"severity": "warning",
+								"code": "mdt::undefined_variables",
+								"file": relative_display_path(&warning.provider_file, &root),
+								"line": location.map(|(_, line, _)| line),
+								"column": location.map(|(_, _, column)| column),
+								"message": template_warning_message(warning, &root),
+							})
+						}),
+				)
 				.collect();
 			let output = serde_json::json!({
 				"ok": result.is_ok(),
@@ -862,38 +905,62 @@ fn run_check_once(
 		}
 		OutputFormat::Github => {
 			for diag in &visible_diagnostics {
-				print_github_diagnostic(diag, &root, &options);
+				print_github_diagnostic(diag, &options);
+			}
+			for (warning, location) in template_warning_locations(&result.warnings, &ctx) {
+				let message = template_warning_message(warning, &root);
+				println!("{}", github_annotation("warning", location, &message));
 			}
 			for err in sorted_render_errors(&result, &root) {
-				let rel = relative_display_path(&err.file, &root);
+				let message = format!(
+					"Template render failed for block `{}`: {}",
+					err.block_name, err.message
+				);
 				println!(
-					"::error file={rel},line={},col={}::Template render failed for block `{}`: {}",
-					err.line, err.column, err.block_name, err.message
+					"{}",
+					github_annotation("error", Some((&err.file, err.line, err.column)), &message)
 				);
 			}
 			for orphan in &result.orphans {
-				let rel = relative_display_path(&orphan.file, &root);
-				let location = format!("{rel}:{}:{}", orphan.line, orphan.column);
-				println!(
-					"::error file={rel},line={},col={}::{}",
+				let location = format!(
+					"{}:{}:{}",
+					relative_display_path(&orphan.file, &root),
 					orphan.line,
-					orphan.column,
-					orphan_description(&orphan.block_name, &location, &orphan.suggestions)
+					orphan.column
+				);
+				let message =
+					orphan_description(&orphan.block_name, &location, &orphan.suggestions);
+				println!(
+					"{}",
+					github_annotation(
+						"error",
+						Some((&orphan.file, orphan.line, orphan.column)),
+						&message
+					)
 				);
 			}
 			for entry in sorted_stale_entries(&result, &root) {
-				let rel = relative_display_path(&entry.file, &root);
+				let message = format!(
+					"Consumer block `{}` is out of date; run `mdt update`",
+					entry.block_name
+				);
 				println!(
-					"::error file={rel},line={},col={}::Consumer block `{}` is out of date; run \
-					 `mdt update`",
-					entry.line, entry.column, entry.block_name
+					"{}",
+					github_annotation(
+						"error",
+						Some((&entry.file, entry.line, entry.column)),
+						&message
+					)
 				);
 			}
 			for entry in sorted_stale_files(&result, &root) {
-				let rel = relative_display_path(&entry.file, &root);
 				println!(
-					"::error file={rel}::Formatter-normalized file output is out of date; run \
-					 `mdt update`"
+					"{}",
+					github_annotation(
+						"error",
+						Some((&entry.file, 1, 1)),
+						"Formatter-normalized file output is out of date; run `mdt update`"
+					)
 				);
 			}
 			if result.is_ok() {
@@ -925,19 +992,78 @@ fn run_check_once(
 	})
 }
 
-fn print_github_diagnostic(diag: &ProjectDiagnostic, root: &Path, options: &ValidationOptions) {
+fn print_github_diagnostic(diag: &ProjectDiagnostic, options: &ValidationOptions) {
 	let level = if diag.is_error(options) {
 		"error"
 	} else {
 		"warning"
 	};
 	println!(
-		"::{level} file={},line={},col={}::{}",
-		relative_display_path(&diag.file, root),
-		diag.line,
-		diag.column,
-		diag.message()
+		"{}",
+		github_annotation(
+			level,
+			Some((&diag.file, diag.line, diag.column)),
+			&diag.message()
+		)
 	);
+}
+
+/// A source location: file, 1-indexed line, and 1-indexed column.
+type Location<'a> = (&'a Path, usize, usize);
+
+/// A GitHub Actions workflow command. File paths are relative to the
+/// working directory — the repository checkout in CI — rather than to the
+/// mdt project, so annotations for `--path packages/lib` land on the right
+/// file. Messages are escaped so multi-line errors stay one command.
+fn github_annotation(level: &str, location: Option<Location<'_>>, message: &str) -> String {
+	let message = message
+		.replace('%', "%25")
+		.replace('\r', "%0D")
+		.replace('\n', "%0A");
+	let Some((file, line, column)) = location else {
+		return format!("::{level}::{message}");
+	};
+	// Compare canonical paths: the working directory is physical, while a
+	// `--path` may go through a symlink (macOS `/var` is `/private/var`).
+	let canonical = |path: &Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+	let cwd = canonical(&std::env::current_dir().unwrap_or_default());
+	let file = canonical(file);
+	let file = file
+		.strip_prefix(&cwd)
+		.map_or_else(|_| display_path(&file), display_path);
+	format!("::{level} file={file},line={line},col={column}::{message}")
+}
+
+/// The diagnostic code of an error, when it is one of mdt's.
+fn error_code(error: &(dyn std::error::Error + 'static)) -> String {
+	error
+		.downcast_ref::<MdtError>()
+		.and_then(|error| miette::Diagnostic::code(error).map(|code| code.to_string()))
+		.unwrap_or_else(|| "mdt::error".to_string())
+}
+
+/// Each template warning with the location of its provider's opening tag.
+fn template_warning_locations<'a>(
+	warnings: &'a [TemplateWarning],
+	ctx: &'a ProjectContext,
+) -> Vec<(&'a TemplateWarning, Option<Location<'a>>)> {
+	warnings
+		.iter()
+		.map(|warning| {
+			let location = ctx
+				.project
+				.providers
+				.get(&warning.block_name)
+				.map(|provider| {
+					(
+						provider.file.as_path(),
+						provider.block.opening.start.line,
+						provider.block.opening.start.column,
+					)
+				});
+			(warning, location)
+		})
+		.collect()
 }
 
 fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: bool) {
@@ -2666,6 +2792,25 @@ fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std:
 	Ok(())
 }
 
+/// Describe a template warning for humans.
+fn template_warning_message(warning: &TemplateWarning, root: &Path) -> String {
+	let rel = relative_display_path(&warning.provider_file, root);
+	let vars = warning.undefined_variables.join(", ");
+	if warning.template_rendered {
+		format!(
+			"provider block `{}` in {rel} references undefined variable(s): {vars}",
+			warning.block_name
+		)
+	} else {
+		format!(
+			"provider block `{}` in {rel} uses template variable(s) {vars}, but this project has \
+			 no `[data]`, so the text is copied without rendering; declare the namespace(s) under \
+			 `[data]` in this project's mdt.toml",
+			warning.block_name
+		)
+	}
+}
+
 /// Print warnings about undefined template variables.
 fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 	let mut sorted_warnings: Vec<_> = warnings.iter().collect();
@@ -2676,22 +2821,11 @@ fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 	});
 
 	for warning in sorted_warnings {
-		let rel = relative_display_path(&warning.provider_file, root);
-		let vars = warning.undefined_variables.join(", ");
-		let message = if warning.template_rendered {
-			format!(
-				"provider block `{}` in {rel} references undefined variable(s): {vars}",
-				warning.block_name
-			)
-		} else {
-			format!(
-				"provider block `{}` in {rel} uses template variable(s) {vars}, but this project \
-				 has no `[data]`, so the text is copied without rendering; declare the \
-				 namespace(s) under `[data]` in this project's mdt.toml",
-				warning.block_name
-			)
-		};
-		eprintln!("{} {message}", styled!(stderr, "warning:", yellow_bold));
+		eprintln!(
+			"{} {}",
+			styled!(stderr, "warning:", yellow_bold),
+			template_warning_message(warning, root)
+		);
 	}
 }
 
@@ -2751,8 +2885,8 @@ fn diagnostic_help(kind: &DiagnosticKind) -> String {
 		}
 		DiagnosticKind::NestedBlock { outer, inner } => {
 			format!(
-				"move `{inner}` outside `{outer}`: everything between a consumer's tags is \
-				 replaced by `mdt update`"
+				"move `{inner}` outside `{outer}`: `mdt update` replaces everything between a \
+				 consumer's tags, and a provider's tags would be copied into every consumer"
 			)
 		}
 		DiagnosticKind::ProviderOutsideTemplate { name } => {
