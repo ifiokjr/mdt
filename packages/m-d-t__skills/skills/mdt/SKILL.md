@@ -86,7 +86,7 @@ export function createClient() {}
 
 - Prefer `linePrefix` over `indent` for comments: `linePrefix` trims trailing spaces on blank lines, so formatters leave the output alone.
 - Scanned: `.rs .ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .java .kt .swift .c .cc .cpp .cxx .h .hh .hpp .cs .dart` plus `.md .mdx .markdown`. Other extensions are skipped silently — opt in with `[include] patterns = ["**/*.rb"]` (this **adds** files; it never narrows the scan).
-- Tags inside string literals are live blocks too; exclude such files (`[exclude] patterns`).
+- Complete tags inside string literals are live blocks too; exclude such files (`[exclude] patterns`). A lone closing tag inside quotes or backticks (`"<!-- {/x} -->"`) is ignored.
 - Provider text containing `*/` (a `**/*.ts` glob) closes a `/* */` comment. Escape it without writing `*/` in the tag itself: `replace:"*\u{2f}":"*\\/"`.
 
 ## Data
@@ -133,7 +133,7 @@ patterns = ["**/*.rs"]
 
 Exit codes: `0` in sync; `1` stale, orphan (consumer with no provider), or render error; `2` validation or config error (unclosed, unmatched, or nested tags, invalid tags, unknown transformers, duplicate providers, bad `mdt.toml`).
 
-**Monorepos.** Every directory with its own `mdt.toml` is a separate project that the parent skips silently — run `mdt check --path <dir>` for each in CI. Without `--path`, mdt uses the nearest ancestor directory with an `mdt.toml`, so it works from any subdirectory. To reuse the root's providers in a sub-project, add `[templates] paths = ["../../.templates"]` and redeclare every `[data]` namespace they use (paths may start with `../`); without `[data]`, `{{ pkg.version }}` is copied literally (mdt warns).
+**Monorepos.** Every directory with its own `mdt.toml` is a separate project that the parent skips silently — run `mdt check --path <dir>` for each in CI. Without `--path`, mdt uses the nearest ancestor directory with an `mdt.toml` inside the git repository, so it works from any subdirectory. To reuse the root's providers in a sub-project, add `[templates] paths = ["../../.templates"]` and redeclare every `[data]` namespace they use (paths may start with `../`); without `[data]`, `{{ pkg.version }}` is copied literally (mdt warns).
 
 ## When `mdt check` fails
 

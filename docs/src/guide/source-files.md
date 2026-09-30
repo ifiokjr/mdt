@@ -187,7 +187,7 @@ Provider text containing `*/` (for example the glob `src/**/*.ts`) ends the surr
 
 ### Tags in string literals are live
 
-mdt does not parse the language, so a tag inside a string literal is a real block and `mdt update` rewrites it. Exclude test fixtures that contain example tags:
+mdt does not parse the language, so a complete block inside a string literal is a real block and `mdt update` rewrites it. (A lone closing tag after an odd number of `"` or backticks on its line — `"<!-- {/x} -->"`, or inline code in a doc comment — is ignored rather than reported as unmatched.) Exclude test fixtures that contain example tags:
 
 ```toml
 [exclude]

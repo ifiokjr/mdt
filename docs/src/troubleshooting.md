@@ -301,6 +301,6 @@ Install the prebuilt binary from npm and pin the version you use locally:
 ### Check passes locally but fails in CI
 
 - **Uncommitted files.** mdt scans the working tree. A new `*.t.md`, data file, or consumer that exists locally but is not committed shows up in CI as an orphan consumer or a data error. Run `git status`.
-- **Different project root.** Without `--path`, mdt walks up from the current directory to the nearest `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` (or uses the current directory when there is none). If CI runs from a different directory than you do, pass `--path` explicitly. In a monorepo, run `mdt check --path <dir>` for each sub-project.
+- **Different project root.** Without `--path`, mdt walks up from the current directory, staying inside the git repository, to the nearest `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` (outside a git repository, or when there is none, it uses the current directory) and prints `note: using the mdt project at <path>` when that is not the current directory. If CI runs from a different directory than you do, pass `--path` explicitly. In a monorepo, run `mdt check --path <dir>` for each sub-project.
 - **Different formatter versions.** With `[[formatters]]`, a different formatter version produces different output. Pin the same versions in CI.
 - **Missing tools for data commands.** Script data sources run their `command` in CI too, so the tools they call must be installed.

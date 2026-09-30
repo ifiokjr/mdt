@@ -115,6 +115,6 @@ The default scan only picks markdown and supported source extensions, and reads 
 
 No. mdt always scans the whole project so every consumer can find its provider. You can shape the project instead:
 
-- `--path <dir>` runs mdt on a different project root, such as one sub-project in a monorepo. Without it, mdt uses the nearest directory with an mdt config, starting from the current one and walking up, so running inside a sub-project targets that sub-project.
+- `--path <dir>` runs mdt on a different project root, such as one sub-project in a monorepo. Without it, mdt uses the nearest directory with an mdt config, starting from the current one and walking up within the git repository, so running inside a sub-project targets that sub-project.
 - `[exclude] patterns` skips files and directories.
 - `[include] patterns` and `[templates] paths` only add files to the scan; they never narrow it.

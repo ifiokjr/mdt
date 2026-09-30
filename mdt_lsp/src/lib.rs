@@ -12,7 +12,7 @@
 //! - **Rename**: a block name in every opening and closing tag in the workspace.
 //! - **Document symbols**: providers, consumers, and inline blocks in the outline view.
 //!
-//! The server reads `mdt.toml` and honors `[padding]`, `[check] comparison`, and `[exclude] markdown_codeblocks`. It does not run `[[formatters]]`, so with formatters configured it can report a block as stale that `mdt check` accepts.
+//! The server reads `mdt.toml` and honors `[padding]`, `[check] comparison`, and `[exclude] markdown_codeblocks`. It does not run `[[formatters]]`, so it reports no stale blocks (and offers no quick fix) in files a formatter owns; run `mdt check` or `mdt update` for those.
 //!
 //! ### Usage
 //!

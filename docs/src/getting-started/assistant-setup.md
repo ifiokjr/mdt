@@ -149,7 +149,7 @@ Check which directory your agent loads skills from. Then register a stdio server
 
 ## How the servers find your project
 
-`mdt mcp` serves one project root. Without `--path`, it starts from the directory the client launches it in and walks up to the nearest directory containing `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`; with no config anywhere, it uses the launch directory. A project-level config (launched in the repository) needs no extra arguments.
+`mdt mcp` serves one project root. Without `--path`, it starts from the directory the client launches it in and walks up, within that git repository, to the nearest directory containing `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`; outside a git repository, or with no config found, it uses the launch directory. A project-level config (launched in the repository) needs no extra arguments.
 
 To point a client at another project, such as a sub-directory project in a monorepo or a user-level config, pass `--path`:
 

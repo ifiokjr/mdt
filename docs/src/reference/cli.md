@@ -32,7 +32,7 @@ Warnings (unused providers, providers outside `*.t.md` files, undefined template
 
 ## Project root
 
-Without `--path`, every command except `mdt init` walks up from the current directory to the nearest directory that contains `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`, and uses it as the project root, like `git` and `cargo` do. With no config file in any parent directory, the current directory is the root. `mdt init` always uses the current directory (or `--path`).
+Without `--path`, every command except `mdt init` walks up from the current directory to the nearest directory that contains `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`, and uses it as the project root, like `git` and `cargo` do. The search never leaves the enclosing git repository, so a stray config in a parent directory such as `$HOME` cannot take over; outside a git repository, or with no config found, the current directory is the root. When the root is not the current directory, mdt prints `note: using the mdt project at <path>` to stderr. `mdt init` always uses the current directory (or `--path`).
 
 ## Exit codes
 
@@ -386,7 +386,7 @@ Start the language server over stdin/stdout. Configure your editor to run `mdt l
 mdt lsp
 ```
 
-It publishes the same diagnostics as `mdt check`, offers a quick fix that updates a stale block exactly as `mdt update` would, and supports completion, hover, go to definition, references, rename, and document symbols. It does not run `[[formatters]]`, so with formatters configured it can report a block as stale that `mdt check` accepts. See the [`mdt_lsp` readme](https://github.com/ifiokjr/mdt/blob/main/mdt_lsp/readme.md).
+It publishes the same diagnostics as `mdt check`, offers a quick fix that updates a stale block exactly as `mdt update` would, and supports completion, hover, go to definition, references, rename, and document symbols. It does not run `[[formatters]]`, so it reports no stale blocks (and offers no quick fix) in files a formatter owns; run `mdt check` or `mdt update` for those. See the [`mdt_lsp` readme](https://github.com/ifiokjr/mdt/blob/main/mdt_lsp/readme.md).
 
 ### `mdt mcp`
 

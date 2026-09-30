@@ -31,7 +31,7 @@ Next steps:
 - `readme.md`: a README with the sample consumer already synced (only when the project has no README; an existing README is never modified)
 - `.gitignore`: a `.mdt/` entry for mdt's cache (only in a git repository)
 
-After `init`, you can run mdt commands from any subdirectory: like `git` and `cargo`, mdt walks up to the nearest directory containing `mdt.toml` and uses it as the project root. Pass `--path <dir>` to choose the root explicitly.
+After `init`, you can run mdt commands from any subdirectory: like `git` and `cargo`, mdt walks up (within the git repository) to the nearest directory containing `mdt.toml` and uses it as the project root. Pass `--path <dir>` to choose the root explicitly.
 
 The provider in `.templates/template.t.md`:
 

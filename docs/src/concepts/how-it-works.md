@@ -27,7 +27,7 @@ mdt finds named blocks in your project, matches each consumer to its provider, a
 
 ## Project root
 
-With `--path <dir>`, that directory is the project root. Without it, every command except `mdt init` walks up from the current directory to the nearest directory containing `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`, so you can run mdt from any subdirectory. With no config file in any parent, the current directory is the root.
+With `--path <dir>`, that directory is the project root. Without it, every command except `mdt init` walks up from the current directory, inside the enclosing git repository, to the nearest directory containing `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`, so you can run mdt from any subdirectory. Outside a git repository, or with no config found, the current directory is the root.
 
 ## Tag anatomy
 

@@ -33,7 +33,7 @@ Running `mdt update` at the root updates `readme.md` and `packages/lib-c/readme.
 mdt update --path packages/lib-a
 ```
 
-Without `--path`, mdt starts from the current directory and walks up to the nearest directory with a config, like `git` and `cargo` do. Running `mdt check` inside `packages/lib-a/` therefore checks `lib-a`, and running it inside `packages/lib-c/` (no config) checks the root project.
+Without `--path`, mdt starts from the current directory and walks up, within the git repository, to the nearest directory with a config, like `git` and `cargo` do. Running `mdt check` inside `packages/lib-a/` therefore checks `lib-a`, and running it inside `packages/lib-c/` (no config) checks the root project.
 
 ## Setting up a sub-project
 

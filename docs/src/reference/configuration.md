@@ -10,7 +10,7 @@ The first file found wins:
 2. `.mdt.toml`
 3. `.config/mdt.toml`
 
-Without `--path`, mdt walks up from the current directory to the nearest directory containing one of these files and uses it as the project root; with none found, the current directory is the root. `mdt init` always uses the current directory or `--path`.
+Without `--path`, mdt walks up from the current directory, staying inside the git repository, to the nearest directory containing one of these files and uses it as the project root; outside a git repository, or with none found, the current directory is the root. `mdt init` always uses the current directory or `--path`.
 
 A directory below the root that contains any of these files is a separate project (a sub-project) and is skipped by the parent's scan. See [Monorepos](../advanced/monorepos.md).
 
