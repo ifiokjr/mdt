@@ -140,6 +140,16 @@ pub enum DiagnosticKind {
 	},
 	/// A provider block has no matching consumers.
 	UnusedProvider { name: String },
+	/// A closing tag has no open block with the same name.
+	UnmatchedClosingTag { name: String },
+	/// A comment that looks like an mdt tag but does not parse, so mdt
+	/// ignores it.
+	InvalidTag { tag: String },
+	/// A block opens inside a consumer or inline block, where `mdt update`
+	/// would overwrite it.
+	NestedBlock { outer: String, inner: String },
+	/// A provider tag outside a `*.t.md` template file, which mdt ignores.
+	ProviderOutsideTemplate { name: String },
 }
 
 /// A diagnostic produced during project scanning and validation.
@@ -157,13 +167,32 @@ pub struct ProjectDiagnostic {
 
 impl ProjectDiagnostic {
 	/// Check whether this diagnostic should be treated as an error given the
-	/// supplied options.
+	/// supplied options. Errors stop `check`, `update`, and `list`.
 	pub fn is_error(&self, options: &ValidationOptions) -> bool {
 		match &self.kind {
 			DiagnosticKind::UnclosedBlock { .. } => !options.ignore_unclosed_blocks,
 			DiagnosticKind::UnknownTransformer { .. }
 			| DiagnosticKind::InvalidTransformerArgs { .. } => !options.ignore_invalid_transformers,
-			DiagnosticKind::UnusedProvider { .. } => !options.ignore_unused_blocks,
+			DiagnosticKind::InvalidTag { .. } => !options.ignore_invalid_names,
+			DiagnosticKind::NestedBlock { .. } => true,
+			DiagnosticKind::UnusedProvider { .. }
+			| DiagnosticKind::UnmatchedClosingTag { .. }
+			| DiagnosticKind::ProviderOutsideTemplate { .. } => false,
+		}
+	}
+
+	/// Check whether the supplied options silence this diagnostic entirely.
+	/// Diagnostics that are neither errors nor ignored are warnings.
+	pub fn is_ignored(&self, options: &ValidationOptions) -> bool {
+		match &self.kind {
+			DiagnosticKind::UnclosedBlock { .. } => options.ignore_unclosed_blocks,
+			DiagnosticKind::UnknownTransformer { .. }
+			| DiagnosticKind::InvalidTransformerArgs { .. } => options.ignore_invalid_transformers,
+			DiagnosticKind::UnusedProvider { .. } => options.ignore_unused_blocks,
+			DiagnosticKind::InvalidTag { .. } => options.ignore_invalid_names,
+			DiagnosticKind::NestedBlock { .. }
+			| DiagnosticKind::UnmatchedClosingTag { .. }
+			| DiagnosticKind::ProviderOutsideTemplate { .. } => false,
 		}
 	}
 
@@ -183,6 +212,23 @@ impl ProjectDiagnostic {
 			} => format!("transformer `{name}` expects {expected} argument(s), got {got}"),
 			DiagnosticKind::UnusedProvider { name } => {
 				format!("provider block `{name}` has no consumers")
+			}
+			DiagnosticKind::UnmatchedClosingTag { name } => {
+				format!("closing tag `{{/{name}}}` has no matching opening tag")
+			}
+			DiagnosticKind::InvalidTag { tag } => {
+				format!("`{tag}` looks like an mdt tag but cannot be parsed, so it is ignored")
+			}
+			DiagnosticKind::NestedBlock { outer, inner } => {
+				format!(
+					"block `{inner}` is inside consumer `{outer}`; `mdt update` would overwrite it"
+				)
+			}
+			DiagnosticKind::ProviderOutsideTemplate { name } => {
+				format!(
+					"provider block `{name}` is ignored because providers are only read from \
+					 `*.t.md` files"
+				)
 			}
 		}
 	}
@@ -674,6 +720,35 @@ fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDia
 				column,
 			}
 		}
+		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::UnmatchedClosingTag { name },
+				line,
+				column,
+			}
+		}
+		ParseDiagnostic::InvalidTag { tag, line, column } => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::InvalidTag { tag },
+				line,
+				column,
+			}
+		}
+		ParseDiagnostic::NestedBlock {
+			outer,
+			inner,
+			line,
+			column,
+		} => {
+			ProjectDiagnostic {
+				file: file.to_path_buf(),
+				kind: DiagnosticKind::NestedBlock { outer, inner },
+				line,
+				column,
+			}
+		}
 	}
 }
 
@@ -681,7 +756,12 @@ fn parse_file_for_scan(
 	file: &Path,
 	options: &ScanOptions,
 ) -> MdtResult<index_cache::CachedFileData> {
-	let raw_content = std::fs::read_to_string(file)?;
+	let raw_content = std::fs::read_to_string(file).map_err(|error| {
+		MdtError::ReadFile {
+			path: file.display().to_string(),
+			reason: error.to_string(),
+		}
+	})?;
 	let content = normalize_line_endings(&raw_content);
 	let (blocks, parse_diagnostics) = if is_markdown_file(file) {
 		parse_with_diagnostics(&content)?
@@ -735,6 +815,14 @@ fn parse_file_for_scan(
 		match block.r#type {
 			BlockType::Provider => {
 				if !is_template {
+					diagnostics.push(ProjectDiagnostic {
+						file: file.to_path_buf(),
+						kind: DiagnosticKind::ProviderOutsideTemplate {
+							name: block.name.clone(),
+						},
+						line: block.opening.start.line,
+						column: block.opening.start.column,
+					});
 					continue;
 				}
 				providers.push(ProviderEntry {
@@ -850,14 +938,20 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 	let custom_exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
 
 	if !options.include_set.is_empty() {
+		let gitignore = if options.disable_gitignore {
+			Gitignore::empty()
+		} else {
+			build_gitignore(root)
+		};
 		collect_included_files(
 			root,
 			root,
 			&options.include_set,
+			&gitignore,
 			&custom_exclude,
 			&mut files,
 			&mut seen_files,
-			true,
+			&mut HashSet::new(),
 		)?;
 	}
 
@@ -995,9 +1089,7 @@ fn collect_files(
 
 	walk_dir(
 		root,
-		root,
 		&mut files,
-		true,
 		&gitignore,
 		&custom_exclude,
 		&mut visited_dirs,
@@ -1017,26 +1109,24 @@ fn has_project_config(dir: &Path) -> bool {
 		.any(|candidate| dir.join(candidate).is_file())
 }
 
-#[allow(clippy::only_used_in_recursion)]
+/// Record `dir` as visited and report whether it still needs scanning.
+///
+/// Directories are tracked by canonical path, so a directory reached a second
+/// time — through a symlink alias or a symlink cycle — is scanned only once.
+fn first_visit(dir: &Path, visited_dirs: &mut HashSet<PathBuf>) -> bool {
+	let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+	visited_dirs.insert(canonical)
+}
+
 fn walk_dir(
-	root: &Path,
 	dir: &Path,
 	files: &mut Vec<PathBuf>,
-	is_root: bool,
 	gitignore: &Gitignore,
 	custom_exclude: &Gitignore,
 	visited_dirs: &mut HashSet<PathBuf>,
 ) -> MdtResult<()> {
-	if !dir.is_dir() {
+	if !dir.is_dir() || !first_visit(dir, visited_dirs) {
 		return Ok(());
-	}
-
-	// Detect symlink cycles by tracking canonical paths.
-	let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
-	if !visited_dirs.insert(canonical.clone()) {
-		return Err(MdtError::SymlinkCycle {
-			path: dir.display().to_string(),
-		});
 	}
 
 	let entries = std::fs::read_dir(dir)?;
@@ -1067,18 +1157,10 @@ fn walk_dir(
 		if is_dir {
 			// Skip subdirectories that have their own mdt config file (separate
 			// project scope).
-			if !is_root && has_project_config(&path) {
+			if has_project_config(&path) {
 				continue;
 			}
-			walk_dir(
-				root,
-				&path,
-				files,
-				false,
-				gitignore,
-				custom_exclude,
-				visited_dirs,
-			)?;
+			walk_dir(&path, files, gitignore, custom_exclude, visited_dirs)?;
 		} else if is_scannable_file(&path) {
 			files.push(path);
 		}
@@ -1088,16 +1170,18 @@ fn walk_dir(
 }
 
 /// Recursively collect files matching include patterns.
+#[allow(clippy::too_many_arguments)]
 fn collect_included_files(
 	root: &Path,
 	dir: &Path,
 	include_set: &GlobSet,
+	gitignore: &Gitignore,
 	exclude_matcher: &Gitignore,
 	files: &mut Vec<PathBuf>,
 	seen_files: &mut HashSet<PathBuf>,
-	is_root: bool,
+	visited_dirs: &mut HashSet<PathBuf>,
 ) -> MdtResult<()> {
-	if !dir.is_dir() {
+	if !dir.is_dir() || !first_visit(dir, visited_dirs) {
 		return Ok(());
 	}
 
@@ -1115,8 +1199,9 @@ fn collect_included_files(
 
 		let is_dir = path.is_dir();
 
-		// Check against exclude patterns.
-		if exclude_matcher.matched(&path, is_dir).is_ignore() {
+		if gitignore.matched(&path, is_dir).is_ignore()
+			|| exclude_matcher.matched(&path, is_dir).is_ignore()
+		{
 			continue;
 		}
 
@@ -1127,17 +1212,18 @@ fn collect_included_files(
 		}
 
 		if is_dir {
-			if !is_root && has_project_config(&path) {
+			if has_project_config(&path) {
 				continue;
 			}
 			collect_included_files(
 				root,
 				&path,
 				include_set,
+				gitignore,
 				exclude_matcher,
 				files,
 				seen_files,
-				false,
+				visited_dirs,
 			)?;
 		}
 	}
@@ -1158,16 +1244,24 @@ fn is_scannable_file(path: &Path) -> bool {
 			| "rs"
 			| "ts"
 			| "tsx"
+			| "mts"
+			| "cts"
 			| "js"
 			| "jsx"
+			| "mjs"
+			| "cjs"
 			| "py"
 			| "go"
 			| "java"
 			| "kt"
 			| "swift"
 			| "c"
+			| "cc"
 			| "cpp"
+			| "cxx"
 			| "h"
+			| "hh"
+			| "hpp"
 			| "cs"
 			| "dart"
 	)

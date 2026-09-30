@@ -165,13 +165,19 @@ fn strip_comment_prefix(line: &str) -> &str {
 }
 
 /// Extract the comment prefix (e.g., `/// `, `//! `, `# `) from the start of
-/// a line when it begins with a known comment marker. Returns `""` when the
-/// line is not a comment line. This is the inverse of
+/// a line when it begins with a known comment marker. This is the inverse of
 /// [`strip_comment_prefix`]: it keeps the leading whitespace, the marker,
 /// and one optional trailing space.
+///
+/// A line of only whitespace is its own prefix, so an indented closing tag
+/// (in a markdown list item or a docstring) keeps its indentation. Any other
+/// line is not a comment line and yields `""`.
 pub(crate) fn extract_comment_prefix(line: &str) -> &str {
 	let trimmed = line.trim_start();
 	let leading_ws_len = line.len() - trimmed.len();
+	if trimmed.is_empty() {
+		return line;
+	}
 	for prefix in COMMENT_PREFIXES {
 		if let Some(rest) = trimmed.strip_prefix(prefix) {
 			// Include one optional space after the prefix.

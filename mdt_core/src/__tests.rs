@@ -426,6 +426,55 @@ fn transformer_code_block_without_language() {
 	assert_eq!(result, "```\nhello\n```");
 }
 
+#[rstest]
+#[case::nested_fence("```sh\nnpm i\n```", "````markdown\n```sh\nnpm i\n```\n````")]
+#[case::longer_nested_fence("`````\nx\n`````", "``````markdown\n`````\nx\n`````\n``````")]
+#[case::inline_backticks("use `x` here", "```markdown\nuse `x` here\n```")]
+fn transformer_code_block_outruns_backticks_in_content(
+	#[case] content: &str,
+	#[case] expected: &str,
+) {
+	let result = apply_transformers(
+		content,
+		&[Transformer {
+			r#type: TransformerType::CodeBlock,
+			args: vec![Argument::String("markdown".to_string())],
+		}],
+	);
+	assert_eq!(result, expected);
+}
+
+#[rstest]
+#[case::plain("npm i", "`npm i`")]
+#[case::inner_backtick("use `x` here", "``use `x` here``")]
+#[case::every_short_run("a ` b `` c", "```a ` b `` c```")]
+#[case::edge_backtick("`x", "`` `x ``")]
+fn transformer_code_uses_unambiguous_delimiter(#[case] content: &str, #[case] expected: &str) {
+	let result = apply_transformers(
+		content,
+		&[Transformer {
+			r#type: TransformerType::Code,
+			args: vec![],
+		}],
+	);
+	assert_eq!(result, expected);
+}
+
+#[test]
+fn transformer_replace_with_empty_search_is_a_no_op() {
+	let result = apply_transformers(
+		"abc",
+		&[Transformer {
+			r#type: TransformerType::Replace,
+			args: vec![
+				Argument::String(String::new()),
+				Argument::String("X".to_string()),
+			],
+		}],
+	);
+	assert_eq!(result, "abc");
+}
+
 #[test]
 fn transformer_code_inline() {
 	let result = apply_transformers(
@@ -1108,6 +1157,127 @@ patterns = ["**/*.md"]
 	Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn formatter_pipeline_never_lets_the_shell_parse_file_names() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	// Both the documented quoted form and an unquoted placeholder must pass
+	// the name through as data, never as shell syntax.
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		r#"[[formatters]]
+command = "printf '%s' \"{{ relativeFilePath }}\" > quoted.txt; printf '%s' {{ relativeFilePath }} > bare.txt; cat"
+patterns = ["**/*.md"]
+"#,
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	let hostile = "docs/a$(touch INJECTED)`touch INJECTED2`.md";
+	std::fs::write(
+		tmp.path().join(hostile),
+		"<!-- {=block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(check_project(&ctx)?.is_ok());
+	assert!(!tmp.path().join("INJECTED").exists());
+	assert!(!tmp.path().join("INJECTED2").exists());
+	let read = |name: &str| {
+		std::fs::read_to_string(tmp.path().join(name)).unwrap_or_else(|e| panic!("read: {e}"))
+	};
+	assert_eq!(read("quoted.txt"), hostile);
+	// Unquoted, the shell still word-splits the value, but never runs it.
+	assert_eq!(read("bare.txt"), hostile.replace(' ', ""));
+
+	Ok(())
+}
+
+#[test]
+fn formatter_pipeline_ignores_excluded_blocks() -> MdtResult<()> {
+	if cfg!(windows) {
+		return Ok(());
+	}
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[exclude]\nblocks = [\"draft\"]\n\n[[formatters]]\ncommand = \"cat\"\npatterns = \
+		 [\"**/*.md\"]\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nHello\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n\n<!-- {=draft} -->\n\nwip\n\n<!-- \
+		 {/draft} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert_eq!(check_project(&ctx)?.stale.len(), 1);
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let written = &updates.updated_files[&tmp.path().join("readme.md")];
+	assert!(written.contains("Hello"));
+	assert!(
+		written.contains("wip"),
+		"excluded block content must be left alone"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_reports_render_errors_and_updates_healthy_consumers() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@good} -->\nv{{ pkg.version }}\n<!-- {/good} -->\n\n<!-- {@bad} -->\n\n{{ \
+		 pkg.version \n\n<!-- {/bad} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=good} -->\nold\n<!-- {/good} -->\n\n<!-- {=bad} -->\nold\n<!-- {/bad} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	assert_eq!(updates.render_errors.len(), 1);
+	let error = &updates.render_errors[0];
+	assert_eq!(error.block_name, "bad");
+	assert_eq!((error.line, error.column), (5, 1));
+	assert!(
+		error.message.starts_with("syntax error:") && error.message.contains("(template line 3)"),
+		"unexpected message: {}",
+		error.message
+	);
+	assert!(!error.message.contains("__inline__"));
+	let written = &updates.updated_files[&tmp.path().join("readme.md")];
+	assert!(written.contains("v1.2.3"));
+
+	Ok(())
+}
+
 #[test]
 fn formatter_pipeline_invalid_command_template_returns_formatter_error() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1412,7 +1582,316 @@ fn scan_project_sub_project_boundary() -> MdtResult<()> {
 	Ok(())
 }
 
+#[test]
+fn scan_project_sub_project_boundary_direct_child() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("sub/.templates"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nroot content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// A direct child of the root with its own config is a separate project,
+	// so its duplicate provider and consumer must not leak into the root.
+	std::fs::write(tmp.path().join("sub/mdt.toml"), "").unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("sub/.templates/template.t.md"),
+		"<!-- {@block} -->\n\nsub content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("sub/readme.md"),
+		"<!-- {=block} -->\n\nsub content\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.providers.len(), 1);
+	assert!(project.consumers.is_empty());
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn scan_project_scans_symlinked_directory_alias_once() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("vendor/real"))
+		.unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("vendor/real/readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	// An alias to an already-scanned directory is not a cycle.
+	std::os::unix::fs::symlink("real", tmp.path().join("vendor/alias"))
+		.unwrap_or_else(|e| panic!("symlink: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn scan_project_terminates_on_symlink_cycle() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/readme.md"),
+		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::os::unix::fs::symlink("..", tmp.path().join("docs/loop"))
+		.unwrap_or_else(|e| panic!("symlink: {e}"));
+	let include_set = globset::GlobSetBuilder::new()
+		.add(globset::Glob::new("**/*.txt").unwrap_or_else(|e| panic!("glob: {e}")))
+		.build()
+		.unwrap_or_else(|e| panic!("build: {e}"));
+
+	// Both the default walk and the `[include]` walk must stop at the cycle.
+	let project = scan_project_with_options(
+		tmp.path(),
+		&ScanOptions {
+			include_set,
+			..ScanOptions::default()
+		},
+	)?;
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
+fn parse_diagnostic_summary(content: &str) -> Vec<String> {
+	let (_, diagnostics) = parse_with_diagnostics(content).unwrap_or_else(|e| panic!("parse: {e}"));
+	diagnostics
+		.into_iter()
+		.map(|diagnostic| {
+			match diagnostic {
+				ParseDiagnostic::UnmatchedClosingTag { name, line, .. } => {
+					format!("unmatched {name} L{line}")
+				}
+				ParseDiagnostic::NestedBlock {
+					outer, inner, line, ..
+				} => format!("nested {inner} in {outer} L{line}"),
+				ParseDiagnostic::UnclosedBlock { name, line, .. } => {
+					format!("unclosed {name} L{line}")
+				}
+				ParseDiagnostic::InvalidTag { tag, line, column } => {
+					format!("invalid {tag} L{line}:{column}")
+				}
+				other => format!("{other:?}"),
+			}
+		})
+		.collect()
+}
+
+#[test]
+fn parse_reports_misspelled_opening_tag_as_unclosed_and_unmatched() {
+	let content = "<!-- {=featrues} -->\n\nold\n\n<!-- {/features} -->\n";
+	assert_eq!(
+		parse_diagnostic_summary(content),
+		vec!["unmatched features L5", "unclosed featrues L1"]
+	);
+}
+
+#[rstest]
+#[case::nested(
+	"<!-- {=a} -->\nx\n<!-- {=b} -->\ny\n<!-- {/b} -->\n<!-- {/a} -->\n",
+	vec!["nested b in a L3"]
+)]
+#[case::overlapping(
+	"<!-- {=a} -->\nx\n<!-- {=b} -->\ny\n<!-- {/a} -->\n<!-- {/b} -->\n",
+	vec!["nested b in a L3"]
+)]
+#[case::inline_inside_consumer(
+	"<!-- {=a} -->\nv<!-- {~v:\"1\"} -->1<!-- {/v} -->\n<!-- {/a} -->\n",
+	vec!["nested v in a L2"]
+)]
+#[case::consumer_inside_provider_is_composition(
+	"<!-- {@a} -->\nx\n<!-- {=b} -->\ny\n<!-- {/b} -->\n<!-- {/a} -->\n",
+	vec![]
+)]
+#[case::siblings(
+	"<!-- {=a} -->\nx\n<!-- {/a} -->\n<!-- {=b} -->\ny\n<!-- {/b} -->\n",
+	vec![]
+)]
+fn parse_reports_blocks_inside_consumers(#[case] content: &str, #[case] expected: Vec<&str>) {
+	assert_eq!(parse_diagnostic_summary(content), expected);
+}
+
+#[rstest]
+#[case::space_before_sigil("<!-- { @name } -->\n", vec!["invalid <!-- { @name } --> L1:1"])]
+#[case::dotted_name("text\n\n<!-- {=my.block} -->\n", vec!["invalid <!-- {=my.block} --> L3:1"])]
+#[case::leading_digit("<!-- {~1v:\"x\"} -->x<!-- {/1v} -->\n", vec![
+	"invalid <!-- {~1v:\"x\"} --> L1:1",
+	"invalid <!-- {/1v} --> L1:20",
+])]
+#[case::valid_tags("<!-- {@a} -->\n\nx\n\n<!-- {/a} -->\n<!-- {=b-c|trim} -->\n<!-- {/b-c} -->\n", vec![])]
+#[case::fenced_example("```md\n<!-- { @name } -->\n```\n", vec![])]
+#[case::ordinary_comment("<!-- TODO: {not a tag} -->\n", vec![])]
+fn parse_reports_tag_like_comments_that_do_not_parse(
+	#[case] content: &str,
+	#[case] expected: Vec<&str>,
+) {
+	assert_eq!(parse_diagnostic_summary(content), expected);
+}
+
+#[test]
+fn scan_project_reports_provider_outside_template_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Docs\n\n<!-- {@support} -->\n\nAsk in chat.\n\n<!-- {/support} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert!(project.providers.is_empty());
+	assert_eq!(project.diagnostics.len(), 1);
+	let diagnostic = &project.diagnostics[0];
+	assert_eq!(diagnostic.line, 3);
+	assert!(
+		matches!(
+			&diagnostic.kind,
+			DiagnosticKind::ProviderOutsideTemplate { name } if name == "support"
+		),
+		"unexpected diagnostic: {diagnostic:?}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn check_project_fails_on_orphan_consumers_with_suggestions() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@features} -->\n\n- fast\n\n<!-- {/features} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Acme\n\n<!-- {=featrues} -->\n\n- fast\n\n<!-- {/featrues} -->\n\n<!-- {=features} \
+		 -->\n\n- fast\n\n<!-- {/features} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert!(!result.is_ok());
+	assert!(result.stale.is_empty());
+	assert_eq!(result.orphans.len(), 1);
+	let orphan = &result.orphans[0];
+	assert_eq!(orphan.block_name, "featrues");
+	assert_eq!((orphan.line, orphan.column), (3, 1));
+	assert_eq!(orphan.suggestions, vec!["features".to_string()]);
+
+	Ok(())
+}
+
+fn include_set(pattern: &str) -> globset::GlobSet {
+	globset::GlobSetBuilder::new()
+		.add(globset::Glob::new(pattern).unwrap_or_else(|e| panic!("glob: {e}")))
+		.build()
+		.unwrap_or_else(|e| panic!("build: {e}"))
+}
+
+#[test]
+fn scan_project_include_respects_gitignore() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	for dir in ["vendor", "lib"] {
+		std::fs::create_dir_all(tmp.path().join(dir)).unwrap_or_else(|e| panic!("mkdir: {e}"));
+		std::fs::write(
+			tmp.path().join(dir).join("x.rb"),
+			"# <!-- {=block} -->\n# <!-- {/block} -->\n",
+		)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	}
+	std::fs::write(tmp.path().join(".gitignore"), "vendor/\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project_with_options(
+		tmp.path(),
+		&ScanOptions {
+			include_set: include_set("**/*.rb"),
+			..ScanOptions::default()
+		},
+	)?;
+	let files: Vec<_> = project
+		.consumers
+		.iter()
+		.map(|consumer| relative_display_path(&consumer.file, tmp.path()))
+		.collect();
+	assert_eq!(files, vec!["lib/x.rb"]);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_unreadable_file_error_names_the_file() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("src")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("src/logo.png"),
+		[0x89, b'P', b'N', b'G', 0xff, 0xfe],
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let error = scan_project_with_options(
+		tmp.path(),
+		&ScanOptions {
+			include_set: include_set("src/**"),
+			..ScanOptions::default()
+		},
+	)
+	.err()
+	.unwrap_or_else(|| panic!("expected a read error"));
+	assert!(matches!(error, MdtError::ReadFile { .. }));
+	assert!(error.to_string().contains("logo.png"), "{error}");
+}
+
+#[rstest]
+#[case("mjs")]
+#[case("cjs")]
+#[case("mts")]
+#[case("cts")]
+#[case("cc")]
+#[case("hpp")]
+fn scan_project_scans_common_source_extensions(#[case] extension: &str) -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join(format!("index.{extension}")),
+		"// <!-- {=block} -->\n// <!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
 // --- Config tests ---
+
+#[rstest]
+#[case::top_level("max_filesize = 1\n", "max_filesize")]
+#[case::section("[paddding]\nbefore = 0\n", "paddding")]
+#[case::nested_key("[padding]\nbefore = 0\nafer = 0\n", "afer")]
+#[case::data_source("[data]\nv = { command = \"cat V\", watches = [\"V\"] }\n", "data")]
+fn config_load_rejects_unknown_keys(#[case] config: &str, #[case] mentioned: &str) {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join("mdt.toml"), config).unwrap_or_else(|e| panic!("write: {e}"));
+
+	let error = MdtConfig::load(tmp.path())
+		.err()
+		.unwrap_or_else(|| panic!("expected unknown keys to be rejected"));
+	let message = error.to_string();
+	assert!(message.contains(mentioned), "{message}");
+	assert!(message.contains("mdt.toml"), "{message}");
+}
 
 #[test]
 fn config_load_missing_file() -> MdtResult<()> {
@@ -2020,6 +2499,7 @@ fn write_updates_creates_files() -> MdtResult<()> {
 	let updates = UpdateResult {
 		updated_files,
 		updated_count: 1,
+		render_errors: Vec::new(),
 		warnings: Vec::new(),
 	};
 	write_updates(&updates)?;
@@ -3254,7 +3734,8 @@ fn default_padding_with_line_prefix_starts_content_on_new_line() -> MdtResult<()
 			"/// <!-- {=docs|trim|linePrefix:\"/// \":true} -->\n",
 			"/// Seed-based APIs require deterministic seed ordering.\n",
 			"///\n",
-			"/// Use explicit bumps when needed.<!-- {/docs} -->\n",
+			"/// Use explicit bumps when needed.\n",
+			"/// <!-- {/docs} -->\n",
 		)
 	);
 
@@ -3703,7 +4184,7 @@ fn pad_blocks_check_detects_stale() -> MdtResult<()> {
 fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	// No mdt.toml → default padding: content on the next line after the
-	// opening tag, closing tag inline with the content.
+	// opening tag, closing tag on its own line.
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@info} -->\n\nHello.\n\n<!-- {/info} -->\n",
@@ -3730,10 +4211,10 @@ fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 		panic!("expected one file");
 	});
 	// Default padding: "Hello." starts on the next line after the opening
-	// tag, and the closing tag stays inline with the content.
+	// tag, and the closing tag starts on its own line.
 	assert_eq!(
 		content.as_str(),
-		"<!-- {=info|trim} -->\nHello.<!-- {/info} -->\n"
+		"<!-- {=info|trim} -->\nHello.\n<!-- {/info} -->\n"
 	);
 
 	Ok(())
@@ -4228,7 +4709,7 @@ fn custom_exclude_patterns_skip_matching_files() -> MdtResult<()> {
 	// Config with an exclude pattern that skips all files in "generated/".
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[exclude]\npatterns = [\"generated/\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[exclude]\npatterns = [\"generated/\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -4276,7 +4757,7 @@ fn custom_exclude_glob_pattern_skips_files() -> MdtResult<()> {
 	// Exclude all files matching *.generated.md
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[exclude]\npatterns = [\"*.generated.md\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[exclude]\npatterns = [\"*.generated.md\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -5838,11 +6319,13 @@ fn validation_options_all_kinds() {
 		line: 1,
 		column: 1,
 	};
-	assert!(!unused_diag.is_error(&ValidationOptions {
+	// Unused providers are warnings; the flag silences them.
+	assert!(!unused_diag.is_error(&default_opts));
+	assert!(!unused_diag.is_ignored(&default_opts));
+	assert!(unused_diag.is_ignored(&ValidationOptions {
 		ignore_unused_blocks: true,
 		..Default::default()
 	}));
-	assert!(unused_diag.is_error(&default_opts));
 }
 
 // --- project.rs: ProjectContext::find_missing_providers ---
@@ -6002,6 +6485,7 @@ fn tokenize_single_quoted_string_keeps_escapes_literal() -> MdtResult<()> {
 // --- Error display coverage ---
 
 #[test]
+#[allow(deprecated)]
 fn error_symlink_cycle_message() {
 	let err = MdtError::SymlinkCycle {
 		path: "/some/path".to_string(),
@@ -6289,7 +6773,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 
 	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
 	// Integer conversion
-	assert_eq!(conf["int_val"], serde_json::json!(42.0));
+	assert_eq!(conf["int_val"], serde_json::json!(42));
 	// Float conversion
 	assert!(
 		(conf["float_val"]
@@ -6322,7 +6806,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 	assert_eq!(str_arr[0], "a");
 	// Nested table conversion
 	assert_eq!(conf["nested_table"]["key"], "value");
-	assert_eq!(conf["nested_table"]["count"], serde_json::json!(7.0));
+	assert_eq!(conf["nested_table"]["count"], serde_json::json!(7));
 
 	Ok(())
 }
@@ -6346,6 +6830,58 @@ fn config_kdl_empty_node_entries() -> MdtResult<()> {
 	Ok(())
 }
 
+/// Write `name` with `content` plus an `mdt.toml` exposing it as `[data] d`,
+/// then load the project data.
+fn load_single_data_file(
+	name: &str,
+	content: &str,
+) -> MdtResult<HashMap<String, serde_json::Value>> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join(name), content).unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		format!("[data]\nd = {name:?}\n"),
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
+	config.load_data(tmp.path())
+}
+
+#[rstest]
+#[case::toml("data.toml", "port = 8080\nbig = 9007199254740993\n")]
+#[case::kdl("data.kdl", "port 8080\nbig 9007199254740993\n")]
+fn config_integers_render_without_a_fraction(
+	#[case] name: &str,
+	#[case] content: &str,
+) -> MdtResult<()> {
+	let data = load_single_data_file(name, content)?;
+	let rendered = render_template("{{ d.port }} {{ d.big }}", &data)?;
+	assert_eq!(rendered, "8080 9007199254740993");
+	Ok(())
+}
+
+#[test]
+fn config_kdl_repeated_nodes_collect_into_an_array() -> MdtResult<()> {
+	let data = load_single_data_file("data.kdl", "dep \"a\"\ndep \"b\"\ndep \"c\"\nname \"x\"\n")?;
+	assert_eq!(data["d"]["dep"], serde_json::json!(["a", "b", "c"]));
+	assert_eq!(data["d"]["name"], serde_json::json!("x"));
+	Ok(())
+}
+
+#[rstest]
+#[case::lf("1.2.3\n", "1.2.3")]
+#[case::crlf("1.2.3\r\n", "1.2.3")]
+#[case::only_one_newline("1.2.3\n\n", "1.2.3\n")]
+#[case::no_newline("1.2.3", "1.2.3")]
+fn config_text_data_drops_one_trailing_newline(
+	#[case] content: &str,
+	#[case] expected: &str,
+) -> MdtResult<()> {
+	let data = load_single_data_file("VERSION.txt", content)?;
+	assert_eq!(data["d"], serde_json::json!(expected));
+	Ok(())
+}
+
 #[test]
 fn config_kdl_all_named_entries() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -6364,7 +6900,7 @@ fn config_kdl_all_named_entries() -> MdtResult<()> {
 	assert!(conf["settings"].is_object());
 	assert_eq!(conf["settings"]["host"], "localhost");
 	// port is an integer in KDL
-	assert_eq!(conf["settings"]["port"], serde_json::json!(8080.0));
+	assert_eq!(conf["settings"]["port"], serde_json::json!(8080));
 
 	Ok(())
 }
@@ -6601,7 +7137,7 @@ fn scan_project_with_extra_template_dirs() -> MdtResult<()> {
 	// Create config pointing to an extra template directory
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[templates]\npaths = [\"shared/templates\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[templates]\npaths = [\"shared/templates\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -6647,7 +7183,7 @@ fn scan_project_with_extra_template_dir_nonexistent() -> MdtResult<()> {
 	// skipped
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[templates]\npaths = [\"nonexistent/templates\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[templates]\npaths = [\"nonexistent/templates\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
@@ -6676,7 +7212,7 @@ fn scan_project_with_include_patterns() -> MdtResult<()> {
 	// Include .txt files which are not normally scannable
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[include]\npatterns = [\"**/*.txt\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
@@ -6887,7 +7423,7 @@ fn diagnostic_is_error_all_kinds() {
 		}
 	};
 
-	// Default options: all are errors
+	// Default options: malformed blocks are errors, unused providers warn.
 	let default_opts = ValidationOptions::default();
 	assert!(
 		make_diag(DiagnosticKind::UnclosedBlock {
@@ -6910,11 +7446,30 @@ fn diagnostic_is_error_all_kinds() {
 		.is_error(&default_opts)
 	);
 	assert!(
-		make_diag(DiagnosticKind::UnusedProvider {
+		!make_diag(DiagnosticKind::UnusedProvider {
 			name: "x".to_string()
 		})
 		.is_error(&default_opts)
 	);
+	assert!(
+		make_diag(DiagnosticKind::NestedBlock {
+			outer: "x".to_string(),
+			inner: "y".to_string(),
+		})
+		.is_error(&default_opts)
+	);
+	for warning in [
+		DiagnosticKind::UnmatchedClosingTag {
+			name: "x".to_string(),
+		},
+		DiagnosticKind::ProviderOutsideTemplate {
+			name: "x".to_string(),
+		},
+	] {
+		let diag = make_diag(warning);
+		assert!(!diag.is_error(&default_opts));
+		assert!(!diag.is_ignored(&default_opts));
+	}
 
 	// Ignoring transformers should suppress both unknown and invalid args
 	let ignore_transformers = ValidationOptions {
@@ -7052,6 +7607,7 @@ fn is_template_file_more_edge_cases() {
 // --- Coverage: error.rs SymlinkCycle display ---
 
 #[test]
+#[allow(deprecated)]
 fn error_symlink_cycle_display_format() {
 	let err = MdtError::SymlinkCycle {
 		path: "/circular/link".to_string(),
@@ -7201,7 +7757,7 @@ fn include_pattern_does_not_scan_hidden_dirs() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[include]\npatterns = [\"**/*.txt\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
@@ -7327,13 +7883,13 @@ fn include_patterns_respect_exclude_patterns() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		concat!(
+			"disable_gitignore = true\n",
+			"\n",
 			"[include]\n",
 			"patterns = [\"**/*.txt\"]\n",
 			"\n",
 			"[exclude]\n",
 			"patterns = [\"excluded/**\"]\n",
-			"\n",
-			"disable_gitignore = true\n",
 		),
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
@@ -7548,7 +8104,7 @@ fn config_toml_deeply_nested_table() -> MdtResult<()> {
 	let conf = data.get("conf").unwrap_or_else(|| panic!("expected conf"));
 	assert_eq!(conf["level1"]["name"], "outer");
 	assert_eq!(conf["level1"]["level2"]["name"], "inner");
-	assert_eq!(conf["level1"]["level2"]["value"], serde_json::json!(42.0));
+	assert_eq!(conf["level1"]["level2"]["value"], serde_json::json!(42));
 
 	Ok(())
 }
@@ -7674,7 +8230,7 @@ fn include_pattern_scans_nested_subdirectories() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[include]\npatterns = [\"**/*.txt\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
@@ -7725,13 +8281,13 @@ fn include_pattern_respects_exclude_patterns() -> MdtResult<()> {
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		concat!(
+			"disable_gitignore = true\n",
+			"\n",
 			"[include]\n",
 			"patterns = [\"**/*.txt\"]\n",
 			"\n",
 			"[exclude]\n",
 			"patterns = [\"skip/**\"]\n",
-			"\n",
-			"disable_gitignore = true\n",
 		),
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
@@ -7783,7 +8339,7 @@ fn include_pattern_skips_node_modules_and_target() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[include]\npatterns = [\"**/*.txt\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[include]\npatterns = [\"**/*.txt\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
@@ -8223,7 +8779,7 @@ fn excluded_blocks_are_skipped_during_scan() -> MdtResult<()> {
 
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
-		"[exclude]\nblocks = [\"internal\"]\n\ndisable_gitignore = true\n",
+		"disable_gitignore = true\n\n[exclude]\nblocks = [\"internal\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -9718,7 +10274,7 @@ fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
 	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
 
 	let data1 = config.load_data(tmp.path())?;
-	assert_eq!(data1["version"].as_str().unwrap_or(""), "1.0.0\n");
+	assert_eq!(data1["version"].as_str().unwrap_or(""), "1.0.0");
 	assert_eq!(
 		std::fs::read_to_string(tmp.path().join(".run_count"))
 			.unwrap_or_else(|e| panic!("read: {e}"))
@@ -9727,7 +10283,7 @@ fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
 	);
 
 	let data2 = config.load_data(tmp.path())?;
-	assert_eq!(data2["version"].as_str().unwrap_or(""), "1.0.0\n");
+	assert_eq!(data2["version"].as_str().unwrap_or(""), "1.0.0");
 	assert_eq!(
 		std::fs::read_to_string(tmp.path().join(".run_count"))
 			.unwrap_or_else(|e| panic!("read: {e}"))
@@ -9739,7 +10295,7 @@ fn config_load_data_script_uses_cache_until_watch_changes() -> MdtResult<()> {
 	std::fs::write(tmp.path().join("VERSION"), "2.0.0-beta\n")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 	let data3 = config.load_data(tmp.path())?;
-	assert_eq!(data3["version"].as_str().unwrap_or(""), "2.0.0-beta\n");
+	assert_eq!(data3["version"].as_str().unwrap_or(""), "2.0.0-beta");
 	assert_eq!(
 		std::fs::read_to_string(tmp.path().join(".run_count"))
 			.unwrap_or_else(|e| panic!("read: {e}"))
@@ -10554,7 +11110,7 @@ fn config_load_data_recovers_from_invalid_script_cache_file() -> MdtResult<()> {
 	let data = config.load_data(tmp.path())?;
 	assert_eq!(
 		data["version"],
-		serde_json::Value::String("1.0.0\n".to_string())
+		serde_json::Value::String("1.0.0".to_string())
 	);
 	assert_eq!(
 		std::fs::read_to_string(tmp.path().join(".run_count"))
@@ -10672,6 +11228,7 @@ fn check_result_status_helpers_cover_errors_and_warnings() {
 	let clean = CheckResult {
 		stale: Vec::new(),
 		stale_files: Vec::new(),
+		orphans: Vec::new(),
 		render_errors: Vec::new(),
 		warnings: Vec::new(),
 	};
@@ -10686,6 +11243,7 @@ fn check_result_status_helpers_cover_errors_and_warnings() {
 			current_content: "old".to_string(),
 			expected_content: "new".to_string(),
 		}],
+		orphans: Vec::new(),
 		render_errors: vec![RenderError {
 			file: PathBuf::from("readme.md"),
 			block_name: "block".to_string(),
@@ -11206,6 +11764,7 @@ fn tracing_write_updates_creates_span_and_traces_files() -> MdtResult<()> {
 	let updates = UpdateResult {
 		updated_files,
 		updated_count: 1,
+		render_errors: Vec::new(),
 		warnings: Vec::new(),
 	};
 	write_updates(&updates)?;
@@ -11555,6 +12114,31 @@ fn extract_comment_prefix_matches_common_markers() {
 	assert_eq!(extract_comment_prefix("plain text"), "");
 	assert_eq!(extract_comment_prefix("<!-- {/x} -->"), "");
 	assert_eq!(extract_comment_prefix(""), "");
+	// Indentation alone is kept so indented closing tags stay in place.
+	assert_eq!(extract_comment_prefix("  "), "  ");
+	assert_eq!(extract_comment_prefix("\t"), "\t");
+}
+
+#[test]
+fn pad_content_keeps_indented_closing_tag_in_place() {
+	let source = "- item\n  <!-- {=x|trim} -->\n  old\n  <!-- {/x} -->\n";
+	let offset = source
+		.find("<!-- {/x} -->")
+		.unwrap_or_else(|| panic!("closing tag"));
+	let prefix = extract_line_comment_prefix(source, offset);
+	let result = pad_content_with_config("Hello", prefix, &padding_zero());
+	assert_eq!(result, "\nHello\n  ");
+}
+
+#[test]
+fn pad_content_before_lines_never_land_on_the_tag_line() {
+	let padding = PaddingConfig {
+		before: crate::config::PaddingValue::Lines(1),
+		after: crate::config::PaddingValue::Lines(0),
+	};
+	// Untrimmed provider content starts with its own newline.
+	let result = pad_content_with_config("\nfirst\nsecond", "# ", &padding);
+	assert_eq!(result, "\n#\nfirst\nsecond\n# ");
 }
 
 #[test]

@@ -12,7 +12,8 @@ expression: index_ts
  * import { createClient } from "my-lib";
 
  * const client = createClient();
- * ```<!-- {/apiDocs} -->
+ * ```
+ * <!-- {/apiDocs} -->
  */
 export function createClient() {
 	return {};

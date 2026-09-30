@@ -13,7 +13,7 @@ use crate::project::Project;
 use crate::project::ProjectDiagnostic;
 use crate::project::ProviderEntry;
 
-pub(crate) const CACHE_SCHEMA_VERSION: u32 = 2;
+pub(crate) const CACHE_SCHEMA_VERSION: u32 = 3;
 const CACHE_FILE_NAME: &str = "index-v2.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
