@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.6](https://github.com/ifiokjr/mdt/releases/tag/v0.9.6) (2026-09-30)
+
+### 🐛 Fixed
+
+#### Make editor diagnostics and quick fixes agree with `mdt check` and `mdt update`
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+- Stale-block diagnostics, the "Update block" quick fix, and the hover preview now compute expected content through the same engine as `mdt update`, including `[padding]` and the closing tag's comment prefix. Files that `mdt update` just wrote are no longer reported as out of date, and the quick fix no longer glues content onto the tags (for example ``<!-- {=x} -->```sh`` or `* <!-- {=x} --> * text`).
+- `[check] comparison = "lenient"` and `[exclude] markdown_codeblocks` are honoured, so blocks that pass `mdt check` or that the scanner ignores are not diagnosed.
+- A provider that fails to render is reported as an error at the consumer instead of falling back to the raw template, and no quick fix offers to write the raw `{{ … }}` text.
+- Consumers without a provider are errors (they fail `mdt check`), still with did-you-mean suggestions. Providers outside `*.t.md` files are warnings.
+- New diagnostics for closing tags without an opening tag (warning), comments that look like tags but do not parse (error), and blocks nested inside a consumer or inline block (error).
+- `MDT_LOG=info mdt lsp` no longer panics at startup: the server keeps a tracing subscriber the CLI already installed.
+- The quick fix computes its edit range from byte offsets in the open document, so lines with non-ASCII text before a tag are no longer corrupted, and it writes CRLF into CRLF documents.
+- Files formatted by a `[[formatters]]` entry get no stale diagnostics or quick fixes, because `mdt check` compares formatter output the server does not compute on every keystroke; run `mdt check` or `mdt update` for them.
+- Markdown headings and bullets before a closing tag are no longer treated as comment prefixes.
+
+#### Fix completion panics on multi-byte lines and stale providers
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+
+- Completion context sliced the cursor line by byte index using a UTF-16 column, so a cursor after any multi-byte character panicked the whole language server. Columns are now converted to byte offsets (sharing the same conversion as the rest of the server), and incremental-change ranges that fail to map are logged instead of silently dropped.
+- Rename/prepare-rename ranges measure tag prefixes and names in UTF-16 code units instead of bytes, so edits land correctly on non-ASCII documents.
+- Saving a template file now removes that file's previous providers before re-adding the current ones — deleted or renamed providers no longer linger in completions, go-to-definition, and rename edits until the next full rescan.
+- Project scans (on initialize and config saves) run on the blocking thread pool and apply their results under a short lock instead of blocking the async runtime while holding it.
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Rewrite the documentation to match actual behavior
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #202](https://github.com/ifiokjr/mdt/pull/202)
+
+An audit ran every documented command, flag, default, and example against the CLI. The docs site, crate readmes, the annotated `mdt.toml` that `mdt init` writes, and generated doc comments now match the implementation:
+
+- `[include]` and `[templates] paths` are documented as additive (they were described as narrowing the scan), `[check] comparison = "lenient"` no longer claims to normalize tables or JSON, exclude negation examples work, and formatter patterns are documented as plain globs.
+- Exit codes (`0`/`1`/`2`), the global `--ignore-*` flags, project-root discovery, `mdt skill`, per-client `mdt assist` output, the complete JSON payload, GitHub annotations, and every quoted command output are current.
+- Source-file examples re-apply comment prefixes with `linePrefix:"...":true`, so copied examples compile.
+- Terminology is provider/consumer throughout.
+- Crate readme badges render again (link definitions were joined onto one line).
+- Links that left the book now point at GitHub, and the Pi link points at pi.dev.
+
+</details>
+
 ## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-20)
 
 ### Changed
