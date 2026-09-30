@@ -28,3 +28,6 @@ packages/*/bin/
 packages/.tmp/
 
 # old npm directory (migrated to packages/)
+
+# local agent tooling state
+.video_agent/

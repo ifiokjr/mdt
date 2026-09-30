@@ -55,6 +55,21 @@ Target block `install` in src/lib.rs is out of date.
 
 **Solution:** Run `mdt update` to sync all targets. During development, use `mdt update --watch` to auto-sync on file changes.
 
+### Block is silently ignored (never discovered)
+
+A tag that looks valid produces no block: nothing in `mdt list`, no warning, `mdt doctor` green.
+
+**Cause:** Tags that fail to parse are silently ignored. The two most common reasons:
+
+- **Name charset** — block names may only contain ASCII letters, digits, `_`, and `-`. Names like `my.block` or `my block` make the whole tag unparseable.
+- **Unscanned file extension** — only markdown plus the listed source extensions are scanned. A consumer in, say, a `.dart` file (pre-0.10) or a `.rb` file is never seen, and `mdt check` passes vacuously.
+
+**Solutions:**
+
+- Check the name charset and simplify it (letters, digits, `_`, `-`).
+- Confirm the file's extension is in the supported list (see [Source File Support](./guide/source-files.md)); opt other extensions in with `[include] patterns`.
+- Run `mdt list` after each fix to confirm the block is discovered.
+
 ## Debugging techniques
 
 ### Use `mdt check --verbose`

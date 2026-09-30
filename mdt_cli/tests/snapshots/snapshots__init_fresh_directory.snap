@@ -1,11 +1,10 @@
 ---
 source: mdt_cli/tests/snapshots.rs
-assertion_line: 84
 info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpaSvSdR
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpj91VZw
     - init
   env:
     NO_COLOR: "1"
@@ -18,8 +17,8 @@ Created mdt.toml
 Created readme.md with a sample target block
 
 Next steps:
-  1. Run `mdt update` to sync the sample content
-  2. Open readme.md to see the result
-  3. Edit [TEMP_DIR]/.templates/template.t.md to change your source blocks
+  1. Open readme.md to see the synced sample block
+  2. Edit [TEMP_DIR]/.templates/template.t.md to change your source blocks
+  3. Run `mdt update` to sync your edits
 
 ----- stderr -----

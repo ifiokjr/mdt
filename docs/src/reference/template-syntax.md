@@ -2,6 +2,10 @@
 
 All mdt tags are HTML comments. They are invisible when markdown is rendered.
 
+## Block names
+
+Block names may contain ASCII letters, digits, underscores, and hyphens (`installCommand`, `install-command`). Any other punctuation — `.`, `/`, spaces — makes the tag unparseable, and unparseable tags are **silently ignored**: the block never appears in `mdt list`, `mdt check` stays green, and `mdt doctor` reports nothing. If a block is not being discovered, check the name charset first.
+
 ## Tag types
 
 ### Source tag

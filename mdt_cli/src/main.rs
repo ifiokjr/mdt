@@ -290,8 +290,11 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let readme_exists = readme_path.exists() || readme_upper_path.exists();
 
 	if !readme_exists && !template_exists {
+		// Write the sample consumer already in sync with the provider so a
+		// freshly initialized project passes `mdt check` out of the box.
 		let sample_readme = "# My Project\n\nWelcome to my project.\n\n<!-- {=greeting} \
-		                     -->\n\nThis will be replaced by mdt.\n\n<!-- {/greeting} -->\n";
+		                     -->\n\nHello from mdt! This is a source block.\n\n<!-- {/greeting} \
+		                     -->\n";
 		std::fs::write(&readme_path, sample_readme)?;
 		println!("Created readme.md with a sample target block");
 	}
@@ -309,12 +312,12 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			println!("     <!-- {{/greeting}} -->");
 			println!("  3. Run `mdt update` to sync content");
 		} else {
-			println!("  1. Run `mdt update` to sync the sample content");
-			println!("  2. Open readme.md to see the result");
+			println!("  1. Open readme.md to see the synced sample block");
 			println!(
-				"  3. Edit {} to change your source blocks",
+				"  2. Edit {} to change your source blocks",
 				display_path(&template_path)
 			);
+			println!("  3. Run `mdt update` to sync your edits");
 		}
 	}
 

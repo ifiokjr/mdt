@@ -22,6 +22,16 @@ mdt recognizes these source file extensions:
 | Swift      | `.swift`           |
 | C/C++      | `.c`, `.cpp`, `.h` |
 | C#         | `.cs`              |
+| Dart       | `.dart`            |
+
+Files with any other extension are skipped **silently** — a consumer block in an unscanned file never appears in `mdt list`, and `mdt check` passes without it. To scan an unlisted extension, opt it in with `[include]`:
+
+```toml
+[include]
+patterns = ["**/*.md", "**/*.dart"]
+```
+
+Keep `**/*.md` in the list, or markdown files stop being scanned. Included files are parsed like markdown: the HTML-comment tags are found anywhere in the file, so keep the file valid by wrapping tags in the language's comment syntax.
 
 ## Examples by language
 
@@ -81,6 +91,26 @@ def main():
 package mylib
 ```
 
+### Dart doc comments
+
+```dart
+// <!-- {=pkgDescription|trim|linePrefix:"/// ":true} -->
+// Library description here.
+// <!-- {/pkgDescription} -->
+library;
+```
+
+After `mdt update`, content lines get the transformer's prefix while the tag lines keep the comment prefix they were authored with:
+
+```dart
+// <!-- {=pkgDescription|trim|linePrefix:"/// ":true} -->
+/// Library description here.
+// <!-- {/pkgDescription} -->
+library;
+```
+
+If the tag lines themselves must be doc comments (e.g. so `dart analyze` attaches the docs), author them with `///`.
+
 ## Recommended: Enable `[padding]`
 
 When using target blocks in source files, add a `[padding]` section to your `mdt.toml`:
@@ -93,6 +123,8 @@ after = 0
 
 The `before` and `after` values control how many blank lines appear between tags and content:
 
+- With **no `[padding]` section**: content starts on the line after the opening tag and the closing tag is written inline with the content — in source files this glues `-->` onto the last content line.
+- With the section present but values omitted: `before`/`after` default to `1`.
 - `false` — Content inline with tag (no newline)
 - `0` — Content on the very next line (recommended for projects using formatters)
 - `1` — One blank line between tag and content

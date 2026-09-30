@@ -1169,6 +1169,7 @@ fn is_scannable_file(path: &Path) -> bool {
 			| "cpp"
 			| "h"
 			| "cs"
+			| "dart"
 	)
 }
 
