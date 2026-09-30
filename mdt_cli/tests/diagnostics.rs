@@ -1,0 +1,191 @@
+mod common;
+
+use std::path::Path;
+
+use assert_cmd::assert::OutputAssertExt;
+use predicates::prelude::*;
+
+fn write(root: &Path, relative: &str, content: &str) {
+	let path = root.join(relative);
+	if let Some(parent) = path.parent() {
+		std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	}
+	std::fs::write(&path, content).unwrap_or_else(|e| panic!("write {relative}: {e}"));
+}
+
+#[test]
+fn commands_reject_a_missing_project_path() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	let missing = tmp.path().join("typo");
+
+	for command in ["check", "update", "list", "info", "doctor"] {
+		common::mdt_cmd()
+			.arg(command)
+			.arg("--path")
+			.arg(&missing)
+			.assert()
+			.code(2)
+			.stderr(predicate::str::contains("does not exist"));
+	}
+	assert!(
+		!missing.exists(),
+		"a mistyped path must not be created as a side effect"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn update_reports_render_errors_and_updates_healthy_consumers() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "package.json", r#"{"version":"1.2.3"}"#);
+	write(tmp.path(), "mdt.toml", "[data]\npkg = \"package.json\"\n");
+	write(
+		tmp.path(),
+		"template.t.md",
+		"<!-- {@good} -->\nv{{ pkg.version }}\n<!-- {/good} -->\n\n<!-- {@bad} -->\n{{ \
+		 pkg.version\n<!-- {/bad} -->\n",
+	);
+	write(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=good} -->\nold\n<!-- {/good} -->\n\n<!-- {=bad} -->\nold\n<!-- {/bad} -->\n",
+	);
+
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("update")
+		.output()
+		.map(|output| {
+			assert_eq!(output.status.code(), Some(1));
+			let stderr = String::from_utf8_lossy(&output.stderr);
+			assert!(
+				stderr.contains("block `bad` at readme.md:5:1 was not updated: syntax error"),
+				"{stderr}"
+			);
+		})?;
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	assert!(readme.contains("v1.2.3"), "{readme}");
+
+	Ok(())
+}
+
+#[test]
+fn list_shows_blocks_even_with_validation_errors() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(
+		tmp.path(),
+		"template.t.md",
+		"<!-- {@features} -->\n\n- fast\n\n<!-- {/features} -->\n",
+	);
+	write(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=featrues} -->\n\n- fast\n\n<!-- {/features} -->\n",
+	);
+
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("list")
+		.assert()
+		.code(2)
+		.stdout(predicate::str::contains(
+			"@features template.t.md:1 (0 consumer(s))",
+		))
+		.stderr(predicate::str::contains(
+			"missing closing tag for block `featrues`",
+		))
+		.stderr(predicate::str::contains(
+			"closing tag `{/features}` has no matching opening tag",
+		));
+
+	Ok(())
+}
+
+#[test]
+fn check_json_reports_validation_errors_as_diagnostics() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "readme.md", "<!-- { @name } -->\n");
+
+	let output = common::mdt_cmd_for_path(tmp.path())
+		.args(["check", "--format", "json"])
+		.output()?;
+	assert_eq!(output.status.code(), Some(2));
+	let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+		.unwrap_or_else(|e| panic!("stdout is not JSON: {e}"));
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["diagnostics"][0]["code"], "mdt::invalid_tag");
+	assert_eq!(json["diagnostics"][0]["severity"], "error");
+	assert_eq!(json["diagnostics"][0]["line"], 1);
+
+	Ok(())
+}
+
+#[test]
+fn check_github_annotates_orphans_as_errors_with_suggestions() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(
+		tmp.path(),
+		"template.t.md",
+		"<!-- {@features} -->\n\n- fast\n\n<!-- {/features} -->\n",
+	);
+	write(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=featrues} -->\n\n- fast\n\n<!-- {/featrues} -->\n",
+	);
+
+	common::mdt_cmd_for_path(tmp.path())
+		.args(["check", "--format", "github", "--ignore-unused-blocks"])
+		.assert()
+		.code(1)
+		.stdout(predicate::str::contains(
+			"::error file=readme.md,line=1,col=1::consumer `featrues` at readme.md:1:1 has no \
+			 provider (did you mean `features`?)",
+		));
+
+	Ok(())
+}
+
+#[test]
+fn init_next_to_an_existing_readme_leaves_check_green() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "README.md", "# Existing project\n");
+
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("init")
+		.assert()
+		.success()
+		.stdout(predicate::str::contains(
+			"Left the existing README.md unchanged",
+		));
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("check")
+		.assert()
+		.success()
+		.stderr(predicate::str::contains(
+			"provider block `greeting` has no consumers",
+		));
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join("README.md"))?,
+		"# Existing project\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn assist_copilot_uses_the_vscode_servers_key() {
+	let output = common::mdt_std_cmd()
+		.args(["assist", "copilot", "--format", "json"])
+		.output()
+		.unwrap_or_else(|e| panic!("run mdt: {e}"));
+	assert!(output.status.success());
+	let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+		.unwrap_or_else(|e| panic!("stdout is not JSON: {e}"));
+	assert_eq!(json["mcp_config_file"], ".vscode/mcp.json");
+	assert_eq!(json["mcp_config"]["servers"]["mdt"]["command"], "mdt");
+	assert!(json["mcp_config"].get("mcpServers").is_none());
+	assert_eq!(
+		json["skill"]["install_command"],
+		"mdt skill --install .github/skills"
+	);
+}

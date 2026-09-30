@@ -4,20 +4,21 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpQByGB1
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpuMr7A2
     - update
   env:
     NO_COLOR: "1"
 ---
-success: false
-exit_code: 2
+success: true
+exit_code: 0
 ----- stdout -----
+All consumer blocks are already up to date.
 
 ----- stderr -----
 mdt::unused_provider
 
-  x [template.t.md:1:1] provider block `other_block` has no consumers
+  ! [template.t.md:1:1] provider block `other_block` has no consumers
   help: add a consumer block `<!-- {=other_block} -->...<!-- {/other_block}
-        -->` or remove the unused provider
+        -->`, remove the unused provider, or pass `--ignore-unused-blocks`
 
-error: validation errors found
+warning: consumer `nonexistent_block` at readme.md:3:1 has no provider

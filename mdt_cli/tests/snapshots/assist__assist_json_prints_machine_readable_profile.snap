@@ -15,27 +15,23 @@ exit_code: 0
 ----- stdout -----
 {
   "assistant": "Pi",
-  "mcp_config": {
-    "mcpServers": {
-      "mdt": {
-        "args": [
-          "mcp"
-        ],
-        "command": "mdt"
-      }
-    }
-  },
+  "id": "pi",
+  "mcp_config": null,
+  "mcp_config_file": null,
+  "mcp_install_command": null,
   "notes": [
-    "Configure Pi to run `mdt mcp` so agents can inspect and synchronize providers and consumers.",
-    "Add the repo-local guidance to your agent instructions so Pi follows the same reuse-and-check workflow.",
-    "Install the official mdt skill for Pi: `pi install npm:@m-d-t/skills` — it teaches your agent template syntax, MCP tools, and CLI workflows."
+    "Pi has no built-in MCP client, so it works with mdt through the CLI and the skill.",
+    "Install the skill with `mdt skill --install .pi/skills`, or from npm with `pi install npm:@m-d-t/skills`."
   ],
   "repo_guidance": [
-    "Prefer reuse before creation: run `mdt_find_reuse` or `mdt_list` before introducing a new provider block.",
-    "Use `.templates/` as the canonical location for template files.",
-    "Run `mdt_check` after documentation edits and `mdt_update` when consumers are stale.",
-    "Use `mdt_preview` to inspect provider and consumer output before syncing changes."
+    "Before editing mdt templates or synced docs, run `mdt skill` to load the mdt agent skill (tag syntax, transformers, configuration, and workflow for the installed version).",
+    "Edit providers in `.templates/*.t.md`, never the synced copies, and prefer reusing an existing provider (`mdt list` or `mdt_find_reuse`) over creating a new one.",
+    "After documentation edits, run `mdt check`; run `mdt update` when consumers are stale."
   ],
+  "skill": {
+    "install_command": "mdt skill --install .pi/skills",
+    "print_command": "mdt skill"
+  },
   "strategy": {
     "scope": "config-snippets-and-guidance",
     "summary": "mdt ships assistant setup presets and repo-local guidance, not a plugin marketplace.",

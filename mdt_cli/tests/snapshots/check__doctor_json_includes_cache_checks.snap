@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp4Dubl4
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpMjUpDz
     - doctor
     - "--format"
     - json
@@ -52,17 +52,10 @@ exit_code: 0
       "hint": null
     },
     {
-      "id": "missing_providers",
-      "title": "Missing Providers",
-      "status": "pass",
-      "message": "all consumer blocks resolve to providers",
-      "hint": null
-    },
-    {
       "id": "orphan_consumers",
       "title": "Orphan Consumers",
       "status": "pass",
-      "message": "no orphan consumer blocks found",
+      "message": "every consumer block has a provider",
       "hint": null
     },
     {
@@ -77,6 +70,13 @@ exit_code: 0
       "title": "Parser Diagnostics",
       "status": "pass",
       "message": "no parser diagnostics found",
+      "hint": null
+    },
+    {
+      "id": "consumer_sync",
+      "title": "Consumer Sync",
+      "status": "pass",
+      "message": "every linked consumer renders and is up to date",
       "hint": null
     },
     {

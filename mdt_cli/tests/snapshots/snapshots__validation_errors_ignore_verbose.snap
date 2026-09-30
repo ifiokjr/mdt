@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpMHElvq
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpqpeVZZ
     - "--ignore-unclosed-blocks"
     - "--verbose"
     - check
@@ -16,19 +16,20 @@ exit_code: 1
 ----- stdout -----
 Scanned project: 1 provider(s), 1 consumer(s)
   Providers:
-    @valid_block ([TEMP_DIR]/template.t.md)
+    @valid_block (template.t.md)
 
 ----- stderr -----
 mdt::unclosed_block
 
   ! [unclosed.md:3:1] missing closing tag for block `valid_block`
-  help: add `<!-- {/valid_block} -->` to close this block
+  help: add `<!-- {/valid_block} -->` to close this block, or, if a nearby
+        closing tag has a different name, fix the misspelled tag so the names
+        match
 
 Check failed.
-  render errors: 0
   stale consumers: 1
 
 Stale consumers:
   block `valid_block` at valid.md:3:1
 
-1 consumer block(s) are out of date. Run `mdt update` to fix.
+1 consumer block(s) are out of date. Run `mdt update`.

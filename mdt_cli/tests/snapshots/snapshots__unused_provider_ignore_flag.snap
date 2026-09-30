@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp6iOGyw
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpa9duep
     - "--ignore-unused-blocks"
     - "--verbose"
     - check
@@ -16,21 +16,20 @@ exit_code: 1
 ----- stdout -----
 Scanned project: 2 provider(s), 1 consumer(s)
   Providers:
-    @orphan_block ([TEMP_DIR]/template.t.md)
-    @used_block ([TEMP_DIR]/template.t.md)
+    @orphan_block (template.t.md)
+    @used_block (template.t.md)
 
 ----- stderr -----
 mdt::unused_provider
 
   ! [template.t.md:7:1] provider block `orphan_block` has no consumers
   help: add a consumer block `<!-- {=orphan_block} -->...<!-- {/orphan_block}
-        -->` or remove the unused provider
+        -->`, remove the unused provider, or pass `--ignore-unused-blocks`
 
 Check failed.
-  render errors: 0
   stale consumers: 1
 
 Stale consumers:
   block `used_block` at readme.md:3:1
 
-1 consumer block(s) are out of date. Run `mdt update` to fix.
+1 consumer block(s) are out of date. Run `mdt update`.

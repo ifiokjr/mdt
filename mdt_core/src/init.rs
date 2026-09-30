@@ -132,13 +132,12 @@ pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 	let created_root = !root.exists();
 	std::fs::create_dir_all(root)?;
 
-	let config = match MdtConfig::resolve_path(root) {
-		Some(existing) => ConfigOutcome::Exists(existing),
-		None => {
-			let path = root.join("mdt.toml");
-			std::fs::write(&path, DEFAULT_MDT_TOML)?;
-			ConfigOutcome::Created(path)
-		}
+	let config = if let Some(existing) = MdtConfig::resolve_path(root) {
+		ConfigOutcome::Exists(existing)
+	} else {
+		let path = root.join("mdt.toml");
+		std::fs::write(&path, DEFAULT_MDT_TOML)?;
+		ConfigOutcome::Created(path)
 	};
 
 	let sample = init_sample(root)?;

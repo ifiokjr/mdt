@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpqq4Uwh
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpQxsS5B
     - "--ignore-invalid-transformers"
     - "--verbose"
     - check
@@ -16,20 +16,19 @@ exit_code: 1
 ----- stdout -----
 Scanned project: 1 provider(s), 1 consumer(s)
   Providers:
-    @docs ([TEMP_DIR]/template.t.md)
+    @docs (template.t.md)
 
 ----- stderr -----
 mdt::unknown_transformer
 
   ! [readme.md:3:1] unknown transformer `foobar`
   help: available transformers: trim, trimStart, trimEnd, indent, prefix,
-        suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace
+        suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace, if
 
 Check failed.
-  render errors: 0
   stale consumers: 1
 
 Stale consumers:
   block `docs` at readme.md:3:1
 
-1 consumer block(s) are out of date. Run `mdt update` to fix.
+1 consumer block(s) are out of date. Run `mdt update`.

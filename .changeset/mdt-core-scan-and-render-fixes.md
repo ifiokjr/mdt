@@ -24,3 +24,4 @@
 - `[templates] paths` adds only `*.t.md` files from each directory, uses the project's `[exclude]` and git ignore rules, and fails with `mdt::templates_path` when an entry is not a directory. A sub-project can point it at a shared template directory outside its root; files there are never treated as its consumers.
 - `[exclude] blocks` also silences structural diagnostics (unclosed, unmatched, or nested tags) for the excluded names, and invalid `[include] patterns` globs are rejected when the config loads instead of being dropped.
 - Files without any `<!--` are no longer parsed, which removes the dominant cost of scanning large tag-free markdown files.
+- `TransformerType::NAMES` lists every transformer's canonical name, so help text can no longer drift from the implementation.

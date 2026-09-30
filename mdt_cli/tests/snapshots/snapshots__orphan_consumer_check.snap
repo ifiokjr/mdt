@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpCfMEHE
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpieAXMv
     - check
   env:
     NO_COLOR: "1"
@@ -14,12 +14,14 @@ exit_code: 1
 ----- stdout -----
 
 ----- stderr -----
-warning: consumer block `nonexistent` has no matching provider
 Check failed.
-  render errors: 0
+  orphan consumers: 1
   stale consumers: 1
+
+Orphan consumers:
+  consumer `nonexistent` at readme.md:9:1 has no provider
 
 Stale consumers:
   block `greeting` at readme.md:3:1
 
-1 consumer block(s) are out of date. Run `mdt update` to fix.
+1 consumer block(s) have no provider and 1 consumer block(s) are out of date. Rename those consumers or define the providers in `*.t.md` files, then run `mdt update`.

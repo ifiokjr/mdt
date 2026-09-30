@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpfYCLXK
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpisKvgK
     - doctor
   env:
     NO_COLOR: "1"
@@ -19,10 +19,10 @@ mdt doctor
        hint: add a config file to enable explicit data source validation
 [PASS] Template Layout        using default template discovery (`*.t.md`)
 [PASS] Duplicate Providers    provider names are unique
-[PASS] Missing Providers      all consumer blocks resolve to providers
-[PASS] Orphan Consumers       no orphan consumer blocks found
+[PASS] Orphan Consumers       every consumer block has a provider
 [PASS] Unused Providers       all providers have at least one consumer
 [PASS] Parser Diagnostics     no parser diagnostics found
+[PASS] Consumer Sync          every linked consumer renders and is up to date
 [PASS] Cache Artifact         cache artifact is readable and valid at [TEMP_DIR]/.mdt/cache/index-v2.json
 [PASS] Cache Hash Mode        content-hash verification disabled (mtime + size fingerprints only)
        hint: set `MDT_CACHE_VERIFY_HASH=1` to validate cache keys with content hashes while troubleshooting

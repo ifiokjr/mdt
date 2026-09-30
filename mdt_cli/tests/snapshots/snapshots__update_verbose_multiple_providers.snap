@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpmJ2pKs
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpSyiRXd
     - "--verbose"
     - update
   env:
@@ -15,9 +15,9 @@ exit_code: 0
 ----- stdout -----
 Scanned project: 3 provider(s), 6 consumer(s)
   Providers:
-    @header ([TEMP_DIR]/template.t.md)
-    @install ([TEMP_DIR]/template.t.md)
-    @usage ([TEMP_DIR]/template.t.md)
+    @header (template.t.md)
+    @install (template.t.md)
+    @usage (template.t.md)
 Updated 6 block(s) in 2 file(s).
   docs.md
   readme.md

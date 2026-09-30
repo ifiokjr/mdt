@@ -953,6 +953,26 @@ pub enum TransformerType {
 	If,
 }
 
+impl TransformerType {
+	/// The canonical camelCase name of every transformer, in documentation
+	/// order. Each also accepts a `snake_case` alias (`trim_start`).
+	pub const NAMES: [&'static str; 13] = [
+		"trim",
+		"trimStart",
+		"trimEnd",
+		"indent",
+		"prefix",
+		"suffix",
+		"linePrefix",
+		"lineSuffix",
+		"wrap",
+		"codeBlock",
+		"code",
+		"replace",
+		"if",
+	];
+}
+
 impl std::fmt::Display for TransformerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {

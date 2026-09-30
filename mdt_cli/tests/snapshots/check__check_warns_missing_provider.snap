@@ -4,15 +4,20 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpRr81Fl
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpRztkmc
     - check
   env:
     NO_COLOR: "1"
 ---
-success: true
-exit_code: 0
+success: false
+exit_code: 1
 ----- stdout -----
-Check passed: all consumer blocks are up to date.
 
 ----- stderr -----
-warning: consumer block `orphan` has no matching provider
+Check failed.
+  orphan consumers: 1
+
+Orphan consumers:
+  consumer `orphan` at readme.md:1:1 has no provider
+
+1 consumer block(s) have no provider. Rename those consumers or define the providers in `*.t.md` files.

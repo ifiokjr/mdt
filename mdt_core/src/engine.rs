@@ -197,16 +197,15 @@ pub fn render_template(
 
 /// Describe a minijinja failure by kind, detail, and line within the
 /// template, leaving out the internal template name.
+#[allow(clippy::needless_pass_by_value)] // Matches `map_err`'s by-value closure.
 fn template_render_error(error: minijinja::Error) -> MdtError {
-	let mut message = error.kind().to_string();
-	if let Some(detail) = error.detail() {
-		message.push_str(": ");
-		message.push_str(detail);
-	}
-	if let Some(line) = error.line() {
-		message.push_str(&format!(" (template line {line})"));
-	}
-	MdtError::TemplateRender(message)
+	let detail = error
+		.detail()
+		.map_or_else(String::new, |detail| format!(": {detail}"));
+	let line = error
+		.line()
+		.map_or_else(String::new, |line| format!(" (template line {line})"));
+	MdtError::TemplateRender(format!("{}{detail}{line}", error.kind()))
 }
 
 /// Find template variables referenced in `content` that are not defined in
@@ -1381,7 +1380,11 @@ fn longest_backtick_run(content: &str) -> usize {
 /// `content`, so a code span wrapping it cannot close early.
 fn shortest_absent_backtick_run(content: &str) -> usize {
 	let runs: HashSet<usize> = backtick_runs(content).collect();
-	(1..).find(|length| !runs.contains(length)).unwrap_or(1)
+	// At most `runs.len()` lengths are taken, so one of the first
+	// `runs.len() + 1` is free.
+	(1..=runs.len() + 1)
+		.find(|length| !runs.contains(length))
+		.unwrap_or(1)
 }
 
 /// Look up a dot-separated path in the data context and return whether the

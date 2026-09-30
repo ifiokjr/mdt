@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmppOoVgW
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpwkkKY3
     - "--verbose"
     - list
   env:
@@ -15,15 +15,14 @@ exit_code: 0
 ----- stdout -----
 Scanned project: 1 provider(s), 2 consumer(s)
   Providers:
-    @greeting ([TEMP_DIR]/template.t.md)
+    @greeting (template.t.md)
 Providers:
-  @greeting template.t.md (1 consumer(s))
+  @greeting template.t.md:1 (1 consumer(s))
 
 Consumers:
-  =greeting readme.md |trim [linked]
-  =nonexistent readme.md |indent [orphan]
+  =greeting readme.md:3 |trim [linked]
+  =nonexistent readme.md:9 |indent [orphan]
 
 1 provider(s), 2 consumer(s)
 
 ----- stderr -----
-warning: consumer block `nonexistent` has no matching provider

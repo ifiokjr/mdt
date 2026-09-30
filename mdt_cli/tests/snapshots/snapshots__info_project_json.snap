@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpFc7Jkb
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpCY4JEl
     - info
     - "--format"
     - json
@@ -63,8 +63,8 @@ exit_code: 0
   },
   "diagnostics": {
     "total": 1,
-    "errors": 1,
-    "warnings": 0,
+    "errors": 0,
+    "warnings": 1,
     "missing_provider_count": 1,
     "missing_provider_names": [
       "missing_block"
@@ -75,7 +75,7 @@ exit_code: 0
     "exists": true,
     "readable": true,
     "valid": true,
-    "schema_version": 2,
+    "schema_version": 3,
     "schema_supported": true,
     "project_key_matches": true,
     "hash_verification_enabled": false,

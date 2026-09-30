@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpghyvIc
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpkqWoLg
     - update
   env:
     NO_COLOR: "1"
@@ -15,4 +15,4 @@ exit_code: 0
 All consumer blocks are already up to date.
 
 ----- stderr -----
-warning: consumer block `orphan` has no matching provider
+warning: consumer `orphan` at readme.md:1:1 has no provider

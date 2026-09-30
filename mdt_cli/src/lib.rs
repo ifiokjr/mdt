@@ -9,6 +9,8 @@ use clap::ValueEnum;
 	name = "mdt",
 	author,
 	version,
+	arg_required_else_help = true,
+	subcommand_required = true,
 	about = "Keep documentation synchronized across your project using template tags.",
 	long_about = "mdt (manage markdown templates) is a data-driven template engine for keeping \
 	              documentation synchronized across your project.\n\nIt uses comment-based \
@@ -22,9 +24,10 @@ use clap::ValueEnum;
 #[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
 	#[command(subcommand)]
-	pub command: Option<Commands>,
+	pub command: Commands,
 
-	/// Path to the project root directory.
+	/// Path to the project root directory (default: the current directory).
+	/// Must exist, except for `mdt init`, which creates it.
 	#[arg(long, short, global = true)]
 	pub path: Option<PathBuf>,
 
@@ -40,11 +43,12 @@ pub struct MdtCli {
 	#[arg(long, global = true, default_value_t = false)]
 	pub ignore_unclosed_blocks: bool,
 
-	/// Ignore unused provider blocks (providers with no consumers).
+	/// Silence warnings about provider blocks that have no consumers.
 	#[arg(long, global = true, default_value_t = false)]
 	pub ignore_unused_blocks: bool,
 
-	/// Ignore invalid block name errors.
+	/// Ignore markdown comments that look like mdt tags but cannot be parsed
+	/// (for example `{ @name }` or `{=my.block}`).
 	#[arg(long, global = true, default_value_t = false)]
 	pub ignore_invalid_names: bool,
 
@@ -56,18 +60,24 @@ pub struct MdtCli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-	/// Initialize mdt in a project by creating sample starter files.
+	/// Initialize mdt in a project, adding only what is missing.
 	///
-	/// Creates a `.templates/template.t.md` file in the project root with an
-	/// example provider block, plus an `mdt.toml` starter config when one does
-	/// not already exist. If the template file already exists, the command is a
-	/// no-op for that file and exits successfully.
+	/// Writes an annotated `mdt.toml` (unless a config exists) and a sample
+	/// `greeting` provider in `.templates/template.t.md` (unless the project
+	/// already has providers). When the project has no README, also writes
+	/// `readme.md` with the sample consumer already in sync; an existing
+	/// README is never modified. In git repositories, adds the `.mdt/` cache
+	/// directory to `.gitignore`. The project passes `mdt check` afterwards.
 	Init,
 	/// Check that all consumer blocks are up to date.
 	///
 	/// Scans all files in the project for consumer blocks and compares their
-	/// current content against what the matching provider would produce. Exits
-	/// with a non-zero status code if any consumer blocks are stale.
+	/// current content against what the matching provider would produce.
+	///
+	/// Exit status: 0 when every consumer is linked and current; 1 when a
+	/// consumer is stale, names no provider (an orphan), or its provider fails
+	/// to render; 2 when validation errors (for example an unclosed block) or
+	/// config errors stop the check.
 	///
 	/// Ideal for CI pipelines to enforce documentation synchronization. Use
 	/// `--diff` to see exactly what changed and `--format` to control the
@@ -95,12 +105,16 @@ pub enum Commands {
 	/// template variables using data from `mdt.toml`, applies transformers,
 	/// and replaces matching consumer block content in all scanned files.
 	///
+	/// Consumers whose provider fails to render are left untouched and
+	/// reported, and the command exits with status 1; validation errors stop
+	/// the update with status 2.
+	///
 	/// Use `--dry-run` to preview changes without writing to disk, or
 	/// `--watch` to automatically re-run whenever source files change.
 	Update {
-		/// Preview changes without writing files. Prints which files would
-		/// be modified and shows the updated content.
-		#[arg(long, default_value_t = false)]
+		/// Print how many blocks and which files would change, without
+		/// writing anything. Use `mdt check --diff` to see the content.
+		#[arg(long, default_value_t = false, conflicts_with = "watch")]
 		dry_run: bool,
 
 		/// Watch for file changes and re-run updates automatically. Monitors
@@ -199,11 +213,13 @@ pub enum Commands {
 pub enum OutputFormat {
 	/// Human-readable text output with colors and formatting.
 	Text,
-	/// JSON output for programmatic consumption. Each stale entry includes
-	/// the file path, block name, current content, and expected content.
+	/// JSON output for programmatic consumption, with `ok`, `stale`,
+	/// `stale_files`, `orphans`, `errors` (render errors), and `diagnostics`.
+	/// Entries carry the file, block name, line, and column.
 	Json,
-	/// GitHub Actions annotation format. Emits `::warning` or `::error`
-	/// annotations that appear inline on pull request diffs.
+	/// GitHub Actions annotation format. Emits `::error` annotations for
+	/// every failure (and `::warning` for warnings) that appear inline on pull
+	/// request diffs.
 	Github,
 }
 

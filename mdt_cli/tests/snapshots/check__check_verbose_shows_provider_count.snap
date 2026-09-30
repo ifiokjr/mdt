@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp1KrjyJ
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmps8cfuB
     - "--verbose"
     - check
   env:
@@ -15,7 +15,7 @@ exit_code: 0
 ----- stdout -----
 Scanned project: 1 provider(s), 1 consumer(s)
   Providers:
-    @block ([TEMP_DIR]/template.t.md)
+    @block (template.t.md)
 Check passed: all consumer blocks are up to date.
 
 ----- stderr -----

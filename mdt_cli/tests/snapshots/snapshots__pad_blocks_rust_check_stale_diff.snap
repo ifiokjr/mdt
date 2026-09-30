@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpDAb2XE
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpuGywHG
     - check
     - "--diff"
   env:
@@ -16,7 +16,6 @@ exit_code: 1
 
 ----- stderr -----
 Check failed.
-  render errors: 0
   stale consumers: 3
 
 Stale consumers:
@@ -63,4 +62,4 @@ Stale consumers:
   +
   +
 
-3 consumer block(s) are out of date. Run `mdt update` to fix.
+3 consumer block(s) are out of date. Run `mdt update`.

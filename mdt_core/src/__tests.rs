@@ -2245,6 +2245,27 @@ fn config_load_rejects_invalid_include_globs() {
 	assert!(error.to_string().contains("src/[a"), "{error}");
 }
 
+#[test]
+fn transformer_names_cover_every_variant() {
+	let variants = [
+		TransformerType::Trim,
+		TransformerType::TrimStart,
+		TransformerType::TrimEnd,
+		TransformerType::Indent,
+		TransformerType::Prefix,
+		TransformerType::Suffix,
+		TransformerType::LinePrefix,
+		TransformerType::LineSuffix,
+		TransformerType::Wrap,
+		TransformerType::CodeBlock,
+		TransformerType::Code,
+		TransformerType::Replace,
+		TransformerType::If,
+	];
+	let displayed: Vec<String> = variants.iter().map(ToString::to_string).collect();
+	assert_eq!(displayed, TransformerType::NAMES);
+}
+
 // --- Config tests ---
 
 #[rstest]
