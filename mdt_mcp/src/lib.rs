@@ -41,183 +41,159 @@
 //! ```
 //! <!-- {/mdtMcpOverview} -->
 
-use std::path::Component;
-use std::path::Path;
 use std::path::PathBuf;
 
-use mdt_core::BlockType;
-use mdt_core::MdtConfig;
-use mdt_core::apply_transformers;
-use mdt_core::build_render_context;
-use mdt_core::check_project;
-use mdt_core::compute_updates;
-use mdt_core::project::ProjectContext;
-use mdt_core::project::is_markdown_path;
-use mdt_core::project::levenshtein_distance;
-use mdt_core::project::relative_display_path;
-use mdt_core::project::scan_project_with_config;
-use mdt_core::render_template;
-use mdt_core::write_updates;
-use rmcp::ErrorData as McpError;
+use mdt_core::project::ValidationOptions;
+use mdt_core::project::resolve_root;
+use rmcp::RoleServer;
 use rmcp::ServerHandler;
 use rmcp::ServiceExt;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::*;
+use rmcp::model::CallToolResult;
+use rmcp::model::Implementation;
+use rmcp::model::ServerCapabilities;
+use rmcp::model::ServerConfig;
 use rmcp::schemars;
 use rmcp::serde;
 use rmcp::tool;
 use rmcp::tool_handler;
 use rmcp::tool_router;
+use rmcp::transport::IntoTransport;
 use serde::Deserialize;
-use serde::Serialize;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt;
 
-/// Parameters for tools that accept an optional project path.
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct PathParam {
-	/// Path to the project root directory. Must resolve inside the server's
-	/// startup directory. Defaults to the server's startup directory.
-	pub path: Option<String>,
+use crate::confine::RootRequirement;
+use crate::confine::confine_root;
+use crate::response::ToolError;
+
+mod confine;
+mod response;
+mod reuse;
+mod tools;
+
+/// Validation switches mirroring the `mdt` CLI's `--ignore-*` flags.
+/// Diagnostics they silence are left out of `diagnostics` entirely.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct ValidationParam {
+	/// Do not report unclosed blocks (`--ignore-unclosed-blocks`).
+	#[serde(default)]
+	pub ignore_unclosed_blocks: bool,
+	/// Do not report providers that have no consumers
+	/// (`--ignore-unused-blocks`).
+	#[serde(default)]
+	pub ignore_unused_blocks: bool,
+	/// Do not report comments that look like tags but do not parse
+	/// (`--ignore-invalid-names`).
+	#[serde(default)]
+	pub ignore_invalid_names: bool,
+	/// Do not report unknown transformers or wrong transformer argument
+	/// counts (`--ignore-invalid-transformers`).
+	#[serde(default)]
+	pub ignore_invalid_transformers: bool,
 }
 
-/// Parameters for tools that need a block name.
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct BlockParam {
-	/// Path to the project root directory. Must resolve inside the server's
-	/// startup directory. Defaults to the server's startup directory.
+impl From<ValidationParam> for ValidationOptions {
+	fn from(param: ValidationParam) -> Self {
+		Self {
+			ignore_unclosed_blocks: param.ignore_unclosed_blocks,
+			ignore_unused_blocks: param.ignore_unused_blocks,
+			ignore_invalid_names: param.ignore_invalid_names,
+			ignore_invalid_transformers: param.ignore_invalid_transformers,
+		}
+	}
+}
+
+/// Parameters for `mdt_check`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct CheckParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
 	pub path: Option<String>,
-	/// The name of the block to look up.
+	#[serde(flatten)]
+	pub validation: ValidationParam,
+}
+
+/// Parameters for `mdt_update`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct UpdateParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
+	pub path: Option<String>,
+	/// Report what would change without writing any file.
+	#[serde(default)]
+	pub dry_run: bool,
+	#[serde(flatten)]
+	pub validation: ValidationParam,
+}
+
+/// Parameters for `mdt_list`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct ListParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
+	pub path: Option<String>,
+	/// Include each provider's trimmed body as `content`. Off by default to
+	/// keep the response small; `mdt_get_block` returns one block's content.
+	#[serde(default)]
+	pub include_content: bool,
+	#[serde(flatten)]
+	pub validation: ValidationParam,
+}
+
+/// Parameters for tools that look up one block by name.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct BlockParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
+	pub path: Option<String>,
+	/// The block name, without tag sigils (`greeting`, not `@greeting`).
 	pub block_name: String,
 }
 
-/// Parameters for the update tool.
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct UpdateParam {
-	/// Path to the project root directory. Must resolve inside the server's
-	/// startup directory. Defaults to the server's startup directory.
-	pub path: Option<String>,
-	/// If true, show what would change without writing files.
-	#[serde(default)]
-	pub dry_run: bool,
-}
-
-/// Parameters for the init tool.
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+/// Parameters for `mdt_init`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
 pub struct InitParam {
-	/// Path to the project root directory. Must resolve inside the server's
-	/// startup directory. Defaults to the server's startup directory.
+	/// Directory to initialize: absolute, or relative to the server root.
+	/// Must resolve inside the server root; created when missing. Defaults
+	/// to the server root.
 	pub path: Option<String>,
 }
 
-/// Parameters for reuse discovery.
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+/// Parameters for `mdt_find_reuse`.
+#[derive(Debug, Clone, Deserialize, schemars::JsonSchema)]
 pub struct ReuseParam {
-	/// Path to the project root directory. Must resolve inside the server's
-	/// startup directory. Defaults to the server's startup directory.
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
 	pub path: Option<String>,
-	/// Optional proposed block name to match against existing providers.
+	/// Proposed block name. Matches exact names first, then names equal up
+	/// to case and `-`/`_` separators, then prefixes, substrings, and close
+	/// spellings.
 	pub block_name: Option<String>,
-	/// Max number of suggested providers to return.
+	/// Text to look for in provider bodies, ignoring case.
+	pub content_query: Option<String>,
+	/// Maximum number of candidates to return. Values outside 1–20 are
+	/// clamped.
 	#[serde(default = "default_reuse_limit")]
+	#[schemars(range(min = 1, max = 20))]
 	pub limit: usize,
 }
 
-/// A provider info entry for JSON output.
-#[derive(Debug, Serialize)]
-struct ProviderInfo {
-	name: String,
-	file: String,
-	content: String,
-	consumer_count: usize,
-}
-
-/// A consumer info entry for JSON output.
-#[derive(Debug, Serialize)]
-struct ConsumerInfo {
-	name: String,
-	file: String,
-	transformers: Vec<String>,
-	is_stale: bool,
-}
-
-/// A candidate provider to reuse.
-#[derive(Debug, Serialize)]
-struct ReuseCandidate {
-	name: String,
-	file: String,
-	consumer_count: usize,
-	markdown_files: Vec<String>,
-	code_files: Vec<String>,
-	distance: Option<usize>,
-}
-
-#[derive(Debug, Serialize)]
-struct TemplateWarningInfo {
-	block_name: String,
-	file: String,
-	undefined_variables: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct RenderErrorInfo {
-	block_name: String,
-	file: String,
-	line: usize,
-	column: usize,
-	message: String,
-}
-
-#[derive(Debug, Serialize)]
-struct StaleEntryInfo {
-	block_name: String,
-	file: String,
-	line: usize,
-	column: usize,
-}
-
-#[derive(Debug, Serialize)]
-struct PreviewProviderInfo {
-	name: String,
-	file: String,
-	raw_content: String,
-	rendered_with_project_data: String,
-	parameters: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct PreviewConsumerInfo {
-	file: String,
-	transformers: Vec<String>,
-	arguments: Vec<String>,
-	rendered_content: Option<String>,
-	current_content: String,
-	is_stale: Option<bool>,
-	render_error: Option<String>,
-}
-
-/// The MCP server for mdt.
-#[derive(Debug, Clone)]
-pub struct MdtMcpServer {
-	pub tool_router: ToolRouter<Self>,
-	/// Startup directory that every tool path must resolve within.
-	base_root: PathBuf,
-}
-
-#[tool_handler]
-impl ServerHandler for MdtMcpServer {
-	fn get_info(&self) -> ServerConfig {
-		ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
-			"mdt (manage markdown templates) keeps documentation synchronized across your project \
-			 using comment-based template tags. MCP tool responses are JSON-first and include \
-			 structured content for agent use. Use these tools to check, update, list, preview, \
-			 and find reusable blocks. Before creating a new provider, run mdt_find_reuse or \
-			 mdt_list to discover similar block names and existing markdown/source consumers. Use \
-			 mdt_preview as an authoring workflow to inspect provider templates plus per-consumer \
-			 rendered output. Prefer reuse over new provider names when possible, then run \
-			 mdt_check (and mdt_update if needed) to keep consumers synchronized.",
-		)
+impl Default for ReuseParam {
+	fn default() -> Self {
+		Self {
+			path: None,
+			block_name: None,
+			content_query: None,
+			limit: default_reuse_limit(),
+		}
 	}
 }
 
@@ -225,74 +201,48 @@ fn default_reuse_limit() -> usize {
 	5
 }
 
-/// Lexically normalize `.` and `..` components out of `path`.
-fn normalize_lexically(path: &Path) -> PathBuf {
-	let mut components: Vec<Component<'_>> = Vec::new();
-
-	for component in path.components() {
-		match component {
-			Component::CurDir => {}
-			Component::ParentDir => {
-				// Preserve leading `..` so the containment check below is the
-				// component that rejects escapes, not the normalization.
-				if components.pop().is_none() {
-					components.push(component);
-				}
-			}
-			other => components.push(other),
-		}
-	}
-
-	components.iter().collect()
+/// Trimmed `value`, or `None` when it is missing or blank.
+fn non_blank(value: Option<String>) -> Option<String> {
+	value
+		.map(|value| value.trim().to_string())
+		.filter(|value| !value.is_empty())
 }
 
-fn scan_ctx(root: &Path) -> Result<ProjectContext, McpError> {
-	scan_project_with_config(root).map_err(|e| McpError::internal_error(e.to_string(), None))
+const SERVER_INSTRUCTIONS: &str =
+	"mdt (manage markdown templates) keeps documentation in sync. Provider blocks (`{@name}` tags \
+	 in `*.t.md` files) define content once; consumer blocks (`{=name}` tags in markdown and \
+	 source-code comments) receive it. Every tool returns a JSON object, also sent as structured \
+	 content, with `ok`, `action`, and `summary`; results marked isError add `error.code` and \
+	 `error.message`. Workflow: before creating a provider, call mdt_find_reuse (or mdt_list) and \
+	 reuse an existing block when one fits. Use mdt_get_block and mdt_preview to inspect a block \
+	 and what each consumer will receive. After editing, run mdt_update, then mdt_check, which \
+	 fails on stale consumers, render errors, orphan consumers, and validation errors, exactly \
+	 like `mdt check`. Tool paths must stay inside the directory the server serves. For the full \
+	 syntax, transformer, and configuration guide, run `mdt skill` (and `mdt skill --reference`) \
+	 in a shell.";
+
+/// The MCP server for mdt.
+#[derive(Debug, Clone)]
+pub struct MdtMcpServer {
+	pub tool_router: ToolRouter<Self>,
+	/// Canonical directory that every tool path must resolve within.
+	base_root: PathBuf,
 }
 
-/// Run a blocking mdt operation on the blocking thread pool so the stdio
-/// transport keeps serving requests during directory walks, data-source
-/// script executions, and formatter subprocesses.
-async fn run_blocking<T, F>(operation: F) -> Result<T, McpError>
-where
-	T: Send + 'static,
-	F: FnOnce() -> Result<T, McpError> + Send + 'static,
-{
-	tokio::task::spawn_blocking(operation)
-		.await
-		.map_err(|e| McpError::internal_error(format!("blocking task failed: {e}"), None))?
-}
-
-fn json_result(value: serde_json::Value) -> CallToolResult {
-	let text = serde_json::to_string_pretty(&value)
-		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	let mut result = CallToolResult::success(vec![ContentBlock::text(text)]);
-	result.structured_content = Some(value);
-	result
-}
-
-fn json_error_result(value: serde_json::Value) -> CallToolResult {
-	let text = serde_json::to_string_pretty(&value)
-		.unwrap_or_else(|_| "{\"ok\":false,\"summary\":\"failed to serialize\"}".to_string());
-	let mut result = CallToolResult::error(vec![ContentBlock::text(text)]);
-	result.structured_content = Some(value);
-	result
-}
-
-fn warning_info(warning: &mdt_core::TemplateWarning, root: &Path) -> TemplateWarningInfo {
-	let mut undefined_variables = warning.undefined_variables.clone();
-	undefined_variables.sort();
-	TemplateWarningInfo {
-		block_name: warning.block_name.clone(),
-		file: relative_display_path(&warning.provider_file, root),
-		undefined_variables,
+#[tool_handler]
+impl ServerHandler for MdtMcpServer {
+	fn get_info(&self) -> ServerConfig {
+		ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+			.with_server_info(Implementation::new("mdt", env!("CARGO_PKG_VERSION")))
+			.with_instructions(SERVER_INSTRUCTIONS)
 	}
 }
 
 #[tool_router]
 impl MdtMcpServer {
+	/// Build a server confined to the current directory.
 	pub fn new() -> Self {
-		Self::with_base_root(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+		Self::with_base_root(resolve_root(None))
 	}
 
 	/// Build a server whose tool paths must resolve within `base_root`.
@@ -304,698 +254,221 @@ impl MdtMcpServer {
 	/// there.
 	pub fn with_base_root(base_root: impl Into<PathBuf>) -> Self {
 		let base_root = base_root.into();
+		// A root that does not exist cannot be canonicalized; keep its
+		// absolute form so every tool reports it as missing.
+		let base_root = base_root
+			.canonicalize()
+			.unwrap_or_else(|_| resolve_root(Some(&base_root)));
 		Self {
 			tool_router: Self::tool_router(),
-			base_root: base_root.canonicalize().unwrap_or(base_root),
+			base_root,
 		}
 	}
 
-	/// Resolve a caller-supplied project path, confined to the server's
-	/// startup directory.
-	fn confined_root(&self, path: Option<&str>) -> Result<PathBuf, McpError> {
-		let base = &self.base_root;
+	/// Confine `path` to the server root, then run `operation` with the
+	/// resolved project root on the blocking thread pool, so the stdio
+	/// transport keeps serving requests during directory walks, data scripts,
+	/// and formatter subprocesses. A [`ToolError`] becomes an `isError`
+	/// result for `action`.
+	async fn run_tool<F>(
+		&self,
+		action: &'static str,
+		path: Option<String>,
+		requirement: RootRequirement,
+		operation: F,
+	) -> CallToolResult
+	where
+		F: FnOnce(PathBuf) -> Result<CallToolResult, ToolError> + Send + 'static,
+	{
+		let base_root = self.base_root.clone();
+		let outcome = tokio::task::spawn_blocking(move || {
+			operation(confine_root(&base_root, path.as_deref(), requirement)?)
+		})
+		.await;
 
-		let requested = match path {
-			Some(path) if !path.trim().is_empty() => Path::new(path),
-			_ => return Ok(base.clone()),
-		};
-
-		let resolved = if requested.is_absolute() {
-			requested.to_path_buf()
-		} else {
-			base.join(requested)
-		};
-
-		// Normalize `.`/`..` lexically, then canonicalize when the path
-		// exists so symlinks cannot escape the base root either.
-		let normalized = normalize_lexically(&resolved);
-		let canonical = normalized.canonicalize().unwrap_or(normalized);
-
-		if canonical == *base || canonical.starts_with(base) {
-			return Ok(canonical);
+		match outcome {
+			Ok(Ok(result)) => result,
+			Ok(Err(error)) => error.into_result(action),
+			Err(error) => {
+				ToolError::new(
+					"mdt::internal",
+					format!("the `{action}` tool failed: {error}"),
+				)
+				.into_result(action)
+			}
 		}
-
-		Err(McpError::invalid_params(
-			format!(
-				"path `{}` resolves outside the mdt MCP server root `{}`. Restart the server in \
-				 the project you want to manage.",
-				requested.display(),
-				base.display()
-			),
-			None,
-		))
 	}
 
 	#[tool(
 		name = "mdt_check",
-		description = "Check if all consumer blocks are up to date. Returns a JSON-first summary \
-		               of stale blocks, render errors, missing providers, and authoring warnings."
+		description = "Check that every consumer block matches its provider, exactly like `mdt \
+		               check`. Read-only. Returns JSON with `ok` (false on stale consumers, \
+		               formatter-only stale files, render errors, orphan consumers, or validation \
+		               errors), `summary`, `stale`, `stale_files`, `render_errors`, `orphans` \
+		               (with suggested provider names), `diagnostics` (parser and validation \
+		               errors and warnings), `warnings` (undefined template variables), and \
+		               `missing_provider_names`.",
+		annotations(read_only_hint = true)
 	)]
-	async fn check(
-		&self,
-		Parameters(params): Parameters<PathParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let scan_root = root.clone();
-		let (ctx, result) = run_blocking(move || {
-			let ctx = scan_ctx(&scan_root)?;
-			let result =
-				check_project(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
-			Ok((ctx, result))
-		})
-		.await?;
-
-		let mut missing = ctx.find_missing_providers();
-		missing.sort();
-		let warnings: Vec<_> = result
-			.warnings
-			.iter()
-			.map(|warning| warning_info(warning, &root))
-			.collect();
-		let render_errors: Vec<_> = result
-			.render_errors
-			.iter()
-			.map(|err| {
-				RenderErrorInfo {
-					block_name: err.block_name.clone(),
-					file: relative_display_path(&err.file, &root),
-					line: err.line,
-					column: err.column,
-					message: err.message.clone(),
-				}
-			})
-			.collect();
-		let stale: Vec<_> = result
-			.stale
-			.iter()
-			.map(|entry| {
-				StaleEntryInfo {
-					block_name: entry.block_name.clone(),
-					file: relative_display_path(&entry.file, &root),
-					line: entry.line,
-					column: entry.column,
-				}
-			})
-			.collect();
-		let stale_files: Vec<_> = result
-			.stale_files
-			.iter()
-			.map(|entry| relative_display_path(&entry.file, &root))
-			.collect();
-
-		let ok = result.is_ok() && missing.is_empty();
-		let summary = if ok {
-			"All consumer blocks are up to date.".to_string()
-		} else {
-			let mut parts = Vec::new();
-			if !render_errors.is_empty() {
-				parts.push(format!("{} render error(s)", render_errors.len()));
-			}
-			if !stale.is_empty() {
-				parts.push(format!("{} stale consumer block(s)", stale.len()));
-			}
-			if !stale_files.is_empty() {
-				parts.push(format!(
-					"{} stale formatter-normalized file(s)",
-					stale_files.len()
-				));
-			}
-			if !missing.is_empty() {
-				parts.push(format!("{} missing provider name(s)", missing.len()));
-			}
-			if parts.is_empty() {
-				"Check completed with warnings.".to_string()
-			} else {
-				format!("Check found {}.", parts.join(", "))
-			}
-		};
-
-		Ok(json_result(serde_json::json!({
-			"ok": ok,
-			"action": "check",
-			"summary": summary,
-			"stale": stale,
-			"stale_files": stale_files,
-			"render_errors": render_errors,
-			"warnings": warnings,
-			"missing_provider_names": missing,
-		})))
+	async fn check(&self, Parameters(params): Parameters<CheckParam>) -> CallToolResult {
+		let options = ValidationOptions::from(params.validation);
+		self.run_tool(
+			"check",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::check(&root, &options),
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_update",
-		description = "Update all stale consumer blocks with latest provider content. Returns a \
-		               JSON-first summary and supports dry_run mode to preview changes without \
-		               writing."
+		description = "Write the latest provider content into every stale consumer block, exactly \
+		               like `mdt update`. With `dry_run: true`, reports what would change without \
+		               writing. Refuses to write when validation errors exist (isError, code \
+		               `mdt::validation`, with `diagnostics`). Returns JSON with `ok` (false when \
+		               a consumer failed to render), `summary`, `dry_run`, `updated_count`, \
+		               `updated_files`, `render_errors` (consumers left unchanged), \
+		               `diagnostics`, `warnings`, and `missing_provider_names`.",
+		annotations(
+			read_only_hint = false,
+			destructive_hint = true,
+			idempotent_hint = true
+		)
 	)]
-	async fn update(
-		&self,
-		Parameters(params): Parameters<UpdateParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let scan_root = root.clone();
+	async fn update(&self, Parameters(params): Parameters<UpdateParam>) -> CallToolResult {
+		let options = ValidationOptions::from(params.validation);
 		let dry_run = params.dry_run;
-		let (ctx, updates) = run_blocking(move || {
-			let ctx = scan_ctx(&scan_root)?;
-			let updates =
-				compute_updates(&ctx).map_err(|e| McpError::internal_error(e.to_string(), None))?;
-			if !updates.updated_files.is_empty() && !dry_run {
-				write_updates(&updates)
-					.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-			}
-			Ok((ctx, updates))
-		})
-		.await?;
-
-		let mut missing_provider_names = ctx.find_missing_providers();
-		missing_provider_names.sort();
-		let warnings: Vec<_> = updates
-			.warnings
-			.iter()
-			.map(|warning| warning_info(warning, &root))
-			.collect();
-		let mut updated_files: Vec<String> = updates
-			.updated_files
-			.keys()
-			.map(|path| relative_display_path(path, &root))
-			.collect();
-		updated_files.sort();
-
-		if updates.updated_files.is_empty() {
-			return Ok(json_result(serde_json::json!({
-				"ok": true,
-				"action": "update",
-				"dry_run": params.dry_run,
-				"summary": "All consumer blocks are already up to date. No changes needed.",
-				"updated_count": 0,
-				"updated_files": updated_files,
-				"warnings": warnings,
-				"missing_provider_names": missing_provider_names,
-			})));
-		}
-
-		let summary = if updates.updated_count == 0 {
-			if params.dry_run {
-				format!(
-					"Dry run: would normalize {} file(s) via formatter integration.",
-					updated_files.len()
-				)
-			} else {
-				format!(
-					"Normalized {} file(s) via formatter integration.",
-					updated_files.len()
-				)
-			}
-		} else if params.dry_run {
-			format!(
-				"Dry run: would update {} block(s) in {} file(s).",
-				updates.updated_count,
-				updated_files.len()
-			)
-		} else {
-			format!(
-				"Updated {} block(s) in {} file(s).",
-				updates.updated_count,
-				updated_files.len()
-			)
-		};
-
-		Ok(json_result(serde_json::json!({
-			"ok": true,
-			"action": "update",
-			"dry_run": params.dry_run,
-			"summary": summary,
-			"updated_count": updates.updated_count,
-			"updated_files": updated_files,
-			"warnings": warnings,
-			"missing_provider_names": missing_provider_names,
-		})))
+		self.run_tool(
+			"update",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::update(&root, &options, dry_run),
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_list",
-		description = "List all provider and consumer blocks with their names, source files, \
-		               consumer counts, transformers, and staleness status."
+		description = "List every provider and consumer block. Read-only. Providers carry \
+		               location and `consumer_count`; their bodies are omitted unless \
+		               `include_content` is true (use mdt_get_block for one block). Consumers \
+		               carry `type` (`consumer` or `inline`), location, transformers, arguments, \
+		               and `status` (`current`, `stale`, `render_error`, or `orphan`), computed \
+		               exactly as `mdt check` does. Also returns `diagnostics`; `ok` is false \
+		               when any is an error.",
+		annotations(read_only_hint = true)
 	)]
-	async fn list(
-		&self,
-		Parameters(params): Parameters<PathParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let ctx = {
-			let scan_root = root.clone();
-			run_blocking(move || scan_ctx(&scan_root)).await?
-		};
-
-		let mut providers: Vec<ProviderInfo> = ctx
-			.project
-			.providers
-			.iter()
-			.map(|(name, entry)| {
-				let consumer_count = ctx
-					.project
-					.consumers
-					.iter()
-					.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
-					.filter(|c| c.block.name == *name)
-					.count();
-				ProviderInfo {
-					name: name.clone(),
-					file: relative_display_path(&entry.file, &root),
-					content: entry.content.trim().to_string(),
-					consumer_count,
-				}
-			})
-			.collect();
-		providers.sort_by(|a, b| a.name.cmp(&b.name));
-
-		let consumers: Vec<ConsumerInfo> = ctx
-			.project
-			.consumers
-			.iter()
-			.map(|c| {
-				let is_stale = ctx.project.providers.get(&c.block.name).is_some_and(|p| {
-					let render_data =
-						build_render_context(&ctx.data, p, c).unwrap_or_else(|| ctx.data.clone());
-					let rendered = render_template(&p.content, &render_data)
-						.unwrap_or_else(|_| p.content.clone());
-					let expected = apply_transformers(&rendered, &c.block.transformers);
-					c.content != expected
-				});
-				ConsumerInfo {
-					name: c.block.name.clone(),
-					file: relative_display_path(&c.file, &root),
-					transformers: c
-						.block
-						.transformers
-						.iter()
-						.map(|t| t.r#type.to_string())
-						.collect(),
-					is_stale,
-				}
-			})
-			.collect();
-
-		let output = serde_json::json!({
-			"providers": providers,
-			"consumers": consumers,
-			"summary": format!(
-				"{} provider(s), {} consumer(s)",
-				providers.len(),
-				consumers.len()
-			),
-		});
-
-		Ok(json_result(output))
+	async fn list(&self, Parameters(params): Parameters<ListParam>) -> CallToolResult {
+		let options = ValidationOptions::from(params.validation);
+		let include_content = params.include_content;
+		self.run_tool(
+			"list",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::list(&root, &options, include_content),
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_find_reuse",
-		description = "Find similar existing providers and where they are consumed across \
-		               markdown and source files. Use this before creating a new provider to \
-		               encourage template reuse."
+		description = "Find existing providers to reuse before creating a new one. Read-only. \
+		               With `block_name`, ranks providers by name: exact, then equal up to case \
+		               and `-`/`_` separators, then prefix, substring, and close spellings; \
+		               unrelated providers are left out. With `content_query`, also matches \
+		               providers whose body contains the text. Without either, lists providers by \
+		               consumer count. Each candidate carries `match`, `consumer_count`, and the \
+		               markdown and code files that already consume it.",
+		annotations(read_only_hint = true)
 	)]
-	async fn find_reuse(
-		&self,
-		Parameters(params): Parameters<ReuseParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let ctx = {
-			let scan_root = root.clone();
-			run_blocking(move || scan_ctx(&scan_root)).await?
-		};
+	async fn find_reuse(&self, Parameters(params): Parameters<ReuseParam>) -> CallToolResult {
+		let block_name = non_blank(params.block_name);
+		let content_query = non_blank(params.content_query);
 		let limit = params.limit.clamp(1, 20);
-		let query = params
-			.block_name
-			.as_ref()
-			.map(|value| value.trim().to_string())
-			.filter(|value| !value.is_empty());
-
-		let mut candidates: Vec<ReuseCandidate> = ctx
-			.project
-			.providers
-			.iter()
-			.map(|(name, entry)| {
-				let consumers: Vec<_> = ctx
-					.project
-					.consumers
-					.iter()
-					.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
-					.filter(|consumer| consumer.block.name == *name)
-					.collect();
-
-				let mut markdown_files = Vec::new();
-				let mut code_files = Vec::new();
-				for consumer in &consumers {
-					let rel = relative_display_path(&consumer.file, &root);
-					if is_markdown_path(&consumer.file) {
-						markdown_files.push(rel);
-					} else {
-						code_files.push(rel);
-					}
-				}
-				markdown_files.sort();
-				markdown_files.dedup();
-				code_files.sort();
-				code_files.dedup();
-
-				ReuseCandidate {
-					name: name.clone(),
-					file: relative_display_path(&entry.file, &root),
-					consumer_count: consumers.len(),
-					markdown_files,
-					code_files,
-					distance: query
-						.as_ref()
-						.map(|value| levenshtein_distance(value, name)),
-				}
-			})
-			.collect();
-
-		if query.is_some() {
-			candidates.sort_by(|a, b| {
-				a.distance
-					.cmp(&b.distance)
-					.then_with(|| b.consumer_count.cmp(&a.consumer_count))
-					.then_with(|| a.name.cmp(&b.name))
-			});
-		} else {
-			candidates.sort_by(|a, b| {
-				b.consumer_count
-					.cmp(&a.consumer_count)
-					.then_with(|| a.name.cmp(&b.name))
-			});
-		}
-		candidates.truncate(limit);
-
-		let output = serde_json::json!({
-			"query": query,
-			"guidance": "Prefer reusing an existing provider when semantics match. Candidates show where blocks are already consumed in markdown and source files.",
-			"candidates": candidates,
-			"next_steps": [
-				"If a candidate already matches your intent, reuse that block name in new consumers.",
-				"If no candidate fits, create a new provider in .templates/ (or another configured template path)."
-			],
-		});
-
-		Ok(json_result(output))
+		self.run_tool(
+			"find_reuse",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| {
+				tools::find_reuse(
+					&root,
+					&tools::ReuseQuery {
+						block_name: block_name.as_deref(),
+						content: content_query.as_deref(),
+						limit,
+					},
+				)
+			},
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_get_block",
-		description = "Get full content, metadata, and status of a specific named block (provider \
-		               or consumer). Returns the block content, source file, and any transformers."
+		description = "Get one block by name. Read-only. Returns `provider` (raw content, content \
+		               rendered with project data, parameters, and consumer count; null when no \
+		               provider has the name) and `consumers`: every consumer and inline block \
+		               with the name, with its `current_content` and `status` exactly as `mdt \
+		               check` computes it. `ok` is false when the provider or a consumer fails to \
+		               render, or when the consumers have no provider.",
+		annotations(read_only_hint = true)
 	)]
-	async fn get_block(
-		&self,
-		Parameters(params): Parameters<BlockParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let ctx = {
-			let scan_root = root.clone();
-			run_blocking(move || scan_ctx(&scan_root)).await?
-		};
-
-		if let Some(provider) = ctx.project.providers.get(&params.block_name) {
-			let rendered = render_template(&provider.content, &ctx.data)
-				.unwrap_or_else(|_| provider.content.clone());
-			let consumer_count = ctx
-				.project
-				.consumers
-				.iter()
-				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
-				.filter(|c| c.block.name == params.block_name)
-				.count();
-			let consumer_files: Vec<String> = ctx
-				.project
-				.consumers
-				.iter()
-				.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
-				.filter(|c| c.block.name == params.block_name)
-				.map(|c| relative_display_path(&c.file, &root))
-				.collect();
-
-			let output = serde_json::json!({
-				"type": "provider",
-				"name": params.block_name,
-				"file": relative_display_path(&provider.file, &root),
-				"raw_content": provider.content,
-				"rendered_content": rendered,
-				"consumer_count": consumer_count,
-				"consumer_files": consumer_files,
-			});
-
-			return Ok(json_result(output));
-		}
-
-		let consumer_entries: Vec<&mdt_core::project::ConsumerEntry> = ctx
-			.project
-			.consumers
-			.iter()
-			.filter(|c| c.block.name == params.block_name)
-			.collect();
-
-		if consumer_entries.is_empty() {
-			return Ok(json_error_result(serde_json::json!({
-				"ok": false,
-				"action": "get_block",
-				"summary": format!("No block named `{}` found in the project.", params.block_name),
-				"block_name": params.block_name,
-			})));
-		}
-
-		let mut entries = Vec::new();
-		for c in &consumer_entries {
-			let is_stale = ctx.project.providers.get(&c.block.name).is_some_and(|p| {
-				let render_data =
-					build_render_context(&ctx.data, p, c).unwrap_or_else(|| ctx.data.clone());
-				let rendered =
-					render_template(&p.content, &render_data).unwrap_or_else(|_| p.content.clone());
-				let expected = apply_transformers(&rendered, &c.block.transformers);
-				c.content != expected
-			});
-			entries.push(serde_json::json!({
-				"type": "consumer",
-				"name": c.block.name,
-				"file": relative_display_path(&c.file, &root),
-				"content": c.content,
-				"transformers": c.block.transformers.iter().map(|t| t.r#type.to_string()).collect::<Vec<_>>(),
-				"is_stale": is_stale,
-			}));
-		}
-
-		Ok(json_result(serde_json::Value::Array(entries)))
+	async fn get_block(&self, Parameters(params): Parameters<BlockParam>) -> CallToolResult {
+		let block_name = params.block_name;
+		self.run_tool(
+			"get_block",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::get_block(&root, &block_name),
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_preview",
-		description = "Preview a provider as an authoring workflow. Returns JSON with the \
-		               provider template plus per-consumer rendered output after interpolation \
-		               and transformers."
+		description = "Preview what `mdt update` would write for a provider. Read-only. Returns \
+		               the provider template and its rendering with project data, and for each \
+		               consumer its `current_content` next to `rendered_content` (after data, \
+		               arguments, transformers, and padding; before `[[formatters]]`) and its \
+		               `status`. `ok` is false when rendering fails.",
+		annotations(read_only_hint = true)
 	)]
-	async fn preview(
-		&self,
-		Parameters(params): Parameters<BlockParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let ctx = {
-			let scan_root = root.clone();
-			run_blocking(move || scan_ctx(&scan_root)).await?
-		};
-
-		let Some(provider) = ctx.project.providers.get(&params.block_name) else {
-			return Ok(json_error_result(serde_json::json!({
-				"ok": false,
-				"action": "preview",
-				"summary": format!("No provider named `{}` found.", params.block_name),
-				"block_name": params.block_name,
-			})));
-		};
-
-		let rendered_with_project_data = render_template(&provider.content, &ctx.data)
-			.unwrap_or_else(|_| provider.content.clone());
-
-		let consumers: Vec<_> = ctx
-			.project
-			.consumers
-			.iter()
-			.filter(|consumer| consumer.block.name == params.block_name)
-			.collect();
-		let consumer_previews: Vec<_> = consumers
-			.iter()
-			.map(|consumer| {
-				let transformers = consumer
-					.block
-					.transformers
-					.iter()
-					.map(|transformer| transformer.r#type.to_string())
-					.collect::<Vec<_>>();
-				let arguments = consumer.block.arguments.clone();
-				let rel = relative_display_path(&consumer.file, &root);
-
-				let (rendered_content, is_stale, render_error) =
-					match build_render_context(&ctx.data, provider, consumer) {
-						Some(render_data) => {
-							match render_template(&provider.content, &render_data) {
-								Ok(rendered) => {
-									let transformed =
-										apply_transformers(&rendered, &consumer.block.transformers);
-									let stale = consumer.content != transformed;
-									(Some(transformed), Some(stale), None)
-								}
-								Err(error) => (None, None, Some(error.to_string())),
-							}
-						}
-						None => {
-							(
-								None,
-								None,
-								Some(format!(
-									"argument count mismatch: provider `{}` declares {} \
-									 parameter(s), but consumer passes {}",
-									params.block_name,
-									provider.block.arguments.len(),
-									consumer.block.arguments.len()
-								)),
-							)
-						}
-					};
-
-				PreviewConsumerInfo {
-					file: rel,
-					transformers,
-					arguments,
-					rendered_content,
-					current_content: consumer.content.clone(),
-					is_stale,
-					render_error,
-				}
-			})
-			.collect();
-
-		let provider_preview = PreviewProviderInfo {
-			name: params.block_name.clone(),
-			file: relative_display_path(&provider.file, &root),
-			raw_content: provider.content.clone(),
-			rendered_with_project_data,
-			parameters: provider.block.arguments.clone(),
-		};
-		let summary = if consumer_previews.is_empty() {
-			format!(
-				"Previewed provider `{}` with no consumers.",
-				params.block_name
-			)
-		} else {
-			format!(
-				"Previewed provider `{}` for {} consumer(s).",
-				params.block_name,
-				consumer_previews.len()
-			)
-		};
-
-		Ok(json_result(serde_json::json!({
-			"ok": true,
-			"action": "preview",
-			"summary": summary,
-			"block_name": params.block_name,
-			"provider": provider_preview,
-			"consumers": consumer_previews,
-		})))
+	async fn preview(&self, Parameters(params): Parameters<BlockParam>) -> CallToolResult {
+		let block_name = params.block_name;
+		self.run_tool(
+			"preview",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::preview(&root, &block_name),
+		)
+		.await
 	}
 
 	#[tool(
 		name = "mdt_init",
-		description = "Initialize mdt in a project by creating a sample \
-		               `.templates/template.t.md` file and starter `mdt.toml`. Returns a \
-		               JSON-first summary of created files and next steps."
+		description = "Initialize mdt exactly like `mdt init`, adding only what is missing: an \
+		               annotated `mdt.toml`, a sample `greeting` provider in \
+		               `.templates/template.t.md` (unless providers exist), a synced `readme.md` \
+		               when the project has no README, and `.mdt/` in `.gitignore` for git \
+		               repositories. Never overwrites files. Returns the `config`, `sample`, and \
+		               `gitignore` outcomes, `written_files` (relative to the initialized root), \
+		               and `next_steps`.",
+		annotations(
+			read_only_hint = false,
+			destructive_hint = false,
+			idempotent_hint = true
+		)
 	)]
-	async fn init(
-		&self,
-		Parameters(params): Parameters<InitParam>,
-	) -> Result<CallToolResult, McpError> {
-		let root = self.confined_root(params.path.as_deref())?;
-		let (template_path, template_exists, config_path, config_exists) = {
-			let root = root.clone();
-			run_blocking(move || {
-				let canonical_template_path = root.join(".templates/template.t.md");
-				let legacy_template_paths = [
-					root.join("template.t.md"),
-					root.join("templates/template.t.md"),
-				];
-				let template_path = if canonical_template_path.exists() {
-					canonical_template_path.clone()
-				} else {
-					legacy_template_paths
-						.iter()
-						.find(|path| path.exists())
-						.cloned()
-						.unwrap_or_else(|| canonical_template_path.clone())
-				};
-				let template_exists = template_path.exists();
-
-				let config_path = root.join("mdt.toml");
-				let config_exists = MdtConfig::resolve_path(&root).is_some();
-				let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a provider \
-				                      block.\n\n<!-- {/greeting} -->\n";
-				let sample_config =
-					"# mdt configuration\n# See \
-					 https://ifiokjr.github.io/mdt/reference/configuration.html for full \
-					 reference.\n\n# Map data files to template namespaces.\n# Values from these \
-					 files are available in provider blocks as {{ namespace.key }}.\n# [data]\n# \
-					 pkg = \"package.json\"\n# cargo = \"Cargo.toml\"\n# version = { command = \"cat \
-					 VERSION\", format = \"text\", watch = [\"VERSION\"] }\n\n# Control blank lines \
-					 between tags and content in source files.\n# Recommended when using formatters \
-					 (rustfmt, prettier, etc.).\n# [padding]\n# before = 0\n# after = 0\n";
-
-				if !template_exists {
-					if let Some(parent) = template_path.parent() {
-						std::fs::create_dir_all(parent)
-							.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-					}
-					std::fs::write(&template_path, sample_content)
-						.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-				}
-
-				if !config_exists {
-					std::fs::write(&config_path, sample_config)
-						.map_err(|e| McpError::internal_error(e.to_string(), None))?;
-				}
-
-				Ok((template_path, template_exists, config_path, config_exists))
-			})
-			.await?
-		};
-
-		let next_steps = if template_exists {
-			Vec::new()
-		} else {
-			vec![
-				format!(
-					"Edit {} to define your template blocks",
-					template_path.display()
-				),
-				"Add consumer tags in your markdown files: <!-- {{=greeting}} --> ... <!-- \
-				 {{/greeting}} -->"
-					.to_string(),
-				"Run `mdt_update` to sync content".to_string(),
-			]
-		};
-		let summary = if template_exists {
-			format!("Template file already exists: {}", template_path.display())
-		} else {
-			format!("Created template file: {}", template_path.display())
-		};
-
-		Ok(json_result(serde_json::json!({
-			"ok": true,
-			"action": "init",
-			"summary": summary,
-			"template_file": template_path.display().to_string(),
-			"template_created": !template_exists,
-			"config_file": config_path.display().to_string(),
-			"config_created": !config_exists,
-			"next_steps": next_steps,
-		})))
+	async fn init(&self, Parameters(params): Parameters<InitParam>) -> CallToolResult {
+		let base_root = self.base_root.clone();
+		self.run_tool(
+			"init",
+			params.path,
+			RootRequirement::Creatable,
+			move |root| tools::init(&base_root, &root),
+		)
+		.await
 	}
 }
 
@@ -1009,25 +482,46 @@ impl Default for MdtMcpServer {
 #[allow(clippy::disallowed_methods)]
 mod __tests;
 
-/// Start the MCP server on stdin/stdout.
+/// Start the MCP server on stdin/stdout, serving the current directory.
 pub async fn run_server() {
+	run_server_in(resolve_root(None)).await;
+}
+
+/// Start the MCP server on stdin/stdout, serving `root`: every tool `path`
+/// must resolve inside it (`mdt mcp --path <dir>`).
+pub async fn run_server_in(root: PathBuf) {
+	serve_in(root, rmcp::transport::io::stdio()).await;
+}
+
+/// Serve the tools for `root` on `transport` until the client disconnects.
+async fn serve_in<T, E, A>(root: PathBuf, transport: T)
+where
+	T: IntoTransport<RoleServer, E, A>,
+	E: std::error::Error + Send + Sync + 'static,
+{
+	init_tracing();
+	match MdtMcpServer::with_base_root(root).serve(transport).await {
+		Ok(running) => {
+			if let Err(error) = running.waiting().await {
+				tracing::error!("mdt MCP server stopped unexpectedly: {error}");
+			}
+		}
+		Err(error) => tracing::error!("failed to start the mdt MCP server: {error}"),
+	}
+}
+
+/// Log to stderr, filtered by `MDT_LOG` (default `info`).
+///
+/// The `mdt` CLI installs its own global subscriber when `MDT_LOG` is set.
+/// That subscriber keeps receiving the server's events, so finding one
+/// already installed is expected, not an error.
+fn init_tracing() {
 	let filter = EnvFilter::try_from_env("MDT_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
-	fmt::Subscriber::builder()
+	let installed = fmt::Subscriber::builder()
 		.with_env_filter(filter)
 		.with_writer(std::io::stderr)
-		.init();
-
-	let server = MdtMcpServer::new();
-	let transport = rmcp::transport::io::stdio();
-
-	let service = server.serve(transport).await;
-
-	match service {
-		Ok(running) => {
-			let _ = running.waiting().await;
-		}
-		Err(e) => {
-			tracing::error!("failed to start server: {e}");
-		}
+		.try_init();
+	if let Err(error) = installed {
+		tracing::debug!("keeping the existing tracing subscriber: {error}");
 	}
 }

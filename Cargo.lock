@@ -1044,6 +1044,7 @@ name = "mdt_mcp"
 version = "0.9.5"
 dependencies = [
  "mdt_core",
+ "miette",
  "rmcp",
  "serde",
  "serde_json",

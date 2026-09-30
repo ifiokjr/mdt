@@ -14,6 +14,7 @@ description = "MCP server for mdt — AI assistant integration for markdown temp
 
 [dependencies]
 mdt_core = { workspace = true }
+miette = { workspace = true, default-features = true }
 rmcp = { workspace = true, features = ["server", "transport-io", "macros"] }
 serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
@@ -23,6 +24,7 @@ tracing-subscriber = { workspace = true, default-features = true }
 
 [dev-dependencies]
 tempfile = { workspace = true, default-features = true }
+tokio = { workspace = true, features = ["io-util", "time"], default-features = true }
 
 [lints]
 workspace = true
