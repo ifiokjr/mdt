@@ -4,7 +4,7 @@ version = { workspace = true }
 categories = { workspace = true }
 documentation = "https://docs.rs/mdt_cli"
 edition = { workspace = true }
-include = ["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "readme.md"]
+include = ["src/**/*.rs", "skill/*.md", "tests/**/*.rs", "Cargo.toml", "readme.md"]
 keywords = ["markdown", "templates", "cli"]
 license = { workspace = true }
 readme = "readme.md"
