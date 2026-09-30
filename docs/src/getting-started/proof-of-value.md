@@ -1,105 +1,74 @@
 # Proof of Value
 
-This repository is the best example of `mdt` solving a real problem. It uses source blocks from `.templates/*.t.md` to keep repeated content in sync across multiple surfaces:
+This repository is the best example of mdt solving a real problem. Providers in [`.templates/*.t.md`](https://github.com/ifiokjr/mdt/tree/main/.templates) keep repeated content in sync across:
 
-- root and crate READMEs
-- crate-level Rust docs
-- mdBook pages
+- the root and crate READMEs
+- crate-level and item-level Rust docs
+- mdBook pages, including this book
 
-The value proposition in one repo: write shared content once, then fan it out wherever people actually read it.
+Write shared content once, then fan it out wherever people actually read it.
 
 ## 1. README synchronization
 
-The source block `mdtCliUsage` lives in [`.templates/overview.t.md`](../../../.templates/overview.t.md).
+The `mdtCliInstall` provider lives in [`.templates/api-and-install.t.md`](https://github.com/ifiokjr/mdt/blob/main/.templates/api-and-install.t.md). Two READMEs consume it:
 
-It is consumed in multiple README-style surfaces:
+- [`readme.md`](https://github.com/ifiokjr/mdt/blob/main/readme.md)
+- [`mdt_cli/readme.md`](https://github.com/ifiokjr/mdt/blob/main/mdt_cli/readme.md)
 
-- [`readme.md`](../../../readme.md)
-- [`mdt_cli/readme.md`](../../../mdt_cli/readme.md)
-
-That means the command list and diagnostics workflow stay aligned without copying edits by hand.
+The install instructions stay identical in both without copying edits by hand. Likewise, `mdtBeforeAfter` fills both the root README and the introduction of this book.
 
 ## 2. Source-doc synchronization
 
-The source block `mdtLspOverview` also lives in [`.templates/api-and-install.t.md`](../../../.templates/api-and-install.t.md), but it fans out into both markdown and Rust source docs:
+The `mdtLspOverview` provider, in the same template file, fans out into both a README and Rust crate docs:
 
-- [`mdt_lsp/readme.md`](../../../mdt_lsp/readme.md)
-- [`mdt_lsp/src/lib.rs`](../../../mdt_lsp/src/lib.rs)
+- [`mdt_lsp/readme.md`](https://github.com/ifiokjr/mdt/blob/main/mdt_lsp/readme.md)
+- [`mdt_lsp/src/lib.rs`](https://github.com/ifiokjr/mdt/blob/main/mdt_lsp/src/lib.rs)
 
-The source file uses a transformer chain so markdown content becomes Rust crate documentation comments:
+The Rust consumer uses a transformer chain that turns the markdown into crate documentation comments:
 
 ```rust
 //! <!-- {=mdtLspOverview|trim|linePrefix:"//! ":true} -->
 //! <!-- {/mdtLspOverview} -->
 ```
 
-The same pattern is used for:
+The same pattern keeps these files in sync with their crate READMEs:
 
-- [`mdt_core/src/lib.rs`](../../../mdt_core/src/lib.rs)
-- [`mdt_mcp/src/lib.rs`](../../../mdt_mcp/src/lib.rs)
-- [`mdt_core/src/parser.rs`](../../../mdt_core/src/parser.rs)
+- [`mdt_core/src/lib.rs`](https://github.com/ifiokjr/mdt/blob/main/mdt_core/src/lib.rs) (`mdtCoreOverview`)
+- [`mdt_mcp/src/lib.rs`](https://github.com/ifiokjr/mdt/blob/main/mdt_mcp/src/lib.rs) (`mdtMcpOverview`)
+
+[`mdt_core/src/parser.rs`](https://github.com/ifiokjr/mdt/blob/main/mdt_core/src/parser.rs) uses `linePrefix:"/// ":true` for item-level docs on its public types.
 
 The payoff: you do not maintain one explanation for README readers and a second for API docs readers.
 
 ## 3. Docs-site synchronization
 
-The mdBook docs also consume shared source blocks.
+The mdBook pages consume shared providers too. For example, `mdtInlineBlocksGuide` (in [`.templates/overview.t.md`](https://github.com/ifiokjr/mdt/blob/main/.templates/overview.t.md)) appears in both:
 
-For example, `mdtInlineBlocksGuide` is reused in more than one docs page:
+- [Template Syntax](../reference/template-syntax.md)
+- [Inline Blocks](../advanced/inline-blocks.md)
 
-- [`docs/src/reference/template-syntax.md`](../reference/template-syntax.md)
-- [`docs/src/advanced/inline-blocks.md`](../advanced/inline-blocks.md)
-
-This keeps the conceptual explanation of inline blocks consistent across both a reference page and a guide page.
+The explanation of inline blocks stays consistent across a reference page and a guide page.
 
 ## Why this matters
 
-Without `mdt`, these edits drift in predictable ways:
+Without mdt, these copies drift in predictable ways:
 
 - the README gets the newest wording
 - the source-doc comment keeps an older explanation
 - the docs site uses slightly different examples
 - command lists diverge across pages
 
-With `mdt`, one source update can refresh all of those targets in one run:
+With mdt, one provider edit refreshes every consumer, and CI proves it:
 
 ```sh
 mdt update
 mdt check
 ```
 
-## What to look at in this repo
-
-If you are evaluating adoption, inspect these files together:
-
-### Shared sources
-
-- `.templates/overview.t.md` and `.templates/api-and-install.t.md`
-
-### README targets
-
-- [`readme.md`](../../../readme.md)
-- [`mdt_cli/readme.md`](../../../mdt_cli/readme.md)
-- [`mdt_core/readme.md`](../../../mdt_core/readme.md)
-- [`mdt_lsp/readme.md`](../../../mdt_lsp/readme.md)
-- [`mdt_mcp/readme.md`](../../../mdt_mcp/readme.md)
-
-### Source-doc consumers
-
-- [`mdt_core/src/lib.rs`](../../../mdt_core/src/lib.rs)
-- [`mdt_core/src/parser.rs`](../../../mdt_core/src/parser.rs)
-- [`mdt_lsp/src/lib.rs`](../../../mdt_lsp/src/lib.rs)
-- [`mdt_mcp/src/lib.rs`](../../../mdt_mcp/src/lib.rs)
-
-### Docs-site targets
-
-- [`docs/src/reference/template-syntax.md`](../reference/template-syntax.md)
-- [`docs/src/advanced/inline-blocks.md`](../advanced/inline-blocks.md)
-
 ## The pitch
 
-Describe `mdt` to a teammate like this:
+Describe mdt to a teammate like this:
 
-> We keep a few pieces of documentation repeated across our README, crate docs, and docs site. `mdt` lets us define those pieces once, reuse them everywhere, and verify in CI that they never drift apart.
+> We keep a few pieces of documentation repeated across our README, crate docs, and docs site. mdt lets us define those pieces once, reuse them everywhere, and verify in CI that they never drift apart.
 
-If that description matches your project, the tool is worth trying.
+If that description matches your project, the tool is worth trying. The [Migration Walkthrough](./migration-walkthrough.md) shows how to start.

@@ -1,320 +1,368 @@
 # Configuration Reference
 
-mdt is configured via a TOML file in the project root. All sections are optional.
+mdt reads an optional TOML file from the project root. Every key is optional. For a task-oriented walkthrough, see the [Configuration guide](../guide/configuration.md).
 
 ## File location
 
-mdt resolves config in the root directory passed via `--path` (or the current directory if not specified) using this precedence:
+The first file found wins:
 
 1. `mdt.toml`
 2. `.mdt.toml`
 3. `.config/mdt.toml`
 
-## Sections
+Without `--path`, mdt walks up from the current directory to the nearest directory containing one of these files and uses it as the project root; with none found, the current directory is the root. `mdt init` always uses the current directory or `--path`.
 
-### `[data]`
+A directory below the root that contains any of these files is a separate project (a sub-project) and is skipped by the parent's scan. See [Monorepos](../advanced/monorepos.md).
 
-Maps namespace names to data sources. Each key becomes a namespace for template variable access.
+## Validation
+
+Unknown keys are rejected, so a typo fails instead of being ignored:
+
+```text
+mdt::config_parse
+
+  x failed to parse config file: /path/to/project/mdt.toml: TOML parse error at line 1, column 2
+  |   |
+  | 1 | [paddding]
+  |   |  ^^^^^^^^
+  | unknown field `paddding`, expected one of `data`, `exclude`, `include`,
+  | `templates`, `max_file_size`, `padding`, `formatters`,
+  | `disable_gitignore`, `check`
+```
+
+Config errors exit with status 2.
+
+## Overview
+
+| Key                             | Type                   | Default    | Purpose                                                   |
+| ------------------------------- | ---------------------- | ---------- | --------------------------------------------------------- |
+| `max_file_size`                 | integer (bytes)        | 10485760   | Largest file mdt scans; a larger scanned file is an error |
+| `disable_gitignore`             | boolean                | `false`    | Scan files that git ignores                               |
+| `[padding] before`, `after`     | `false` or integer     | `0` / `0`  | Blank lines between consumer tags and content             |
+| `[check] comparison`            | `"strict"`/`"lenient"` | `"strict"` | How `mdt check` compares consumer content                 |
+| `[data]`                        | table                  | none       | Namespaces for template variables in providers            |
+| `[exclude] patterns`            | array of strings       | `[]`       | Gitignore-style patterns for files to skip                |
+| `[exclude] blocks`              | array of strings       | `[]`       | Block names to ignore everywhere                          |
+| `[exclude] markdown_codeblocks` | bool, string, or array | `false`    | Ignore tags in fenced code blocks in source-file comments |
+| `[include] patterns`            | array of strings       | `[]`       | Extra files to scan                                       |
+| `[templates] paths`             | array of strings       | `[]`       | Extra directories to read `*.t.md` providers from         |
+| `[[formatters]]`                | array of tables        | none       | Formatter commands run by `mdt update` and `mdt check`    |
+
+Top-level keys (`max_file_size`, `disable_gitignore`) must appear before the first `[table]` header.
+
+## Which files are scanned
+
+Without configuration, mdt scans:
+
+- Markdown files: `.md`, `.mdx`, `.markdown`.
+- Source files: `.rs .ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .java .kt .swift .c .cc .cpp .cxx .h .hh .hpp .cs .dart`.
+- `*.t.md` files anywhere in the project. Only these can hold providers.
+
+It always skips hidden directories (except `.templates`), `node_modules/`, `target/`, and sub-projects. It follows git's ignore rules unless `disable_gitignore = true`.
+
+The scan configuration then applies in this order:
+
+1. `[include] patterns` add files.
+2. `[templates] paths` add `*.t.md` files from other directories.
+3. Git ignore rules and `[exclude] patterns` remove files.
+
+mdt writes its cache to `.mdt/` in the project root. Add `.mdt/` to `.gitignore`; `mdt init` does this in git repositories.
+
+## `max_file_size`
+
+```toml
+max_file_size = 10485760
+```
+
+A scanned file larger than the limit is an error that names the file (`mdt::file_too_large`); it is never skipped silently. Raise the limit or exclude the file.
+
+## `disable_gitignore`
+
+```toml
+disable_gitignore = true
+```
+
+By default mdt applies git's ignore rules with git's precedence (deeper files win):
+
+- `.gitignore` files in the project, including nested ones.
+- `.gitignore` files in parent directories up to the git repository root.
+- `.git/info/exclude`.
+
+Outside a git repository, only the `.gitignore` files inside the project apply.
+
+`true` turns all of this off. Hidden directories, `node_modules/`, `target/`, and sub-projects are still skipped, and `[exclude]` still applies.
+
+## `[padding]`
+
+Blank lines between a consumer's tags and its content. Applies to markdown and source-file consumers alike.
+
+```toml
+[padding]
+before = 0
+after = 0
+```
+
+| Value   | Result                                            |
+| ------- | ------------------------------------------------- |
+| `false` | Content on the same line as the tag               |
+| `0`     | Content on the next line, no blank line (default) |
+| `1`     | One blank line                                    |
+| `2`, …  | That many blank lines                             |
+
+- Without a `[padding]` section, both values are `0`. With the section present, an omitted key defaults to `1`.
+- Padding is added on top of the rendered content's own leading and trailing newlines. The usual provider style has blank lines around its content, so add `|trim` to a consumer when you need exact output.
+- In source files, blank lines and the closing tag keep the comment prefix, and an indented closing tag keeps its indentation.
+- Inline blocks (`{~name}`) are never padded.
+
+With the default padding and `|trim`, a Rust consumer renders as:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//! This content stays inside the doc comment.
+//! <!-- {/docs} -->
+```
+
+With `before = 1` and `after = 1`:
+
+```rust
+//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
+//!
+//! This content stays inside the doc comment.
+//!
+//! <!-- {/docs} -->
+```
+
+Upgrading from a release where the default glued the closing tag to the last content line makes affected consumers stale once; run `mdt update`.
+
+## `[check]`
+
+```toml
+[check]
+comparison = "lenient"
+```
+
+| Value                | Behavior                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| `"strict"` (default) | Byte-for-byte comparison                                                                   |
+| `"lenient"`          | Trims trailing whitespace on every line and collapses runs of blank lines before comparing |
+
+Lenient mode does not normalize indentation, table padding, or JSON layout; use [`[[formatters]]`](#formatters) for those. `mdt update` always writes exact bytes.
+
+## `[data]`
+
+Maps namespaces to data sources. Each key becomes a template variable namespace in providers (`{{ key.field }}`).
 
 ```toml
 [data]
 package = "package.json"
-cargo = "Cargo.toml"
-config = "settings.yaml"
-metadata = "data.kdl"
-release = { path = "release-info", format = "json" }
+settings = { path = "settings", format = "yaml" }
 version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
-**Keys:** Any valid TOML key. Used as the namespace prefix in templates (`{{ key.field }}`).
+| Entry form                                           | Meaning                          |
+| ---------------------------------------------------- | -------------------------------- |
+| `"path"`                                             | File; parser chosen by extension |
+| `{ path = "...", format = "..." }`                   | File with an explicit parser     |
+| `{ command = "...", format = "...", watch = [...] }` | Command whose stdout is parsed   |
 
-**Values:**
+| Format                               | Extensions      | Notes                                             |
+| ------------------------------------ | --------------- | ------------------------------------------------- |
+| `json`                               | `.json`         |                                                   |
+| `toml`                               | `.toml`         | Integers stay integers (`8080`)                   |
+| `yaml`, `yml`                        | `.yaml`, `.yml` |                                                   |
+| `kdl`                                | `.kdl`          | Repeated nodes with the same name become an array |
+| `ini`                                | `.ini`          |                                                   |
+| `text` (also `string`, `raw`, `txt`) | `.txt`          | One trailing newline is dropped                   |
 
-- String path (backward-compatible): `pkg = "package.json"`
-- Typed entry with explicit format: `release = { path = "release-info", format = "json" }`
-- Script entry: `version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }`
+Paths are relative to the project root. Errors stop the command with exit status 2, for example:
 
-String paths infer format from the file extension. Typed entries use `format` and are useful for files without extensions.
+```text
+mdt::data_file
+
+  x failed to load data file `missing.json`: No such file or directory (os
+  | error 2)
+```
+
+```text
+mdt::unsupported_format
+
+  x unsupported data file format: `xml`
+  help: supported formats: text, json, toml, yaml, yml, kdl, ini
+```
 
 ### Script-backed data sources
 
 <!-- {=mdtScriptDataSourcesGuide} -->
 
-`[data]` entries can run shell commands and use stdout as template data. This is useful for values that come from tooling (for example Nix, git metadata, or generated version files).
+A `[data]` entry can run a shell command and parse its stdout. Use it for values that come from tooling, such as git metadata, Nix, or a generated version file.
 
 ```toml
 [data]
 release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
-- `command`: shell command executed from the project root.
-- `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
-- `watch`: files that control cache invalidation.
-
-When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json` instead of re-running the command.
+- `command`: shell command, run from the project root.
+- `format`: parser for stdout: `text` (also `string`, `raw`, `txt`), `json`, `toml`, `yaml`, `yml`, `kdl`, or `ini`. Text drops one trailing newline, so `cat VERSION` renders `1.2.3`, not `1.2.3` plus a line break.
+- `watch`: files whose changes invalidate the cached output.
 
 <!-- {/mdtScriptDataSourcesGuide} -->
 
 <!-- {=mdtScriptDataSourcesNotes} -->
 
-- Script outputs are cached per namespace, command, format, and watch list.
-- If `watch` is empty, mdt re-runs the script every load (no cache hit).
-- A non-zero script exit status fails data loading with an explicit error.
+- Output is cached in `.mdt/cache/data-v1.json`, keyed by namespace, command, format, and watch list. mdt reuses it while the watched files are unchanged.
+- Caching needs every `watch` entry to be an existing file. Without `watch`, or when an entry is missing, a glob, or a directory, the command runs on every mdt run.
+- A command that exits non-zero fails the run with `mdt::data_script` (exit status 2).
 
 <!-- {/mdtScriptDataSourcesNotes} -->
 
-**Supported formats:**
+### Rendering rules
 
-| Format / Extension | Parser                              |
-| ------------------ | ----------------------------------- |
-| `json`, `.json`    | JSON (`serde_json`)                 |
-| `toml`, `.toml`    | TOML (converted to JSON internally) |
-| `yaml`, `.yaml`    | YAML (`serde_yaml_ng`)              |
-| `yml`, `.yml`      | YAML (`serde_yaml_ng`)              |
-| `kdl`, `.kdl`      | KDL (converted to JSON internally)  |
-| `ini`, `.ini`      | INI (`serde_ini`)                   |
+- Provider content is rendered with minijinja only when `[data]` is configured. Without `[data]`, `{{ ... }}` is copied as written, and mdt warns when a used provider contains namespaced variables such as `{{ pkg.version }}`. A sub-project that reuses shared providers needs its own `[data]`; its paths may point outside it (`"../package.json"`).
+- With `[data]`, every provider is a template. Wrap literal `{{` or `{%` text, such as GitHub Actions `${{ secrets.TOKEN }}`, in `{% raw %}...{% endraw %}`.
+- Undefined variables render as empty text, and `mdt check`/`mdt update` warn about them.
+- Only minijinja's built-in filters are available. See [Data Interpolation](../guide/data-interpolation.md).
 
-Other formats produce an error:
-
-```
-error: unsupported data file format: `xml`
-  help: supported formats: text, json, toml, yaml, yml, kdl, ini
-```
-
-If a referenced file doesn't exist, mdt produces an error:
-
-```
-error: failed to load data file `missing.json`: No such file or directory
-```
-
-### `[exclude]`
-
-Patterns for files and directories to skip during scanning. Uses **gitignore-style syntax** — the same pattern format as `.gitignore` files, including negation (`!`), directory markers (`/`), wildcards (`*`, `**`), and character classes.
+## `[exclude]`
 
 ```toml
 [exclude]
-patterns = [
-  "vendor/",
-  "dist/",
-  "**/*.generated.md",
-  "!dist/important.md",
-]
-```
-
-**`patterns`:** Array of gitignore-style pattern strings. Matched against file paths relative to the project root.
-
-These patterns are applied **in addition to** the built-in exclusions:
-
-- Hidden directories (names starting with `.`)
-- `node_modules/`
-- `target/`
-- Directories containing their own mdt config file (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`) (sub-project boundaries)
-
-**`markdown_codeblocks`:** Controls whether mdt tags inside fenced code blocks in source files are processed.
-
-| Value                      | Behavior                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------- |
-| `false` (default)          | Tags in code blocks are processed normally                                    |
-| `true`                     | Tags in ALL fenced code blocks are skipped                                    |
-| A string (e.g. `"ignore"`) | Tags in code blocks whose info string contains the string are skipped         |
-| An array of strings        | Tags in code blocks whose info string contains ANY of the strings are skipped |
-
-```toml
-[exclude]
-# Skip tags inside all fenced code blocks
+patterns = ["vendor/", "generated/*", "!generated/keep.md"]
+blocks = ["draftSection"]
 markdown_codeblocks = true
-
-# Or skip only code blocks with specific info strings
-markdown_codeblocks = "ignore"
-
-# Or skip code blocks matching any of several info strings
-markdown_codeblocks = ["ignore", "example", "no-sync"]
 ```
 
-Markdown fenced code blocks are not treated as live tags by markdown parsing, so this option is specifically for source-file comment scanning.
+**`patterns`**: gitignore-style patterns relative to the project root, with `!` negation, trailing `/` for directories, `*`, `**`, and character classes. As in git, a file inside an excluded directory cannot be re-included: exclude the directory's contents (`generated/*`) rather than the directory (`generated/`) when you need a `!` exception.
 
-**`blocks`:** Array of block names to exclude. Any block (source or target) whose name is in this list is completely ignored during scanning and updating.
+**`blocks`**: block names to remove from the project. Providers and consumers with these names are ignored entirely: consumers are never filled or checked, and the blocks produce no diagnostics.
 
-```toml
-[exclude]
-blocks = ["draft-section", "deprecated-api"]
-```
+**`markdown_codeblocks`**: ignore tags inside fenced code blocks that appear in **source-file comments**.
 
-### `[include]`
+| Value             | Tags ignored in                                                 |
+| ----------------- | --------------------------------------------------------------- |
+| `false` (default) | No fenced code blocks                                           |
+| `true`            | Every fenced code block                                         |
+| `"text"`          | Fenced code blocks whose info string contains `text`            |
+| `["a", "b"]`      | Fenced code blocks whose info string contains any listed string |
 
-Glob patterns to restrict which files are scanned.
+In markdown files, tags inside fenced code blocks and inline code spans are always inert, whatever this setting says.
+
+## `[include]`
 
 ```toml
 [include]
-patterns = ["docs/**/*.rs", "src/**/*.ts"]
+patterns = ["scripts/**/*.rb"]
 ```
 
-**`patterns`:** Array of glob strings. When present, only files matching at least one pattern are scanned.
+**`patterns`**: globs of extra files to scan. `[include]` only adds to the default scan; it never narrows it. Included files still follow git ignore rules and `[exclude]`, and hidden directories stay skipped. Invalid globs are rejected.
 
-Markdown files (`*.md`, `*.mdx`, `*.markdown`) and template files (`*.t.md`) are always scanned regardless of include patterns.
+Included files that are not markdown are read with the source-file scanner, which finds tags in any comment. Keep patterns specific: a broad glob such as `src/**` also matches binary files, and a file that is not valid UTF-8 fails the run with `mdt::read_file`.
 
-### `[templates]`
-
-Directories to search for template files.
+## `[templates]`
 
 ```toml
 [templates]
-paths = [".templates", "templates", "shared/docs"]
+paths = [".github/templates", "../shared/templates"]
 ```
 
-**`paths`:** Array of directory paths relative to the project root.
+**`paths`**: directories, relative to the project root, whose `*.t.md` files are read as providers. Only `*.t.md` files are added from these directories.
 
-Canonical recommendation: place provider templates in `.templates/`. Compatibility: `templates/` is also supported.
+- `*.t.md` files inside the project are always providers; `paths` never restricts that.
+- Use it for hidden directories (other than `.templates`) and for providers shared from outside the project. Providers from a directory outside the project are never reported as unused, since other projects may consume them.
+- A path that is not a directory is an error (`mdt::templates_path`).
 
-By default (when this section is absent), mdt finds `*.t.md` files in the project tree, including `.templates/`.
+## `[[formatters]]`
 
-### `[padding]`
+<!-- {=mdtFormatterPipelineDocs} -->
 
-Controls blank lines between block tags and their content. When absent, content starts on the very next line after the opening tag and the closing tag stays inline with the content. When present, `before` and `after` control how many blank lines separate tags from content.
+`[[formatters]]` entries run your formatter inside `mdt update` and `mdt check`. `mdt update` writes formatted files, and `mdt check` compares against formatted output, so the `mdt update` → formatter → `mdt check` loop settles instead of reporting stale blocks after every format.
 
 ```toml
-[padding]
-before = 0
-after = 0
+[[formatters]]
+command = "dprint fmt --stdin \"{{ filePath }}\""
+patterns = ["**/*.md"]
+ignore = ["**/*.t.md"]
 ```
 
-**`before`:** Controls blank lines between the opening tag and the content.
+Each matching entry:
 
-**`after`:** Controls blank lines between the content and the closing tag.
+- reads the whole file on stdin and writes the formatted file to stdout
+- runs from the project root through `sh -c` (`cmd /C` on Windows)
+- runs after block injection in `mdt update`, and before comparison in `mdt check`
+- runs in declaration order when several entries match the same file
 
-Both accept the same values:
+`command` can use three placeholders. mdt passes their values as the environment variables `MDT_FILE_PATH`, `MDT_RELATIVE_FILE_PATH`, and `MDT_ROOT_DIRECTORY`, so the shell never parses a file name. Keep placeholders inside double quotes; inside single quotes they stay literal.
 
-| Value   | Behavior                                                           |
-| ------- | ------------------------------------------------------------------ |
-| `false` | Content appears inline with the tag (no newline separator)         |
-| `0`     | Content starts on the very next line (one newline, no blank lines) |
-| `1`     | One blank line between the tag and content                         |
-| `2`     | Two blank lines, and so on                                         |
+- `{{ filePath }}`: absolute path of the file being formatted
+- `{{ relativeFilePath }}`: path relative to the project root
+- `{{ rootDirectory }}`: absolute project root
 
-When `[padding]` is present but `before`/`after` are omitted, they default to `1`.
+`patterns` and `ignore` are ordered lists of plain globs, not gitignore patterns. A `!` entry negates an earlier match. `vendor/` matches nothing inside the directory; write `vendor/**`.
 
-In source code files with comment prefixes (e.g., `//!`, `///`, `*`), blank lines include the comment prefix to maintain valid syntax.
+A formatter that fails or exits non-zero is an error (exit status 2); mdt never falls back to unformatted output. Without `[[formatters]]`, mdt runs no formatter.
 
-This matters most for **source code files** (`.rs`, `.ts`, `.py`, `.go`, etc.) where target blocks appear inside code comments. Without padding, transformers like `trim` followed by `linePrefix` can produce content that merges with the surrounding tags, breaking the code structure.
+Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. CI must install the same formatter versions you use locally.
 
-**Example:** `before = 0, after = 0` — content directly on the next line:
+<!-- {/mdtFormatterPipelineDocs} -->
 
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
-//! This content stays properly formatted.
-//! <!-- {/docs} -->
-```
+Verified commands:
 
-**Example:** `before = 1, after = 1` (default when `[padding]` is present) — one blank line:
+| Formatter | `command`                                    |
+| --------- | -------------------------------------------- |
+| dprint    | `dprint fmt --stdin "{{ filePath }}"`        |
+| Prettier  | `prettier --stdin-filepath "{{ filePath }}"` |
+| rustfmt   | `rustfmt --edition 2021`                     |
+| gofmt     | `gofmt`                                      |
 
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
-//!
-//! This content stays properly formatted.
-//!
-//! <!-- {/docs} -->
-```
+Do not pass rustfmt a path: `rustfmt --emit stdout <path>` reads the file on disk and prints a file-name header, which corrupts the output.
 
-Without `[padding]`, the same setup might produce:
+## Examples
 
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->This content merges with the
-//! tag.<!-- {/docs} -->
-```
-
-**Recommended setting for projects with formatters:** Use `before = 0, after = 0` to minimize whitespace that formatters might alter, ensuring `mdt check` stays clean after formatting.
-
-### `max_file_size`
-
-Maximum file size in bytes that mdt will scan.
+A config that uses most options:
 
 ```toml
 max_file_size = 10485760
-```
 
-If a scanned file exceeds this value, mdt returns an error instead of reading it.
-
-Default value: `10485760` (10 MB).
-
-### `disable_gitignore`
-
-Disables `.gitignore` integration when scanning for files.
-
-```toml
-disable_gitignore = true
-```
-
-| Value             | Behavior                                                                 |
-| ----------------- | ------------------------------------------------------------------------ |
-| `false` (default) | mdt respects `.gitignore` patterns and skips files that git would ignore |
-| `true`            | mdt ignores `.gitignore` rules and scans all files                       |
-
-When set to `true`, file filtering is controlled entirely by the `[exclude]` and `[include]` sections. The built-in exclusions (hidden directories, `node_modules/`, `target/`, sub-project boundaries) still apply.
-
-Use this when scanning generated files or build output that contains mdt target blocks, when working outside a git repository, or when you want full control over file scanning via `[exclude]` and `[include]` patterns.
-
-**Type:** `bool`
-
-**Default:** `false`
-
-## Complete example
-
-```toml
-# mdt.toml
-
-# Refuse to scan files larger than 10 MB
-max_file_size = 10485760
-
-# Respect .gitignore rules (default behavior)
-disable_gitignore = false
-
-# Ensure content is properly separated from tags (recommended for source files)
 [padding]
 before = 0
 after = 0
 
-# Map data files to namespaces for template variables
+[check]
+comparison = "strict"
+
 [data]
 package = "package.json"
-cargo = "my-lib/Cargo.toml"
-config = "config.yaml"
+version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 
-# Skip these paths during scanning (gitignore-style patterns)
 [exclude]
-patterns = [
-  "vendor/",
-  "dist/",
-  "coverage/",
-]
-blocks = ["draft-section"]
+patterns = ["vendor/", "generated/*", "!generated/keep.md"]
+blocks = ["draftSection"]
 markdown_codeblocks = true
 
-# Only scan source files matching these patterns
 [include]
-patterns = ["src/**", "docs/**"]
+patterns = ["scripts/**/*.rb"]
 
-# Only look for templates in this directory
 [templates]
-paths = ["templates"]
+paths = [".github/templates"]
+
+[[formatters]]
+command = "prettier --stdin-filepath \"{{ filePath }}\""
+patterns = ["**/*.md", "**/*.ts"]
+ignore = ["**/*.t.md"]
 ```
 
-## Minimal example
-
-A minimal config for data interpolation only:
+A minimal config for data interpolation:
 
 ```toml
 [data]
 package = "package.json"
 ```
 
-## No config
+## Defaults without a config file
 
-If no config file (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`) exists, mdt uses defaults:
-
-- No data interpolation (template variables pass through unchanged)
-- No extra exclusions (only built-in exclusions apply, no block or code block filtering)
-- No include filtering (all scannable files are scanned)
-- Templates found anywhere in the project tree
-- No padding (content is not adjusted between tags)
-- `max_file_size` defaults to 10 MB
-- `.gitignore` rules are respected (`disable_gitignore` defaults to `false`)
+- No template rendering: `{{ ... }}` in providers is copied as written.
+- The default scan and built-in skips, plus git ignore rules.
+- `*.t.md` files anywhere in the project are providers.
+- Padding `0` / `0`.
+- Strict comparison in `mdt check`.
+- No formatters.
+- `max_file_size` of 10 MB.

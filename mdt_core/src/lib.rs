@@ -1,5 +1,5 @@
 //! <!-- {=mdtCoreOverview|trim|linePrefix:"//! ":true} -->
-//! `mdt_core` is the core library for the [mdt](https://github.com/ifiokjr/mdt) template engine. It provides the lexer, parser, project scanner, and template engine for processing markdown template tags. Content defined once in source blocks can be distributed to target blocks across markdown files, code documentation comments, READMEs, and more.
+//! `mdt_core` is the core library for [mdt](https://github.com/ifiokjr/mdt). It provides the lexer, parser, project scanner, and template engine behind the `mdt` CLI, language server, and MCP server. Content defined once in a provider block is distributed to consumer blocks across markdown files, code documentation comments, READMEs, and more.
 //!
 //! ## Processing Pipeline
 //!
@@ -8,28 +8,29 @@
 //!   → Lexer (tokenizes HTML comments into TokenGroups)
 //!   → Pattern matcher (validates token sequences)
 //!   → Parser (classifies groups, extracts names + transformers, matches open/close into Blocks)
-//!   → Project scanner (walks directory tree, builds source→content map + target list)
-//!   → Engine (matches targets to sources, applies transformers, replaces content)
+//!   → Project scanner (walks the project, collects providers from *.t.md files and consumers everywhere)
+//!   → Engine (renders providers, applies transformers, replaces consumer content)
 //! ```
 //!
 //! ## Modules
 //!
-//! - [`config`] — Configuration loading from `mdt.toml`, including data source mappings, exclude/include patterns, and template paths.
-//! - [`project`] — Project scanning and directory walking. Discovers provider and target blocks across all files in a project.
-//! - [`source_scanner`] — Source file scanning for target tags inside code comments (Rust, TypeScript, Python, Go, Java, etc.).
+//! - [`config`]: loads `mdt.toml`, including data sources, scan patterns, padding, comparison mode, and formatters.
+//! - [`project`]: walks the project and discovers provider and consumer blocks.
+//! - [`source_scanner`]: finds tags inside code comments (Rust, TypeScript, Python, Go, Java, Dart, and more).
+//! - [`init`]: the project setup shared by `mdt init` and the MCP `mdt_init` tool.
 //!
 //! ## Key Types
 //!
-//! - [`Block`] — A parsed template block (source or target) with its name, type, position, and transformers.
-//! - [`Transformer`] — A pipe-delimited content filter (e.g., `trim`, `indent`, `linePrefix`) applied during injection.
-//! - [`ProjectContext`] — A scanned project together with its loaded template data, ready for checking or updating.
-//! - [`MdtConfig`] — Configuration loaded from `mdt.toml`.
-//! - [`CheckResult`] — Result of checking a project for stale targets.
-//! - [`UpdateResult`] — Result of computing updates for target blocks.
+//! - [`Block`]: a parsed provider, consumer, or inline block with its name, type, position, and transformers.
+//! - [`Transformer`]: a pipe-delimited content filter (such as `trim`, `indent`, or `linePrefix`) applied during injection.
+//! - [`ProjectContext`]: a scanned project with its loaded template data, ready for checking or updating.
+//! - [`MdtConfig`]: configuration loaded from `mdt.toml`.
+//! - [`CheckResult`]: stale consumers, stale files, orphans, and render errors found by a check.
+//! - [`UpdateResult`]: the file contents to write, plus consumers skipped because their provider failed to render.
 //!
 //! ## Data Interpolation
 //!
-//! Provider content supports [`minijinja`](https://docs.rs/minijinja) template variables populated from project files. The `mdt.toml` config maps source files to namespaces:
+//! When `mdt.toml` has a `[data]` section, provider content is rendered with [`minijinja`](https://docs.rs/minijinja) using values from project files and commands:
 //!
 //! ```toml
 //! [data]
@@ -37,9 +38,9 @@
 //! cargo = "Cargo.toml"
 //! ```
 //!
-//! Then in source blocks: `{{ pkg.version }}` or `{{ cargo.package.edition }}`.
+//! Providers can then use `{{ pkg.version }}` or `{{ cargo.package.edition }}`.
 //!
-//! Supported sources: files and script commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
+//! Supported sources: files and commands. Supported formats: text, JSON, TOML, YAML, KDL, and INI.
 //!
 //! ## Quick Start
 //!
@@ -50,13 +51,13 @@
 //!
 //! let ctx = scan_project_with_config(Path::new(".")).unwrap();
 //!
-//! // Check for stale targets
+//! // Check that every consumer is linked and current
 //! let result = check_project(&ctx).unwrap();
 //! if !result.is_ok() {
-//!     eprintln!("{} stale target(s) found", result.stale.len());
+//!     eprintln!("{} stale consumer(s) found", result.stale.len());
 //! }
 //!
-//! // Update all target blocks
+//! // Update all consumer blocks
 //! let updates = compute_updates(&ctx).unwrap();
 //! write_updates(&updates).unwrap();
 //! ```

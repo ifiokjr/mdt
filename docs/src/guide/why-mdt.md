@@ -6,13 +6,13 @@ Documentation drift is a familiar problem with several solutions. This page expl
 
 The simplest approach: copy content between files by hand.
 
-|                    | Copy-paste      | mdt                                              |
-| ------------------ | --------------- | ------------------------------------------------ |
-| Setup effort       | None            | Minimal (`mdt init`)                             |
-| Drift detection    | Manual review   | `mdt check` in CI                                |
-| Sync effort        | Edit every copy | Edit one source block, run `mdt update`          |
-| Cross-surface      | Manual          | README + source docs + docs site from one source |
-| Scales with copies | Gets worse      | Stays constant                                   |
+|                    | Copy-paste      | mdt                                                |
+| ------------------ | --------------- | -------------------------------------------------- |
+| Setup effort       | None            | Minimal (`mdt init`)                               |
+| Drift detection    | Manual review   | `mdt check` in CI                                  |
+| Sync effort        | Edit every copy | Edit one provider, run `mdt update`                |
+| Cross-surface      | Manual          | README + source docs + docs site from one provider |
+| Scales with copies | Gets worse      | Stays constant                                     |
 
 Copy-paste works for a single duplication. Once the same content lives in three or more places, manual synchronization dominates the maintenance cost.
 
@@ -20,31 +20,31 @@ Copy-paste works for a single duplication. Once the same content lives in three 
 
 Frameworks like mdBook, Docusaurus, and MkDocs support file includes or content transclusion within their own ecosystem.
 
-|                              | Framework includes | mdt                            |
-| ---------------------------- | ------------------ | ------------------------------ |
-| Works in README.md           | No                 | Yes                            |
-| Works in source-doc comments | No                 | Yes                            |
-| Works across frameworks      | No                 | Yes                            |
-| Works without a build step   | Sometimes          | Yes (tags are HTML comments)   |
-| Data interpolation           | Framework-specific | Built-in (`{{ pkg.version }}`) |
-| CI verification              | Framework-specific | `mdt check` exits non-zero     |
+|                              | Framework includes | mdt                               |
+| ---------------------------- | ------------------ | --------------------------------- |
+| Works in README.md           | No                 | Yes                               |
+| Works in source-doc comments | No                 | Yes                               |
+| Works across frameworks      | No                 | Yes                               |
+| Works without a build step   | Sometimes          | Yes (synced content is committed) |
+| Data interpolation           | Framework-specific | Built-in (`{{ pkg.version }}`)    |
+| CI verification              | Framework-specific | `mdt check` exits non-zero        |
 
-Framework includes solve the problem within one surface. mdt solves it across surfaces: your README, your crate/package docs, and your docs site all stay in sync from the same source blocks.
+Framework includes solve the problem within one surface. mdt solves it across surfaces: your README, your crate/package docs, and your docs site all stay in sync from the same providers.
 
 ## vs. Custom scripts
 
-A common approach is writing a script that reads a source file and injects content into targets.
+A common approach is a script that reads shared content from one file and injects it into others.
 
 |                    | Custom script         | mdt                                                     |
 | ------------------ | --------------------- | ------------------------------------------------------- |
-| Maintenance        | You maintain it       | Community-maintained                                    |
+| Maintenance        | You maintain it       | Maintained by the mdt project                           |
 | Declarative        | No — imperative logic | Yes — tag-based                                         |
 | Caching            | You build it          | Built-in (file fingerprinting)                          |
 | Editor support     | None                  | LSP (diagnostics, completions, hover, go-to-definition) |
-| AI integration     | None                  | MCP server for assistants                               |
+| AI integration     | None                  | Agent skill (`mdt skill`) and MCP server                |
 | Watch mode         | You build it          | `mdt update --watch`                                    |
 | Transformers       | You build them        | Built-in (`trim`, `indent`, `linePrefix`, etc.)         |
-| Data interpolation | You build it          | Built-in (JSON, TOML, YAML, KDL, INI, scripts)          |
+| Data interpolation | You build it          | Built-in (JSON, TOML, YAML, KDL, INI, text, commands)   |
 
 Scripts work when you have one specific use case. mdt provides the same capability as a general-purpose tool, with editor integration, CI support, and an expanding feature set.
 
@@ -60,7 +60,7 @@ General-purpose template engines are powerful but solve a different problem.
 | Learning curve                | Template language + config    | HTML comment tags                  |
 | Invisible in rendered docs    | N/A — generates output        | Yes — tags are HTML comments       |
 
-Template engines generate files. mdt synchronizes regions within files. If your docs are already written and you want to keep specific sections in sync, mdt fits without restructuring.
+Template engines generate files. mdt synchronizes regions within files. If your docs are already written and you want to keep specific sections in sync, mdt fits without restructuring. (mdt does use a template engine, minijinja, but only to render data into provider content when `[data]` is configured.)
 
 ## When mdt is the right choice
 

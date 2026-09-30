@@ -10,28 +10,30 @@
 
 <!-- {=mdtLspOverview} -->
 
-`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation for the [mdt](https://github.com/ifiokjr/mdt) template engine. It brings diagnostics, completions, and navigation for template blocks into the editor.
+`mdt_lsp` is a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) server for [mdt](https://github.com/ifiokjr/mdt). It shows mdt diagnostics in your editor and lets you navigate, rename, and update blocks without leaving it.
 
 ### Capabilities
 
-- **Diagnostics** — reports stale target blocks, missing sources (with name suggestions), duplicate sources, unclosed blocks, unknown transformers, invalid arguments, unused sources, and source blocks in non-template files.
-- **Completions** — suggests block names after `{=`, `{~`, `{@`, and `{/` tags, and transformer names after `|`.
-- **Hover** — shows provider source, rendered content, transformer chain, and consumer count when hovering over a block tag.
-- **Go to definition** — navigates from a target block to its provider, or from a source to all of its consumers.
-- **References** — finds all source, target, and inline blocks sharing the same name.
-- **Rename** — renames a block across all provider and target tags (both opening and closing) in the workspace.
-- **Document symbols** — lists source, target, and inline blocks in the outline/symbol view.
-- **Code actions** — offers a quick-fix to update stale target blocks in place.
+- **Diagnostics**: stale consumers and inline blocks, provider render failures, orphan consumers (with a did-you-mean suggestion), unclosed blocks, unmatched closing tags, comments that look like tags but do not parse, blocks nested inside a consumer, unknown transformers and wrong argument counts, duplicate providers, unused providers, and providers outside `*.t.md` files.
+- **Quick fix**: "Update block" rewrites a stale consumer exactly as `mdt update` would, padding and comment prefixes included.
+- **Completions**: block names after `{=`, `{~`, `{@`, and `{/`, and transformer names after `|`.
+- **Hover**: a block's provider, rendered content, transformer chain, and consumer count.
+- **Go to definition**: from a consumer to its provider, or from a provider to its consumers.
+- **References**: every provider, consumer, and inline block with the same name.
+- **Rename**: a block name in every opening and closing tag in the workspace.
+- **Document symbols**: providers, consumers, and inline blocks in the outline view.
+
+The server reads `mdt.toml` and honors `[padding]`, `[check] comparison`, and `[exclude] markdown_codeblocks`. It does not run `[[formatters]]`, so with formatters configured it can report a block as stale that `mdt check` accepts.
 
 ### Usage
 
-Start the language server via the CLI:
+Start the language server through the CLI:
 
 ```sh
 mdt lsp
 ```
 
-The server communicates over stdin/stdout using the Language Server Protocol.
+It communicates over stdin/stdout and uses the editor's workspace folder as the project root.
 
 <!-- {/mdtLspOverview} -->
 
@@ -48,6 +50,15 @@ mdt_lsp = "0.9.5"
 
 <!-- {=mdtBadgeLinks:"mdt_lsp"} -->
 
-[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg [crate-link]: https://crates.io/crates/mdt_lsp [docs-image]: https://docs.rs/mdt_lsp/badge.svg [docs-link]: https://docs.rs/mdt_lsp/ [ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg [ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci [coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg [coverage-link]: https://codecov.io/gh/ifiokjr/mdt [unlicense-image]: https://img.shields.io/badge/license-Unlicense-blue.svg [unlicense-link]: https://opensource.org/license/unlicense
+[crate-image]: https://img.shields.io/crates/v/mdt_lsp.svg
+[crate-link]: https://crates.io/crates/mdt_lsp
+[docs-image]: https://docs.rs/mdt_lsp/badge.svg
+[docs-link]: https://docs.rs/mdt_lsp/
+[ci-status-image]: https://github.com/ifiokjr/mdt/workflows/ci/badge.svg
+[ci-status-link]: https://github.com/ifiokjr/mdt/actions?query=workflow:ci
+[coverage-image]: https://codecov.io/gh/ifiokjr/mdt/branch/main/graph/badge.svg
+[coverage-link]: https://codecov.io/gh/ifiokjr/mdt
+[unlicense-image]: https://img.shields.io/badge/license-Unlicense-blue.svg
+[unlicense-link]: https://opensource.org/license/unlicense
 
 <!-- {/mdtBadgeLinks} -->

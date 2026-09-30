@@ -142,9 +142,7 @@ pub struct StaleEntry {
 }
 
 /// <!-- {=mdtFormatterOnlyStaleDocs|trim|linePrefix:"/// ":true} -->
-/// Formatter-aware checking can also report **formatter-only** drift. This happens when the formatter would rewrite the full file, but no individual managed block body is stale.
-///
-/// In that case mdt reports the file in `stale_files` so automation can tell surrounding-formatting drift from block-content drift. The CLI JSON output and MCP responses include `stale_files` for this reason.
+/// With formatters configured, `mdt check` can also report **stale files**: files that contain a consumer and that the formatter would change, even though every consumer block is current. `mdt update` rewrites the whole file, so the drift can be anywhere in it, not only inside a block. Run `mdt update` to normalize them. JSON output and MCP responses list these files in `stale_files`, separate from stale consumers in `stale`.
 /// <!-- {/mdtFormatterOnlyStaleDocs} -->
 #[derive(Debug)]
 #[non_exhaustive]

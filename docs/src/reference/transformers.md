@@ -1,310 +1,151 @@
 # Transformer Reference
 
-Quick reference for all available transformers.
+Transformers adapt provider content for one consumer. They follow the block name, separated by `|`, and run left to right: `{=name|trim|codeBlock:"sh"}`. For task-oriented examples, see the [Transformers guide](../guide/transformers.md).
 
-## Summary table
+## Summary
 
-| Transformer  | Arguments                               | Description                                   |
-| ------------ | --------------------------------------- | --------------------------------------------- |
-| `trim`       | none                                    | Remove whitespace from both ends              |
-| `trimStart`  | none                                    | Remove whitespace from the start              |
-| `trimEnd`    | none                                    | Remove whitespace from the end                |
-| `indent`     | `string` (optional), `bool` (optional)  | Prepend string to each line                   |
-| `prefix`     | `string` (optional)                     | Prepend string to entire content              |
-| `suffix`     | `string` (optional)                     | Append string to entire content               |
-| `linePrefix` | `string` (optional), `bool` (optional)  | Prepend string to each line                   |
-| `lineSuffix` | `string` (optional), `bool` (optional)  | Append string to each line                    |
-| `wrap`       | `string` (optional)                     | Wrap content with string on both sides        |
-| `code`       | none                                    | Wrap in inline code backticks                 |
-| `codeBlock`  | `language` (optional)                   | Wrap in fenced code block                     |
-| `replace`    | `search`, `replacement` (both required) | Replace all occurrences                       |
-| `if`         | `condition` (required)                  | Include content only when condition is truthy |
+| Transformer  | Arguments                | Effect                                              |
+| ------------ | ------------------------ | --------------------------------------------------- |
+| `trim`       | none                     | Remove whitespace from both ends                    |
+| `trimStart`  | none                     | Remove whitespace from the start                    |
+| `trimEnd`    | none                     | Remove whitespace from the end                      |
+| `prefix`     | `text?`                  | Prepend text to the whole content                   |
+| `suffix`     | `text?`                  | Append text to the whole content                    |
+| `wrap`       | `text?`                  | Add text to both ends of the content                |
+| `indent`     | `text?`, `includeEmpty?` | Prepend text to each line                           |
+| `linePrefix` | `text?`, `includeEmpty?` | Prepend text to each line; trims it on empty lines  |
+| `lineSuffix` | `text?`, `includeEmpty?` | Append text to each line; trims it on empty lines   |
+| `code`       | none                     | Wrap in an inline code span                         |
+| `codeBlock`  | `language?`              | Wrap in a fenced code block                         |
+| `replace`    | `search`, `replacement`  | Replace every occurrence of `search`                |
+| `if`         | `dataPath`               | Keep the content only when the data value is truthy |
 
-## Alias table
+Arguments are separated by `:`. Numbers are converted to text, so `indent:4` prepends the character `4`; write `indent:"    "` for four spaces. See [argument types](template-syntax.md#argument-types) for quoting and escapes.
 
-| Primary name | Alias         |
-| ------------ | ------------- |
-| `trimStart`  | `trim_start`  |
-| `trimEnd`    | `trim_end`    |
-| `codeBlock`  | `code_block`  |
-| `linePrefix` | `line_prefix` |
-| `lineSuffix` | `line_suffix` |
+## Names and aliases
 
-## Detailed reference
+Names are case-sensitive. These snake_case aliases are accepted:
 
-### `trim`
+| Name         | Aliases                   |
+| ------------ | ------------------------- |
+| `trimStart`  | `trim_start`              |
+| `trimEnd`    | `trim_end`                |
+| `codeBlock`  | `code_block`, `codeblock` |
+| `linePrefix` | `line_prefix`             |
+| `lineSuffix` | `line_suffix`             |
 
-```
-|trim
-```
+## `trim`, `trimStart`, `trimEnd`
 
-Removes leading and trailing whitespace (spaces, tabs, newlines).
+Remove spaces, tabs, and newlines from both ends, the start, or the end. `trim` turns `\n  hello  \n` into `hello`.
 
-**Arguments:** none
+Provider content usually starts and ends with a newline, so most consumers begin with `|trim`.
 
-**Example:**
+## `prefix`, `suffix`, `wrap`
 
-| Input           | Output  |
-| --------------- | ------- |
-| `\n  hello  \n` | `hello` |
+Add text once to the whole content, not to each line.
 
----
+| Transformer   | Input   | Output      |
+| ------------- | ------- | ----------- |
+| `prefix:"> "` | `hello` | `> hello`   |
+| `suffix:"\n"` | `hello` | `hello\n`   |
+| `wrap:"**"`   | `hello` | `**hello**` |
 
-### `trimStart`
+With no argument they add nothing.
 
-```
-|trimStart
-```
+## `indent`, `linePrefix`, `lineSuffix`
 
-Removes leading whitespace only.
+Add text to each line. The optional second argument `true` also applies it to empty lines.
 
-**Arguments:** none
+- Without `true`, empty lines stay empty.
+- With `true`, `indent` adds the text unchanged. `linePrefix` trims the prefix's trailing whitespace on empty lines, and `lineSuffix` trims the suffix's leading whitespace, so no line ends in stray spaces.
+- Lines that contain only whitespace are not empty and always get the text.
+- A final trailing newline in the content is not kept.
 
----
+With the input `A fast HTTP client.`, an empty line, and `Supports async and blocking modes.`:
 
-### `trimEnd`
-
-```
-|trimEnd
-```
-
-Removes trailing whitespace only.
-
-**Arguments:** none
-
----
-
-### `indent`
-
-```
-|indent:"  "
-|indent:"  ":true
-|indent
+```text
+|linePrefix:"/// "          |linePrefix:"/// ":true
+/// A fast HTTP client.     /// A fast HTTP client.
+                            ///
+/// Supports async ...      /// Supports async ...
 ```
 
-Prepends the given string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also indent empty lines.
+On empty lines, `linePrefix:" * ":true` drops the trailing space of the prefix, while `indent:" * ":true` keeps it. Prefer `linePrefix` for comment markers: formatters strip that trailing space, and the consumer is then stale again. `lineSuffix:" \\":true` writes a bare `\` on empty lines.
 
-**Arguments:** 0-2 (string, optional boolean)
+## `code`
 
-- First argument: the indent string (defaults to empty string)
-- Second argument: `true` to include empty lines, `false` or omitted to skip them
+Wraps the content in an inline code span. The delimiter is the shortest run of backticks that does not appear in the content, and a space is added inside both ends when the content starts or ends with a backtick (CommonMark).
 
-**Example:**
+````text
+Input:  my-lib
+Output: `my-lib`
 
-Input:
-
-```
-line 1
-
-line 3
-```
-
-With `|indent:"  "` (default — skips empty lines):
-
-```
-  line 1
-
-  line 3
-```
-
-With `|indent:"  ":true`, every line gets the indent — including empty lines (which become lines containing only the indent string).
-
----
-
-### `prefix`
-
-```
-|prefix:"# "
-|prefix
-```
-
-Prepends the string to the entire content (once, not per-line).
-
-**Arguments:** 0-1 string
-
----
-
-### `suffix`
-
-```
-|suffix:"\n"
-|suffix
-```
-
-Appends the string to the entire content.
-
-**Arguments:** 0-1 string
-
----
-
-### `linePrefix`
-
-```
-|linePrefix:"// "
-|linePrefix:"//! ":true
-|line_prefix:"// "
-```
-
-Prepends the string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also prefix empty lines — essential for code comment blocks.
-
-**Arguments:** 0-2 (string, optional boolean)
-
-- First argument: the prefix string (defaults to empty string)
-- Second argument: `true` to include empty lines, `false` or omitted to skip them
-
-**Example:**
-
-Input:
-
-```
-A fast HTTP client.
-
-Supports async and blocking modes.
-```
-
-With `|linePrefix:"/// ":true`:
-
-```
-/// A fast HTTP client.
-///
-/// Supports async and blocking modes.
-```
-
-Without `true`, the empty line would be left blank (breaking Rust doc comments).
-
----
-
-### `lineSuffix`
-
-```
-|lineSuffix:" \\"
-|lineSuffix:";":true
-|line_suffix:" \\"
-```
-
-Appends the string to each line. By default, empty lines are left empty. Pass `true` as a second argument to also suffix empty lines.
-
-**Arguments:** 0-2 (string, optional boolean)
-
-- First argument: the suffix string (defaults to empty string)
-- Second argument: `true` to include empty lines, `false` or omitted to skip them
-
----
-
-### `wrap`
-
-```
-|wrap:"**"
-```
-
-Wraps the entire content: prepends and appends the same string.
-
-**Arguments:** 0-1 string
-
-**Example:**
-
-| Input       | With `\|wrap:"**"` |
-| ----------- | ------------------ |
-| `bold text` | `**bold text**`    |
-
----
-
-### `code`
-
-```
-|code
-```
-
-Wraps the content in inline code backticks.
-
-**Arguments:** none
-
-**Example:**
-
-| Input    | Output         |
-| -------- | -------------- |
-| `my-lib` | `` `my-lib` `` |
-
----
-
-### `codeBlock`
-
-```
-|codeBlock:"rust"
-|codeBlock
-|code_block:"typescript"
-```
-
-Wraps the content in a fenced code block. The optional argument specifies the language.
-
-**Arguments:** 0-1 string (language identifier)
-
-**Example with language:**
-
-Input: `let x = 1;`
-
-Output:
-
-````
-```rust
-let x = 1;
-```
+Input:  `a` and ``b``
+Output: ``` `a` and ``b`` ```
 ````
 
----
+## `codeBlock`
 
-### `replace`
+Wraps the content in a fenced code block. The optional argument is the info string (language). The fence is one backtick longer than the longest backtick run in the content, with a minimum of three, so content that already contains fences stays intact: content with a four-backtick fence is wrapped in a five-backtick fence.
 
+`codeBlock` does not trim. Put `trim` first, or the provider's blank lines end up inside the fence.
+
+````text
+<!-- {=snippet|trim|codeBlock:"typescript"} -->
+```typescript
+const x = 1;
 ```
-|replace:"search":"replacement"
-```
+<!-- {/snippet} -->
+````
 
-Replaces all occurrences of the search string with the replacement.
+This works with the default padding; no `[padding]` section is needed.
 
-**Arguments:** exactly 2 strings (search, replacement)
+## `replace`
 
-**Example:**
+Replaces every occurrence of the first argument with the second. Both arguments are required. An empty replacement deletes matches; an empty search string leaves the content unchanged.
 
-| Input         | With `\|replace:"foo":"bar"` |
-| ------------- | ---------------------------- |
-| `foo and foo` | `bar and bar`                |
+| Transformer           | Input         | Output        |
+| --------------------- | ------------- | ------------- |
+| `replace:"foo":"bar"` | `foo and foo` | `bar and bar` |
+| `replace:"my-":""`    | `my-lib`      | `lib`         |
 
-To delete occurrences, use an empty replacement:
+## `if`
 
-```
-|replace:"unwanted":""
-```
+Keeps the content when the value at a dot-separated `[data]` path is truthy, and empties the consumer otherwise. The argument is a path, not an expression: `if:"pkg.flags.beta"` works, `if:"pkg.version == 1"` is looked up as a key and is always false.
 
-### `if`
+| Value at the path                      | Result       |
+| -------------------------------------- | ------------ |
+| missing, `false`, `null`, `""`, `0`    | empty        |
+| anything else, including `[]` and `{}` | content kept |
 
-```
-|if:"condition"
-```
-
-Keeps the content only when the condition evaluates to truthy; otherwise the target block becomes empty.
-
-**Arguments:** exactly 1 (condition)
-
-**Example:**
-
-```
-|if:"cargo.package.name"
-```
+Without a `[data]` section every path is missing, so the consumer is always empty.
 
 ## Argument validation
 
-mdt validates transformer arguments at runtime:
+| Transformers                            | Arguments |
+| --------------------------------------- | --------- |
+| `trim`, `trimStart`, `trimEnd`, `code`  | 0         |
+| `prefix`, `suffix`, `wrap`, `codeBlock` | 0-1       |
+| `indent`, `linePrefix`, `lineSuffix`    | 0-2       |
+| `replace`                               | 2         |
+| `if`                                    | 1         |
 
-| Transformer                             | Expected args |
-| --------------------------------------- | ------------- |
-| `trim`, `trimStart`, `trimEnd`, `code`  | 0             |
-| `prefix`, `suffix`, `wrap`, `codeBlock` | 0-1           |
-| `indent`, `linePrefix`, `lineSuffix`    | 0-2           |
-| `replace`                               | exactly 2     |
-| `if`                                    | exactly 1     |
+A wrong argument count or an unknown name is a validation error (exit code 2):
 
-Passing the wrong number of arguments produces an error:
+```text
+mdt::invalid_transformer_args
 
+  x [readme.md:6:1] transformer `replace` expects 2 argument(s), got 1
+  help: check the transformer documentation for the correct number of
+        arguments
 ```
-error: transformer `replace` expects 2 argument(s), got 1
+
+```text
+mdt::unknown_transformer
+
+  x [readme.md:3:1] unknown transformer `shout`
+  help: available transformers: trim, trimStart, trimEnd, indent, prefix,
+        suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace, if
 ```
+
+`--ignore-invalid-transformers` silences both.

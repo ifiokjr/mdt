@@ -1,115 +1,71 @@
 # Monorepo & Multi-Project Setups
 
-mdt supports monorepos where each package manages its own templates independently. The mechanism is **sub-project boundaries**: any directory containing its own `mdt.toml` is treated as a separate mdt project.
+In a monorepo, each package can be its own mdt project with its own providers, consumers, data, and configuration. The mechanism is **sub-project boundaries**.
 
 ## How sub-project boundaries work
 
-When mdt scans a directory tree, it stops descending into any subdirectory that contains an `mdt.toml` file. That subdirectory becomes its own isolated scope with its own sources, targets, data files, and configuration.
+Any directory below the project root that contains `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` is a separate project. The parent's scan skips it entirely. This applies at any depth, including direct children of the root.
 
-```
+```text
 my-monorepo/
-  mdt.toml                    # root project
+  mdt.toml                  # root project
   .templates/
-    template.t.md             # root sources
-  readme.md                   # root targets
+    shared.t.md             # root providers
+  readme.md                 # root consumers
+  docs/
+    .mdt.toml               # docs/ is a separate project
+    readme.md
   packages/
     lib-a/
-      mdt.toml                # lib-a is a separate project
-      .templates/
-        template.t.md         # lib-a sources
-      readme.md               # lib-a targets
+      mdt.toml              # lib-a is a separate project
+      readme.md
     lib-b/
-      mdt.toml                # lib-b is a separate project
-      .templates/
-        template.t.md         # lib-b sources
-      readme.md               # lib-b targets
+      .config/
+        mdt.toml            # lib-b is a separate project
+      readme.md
     lib-c/
-      readme.md               # NO mdt.toml — belongs to root project
+      readme.md             # no config: part of the root project
 ```
 
-Running `mdt update` from the monorepo root updates targets in `readme.md` and `packages/lib-c/readme.md`, but **not** in `packages/lib-a/` or `packages/lib-b/`. Those are separate projects.
-
-To update `lib-a`, run `mdt update` from inside `packages/lib-a/`, or use the `--path` flag:
+Running `mdt update` at the root updates `readme.md` and `packages/lib-c/readme.md`, but nothing in `docs/`, `lib-a/`, or `lib-b/`. Run those with `--path`:
 
 ```sh
 mdt update --path packages/lib-a
 ```
 
-## Setting up a monorepo
+Without `--path`, mdt starts from the current directory and walks up to the nearest directory with a config, like `git` and `cargo` do. Running `mdt check` inside `packages/lib-a/` therefore checks `lib-a`, and running it inside `packages/lib-c/` (no config) checks the root project.
 
-### Step 1: Create an `mdt.toml` in each package
+## Setting up a sub-project
 
-Each package that needs its own template scope gets an `mdt.toml`. Even an empty file is enough to establish a boundary:
+An empty config file is enough to create a boundary:
 
-```toml
-# packages/lib-a/mdt.toml
+```sh
+touch packages/lib-a/mdt.toml
 ```
 
-Add configuration as needed:
+Each project resolves its config, `*.t.md` files, and `[data]` paths relative to its own root. Provider names only need to be unique within one project, so `lib-a` and `lib-b` can both define `{@install}`.
 
 ```toml
 # packages/lib-a/mdt.toml
 [data]
-cargo = "Cargo.toml"
+package = "package.json" # packages/lib-a/package.json, not the root's
 ```
 
-### Step 2: Create template files per package
+## Sharing providers across projects
 
-Each sub-project has its own `*.t.md` files with its own source blocks:
+A project cannot see another project's providers by default. To share them, point `[templates] paths` at the shared directory. Paths are relative to the sub-project and may leave it:
 
-```
-<!-- packages/lib-a/.templates/template.t.md -->
-
-<!-- {@install} -->
-
-cargo add lib-a
-
-<!-- {/install} -->
+```toml
+# packages/lib-a/mdt.toml
+[templates]
+paths = ["../../.templates"]
 ```
 
-```
-<!-- packages/lib-b/.templates/template.t.md -->
+Now `lib-a`'s consumers can use every provider in `my-monorepo/.templates/`. [Block arguments](./block-arguments.md) fill in per-package values:
 
-<!-- {@install} -->
+```markdown
+<!-- .templates/shared.t.md -->
 
-cargo add lib-b
-
-<!-- {/install} -->
-```
-
-Source names only need to be unique **within** a project scope. Both `lib-a` and `lib-b` can have an `{@install}` provider without conflict.
-
-### Step 3: Run updates per package or use a script
-
-Update each package individually:
-
-```sh
-mdt update --path packages/lib-a
-mdt update --path packages/lib-b
-```
-
-Or use a script to update all packages:
-
-```sh
-#!/bin/sh
-for dir in packages/*/; do
-  if [ -f "$dir/mdt.toml" ]; then
-    mdt update --path "$dir"
-  fi
-done
-```
-
-## Shared templates across packages
-
-Sub-project boundaries are strict. A source in the root `.templates/template.t.md` is **not visible** to consumers inside `packages/lib-a/`. Each scope is fully isolated.
-
-If you need shared content across packages, you have a few options:
-
-### Option 1: Use block arguments for parameterized content
-
-Define a parameterized source at the root level and use it for files that belong to the root scope:
-
-```
 <!-- {@badge:"crate_name"} -->
 
 [![crates.io](https://img.shields.io/crates/v/{{ crate_name }})](https://crates.io/crates/{{ crate_name }})
@@ -117,53 +73,64 @@ Define a parameterized source at the root level and use it for files that belong
 <!-- {/badge} -->
 ```
 
-For sub-projects, duplicate the source in each sub-project's template file. This is intentional — each project is self-contained.
+```markdown
+<!-- packages/lib-a/readme.md -->
 
-### Option 2: Duplicate sources where needed
-
-Copy the source block into each sub-project's template file. This duplicates content in template files, but target blocks throughout each project stay in sync with their local provider, which is mdt's primary guarantee.
-
-### Option 3: Keep shared content at the root scope
-
-If files consuming shared content don't live inside a sub-project directory, they can all reference the root-level sources. Structure your project so that shared docs live outside sub-project boundaries.
-
-## CI checks in a monorepo
-
-Run `mdt check` for each sub-project in CI:
-
-```yaml
-- name: check root docs
-  run: mdt check
-
-- name: check lib-a docs
-  run: mdt check --path packages/lib-a
-
-- name: check lib-b docs
-  run: mdt check --path packages/lib-b
+<!-- {=badge:"lib-a"} -->
+<!-- {/badge} -->
 ```
 
-Or iterate over all directories that contain `mdt.toml`:
+Things to know:
 
-```yaml
-- name: check all mdt projects
-  run: |
-    for dir in . packages/*/; do
-      if [ -f "$dir/mdt.toml" ]; then
-        echo "Checking $dir"
-        mdt check --path "$dir"
-      fi
-    done
+- Only `*.t.md` files are read from a listed directory. Other files there, such as the root `readme.md`, are never treated as the sub-project's consumers.
+- Keep shared template files provider-only. A consumer block inside a shared `*.t.md` file is checked and updated by every project that lists the directory.
+- Providers from a directory outside the project are a shared library: the ones a sub-project does not use are never reported as unused.
+- The sub-project needs its own `[data]` for any variables the shared providers use (see below).
+- A listed path that is not a directory is an error (`mdt::templates_path`).
+
+### Data for shared providers
+
+A shared provider is rendered with the **consuming** project's data, and the root's `[data]` does not apply to sub-projects. If a shared provider uses `{{ package.version }}` and the sub-project has no `[data]`, the text is copied verbatim and mdt warns:
+
+```text
+warning: provider block `version` in /path/to/my-monorepo/.templates/shared.t.md uses template variable(s) package.version, but this project has no `[data]`, so the text is copied without rendering; declare the namespace(s) under `[data]` in this project's mdt.toml
 ```
 
-## Data isolation
-
-Each sub-project loads its own data files relative to its own `mdt.toml`. A `[data]` section in `packages/lib-a/mdt.toml` resolves paths relative to `packages/lib-a/`:
+Declare the namespace in the sub-project. Data paths may point outside it:
 
 ```toml
 # packages/lib-a/mdt.toml
+[templates]
+paths = ["../../.templates"]
+
 [data]
-cargo = "Cargo.toml" # resolves to packages/lib-a/Cargo.toml
-package = "package.json" # resolves to packages/lib-a/package.json
+package = "../../package.json"
 ```
 
-So `{{ cargo.package.name }}` in `lib-a`'s templates refers to `lib-a`'s `Cargo.toml`, not the root workspace's.
+## CI checks
+
+Run `mdt check` once per project:
+
+```yaml
+- name: check docs
+  run: |
+    mdt check
+    mdt check --path docs
+    mdt check --path packages/lib-a
+    mdt check --path packages/lib-b
+```
+
+Or loop over `packages/*/`, failing if any check fails:
+
+```sh
+status=0
+for dir in . packages/*/; do
+  if [ "$dir" = . ] || [ -f "$dir/mdt.toml" ] || [ -f "$dir/.mdt.toml" ] || [ -f "$dir/.config/mdt.toml" ]; then
+    echo "Checking $dir"
+    mdt check --path "$dir" || status=1
+  fi
+done
+exit $status
+```
+
+Output paths are relative to each project's root. With `--format github`, this means inline annotations for a sub-project can point at the wrong file; see [CI Integration](../guide/ci-integration.md#annotations).

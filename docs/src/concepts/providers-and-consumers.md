@@ -1,34 +1,31 @@
-# Sources and Targets
+# Providers and Consumers
 
-mdt's template system has two roles. **Sources** define content; **targets** receive it.
+mdt blocks have two roles. A **provider** defines content once; a **consumer** marks where that content is written.
 
-## Sources
+## Providers
 
-A source block defines a named piece of content. Providers live in **template files** (`*.t.md`).
+A provider is a named block in a template file (`*.t.md`), opened with the `@` sigil:
 
-```
+```markdown
 <!-- {@installGuide} -->
 
 Install the package:
 
-  npm install my-lib
+    npm install my-lib
 
 <!-- {/installGuide} -->
 ```
 
-The `@` sigil marks this as a source. The name `installGuide` is how consumers reference it.
+- Providers are read only from `*.t.md` files. A `{@name}` tag anywhere else is ignored and reported as a `mdt::provider_outside_template` warning.
+- Names are unique across the project. A second `{@installGuide}` is a `mdt::duplicate_provider` error.
+- The content is everything between the tags, including the blank lines after the opening tag and before the closing tag.
+- A provider with no consumers is a `mdt::unused_provider` warning.
 
-### Rules for sources
+## Consumers
 
-- Providers can **only** appear in `*.t.md` files. A `{@name}` tag in `readme.md` is ignored.
-- Each source name must be unique across the entire project. Two template files defining `{@installGuide}` produces an error.
-- The content between the opening and closing tags is the source's content, including the surrounding whitespace.
+A consumer is a named block opened with the `=` sigil. `mdt update` replaces everything between its tags with the provider's content.
 
-## Targets
-
-A target block marks a location where source content should be injected. Consumers can appear in any scanned file.
-
-```
+```markdown
 <!-- {=installGuide} -->
 
 Old content here (will be replaced).
@@ -36,48 +33,25 @@ Old content here (will be replaced).
 <!-- {/installGuide} -->
 ```
 
-The `=` sigil marks this as a target. The name `installGuide` tells mdt which provider to use.
+- Consumers work in markdown files and in [source file](../guide/source-files.md) comments.
+- Any number of consumers can use the same provider.
+- Each consumer can add [transformers](../guide/transformers.md) to adapt the content, such as `|trim|linePrefix:"//! ":true` for Rust doc comments.
+- A consumer whose name matches no provider is an orphan. `mdt check` fails on it and suggests a close match; `mdt update` warns and leaves it unchanged.
+- A consumer cannot contain another block; `mdt update` would overwrite it (`mdt::nested_block`).
 
-### Rules for targets
+## Closing tags
 
-- Consumers can appear in any markdown file or source code file.
-- Multiple targets can reference the same source. Each gets the same content.
-- If a target references a non-existent source, mdt warns but doesn't fail.
-- Consumers can include [transformers](../guide/transformers.md) to modify the content for their specific context.
+Providers, consumers, and inline blocks share one closing tag. The name must match the opening tag:
 
-## Close tags
-
-Both sources and targets share the same close tag syntax:
-
+```markdown
+<!-- {/installGuide} -->
 ```
-<!-- {/blockName} -->
-```
-
-The `/` sigil closes the block. The name must match the opening tag.
-
-## How content flows
-
-```
-.templates/*.t.md         readme.md                     src/lib.rs
-┌─────────────────┐             ┌──────────────────┐          ┌──────────────────┐
-│ <!-- {@docs} -->│             │ <!-- {=docs} --> │          │ // <!-- {=docs|  │
-│                 │──────┬─────→│                  │          │ //  trim|indent: │
-│ API reference.  │      │      │ API reference.   │          │ //  "/// "} -->  │
-│                 │      │      │                  │          │ /// API reference│
-│ <!-- {/docs} -->│      └─────→│ <!-- {/docs} --> │          │ // <!-- {/docs}  │
-└─────────────────┘             └──────────────────┘          │ //  -->          │
-                                                              └──────────────────┘
-     Provider                     Consumer (plain)              Consumer (with
-                                                                transformers)
-```
-
-The same source content feeds multiple targets. Each consumer can apply its own transformers to adapt the content.
 
 ## A complete example
 
-**`.templates/*.t.md`** — grouped sources of truth:
+`.templates/docs.t.md` holds the providers:
 
-```
+````markdown
 <!-- {@projectDescription} -->
 
 A fast, type-safe HTTP client for Rust.
@@ -86,14 +60,16 @@ A fast, type-safe HTTP client for Rust.
 
 <!-- {@usage} -->
 
-    let response = client.get("https://example.com").send().await?;
+```rust
+let response = client.get("https://example.com").send().await?;
+```
 
 <!-- {/usage} -->
-```
+````
 
-**`readme.md`** — targets reference sources by name:
+`readme.md` uses both as they are:
 
-```
+```markdown
 # my-http-client
 
 <!-- {=projectDescription} -->
@@ -105,11 +81,19 @@ A fast, type-safe HTTP client for Rust.
 <!-- {/usage} -->
 ```
 
-**`my-http-client/src/lib.rs`** — even works in source comments:
+`src/lib.rs` turns the description into crate docs:
 
 ```rust
-//! <!-- {=projectDescription|trim} -->
+//! <!-- {=projectDescription|trim|linePrefix:"//! ":true} -->
 //! <!-- {/projectDescription} -->
 ```
 
-After `mdt update`, all three files contain the same project description and usage example, each adapted to its context.
+After `mdt update`, `src/lib.rs` contains:
+
+```rust
+//! <!-- {=projectDescription|trim|linePrefix:"//! ":true} -->
+//! A fast, type-safe HTTP client for Rust.
+//! <!-- {/projectDescription} -->
+```
+
+and `readme.md` contains the description and the fenced usage example between the tags. Edit a provider, run `mdt update` again, and every consumer follows.

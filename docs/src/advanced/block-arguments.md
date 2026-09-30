@@ -1,50 +1,49 @@
 # Block Arguments
 
-Block arguments let you create parameterized source blocks. Instead of defining a separate source for each variation, you define one provider with parameters and pass different values from each target.
+Block arguments make a provider reusable with different values. Instead of one provider per variation, define one provider with parameters and pass values from each consumer.
+
+Arguments work with or without a `[data]` section.
 
 ## Syntax
 
 ### Provider: declare parameters
 
-Add `:"param_name"` after the block name to declare parameters:
+Add `:"param_name"` after the block name:
 
-```
+```markdown
 <!-- {@badges:"crate_name"} -->
 
-[![crates.io](https://img.shields.io/crates/v/{{ crate_name }})](https://crates.io/crates/{{ crate_name }})
-[![docs.rs](https://docs.rs/{{ crate_name }}/badge.svg)](https://docs.rs/{{ crate_name }}/)
+[![crates.io](https://img.shields.io/crates/v/{{ crate_name }})](https://crates.io/crates/{{ crate_name }}) [![docs.rs](https://docs.rs/{{ crate_name }}/badge.svg)](https://docs.rs/{{ crate_name }}/)
 
 <!-- {/badges} -->
 ```
 
-The parameter name `crate_name` becomes a template variable in the source content via `{{ crate_name }}`.
+Each parameter becomes a template variable in the provider content: `{{ crate_name }}`.
 
 ### Consumer: pass values
 
-Consumers pass string values in the same position:
+Consumers pass string values in the same positions:
 
-```
+```markdown
 <!-- {=badges:"mdt_core"} -->
 <!-- {/badges} -->
 ```
 
-When mdt renders this consumer, `{{ crate_name }}` in the source content is replaced with `mdt_core`.
+When mdt renders this consumer, `{{ crate_name }}` becomes `mdt_core`.
 
 ## Multiple arguments
 
-Providers can declare multiple parameters:
-
-```
+```markdown
 <!-- {@installCmd:"pkg_manager":"pkg_name":"version"} -->
 
-{{ pkg_manager }} install {{ pkg_name }}@{{ version }}
+{{ pkg_manager }} add {{ pkg_name }}@{{ version }}
 
 <!-- {/installCmd} -->
 ```
 
 Consumers pass values in the same order:
 
-```
+```markdown
 <!-- {=installCmd:"npm":"my-lib":"1.2.3"} -->
 <!-- {/installCmd} -->
 
@@ -52,22 +51,22 @@ Consumers pass values in the same order:
 <!-- {/installCmd} -->
 ```
 
-After `mdt update`, the first consumer contains `npm install my-lib@1.2.3` and the second contains `yarn install my-lib@2.0.0`.
+After `mdt update`, the first consumer contains `npm add my-lib@1.2.3` and the second `yarn add my-lib@2.0.0`.
 
 ## Combining arguments with other features
 
-### With transformers
+### Transformers
 
-Arguments and transformers work together. Transformers come after the arguments, separated by `|`:
+Transformers come after the arguments, separated by `|`:
 
-```
+```markdown
 <!-- {=badges:"mdt_core"|trim} -->
 <!-- {/badges} -->
 ```
 
-### With data interpolation
+### Data interpolation
 
-Block arguments and data interpolation variables coexist in the same source content. Arguments resolve alongside the data context:
+Arguments and `[data]` variables work together in the same provider:
 
 ```toml
 # mdt.toml
@@ -75,7 +74,7 @@ Block arguments and data interpolation variables coexist in the same source cont
 cargo = "Cargo.toml"
 ```
 
-```
+```markdown
 <!-- {@crateInfo:"crate_name"} -->
 
 **{{ crate_name }}** v{{ cargo.workspace.package.version }}
@@ -83,24 +82,24 @@ cargo = "Cargo.toml"
 <!-- {/crateInfo} -->
 ```
 
-Here `{{ crate_name }}` comes from the target's argument, while `{{ cargo.workspace.package.version }}` comes from the data file.
+`{{ crate_name }}` comes from the consumer's argument, and `{{ cargo.workspace.package.version }}` from `Cargo.toml`.
 
-### With single quotes
+### Quotes
 
-Both single and double quotes work for argument values:
+Single and double quotes both work. Double-quoted values decode escapes such as `\t`; single-quoted values are taken literally:
 
-```
-<!-- {@tmpl:'param'} -->
-<!-- {=tmpl:'value'} -->
+```markdown
+<!-- {=badges:'mdt_core'} -->
+<!-- {/badges} -->
 ```
 
 ## Use cases
 
 ### Badge links for multiple crates
 
-A common monorepo pattern: each crate needs the same badge markup with a different crate name.
+Each crate needs the same badge markup with a different name:
 
-```
+```text
 <!-- {@badgeLinks:"crateName"} -->
 
 [crate-image]: https://img.shields.io/crates/v/{{ crateName }}.svg
@@ -113,79 +112,47 @@ A common monorepo pattern: each crate needs the same badge markup with a differe
 
 Each crate's README passes its own name:
 
-```
+```markdown
 <!-- {=badgeLinks:"mdt_core"} -->
-<!-- {/badgeLinks} -->
-```
-
-```
-<!-- {=badgeLinks:"mdt_cli"} -->
 <!-- {/badgeLinks} -->
 ```
 
 ### Versioned install snippets
 
-Generate install instructions that pull the crate name from an argument and the version from a data file:
+The crate name comes from an argument and the version from a data file:
 
-```
+```markdown
 <!-- {@addDep:"dep_name"} -->
 
-Install via cargo: `cargo add {{ dep_name }}`
+Install with cargo: `cargo add {{ dep_name }}`
 
 Or add to Cargo.toml: `{{ dep_name }} = "{{ cargo.workspace.package.version }}"`
 
 <!-- {/addDep} -->
 ```
 
-### Platform-specific instructions
-
-```
-<!-- {@buildCmd:"platform":"toolchain"} -->
-
-To build on {{ platform }}, install {{ toolchain }} first,
-then run: {{ toolchain }} build --release
-
-<!-- {/buildCmd} -->
-```
-
 ## Argument count mismatch
 
-The number of target arguments must match the number of source parameters. A mismatch is a render error:
+A consumer must pass exactly as many arguments as the provider declares. Passing too many, too few, or any arguments to a provider without parameters is a render error:
 
-```
-error: argument count mismatch: provider `badges` declares 1 parameter(s),
-       but consumer passes 2 argument(s)
-```
-
-- `mdt check` reports the mismatch as an error.
-- `mdt update` skips the mismatched target and continues with the rest.
-
-### Zero arguments on target
-
-A target referencing a parameterized source without arguments is also a mismatch. If the source declares parameters, every consumer must supply values:
-
-```
-<!-- Provider expects 1 argument -->
-<!-- {@greeting:"name"} -->
-Hello, {{ name }}!
-<!-- {/greeting} -->
-
-<!-- This target is missing the argument — mdt reports an error -->
-<!-- {=greeting} -->
-<!-- {/greeting} -->
+```text
+Render errors:
+  block `badges` at readme.md:6:1: argument count mismatch: provider `badges` declares 1 parameter(s), but consumer passes 2
+  block `badges` at readme.md:9:1: argument count mismatch: provider `badges` declares 1 parameter(s), but consumer passes 0
+  block `simpleBlock` at readme.md:12:1: argument count mismatch: provider `simpleBlock` declares 0 parameter(s), but consumer passes 1
 ```
 
-### Zero parameters on source
+How each command reports it:
 
-If a source has no parameters, consumers should not pass arguments. Passing arguments to a parameter-less provider is a mismatch:
+- **`mdt check`** lists the consumer under `Render errors:` and exits 1. With `--format json` it is an entry in `errors` (`file`, `block`, `line`, `column`, `message`); with `--format github` it is an `::error` annotation starting `Template render failed for block`.
+- **`mdt update`** skips that consumer, updates every other one, and exits 1:
 
-```
-<!-- Provider has no parameters -->
-<!-- {@simpleBlock} -->
-Static content.
-<!-- {/simpleBlock} -->
+  ```text
+  error: block `badges` at readme.md:6:1 was not updated: argument count mismatch: provider `badges` declares 1 parameter(s), but consumer passes 2
+  Updated 1 block(s) in 1 file(s).
+  ```
 
-<!-- This target has an unexpected argument — mdt reports an error -->
-<!-- {=simpleBlock:"unused"} -->
-<!-- {/simpleBlock} -->
-```
+- **`mdt doctor`** fails its `Consumer Sync` check and exits 1.
+- **`mdt list`** does not check arguments: it shows the consumer as `[linked]` and exits 0.
+
+Fix it by matching the consumer's `:"value"` segments to the provider's parameters.
