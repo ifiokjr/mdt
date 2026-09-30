@@ -33,8 +33,8 @@ use mdt_core::CodeBlockFilter;
 use mdt_core::ComparisonMode;
 use mdt_core::ExpectedContent;
 use mdt_core::ParseDiagnostic;
+use mdt_core::content_matches;
 use mdt_core::expected_consumer_content;
-use mdt_core::normalize_whitespace;
 use mdt_core::parse_source_with_diagnostics;
 use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
@@ -676,14 +676,6 @@ fn expected_block_content(
 	};
 	let expected = expected_consumer_content(ctx, &consumer, &doc.content);
 	(consumer.content, expected)
-}
-
-/// Whether `current` passes `mdt check` against `expected` under the
-/// configured `[check] comparison` mode.
-fn content_matches(current: &str, expected: &str, comparison: &ComparisonMode) -> bool {
-	current == expected
-		|| (*comparison == ComparisonMode::Lenient
-			&& normalize_whitespace(current) == normalize_whitespace(expected))
 }
 
 /// How diagnostics and hovers name a block of the given type.

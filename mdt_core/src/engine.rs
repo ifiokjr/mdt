@@ -302,9 +302,9 @@ pub fn normalize_whitespace(content: &str) -> String {
 	result
 }
 
-/// Compare two content strings, using lenient normalization when the
-/// comparison mode is `Lenient`.
-fn content_matches(
+/// Whether a consumer's current content passes `mdt check` against the
+/// expected content under the configured `[check] comparison` mode.
+pub fn content_matches(
 	actual: &str,
 	expected: &str,
 	comparison: &crate::config::ComparisonMode,

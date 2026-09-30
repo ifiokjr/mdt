@@ -25,3 +25,4 @@
 - `[exclude] blocks` also silences structural diagnostics (unclosed, unmatched, or nested tags) for the excluded names, and invalid `[include] patterns` globs are rejected when the config loads instead of being dropped.
 - Files without any `<!--` are no longer parsed, which removes the dominant cost of scanning large tag-free markdown files.
 - `TransformerType::NAMES` lists every transformer's canonical name, so help text can no longer drift from the implementation.
+- `content_matches` is public, so tools compare consumer content exactly as `mdt check` does under `[check] comparison`.
