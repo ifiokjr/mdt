@@ -25,13 +25,29 @@ pub const SAMPLE_TEMPLATE_PATH: &str = ".templates/template.t.md";
 /// existing sample.
 const LEGACY_TEMPLATE_PATHS: [&str; 2] = ["template.t.md", "templates/template.t.md"];
 
-const SAMPLE_PROVIDER: &str =
-	"<!-- {@greeting} -->\n\nHello from mdt! This is a provider block.\n\n<!-- {/greeting} -->\n";
+/// An mdt tag for the sample block. Built at runtime so this source file
+/// never contains a literal tag, which mdt would scan as a live block.
+fn sample_tag(sigil: char) -> String {
+	format!("<!-- {{{sigil}{SAMPLE_BLOCK_NAME}}} -->")
+}
+
+fn sample_provider() -> String {
+	format!(
+		"{}\n\nHello from mdt! This is a provider block.\n\n{}\n",
+		sample_tag('@'),
+		sample_tag('/')
+	)
+}
 
 /// The sample readme starts with an empty consumer; [`init_project`] then
 /// syncs it through the engine so it honours an existing `[padding]`.
-const SAMPLE_README: &str =
-	"# My Project\n\nWelcome to my project.\n\n<!-- {=greeting} -->\n<!-- {/greeting} -->\n";
+fn sample_readme() -> String {
+	format!(
+		"# My Project\n\nWelcome to my project.\n\n{}\n{}\n",
+		sample_tag('='),
+		sample_tag('/')
+	)
+}
 
 const CACHE_IGNORE_ENTRY: &str = ".mdt/";
 
@@ -172,14 +188,14 @@ fn init_sample(root: &Path) -> MdtResult<SampleOutcome> {
 	if let Some(parent) = template.parent() {
 		std::fs::create_dir_all(parent)?;
 	}
-	std::fs::write(&template, SAMPLE_PROVIDER)?;
+	std::fs::write(&template, sample_provider())?;
 
 	if let Some(readme) = find_readme(root)? {
 		return Ok(SampleOutcome::CreatedWithoutConsumer { template, readme });
 	}
 
 	let readme = root.join("readme.md");
-	std::fs::write(&readme, SAMPLE_README)?;
+	std::fs::write(&readme, sample_readme())?;
 	sync_file(root, &readme)?;
 	Ok(SampleOutcome::CreatedWithReadme { template, readme })
 }

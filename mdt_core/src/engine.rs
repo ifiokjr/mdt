@@ -1497,9 +1497,9 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 ///
 /// Content starts on the line after the opening tag and the closing tag
 /// starts on its own line. Keeping the closing tag off the last content line
-/// matters: a trimmed `codeBlock` would otherwise end with ```` ```<!-- {/x} --> ````,
-/// which is not a closing fence, and a source-file closing tag would lose
-/// its comment prefix.
+/// matters: a trimmed `codeBlock` would otherwise glue the closing tag to its
+/// closing fence, which then no longer closes the fence, and a source-file
+/// closing tag would lose its comment prefix.
 static DEFAULT_PADDING: PaddingConfig = PaddingConfig {
 	before: crate::config::PaddingValue::Lines(0),
 	after: crate::config::PaddingValue::Lines(0),
