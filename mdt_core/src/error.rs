@@ -96,6 +96,13 @@ pub enum MdtError {
 		got: usize,
 	},
 
+	#[error("`[templates] paths` entry `{path}` is not a directory")]
+	#[diagnostic(
+		code(mdt::templates_path),
+		help("paths are relative to the project root; fix the path or remove the entry")
+	)]
+	TemplatesPath { path: String },
+
 	#[error("failed to read `{path}`: {reason}")]
 	#[diagnostic(
 		code(mdt::read_file),

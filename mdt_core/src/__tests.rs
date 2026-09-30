@@ -9,6 +9,7 @@ use tracing_test::traced_test;
 use super::__fixtures::*;
 use super::*;
 use crate::config::CodeBlockFilter;
+use crate::init;
 use crate::lexer::tokenize;
 use crate::parser::ParseDiagnostic;
 use crate::parser::parse_with_diagnostics;
@@ -1872,6 +1873,376 @@ fn scan_project_scans_common_source_extensions(#[case] extension: &str) -> MdtRe
 	assert_eq!(project.consumers.len(), 1);
 
 	Ok(())
+}
+
+fn assert_check_green(root: &Path) -> MdtResult<()> {
+	let ctx = scan_project_with_config(root)?;
+	let errors: Vec<_> = ctx
+		.project
+		.diagnostics
+		.iter()
+		.filter(|diagnostic| diagnostic.is_error(&ValidationOptions::default()))
+		.collect();
+	assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+	let result = check_project(&ctx)?;
+	assert!(result.is_ok(), "check failed: {result:?}");
+	Ok(())
+}
+
+#[test]
+fn init_project_in_empty_directory_leaves_project_green() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let report = init::init_project(tmp.path())?;
+
+	assert!(!report.created_root);
+	assert_eq!(
+		report.config,
+		init::ConfigOutcome::Created(tmp.path().join("mdt.toml"))
+	);
+	assert_eq!(
+		report.sample,
+		init::SampleOutcome::CreatedWithReadme {
+			template: tmp.path().join(".templates/template.t.md"),
+			readme: tmp.path().join("readme.md"),
+		}
+	);
+	assert_eq!(report.gitignore, init::GitignoreOutcome::NotApplicable);
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|e| panic!("read: {e}"));
+	assert!(readme.contains("Hello from mdt! This is a provider block."));
+	assert_check_green(tmp.path())?;
+
+	// A second run changes nothing.
+	let again = init::init_project(tmp.path())?;
+	assert!(again.written_files().is_empty());
+	assert!(matches!(
+		again.sample,
+		init::SampleOutcome::TemplateExists { .. }
+	));
+	assert!(matches!(again.config, init::ConfigOutcome::Exists(_)));
+
+	Ok(())
+}
+
+#[rstest]
+#[case("README.md")]
+#[case("Readme.markdown")]
+#[case("README.rst")]
+fn init_project_never_touches_an_existing_readme(#[case] name: &str) -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(tmp.path().join(name), "# Real project\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = init::init_project(tmp.path())?;
+	assert_eq!(
+		report.sample,
+		init::SampleOutcome::CreatedWithoutConsumer {
+			template: tmp.path().join(".templates/template.t.md"),
+			readme: tmp.path().join(name),
+		}
+	);
+	assert!(!tmp.path().join("readme.md").exists() || name.eq_ignore_ascii_case("readme.md"));
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(name)).unwrap_or_else(|e| panic!("read: {e}")),
+		"# Real project\n"
+	);
+	// The sample provider has no consumer yet: a warning, not a failure.
+	assert_check_green(tmp.path())?;
+
+	Ok(())
+}
+
+#[test]
+fn init_project_skips_the_sample_when_providers_exist() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("docs/shared.t.md"),
+		"<!-- {@greeting} -->\n\nHi\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("README.md"),
+		"<!-- {=greeting} -->\n\nHi\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = init::init_project(tmp.path())?;
+	assert_eq!(
+		report.sample,
+		init::SampleOutcome::ProvidersExist { count: 1 }
+	);
+	assert!(!tmp.path().join(".templates").exists());
+	assert_check_green(tmp.path())?;
+
+	Ok(())
+}
+
+#[test]
+fn init_project_syncs_the_sample_with_existing_padding() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join(".mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = init::init_project(tmp.path())?;
+	assert_eq!(
+		report.config,
+		init::ConfigOutcome::Exists(tmp.path().join(".mdt.toml"))
+	);
+	assert!(!tmp.path().join("mdt.toml").exists());
+	assert_check_green(tmp.path())?;
+
+	Ok(())
+}
+
+#[test]
+fn init_project_ignores_the_cache_directory_in_git_repositories() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".git")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+
+	let report = init::init_project(tmp.path())?;
+	let gitignore = tmp.path().join(".gitignore");
+	assert_eq!(
+		report.gitignore,
+		init::GitignoreOutcome::Created(gitignore.clone())
+	);
+	assert_eq!(
+		std::fs::read_to_string(&gitignore).unwrap_or_else(|e| panic!("read: {e}")),
+		"# mdt cache\n.mdt/\n"
+	);
+
+	let again = init::init_project(tmp.path())?;
+	assert_eq!(
+		again.gitignore,
+		init::GitignoreOutcome::AlreadyIgnored(gitignore)
+	);
+
+	Ok(())
+}
+
+#[test]
+fn init_project_appends_to_an_existing_gitignore() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let gitignore = tmp.path().join(".gitignore");
+	std::fs::write(&gitignore, "/target").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = init::init_project(tmp.path())?;
+	assert_eq!(
+		report.gitignore,
+		init::GitignoreOutcome::Updated(gitignore.clone())
+	);
+	assert_eq!(
+		std::fs::read_to_string(&gitignore).unwrap_or_else(|e| panic!("read: {e}")),
+		"/target\n\n# mdt cache\n.mdt/\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn init_project_creates_a_missing_root() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let root = tmp.path().join("new/project");
+
+	let report = init::init_project(&root)?;
+	assert!(report.created_root);
+	assert_check_green(&root)?;
+
+	Ok(())
+}
+
+fn write_file(root: &Path, relative: &str, content: &str) {
+	let path = root.join(relative);
+	if let Some(parent) = path.parent() {
+		std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	}
+	std::fs::write(&path, content).unwrap_or_else(|e| panic!("write {relative}: {e}"));
+}
+
+fn consumer_files(project: &Project, root: &Path) -> Vec<String> {
+	let mut files: Vec<String> = project
+		.consumers
+		.iter()
+		.map(|consumer| relative_display_path(&consumer.file, root))
+		.collect();
+	files.sort();
+	files
+}
+
+const CONSUMER: &str = "<!-- {=block} -->\nold\n<!-- {/block} -->\n";
+
+#[test]
+fn resolve_root_is_absolute_and_normalized() {
+	let root = resolve_root(Some(Path::new("docs/../packages/./lib")));
+	assert!(root.is_absolute(), "{}", root.display());
+	assert!(root.ends_with("packages/lib"), "{}", root.display());
+	assert!(!root.components().any(|c| {
+		matches!(
+			c,
+			std::path::Component::ParentDir | std::path::Component::CurDir
+		)
+	}));
+}
+
+#[test]
+fn scan_cache_is_not_reused_after_the_project_moves() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let original = tmp.path().join("original");
+	write_file(&original, "readme.md", CONSUMER);
+	scan_project(&original)?;
+	assert!(original.join(".mdt/cache").is_dir());
+
+	let moved = tmp.path().join("moved");
+	std::fs::rename(&original, &moved).unwrap_or_else(|e| panic!("rename: {e}"));
+	let project = scan_project(&moved)?;
+	assert_eq!(project.consumers[0].file, moved.join("readme.md"));
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn scan_cache_detects_edits_that_restore_the_modification_time() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(tmp.path(), "readme.md", CONSUMER);
+	let path = tmp.path().join("readme.md");
+	scan_project(tmp.path())?;
+	let modified = std::fs::metadata(&path)
+		.and_then(|metadata| metadata.modified())
+		.unwrap_or_else(|e| panic!("mtime: {e}"));
+
+	// Same size, same modification time: only the change time differs.
+	std::thread::sleep(std::time::Duration::from_millis(20));
+	std::fs::write(&path, CONSUMER.replace("old", "new")).unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::File::options()
+		.write(true)
+		.open(&path)
+		.and_then(|file| file.set_modified(modified))
+		.unwrap_or_else(|e| panic!("set mtime: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert!(project.consumers[0].content.contains("new"));
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_honours_nested_and_ancestor_gitignores() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let repo = tmp.path();
+	std::fs::create_dir_all(repo.join(".git/info")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	write_file(repo, ".git/info/exclude", "local.md\n");
+	write_file(repo, ".gitignore", "dist/\n");
+	write_file(repo, "packages/lib/mdt.toml", "");
+	write_file(repo, "packages/lib/readme.md", CONSUMER);
+	write_file(repo, "packages/lib/local.md", CONSUMER);
+	write_file(repo, "packages/lib/dist/readme.md", CONSUMER);
+	write_file(repo, "packages/lib/docs/.gitignore", "draft.md\n!keep.md\n");
+	write_file(repo, "packages/lib/docs/draft.md", CONSUMER);
+	write_file(repo, "packages/lib/docs/keep.md", CONSUMER);
+
+	let root = repo.join("packages/lib");
+	let project = scan_project(&root)?;
+	assert_eq!(
+		consumer_files(&project, &root),
+		vec!["docs/keep.md", "readme.md"]
+	);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn scan_project_reads_symlinked_files_once_and_skips_dangling_links() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(
+		tmp.path(),
+		".templates/shared.t.md",
+		"<!-- {@block} -->\n\nx\n\n<!-- {/block} -->\n",
+	);
+	write_file(tmp.path(), "readme.md", CONSUMER);
+	std::fs::create_dir_all(tmp.path().join("docs")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::os::unix::fs::symlink(
+		"../.templates/shared.t.md",
+		tmp.path().join("docs/shared.t.md"),
+	)
+	.unwrap_or_else(|e| panic!("symlink: {e}"));
+	std::os::unix::fs::symlink("missing.md", tmp.path().join("docs/dangling.md"))
+		.unwrap_or_else(|e| panic!("symlink: {e}"));
+
+	// The alias would otherwise be a duplicate provider.
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.providers.len(), 1);
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
+#[test]
+fn template_paths_add_only_template_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let project_root = tmp.path().join("packages/lib");
+	write_file(
+		tmp.path(),
+		"shared/templates/shared.t.md",
+		"<!-- {@block} -->\n\nshared\n\n<!-- {/block} -->\n",
+	);
+	write_file(tmp.path(), "shared/templates/readme.md", CONSUMER);
+	write_file(&project_root, "readme.md", CONSUMER);
+	write_file(
+		&project_root,
+		"mdt.toml",
+		"[templates]\npaths = [\"../../shared/templates\"]\n",
+	);
+
+	// Shared providers outside the project are read, but files there are never
+	// treated as this project's consumers (and never written).
+	let ctx = scan_project_with_config(&project_root)?;
+	assert_eq!(ctx.project.providers.len(), 1);
+	assert_eq!(
+		consumer_files(&ctx.project, &project_root),
+		vec!["readme.md"]
+	);
+
+	Ok(())
+}
+
+#[test]
+fn excluded_blocks_do_not_report_diagnostics() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(tmp.path(), "mdt.toml", "[exclude]\nblocks = [\"draft\"]\n");
+	write_file(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=draft} -->\nwip, never closed\n",
+	);
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	assert!(
+		ctx.project.diagnostics.is_empty(),
+		"{:?}",
+		ctx.project.diagnostics
+	);
+
+	Ok(())
+}
+
+#[test]
+fn config_load_rejects_invalid_include_globs() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(
+		tmp.path(),
+		"mdt.toml",
+		"[include]\npatterns = [\"src/[a\"]\n",
+	);
+
+	let error = MdtConfig::load(tmp.path())
+		.err()
+		.unwrap_or_else(|| panic!("expected an invalid glob error"));
+	assert!(error.to_string().contains("src/[a"), "{error}");
 }
 
 // --- Config tests ---
@@ -7177,31 +7548,22 @@ fn scan_project_with_extra_template_dirs() -> MdtResult<()> {
 }
 
 #[test]
-fn scan_project_with_extra_template_dir_nonexistent() -> MdtResult<()> {
+fn scan_project_with_extra_template_dir_nonexistent_is_an_error() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	// Template path points to a directory that does not exist -- should be silently
-	// skipped
+	// A misspelled templates path used to be skipped silently.
 	std::fs::write(
 		tmp.path().join("mdt.toml"),
 		"disable_gitignore = true\n\n[templates]\npaths = [\"nonexistent/templates\"]\n",
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(
-		tmp.path().join("template.t.md"),
-		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
-	std::fs::write(
-		tmp.path().join("readme.md"),
-		"<!-- {=block} -->\n\nold\n\n<!-- {/block} -->\n",
-	)
-	.unwrap_or_else(|e| panic!("write: {e}"));
 
-	let ctx = scan_project_with_config(tmp.path())?;
-	assert_eq!(ctx.project.providers.len(), 1);
-	assert_eq!(ctx.project.consumers.len(), 1);
-
-	Ok(())
+	let error = scan_project_with_config(tmp.path())
+		.err()
+		.unwrap_or_else(|| panic!("expected a templates path error"));
+	assert!(
+		matches!(&error, MdtError::TemplatesPath { path } if path == "nonexistent/templates"),
+		"{error:?}"
+	);
 }
 
 // --- Coverage: project.rs include patterns ---
@@ -11027,7 +11389,7 @@ fn config_load_data_script_without_watch_reruns_every_time() -> MdtResult<()> {
 }
 
 #[test]
-fn config_load_data_script_uses_cache_when_watch_file_is_missing() -> MdtResult<()> {
+fn config_load_data_script_reruns_while_watch_file_is_missing() -> MdtResult<()> {
 	if cfg!(windows) {
 		return Ok(());
 	}
@@ -11057,28 +11419,28 @@ fn config_load_data_script_uses_cache_when_watch_file_is_missing() -> MdtResult<
 		"1"
 	);
 
-	let data2 = config.load_data(tmp.path())?;
-	assert_eq!(
-		data2["value"],
-		serde_json::Value::String("cached".to_string())
-	);
-	assert_eq!(
-		std::fs::read_to_string(tmp.path().join(".run_count"))
-			.unwrap_or_else(|e| panic!("read: {e}"))
-			.trim(),
-		"1",
-		"missing watch file should still participate in cache fingerprinting"
-	);
-
-	std::fs::write(tmp.path().join("MISSING"), "now exists\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
-	let _ = config.load_data(tmp.path())?;
+	// A watch path that does not exist can never signal a change, so the
+	// command runs again instead of serving stale output forever.
+	config.load_data(tmp.path())?;
 	assert_eq!(
 		std::fs::read_to_string(tmp.path().join(".run_count"))
 			.unwrap_or_else(|e| panic!("read: {e}"))
 			.trim(),
 		"2",
-		"creating a watched file should invalidate the cached script result"
+		"a missing watch file must not be cached"
+	);
+
+	// Once the watched file exists, the result is cached until it changes.
+	std::fs::write(tmp.path().join("MISSING"), "now exists\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	config.load_data(tmp.path())?;
+	config.load_data(tmp.path())?;
+	assert_eq!(
+		std::fs::read_to_string(tmp.path().join(".run_count"))
+			.unwrap_or_else(|e| panic!("read: {e}"))
+			.trim(),
+		"3",
+		"an existing watched file should make the script result cacheable"
 	);
 
 	Ok(())

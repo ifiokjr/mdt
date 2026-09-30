@@ -408,9 +408,14 @@ struct ScriptCacheEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct WatchFingerprint {
+	/// Whether the watched path is an existing file. Script output is only
+	/// cached while every watched path is one; a typo, glob, or directory
+	/// could never signal a change.
 	exists: bool,
 	size: u64,
 	modified_unix_ms: u64,
+	#[serde(default)]
+	changed_unix_ns: u64,
 }
 
 fn data_cache_path(root: &Path) -> PathBuf {
@@ -513,7 +518,7 @@ fn validate_formatter_pattern(pattern: &str) -> Result<(), globset::Error> {
 
 fn watch_fingerprint(path: &Path) -> WatchFingerprint {
 	match std::fs::metadata(path) {
-		Ok(metadata) => {
+		Ok(metadata) if metadata.is_file() => {
 			WatchFingerprint {
 				exists: true,
 				size: metadata.len(),
@@ -523,13 +528,15 @@ fn watch_fingerprint(path: &Path) -> WatchFingerprint {
 					.and_then(|time| time.duration_since(UNIX_EPOCH).ok())
 					.and_then(|duration| duration.as_millis().try_into().ok())
 					.unwrap_or(0),
+				changed_unix_ns: crate::index_cache::changed_unix_ns(&metadata),
 			}
 		}
-		Err(_) => {
+		_ => {
 			WatchFingerprint {
 				exists: false,
 				size: 0,
 				modified_unix_ms: 0,
+				changed_unix_ns: 0,
 			}
 		}
 	}
@@ -663,6 +670,14 @@ impl MdtConfig {
 			MdtError::ConfigParse(format!("{}: {error}", config_path.display()))
 		})?;
 		validate_formatters(&config.formatters)?;
+		for pattern in &config.include.patterns {
+			Glob::new(pattern).map_err(|error| {
+				MdtError::ConfigParse(format!(
+					"{}: invalid `[include] patterns` entry `{pattern}`: {error}",
+					config_path.display()
+				))
+			})?;
+		}
 
 		Ok(Some(config))
 	}
@@ -761,8 +776,10 @@ fn load_script_data_source(
 		})
 		.collect();
 
-	// Only use cache when explicit watch files are configured.
-	if !watch.is_empty() {
+	// Only use the cache when explicit watch files are configured and all of
+	// them exist; otherwise nothing could ever invalidate the cached output.
+	let cacheable = !watch.is_empty() && watch_fingerprints.values().all(|print| print.exists);
+	if cacheable {
 		if let Some(cached) = cache.entries.get(namespace) {
 			if cached.command == script.command
 				&& cached.format == format

@@ -278,15 +278,45 @@ impl ProjectContext {
 	}
 }
 
-/// Resolve an optional project root path.
+/// Resolve an optional project root path to an absolute path.
 ///
 /// If `path` is `None`, falls back to the current working directory and uses
-/// `.` if the current directory cannot be determined.
+/// `.` if the current directory cannot be determined. Relative paths are
+/// made absolute and `.`/`..` components are resolved lexically, so every
+/// file path derived from the root — including paths stored in the scan
+/// cache — stays valid no matter which directory mdt runs from.
 pub fn resolve_root(path: Option<&Path>) -> PathBuf {
-	path.map_or_else(
+	let root = path.map_or_else(
 		|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
 		PathBuf::from,
-	)
+	);
+	let absolute = std::path::absolute(&root).unwrap_or(root);
+	normalize_lexically(&absolute)
+}
+
+/// Remove `.` components and resolve `..` against the preceding component
+/// without touching the filesystem.
+pub fn normalize_lexically(path: &Path) -> PathBuf {
+	let mut components: Vec<std::path::Component<'_>> = Vec::new();
+	for component in path.components() {
+		match component {
+			std::path::Component::CurDir => {}
+			std::path::Component::ParentDir => {
+				let parent_is_normal =
+					matches!(components.last(), Some(std::path::Component::Normal(_)));
+				if parent_is_normal {
+					components.pop();
+				} else if !matches!(
+					components.last(),
+					Some(std::path::Component::RootDir | std::path::Component::Prefix(_))
+				) {
+					components.push(component);
+				}
+			}
+			other => components.push(other),
+		}
+	}
+	components.iter().collect()
 }
 
 /// Render a path relative to the project root for user-facing display.
@@ -554,7 +584,10 @@ pub fn restore_line_endings(normalized: &str, raw: &str) -> String {
 	}
 }
 
-fn build_project_cache_key(options: &ScanOptions) -> String {
+/// The cache stores absolute file paths, so the key includes the root: a
+/// project that moved, or is reached through another path, rescans instead
+/// of reusing paths that point at the old location.
+fn build_project_cache_key(root: &Path, options: &ScanOptions) -> String {
 	let mut exclude_patterns = options.exclude_patterns.clone();
 	exclude_patterns.sort();
 
@@ -569,8 +602,9 @@ fn build_project_cache_key(options: &ScanOptions) -> String {
 	excluded_blocks.sort();
 
 	format!(
-		"index-v2|max={}|disable_gitignore={}|markdown={:?\
+		"index-v3|root={}|max={}|disable_gitignore={}|markdown={:?\
 		 }|exclude={}|templates={}|excluded_blocks={}|cache_verify_hash={}",
+		root.display(),
 		options.max_file_size,
 		options.disable_gitignore,
 		options.markdown_codeblocks,
@@ -629,7 +663,7 @@ pub fn inspect_project_cache(root: &Path, options: &ScanOptions) -> ProjectCache
 	inspection.compatibility.schema_supported =
 		schema_version == Some(index_cache::CACHE_SCHEMA_VERSION);
 
-	let expected_project_key = build_project_cache_key(options);
+	let expected_project_key = build_project_cache_key(root, options);
 	inspection.compatibility.project_key_matches = value
 		.get("project_key")
 		.and_then(serde_json::Value::as_str)
@@ -762,6 +796,15 @@ fn parse_file_for_scan(
 			reason: error.to_string(),
 		}
 	})?;
+	// Every tag is an HTML comment, so a file without one has nothing to
+	// parse. Skipping it avoids building a markdown AST for large docs.
+	if !raw_content.contains("<!--") {
+		return Ok(index_cache::CachedFileData {
+			providers: Vec::new(),
+			consumers: Vec::new(),
+			diagnostics: Vec::new(),
+		});
+	}
 	let content = normalize_line_endings(&raw_content);
 	let (blocks, parse_diagnostics) = if is_markdown_file(file) {
 		parse_with_diagnostics(&content)?
@@ -769,19 +812,35 @@ fn parse_file_for_scan(
 		parse_source_with_diagnostics(&content, &options.markdown_codeblocks)?
 	};
 
+	let is_excluded = |name: &str| {
+		options
+			.excluded_blocks
+			.iter()
+			.any(|excluded| excluded == name)
+	};
 	let mut diagnostics: Vec<ProjectDiagnostic> = parse_diagnostics
 		.into_iter()
 		.map(|diag| parse_diagnostic_to_project(file, diag))
+		.filter(|diagnostic| {
+			// `[exclude] blocks` removes a block from every check, including
+			// the structural ones.
+			match &diagnostic.kind {
+				DiagnosticKind::UnclosedBlock { name }
+				| DiagnosticKind::UnmatchedClosingTag { name }
+				| DiagnosticKind::ProviderOutsideTemplate { name } => !is_excluded(name),
+				DiagnosticKind::NestedBlock { outer, inner } => {
+					!is_excluded(outer) && !is_excluded(inner)
+				}
+				_ => true,
+			}
+		})
 		.collect();
 	let mut providers = Vec::with_capacity(blocks.len());
 	let mut consumers = Vec::with_capacity(blocks.len());
 
-	let is_template = file
-		.file_name()
-		.and_then(|name| name.to_str())
-		.is_some_and(|name| name.ends_with(".t.md"));
+	let is_template = is_template_file(file);
 
-	for block in &blocks {
+	for block in blocks.iter().filter(|block| !is_excluded(&block.name)) {
 		if let Err(MdtError::InvalidTransformerArgs {
 			name,
 			expected,
@@ -802,11 +861,7 @@ fn parse_file_for_scan(
 	}
 
 	for block in blocks {
-		if options
-			.excluded_blocks
-			.iter()
-			.any(|name| name == &block.name)
-		{
+		if is_excluded(&block.name) {
 			continue;
 		}
 
@@ -913,51 +968,11 @@ fn build_project_from_file_data(
 	disable_gitignore = options.disable_gitignore,
 ))]
 pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResult<Project> {
-	let mut files = collect_files(root, &options.exclude_patterns, options.disable_gitignore)?;
-
-	// Track seen files in a set alongside the Vec — the `contains` scan made
-	// template/include collection quadratic in project size.
-	let mut seen_files: HashSet<PathBuf> = files.iter().cloned().collect();
-
-	for template_dir in &options.template_paths {
-		let abs_dir = root.join(template_dir);
-		if abs_dir.is_dir() {
-			let extra_files = collect_files(
-				&abs_dir,
-				&options.exclude_patterns,
-				options.disable_gitignore,
-			)?;
-			for f in extra_files {
-				if seen_files.insert(f.clone()) {
-					files.push(f);
-				}
-			}
-		}
-	}
-
-	let custom_exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
-
-	if !options.include_set.is_empty() {
-		let gitignore = if options.disable_gitignore {
-			Gitignore::empty()
-		} else {
-			build_gitignore(root)
-		};
-		collect_included_files(
-			root,
-			root,
-			&options.include_set,
-			&gitignore,
-			&custom_exclude,
-			&mut files,
-			&mut seen_files,
-			&mut HashSet::new(),
-		)?;
-	}
+	let files = collect_project_files(root, options)?;
 
 	debug!(files = files.len(), "collected files for scanning");
 
-	let project_key = build_project_cache_key(options);
+	let project_key = build_project_cache_key(root, options);
 	let file_fingerprints = collect_file_fingerprints(
 		root,
 		&files,
@@ -1047,56 +1062,190 @@ fn build_exclude_matcher(root: &Path, patterns: &[String]) -> MdtResult<Gitignor
 		.map_err(|e| MdtError::ConfigParse(format!("failed to build exclude rules: {e}")))
 }
 
-/// Build a `Gitignore` matcher from the project's `.gitignore` file (if any).
-fn build_gitignore(root: &Path) -> Gitignore {
-	let mut builder = GitignoreBuilder::new(root);
-	// Add the project root's .gitignore if it exists.
-	let gitignore_path = root.join(".gitignore");
-	if gitignore_path.exists() {
-		let _ = builder.add(gitignore_path);
+/// Collect every file the scan should parse: markdown and supported source
+/// files, `*.t.md` files from `[templates] paths`, and files matching
+/// `[include] patterns`. Each file appears once, even when reachable through
+/// several symlinks.
+fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<PathBuf>> {
+	let exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
+	let use_gitignore = !options.disable_gitignore;
+	let mut files = Vec::new();
+
+	ProjectWalker::new(root, &exclude, use_gitignore).walk(root, &is_scannable_file, &mut files)?;
+
+	for template_dir in &options.template_paths {
+		let dir = root.join(template_dir);
+		if !dir.is_dir() {
+			return Err(MdtError::TemplatesPath {
+				path: template_dir.display().to_string(),
+			});
+		}
+		ProjectWalker::new(root, &exclude, use_gitignore).walk(
+			&dir,
+			&is_template_file,
+			&mut files,
+		)?;
 	}
-	builder.build().unwrap_or_else(|_| {
-		let empty = GitignoreBuilder::new(root);
-		empty.build().unwrap_or_else(|_| {
-			// Should never happen — an empty builder always succeeds.
-			Gitignore::empty()
-		})
-	})
+
+	if !options.include_set.is_empty() {
+		let is_included = |path: &Path| {
+			path.strip_prefix(root)
+				.is_ok_and(|relative| options.include_set.is_match(relative))
+		};
+		ProjectWalker::new(root, &exclude, use_gitignore).walk(root, &is_included, &mut files)?;
+	}
+
+	files.sort();
+	let mut canonical_files = HashSet::with_capacity(files.len());
+	files.retain(|file| {
+		canonical_files.insert(file.canonicalize().unwrap_or_else(|_| file.clone()))
+	});
+	Ok(files)
 }
 
-/// Collect all markdown and relevant source files from a directory tree.
-///
-/// When `disable_gitignore` is false (the default), files matched by the
-/// project's `.gitignore` are skipped. Exclude patterns from `[exclude]` in
-/// `mdt.toml` follow gitignore syntax and are always applied on top.
-fn collect_files(
-	root: &Path,
-	exclude_patterns: &[String],
-	disable_gitignore: bool,
-) -> MdtResult<Vec<PathBuf>> {
-	let mut files = Vec::new();
-	let mut visited_dirs = HashSet::new();
+/// Git ignore rules in effect during a walk, from outermost to innermost:
+/// the repository's `.git/info/exclude`, the `.gitignore` files of the
+/// project root and its ancestors up to the repository root, and the
+/// `.gitignore` files of the directories the walk has descended into.
+/// Outside a git repository only the root's own `.gitignore` applies.
+struct IgnoreRules {
+	enabled: bool,
+	stack: Vec<Gitignore>,
+}
 
-	// Build gitignore matcher (respects .gitignore unless disabled).
-	let gitignore = if disable_gitignore {
-		Gitignore::empty()
-	} else {
-		build_gitignore(root)
-	};
+impl IgnoreRules {
+	fn for_root(root: &Path, enabled: bool) -> Self {
+		let mut rules = Self {
+			enabled,
+			stack: Vec::new(),
+		};
+		if !enabled {
+			return rules;
+		}
 
-	// Build exclude matcher from mdt.toml [exclude] patterns.
-	let custom_exclude = build_exclude_matcher(root, exclude_patterns)?;
+		let repository_root = root.ancestors().find(|dir| dir.join(".git").exists());
+		let Some(repository_root) = repository_root else {
+			rules.enter(root);
+			return rules;
+		};
 
-	walk_dir(
-		root,
-		&mut files,
-		&gitignore,
-		&custom_exclude,
-		&mut visited_dirs,
-	)?;
-	// Sort for deterministic ordering.
-	files.sort();
-	Ok(files)
+		rules.push_file(repository_root, &repository_root.join(".git/info/exclude"));
+		let ancestors: Vec<&Path> = root
+			.ancestors()
+			.take_while(|dir| dir.starts_with(repository_root))
+			.collect();
+		for dir in ancestors.into_iter().rev() {
+			rules.enter(dir);
+		}
+		rules
+	}
+
+	/// Push the `.gitignore` of `dir`, if any. Returns whether a matcher was
+	/// pushed so the caller can [`leave`](Self::leave) symmetrically.
+	fn enter(&mut self, dir: &Path) -> bool {
+		self.enabled && self.push_file(dir, &dir.join(".gitignore"))
+	}
+
+	fn leave(&mut self, pushed: bool) {
+		if pushed {
+			self.stack.pop();
+		}
+	}
+
+	fn push_file(&mut self, dir: &Path, file: &Path) -> bool {
+		if !file.is_file() {
+			return false;
+		}
+		let mut builder = GitignoreBuilder::new(dir);
+		// A malformed line only disables that line, as in git.
+		let _ = builder.add(file);
+		match builder.build() {
+			Ok(matcher) => {
+				self.stack.push(matcher);
+				true
+			}
+			Err(_) => false,
+		}
+	}
+
+	/// Deeper rules win, and a `!` whitelist re-includes a path that an
+	/// outer file ignores — the same precedence git uses.
+	fn is_ignored(&self, path: &Path, is_dir: bool) -> bool {
+		for matcher in self.stack.iter().rev() {
+			match matcher.matched(path, is_dir) {
+				ignore::Match::Ignore(_) => return true,
+				ignore::Match::Whitelist(_) => return false,
+				ignore::Match::None => {}
+			}
+		}
+		false
+	}
+}
+
+/// Walks a project tree with mdt's scanning rules: hidden directories
+/// (except `.templates`), `node_modules`, and `target` are skipped; git
+/// ignore rules and `[exclude]` patterns apply; directories with their own
+/// mdt config are separate projects; and each directory is visited once,
+/// even through symlink aliases or cycles.
+struct ProjectWalker<'a> {
+	exclude: &'a Gitignore,
+	ignore_rules: IgnoreRules,
+	visited_dirs: HashSet<PathBuf>,
+}
+
+impl<'a> ProjectWalker<'a> {
+	fn new(root: &Path, exclude: &'a Gitignore, use_gitignore: bool) -> Self {
+		Self {
+			exclude,
+			ignore_rules: IgnoreRules::for_root(root, use_gitignore),
+			visited_dirs: HashSet::new(),
+		}
+	}
+
+	fn walk(
+		&mut self,
+		dir: &Path,
+		accept: &dyn Fn(&Path) -> bool,
+		files: &mut Vec<PathBuf>,
+	) -> MdtResult<()> {
+		if !dir.is_dir() || !first_visit(dir, &mut self.visited_dirs) {
+			return Ok(());
+		}
+
+		for entry in std::fs::read_dir(dir)? {
+			let path = entry?.path();
+			let skipped_name = path
+				.file_name()
+				.and_then(|name| name.to_str())
+				.is_some_and(is_ignored_directory_name);
+			if skipped_name {
+				continue;
+			}
+
+			let is_dir = path.is_dir();
+			if self.ignore_rules.is_ignored(&path, is_dir)
+				|| self.exclude.matched(&path, is_dir).is_ignore()
+			{
+				continue;
+			}
+
+			if is_dir {
+				// A directory with its own mdt config is a separate project.
+				if has_project_config(&path) {
+					continue;
+				}
+				let pushed = self.ignore_rules.enter(&path);
+				let walked = self.walk(&path, accept, files);
+				self.ignore_rules.leave(pushed);
+				walked?;
+			} else if path.is_file() && accept(&path) {
+				// `is_file` follows symlinks, so dangling links are skipped.
+				files.push(path);
+			}
+		}
+
+		Ok(())
+	}
 }
 
 fn is_ignored_directory_name(name: &str) -> bool {
@@ -1116,119 +1265,6 @@ fn has_project_config(dir: &Path) -> bool {
 fn first_visit(dir: &Path, visited_dirs: &mut HashSet<PathBuf>) -> bool {
 	let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
 	visited_dirs.insert(canonical)
-}
-
-fn walk_dir(
-	dir: &Path,
-	files: &mut Vec<PathBuf>,
-	gitignore: &Gitignore,
-	custom_exclude: &Gitignore,
-	visited_dirs: &mut HashSet<PathBuf>,
-) -> MdtResult<()> {
-	if !dir.is_dir() || !first_visit(dir, visited_dirs) {
-		return Ok(());
-	}
-
-	let entries = std::fs::read_dir(dir)?;
-
-	for entry in entries {
-		let entry = entry?;
-		let path = entry.path();
-
-		// Skip hidden directories and common non-source directories.
-		if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-			if is_ignored_directory_name(name) {
-				continue;
-			}
-		}
-
-		let is_dir = path.is_dir();
-
-		// Check against gitignore patterns.
-		if gitignore.matched(&path, is_dir).is_ignore() {
-			continue;
-		}
-
-		// Check against exclude patterns from mdt.toml [exclude].
-		if custom_exclude.matched(&path, is_dir).is_ignore() {
-			continue;
-		}
-
-		if is_dir {
-			// Skip subdirectories that have their own mdt config file (separate
-			// project scope).
-			if has_project_config(&path) {
-				continue;
-			}
-			walk_dir(&path, files, gitignore, custom_exclude, visited_dirs)?;
-		} else if is_scannable_file(&path) {
-			files.push(path);
-		}
-	}
-
-	Ok(())
-}
-
-/// Recursively collect files matching include patterns.
-#[allow(clippy::too_many_arguments)]
-fn collect_included_files(
-	root: &Path,
-	dir: &Path,
-	include_set: &GlobSet,
-	gitignore: &Gitignore,
-	exclude_matcher: &Gitignore,
-	files: &mut Vec<PathBuf>,
-	seen_files: &mut HashSet<PathBuf>,
-	visited_dirs: &mut HashSet<PathBuf>,
-) -> MdtResult<()> {
-	if !dir.is_dir() || !first_visit(dir, visited_dirs) {
-		return Ok(());
-	}
-
-	let entries = std::fs::read_dir(dir)?;
-
-	for entry in entries {
-		let entry = entry?;
-		let path = entry.path();
-
-		if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-			if is_ignored_directory_name(name) {
-				continue;
-			}
-		}
-
-		let is_dir = path.is_dir();
-
-		if gitignore.matched(&path, is_dir).is_ignore()
-			|| exclude_matcher.matched(&path, is_dir).is_ignore()
-		{
-			continue;
-		}
-
-		if let Ok(rel_path) = path.strip_prefix(root) {
-			if path.is_file() && include_set.is_match(rel_path) && seen_files.insert(path.clone()) {
-				files.push(path.clone());
-			}
-		}
-
-		if is_dir {
-			if has_project_config(&path) {
-				continue;
-			}
-			collect_included_files(
-				root,
-				&path,
-				include_set,
-				gitignore,
-				exclude_matcher,
-				files,
-				seen_files,
-				visited_dirs,
-			)?;
-		}
-	}
-
-	Ok(())
 }
 
 /// Check if a file should be scanned for mdt blocks.

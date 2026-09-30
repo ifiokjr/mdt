@@ -1,4 +1,3 @@
-mod default_mdt_toml;
 mod skill;
 
 use std::collections::BTreeSet;
@@ -244,82 +243,88 @@ fn cache_hash_mode_hint(hash_verification_enabled: bool) -> String {
 }
 
 fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+	use mdt_core::init::ConfigOutcome;
+	use mdt_core::init::GitignoreOutcome;
+	use mdt_core::init::SampleOutcome;
+
 	let root = resolve_root(args);
-	let canonical_template_path = root.join(".templates/template.t.md");
-	let legacy_template_paths = [
-		root.join("template.t.md"),
-		root.join("templates/template.t.md"),
-	];
-	let template_path = if canonical_template_path.exists() {
-		canonical_template_path.clone()
-	} else {
-		legacy_template_paths
-			.iter()
-			.find(|path| path.exists())
-			.cloned()
-			.unwrap_or_else(|| canonical_template_path.clone())
-	};
-	let template_exists = template_path.exists();
+	let report = mdt_core::init::init_project(&root)?;
+	let rel = |path: &Path| relative_display_path(path, &root);
 
-	let config_path = root.join("mdt.toml");
-	let config_exists = MdtConfig::resolve_path(&root).is_some();
+	if args.path.is_some() {
+		let verb = if report.created_root {
+			"Created"
+		} else {
+			"Initializing"
+		};
+		println!("{verb} {}", display_path(&root));
+	}
 
-	if template_exists {
-		println!(
-			"Template file already exists: {}",
-			display_path(&template_path)
-		);
-	} else {
-		let sample_content = "<!-- {@greeting} -->\n\nHello from mdt! This is a source \
-		                      block.\n\n<!-- {/greeting} -->\n";
-
-		if let Some(parent) = template_path.parent() {
-			std::fs::create_dir_all(parent)?;
+	match &report.config {
+		ConfigOutcome::Created(path) => println!("Created {}", rel(path)),
+		ConfigOutcome::Exists(path) => println!("Using existing config {}", rel(path)),
+		_ => {}
+	}
+	match &report.sample {
+		SampleOutcome::CreatedWithReadme { template, readme } => {
+			println!(
+				"Created {} with a sample `greeting` provider",
+				rel(template)
+			);
+			println!("Created {} with a synced `greeting` consumer", rel(readme));
 		}
-		std::fs::write(&template_path, sample_content)?;
-		println!("Created template file: {}", display_path(&template_path));
+		SampleOutcome::CreatedWithoutConsumer { template, readme } => {
+			println!(
+				"Created {} with a sample `greeting` provider",
+				rel(template)
+			);
+			println!("Left the existing {} unchanged", rel(readme));
+		}
+		SampleOutcome::TemplateExists { template } => {
+			println!("Template file already exists: {}", rel(template));
+		}
+		SampleOutcome::ProvidersExist { count } => {
+			println!("Found {count} existing provider(s); skipped the sample template");
+		}
+		_ => {}
+	}
+	match &report.gitignore {
+		GitignoreOutcome::Updated(path) | GitignoreOutcome::Created(path) => {
+			println!("Added the `.mdt/` cache directory to {}", rel(path));
+		}
+		_ => {}
 	}
 
-	if config_exists {
-		// Skip silently if config already exists.
-	} else {
-		std::fs::write(&config_path, default_mdt_toml::DEFAULT_MDT_TOML)?;
-		println!("Created mdt.toml");
-	}
-
-	let readme_path = root.join("readme.md");
-	let readme_upper_path = root.join("README.md");
-	let readme_exists = readme_path.exists() || readme_upper_path.exists();
-
-	if !readme_exists && !template_exists {
-		// Write the sample consumer already in sync with the provider so a
-		// freshly initialized project passes `mdt check` out of the box.
-		let sample_readme = "# My Project\n\nWelcome to my project.\n\n<!-- {=greeting} \
-		                     -->\n\nHello from mdt! This is a source block.\n\n<!-- {/greeting} \
-		                     -->\n";
-		std::fs::write(&readme_path, sample_readme)?;
-		println!("Created readme.md with a sample target block");
-	}
-
-	if !template_exists {
+	let next_steps: Vec<String> = match &report.sample {
+		SampleOutcome::CreatedWithReadme { template, readme } => {
+			vec![
+				format!("Open {} to see the synced sample block", rel(readme)),
+				format!("Edit {}, then run `mdt update`", rel(template)),
+				"Run `mdt check` in CI to fail builds on stale docs".to_string(),
+			]
+		}
+		SampleOutcome::CreatedWithoutConsumer { template, readme } => {
+			vec![
+				format!(
+					"Add a consumer to {}: <!-- {{=greeting}} --> <!-- {{/greeting}} -->",
+					rel(readme)
+				),
+				"Run `mdt update` to fill it in (until then `mdt check` warns that `greeting` has \
+				 no consumers)"
+					.to_string(),
+				format!(
+					"Replace the sample in {} with your own providers",
+					rel(template)
+				),
+			]
+		}
+		_ => Vec::new(),
+	};
+	if !next_steps.is_empty() {
 		println!();
 		println!("Next steps:");
-		if readme_exists {
-			println!(
-				"  1. Edit {} to define your source blocks",
-				display_path(&template_path)
-			);
-			println!("  2. Add target tags in your markdown files:");
-			println!("     <!-- {{=greeting}} -->");
-			println!("     <!-- {{/greeting}} -->");
-			println!("  3. Run `mdt update` to sync content");
-		} else {
-			println!("  1. Open readme.md to see the synced sample block");
-			println!(
-				"  2. Edit {} to change your source blocks",
-				display_path(&template_path)
-			);
-			println!("  3. Run `mdt update` to sync your edits");
+		for (index, step) in next_steps.iter().enumerate() {
+			println!("  {}. {step}", index + 1);
 		}
 	}
 

@@ -20,6 +20,11 @@ const CACHE_FILE_NAME: &str = "index-v2.json";
 pub(crate) struct FileFingerprint {
 	pub size: u64,
 	pub modified_unix_ms: u64,
+	/// Inode change time in nanoseconds (Unix only; `0` elsewhere). Tools
+	/// such as `cp -p`, `rsync -t`, and `touch -r` restore the modification
+	/// time after an edit, but cannot restore the change time.
+	#[serde(default)]
+	pub changed_unix_ns: u64,
 	pub content_hash: Option<u64>,
 }
 
@@ -140,7 +145,27 @@ pub(crate) fn build_file_fingerprint(
 	FileFingerprint {
 		size: metadata.len(),
 		modified_unix_ms,
+		changed_unix_ns: changed_unix_ns(metadata),
 		content_hash,
+	}
+}
+
+/// The inode change time in nanoseconds since the Unix epoch, or `0` on
+/// platforms without one.
+pub(crate) fn changed_unix_ns(metadata: &Metadata) -> u64 {
+	#[cfg(unix)]
+	{
+		use std::os::unix::fs::MetadataExt;
+
+		u64::try_from(metadata.ctime())
+			.unwrap_or(0)
+			.saturating_mul(1_000_000_000)
+			.saturating_add(u64::try_from(metadata.ctime_nsec()).unwrap_or(0))
+	}
+	#[cfg(not(unix))]
+	{
+		let _ = metadata;
+		0
 	}
 }
 
