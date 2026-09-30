@@ -1,0 +1,4 @@
+# `mdt skill` embeds the agent skill with `include_str!`. Keep these files LF
+# on every platform so Windows builds embed the same bytes as everyone else.
+packages/m-d-t__skills/skills/**/*.md text eol=lf
+mdt_cli/skill/*.md text eol=lf
