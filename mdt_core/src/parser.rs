@@ -1,4 +1,5 @@
 use std::cell::LazyCell;
+use std::collections::HashSet;
 
 use markdown::ParseOptions;
 use markdown::mdast::Html;
@@ -97,8 +98,12 @@ pub fn parse_with_diagnostics(
 	let html_nodes = get_html_nodes(content)?;
 	let tag_like = find_tag_like_comments(&html_nodes);
 	let token_groups = tokenize(html_nodes)?;
-	let (blocks, mut diagnostics) = build_blocks_from_groups_with_diagnostics(&token_groups)?;
-	report_unparsed_tags(&tag_like, &token_groups, &mut diagnostics);
+	let mut recognized = HashSet::new();
+	let (blocks, mut diagnostics) = build_blocks_recording_tags(
+		&token_groups,
+		(!tag_like.is_empty()).then_some(&mut recognized),
+	)?;
+	report_unparsed_tags(&tag_like, &recognized, &mut diagnostics);
 	Ok((blocks, diagnostics))
 }
 
@@ -151,17 +156,9 @@ fn find_tag_like_comments(nodes: &[Html]) -> Vec<TagLikeComment> {
 /// Report tag-like comments that did not tokenize into a recognized tag.
 fn report_unparsed_tags(
 	tag_like: &[TagLikeComment],
-	token_groups: &[TokenGroup],
+	recognized: &HashSet<usize>,
 	diagnostics: &mut Vec<ParseDiagnostic>,
 ) {
-	if tag_like.is_empty() {
-		return;
-	}
-	let recognized: std::collections::HashSet<usize> = token_groups
-		.iter()
-		.filter(|group| !matches!(classify_group(group), GroupKind::Unknown))
-		.map(|group| group.position.start.offset)
-		.collect();
 	for comment in tag_like {
 		if !recognized.contains(&comment.offset) {
 			diagnostics.push(ParseDiagnostic::InvalidTag {
@@ -192,6 +189,15 @@ pub fn build_blocks_from_groups_lenient(token_groups: &[TokenGroup]) -> MdtResul
 pub fn build_blocks_from_groups_with_diagnostics(
 	token_groups: &[TokenGroup],
 ) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
+	build_blocks_recording_tags(token_groups, None)
+}
+
+/// Build blocks and diagnostics, recording the start offset of every group
+/// that forms a tag into `recognized` when given.
+fn build_blocks_recording_tags(
+	token_groups: &[TokenGroup],
+	mut recognized: Option<&mut HashSet<usize>>,
+) -> MdtResult<(Vec<Block>, Vec<ParseDiagnostic>)> {
 	let mut pending: Vec<BlockCreator> = Vec::with_capacity(token_groups.len());
 	let mut blocks: Vec<Block> = Vec::with_capacity(token_groups.len());
 	let mut diagnostics: Vec<ParseDiagnostic> = Vec::with_capacity(token_groups.len() / 4);
@@ -201,7 +207,13 @@ pub fn build_blocks_from_groups_with_diagnostics(
 
 	for group in token_groups {
 		let pending_before = pending.len();
-		match classify_group_with_diagnostics(group, &mut diagnostics) {
+		let kind = classify_group_with_diagnostics(group, &mut diagnostics);
+		if let Some(recognized) = recognized.as_deref_mut() {
+			if !matches!(kind, GroupKind::Unknown) {
+				recognized.insert(group.position.start.offset);
+			}
+		}
+		match kind {
 			GroupKind::Provider {
 				name,
 				transformers,

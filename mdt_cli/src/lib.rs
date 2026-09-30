@@ -7,6 +7,8 @@ use clap::ValueEnum;
 #[derive(Parser)]
 #[command(
 	name = "mdt",
+	// Without this, usage and errors say `mdt.exe` on Windows.
+	bin_name = "mdt",
 	author,
 	version,
 	arg_required_else_help = true,

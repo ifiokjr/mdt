@@ -1111,8 +1111,15 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 	let exclude = build_exclude_matcher(root, &options.exclude_patterns)?;
 	let use_gitignore = !options.disable_gitignore;
 	let mut files = Vec::new();
+	let mut saw_symlink = false;
+	let mut walk = |dir: &Path, accept: &dyn Fn(&Path) -> bool, files: &mut Vec<PathBuf>| {
+		let mut walker = ProjectWalker::new(root, &exclude, use_gitignore);
+		walker.walk(dir, accept, files)?;
+		saw_symlink |= walker.saw_symlink;
+		MdtResult::Ok(())
+	};
 
-	ProjectWalker::new(root, &exclude, use_gitignore).walk(root, &is_scannable_file, &mut files)?;
+	walk(root, &is_scannable_file, &mut files)?;
 
 	for template_dir in &options.template_paths {
 		// Normalized so shared directories outside the project are
@@ -1123,11 +1130,7 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 				path: template_dir.display().to_string(),
 			});
 		}
-		ProjectWalker::new(root, &exclude, use_gitignore).walk(
-			&dir,
-			&is_template_file,
-			&mut files,
-		)?;
+		walk(&dir, &is_template_file, &mut files)?;
 	}
 
 	if !options.include_set.is_empty() {
@@ -1135,14 +1138,21 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 			path.strip_prefix(root)
 				.is_ok_and(|relative| options.include_set.is_match(relative))
 		};
-		ProjectWalker::new(root, &exclude, use_gitignore).walk(root, &is_included, &mut files)?;
+		walk(root, &is_included, &mut files)?;
 	}
 
+	// Overlapping walks (`[templates] paths` inside the project, `[include]`)
+	// find the same paths again. Only symlinks can make two different paths
+	// name one file, and resolving every path is costly, so compare canonical
+	// paths only when a walk met a symlink.
 	files.sort();
-	let mut canonical_files = HashSet::with_capacity(files.len());
-	files.retain(|file| {
-		canonical_files.insert(file.canonicalize().unwrap_or_else(|_| file.clone()))
-	});
+	files.dedup();
+	if saw_symlink {
+		let mut canonical_files = HashSet::with_capacity(files.len());
+		files.retain(|file| {
+			canonical_files.insert(file.canonicalize().unwrap_or_else(|_| file.clone()))
+		});
+	}
 	Ok(files)
 }
 
@@ -1234,6 +1244,9 @@ struct ProjectWalker<'a> {
 	exclude: &'a Gitignore,
 	ignore_rules: IgnoreRules,
 	visited_dirs: HashSet<PathBuf>,
+	/// Whether any walked entry was a symlink, so the same file may have
+	/// been collected under two paths.
+	saw_symlink: bool,
 }
 
 impl<'a> ProjectWalker<'a> {
@@ -1242,6 +1255,7 @@ impl<'a> ProjectWalker<'a> {
 			exclude,
 			ignore_rules: IgnoreRules::for_root(root, use_gitignore),
 			visited_dirs: HashSet::new(),
+			saw_symlink: false,
 		}
 	}
 
@@ -1256,7 +1270,8 @@ impl<'a> ProjectWalker<'a> {
 		}
 
 		for entry in std::fs::read_dir(dir)? {
-			let path = entry?.path();
+			let entry = entry?;
+			let path = entry.path();
 			let skipped_name = path
 				.file_name()
 				.and_then(|name| name.to_str())
@@ -1265,7 +1280,13 @@ impl<'a> ProjectWalker<'a> {
 				continue;
 			}
 
-			let is_dir = path.is_dir();
+			// The directory listing already knows whether an entry is a
+			// symlink; `metadata` follows it, and fails for a dangling link.
+			self.saw_symlink |= entry.file_type().is_ok_and(|kind| kind.is_symlink());
+			let Ok(metadata) = std::fs::metadata(&path) else {
+				continue;
+			};
+			let is_dir = metadata.is_dir();
 			if self.ignore_rules.is_ignored(&path, is_dir)
 				|| self.exclude.matched(&path, is_dir).is_ignore()
 			{
@@ -1281,8 +1302,7 @@ impl<'a> ProjectWalker<'a> {
 				let walked = self.walk(&path, accept, files);
 				self.ignore_rules.leave(pushed);
 				walked?;
-			} else if path.is_file() && accept(&path) {
-				// `is_file` follows symlinks, so dangling links are skipped.
+			} else if metadata.is_file() && accept(&path) {
 				files.push(path);
 			}
 		}
