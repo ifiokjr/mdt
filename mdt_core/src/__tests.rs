@@ -2800,6 +2800,73 @@ fn tokenize_malformed_incomplete_comment() -> MdtResult<()> {
 }
 
 #[test]
+fn tokenize_hyphenated_block_name() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {=my-block} -->")?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 1);
+	Ok(())
+}
+
+#[test]
+fn tokenize_hyphenated_provider_and_close_tags() -> MdtResult<()> {
+	let nodes = get_html_nodes("<!-- {@my-block} -->\n\ncontent\n\n<!-- {/my-block} -->")?;
+	let groups = tokenize(nodes)?;
+	assert_eq!(groups.len(), 2);
+	Ok(())
+}
+
+#[test]
+fn scan_project_with_hyphenated_block_names() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@install-command} -->\n\nnpm install acme\n\n<!-- {/install-command} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=install-command} -->\nold\n<!-- {/install-command} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.providers.len(), 1);
+	assert_eq!(project.consumers.len(), 1);
+	assert_eq!(project.consumers[0].block.name, "install-command");
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_with_dart_source_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join("lib")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@pkgDescription} -->\n\nA fancy widgets package.\n\n<!-- {/pkgDescription} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("lib/fancy_widgets.dart"),
+		"// <!-- {=pkgDescription|trim|linePrefix:\"/// \":true} -->\n/// old docs\n// <!-- \
+		 {/pkgDescription} -->\nlibrary;\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.providers.len(), 1);
+	assert_eq!(project.consumers.len(), 1);
+	assert_eq!(project.consumers[0].block.name, "pkgDescription");
+	assert_eq!(
+		project.consumers[0].block.transformers.len(),
+		2,
+		"transformer chain should be preserved"
+	);
+
+	Ok(())
+}
+
+#[test]
 fn tokenize_malformed_no_close_brace() -> MdtResult<()> {
 	let nodes = get_html_nodes("<!-- {=name -->")?;
 	let groups = tokenize(nodes)?;

@@ -42,6 +42,7 @@
 		".devenv/**",
 		".monochange/**",
 		".changeset/**",
+		".templates/**",
 		"**/fixtures",
 		"**/snapshots",
 		"**/target",

@@ -54,3 +54,25 @@ fn init_creates_valid_template() -> std::io::Result<()> {
 
 	Ok(())
 }
+
+#[test]
+fn init_leaves_project_check_green() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+
+	common::mdt_cmd()
+		.arg("init")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success();
+
+	// A freshly initialized project must not fail the first `mdt check`.
+	common::mdt_cmd()
+		.arg("check")
+		.arg("--path")
+		.arg(tmp.path())
+		.assert()
+		.success();
+
+	Ok(())
+}

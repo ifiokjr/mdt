@@ -32,7 +32,7 @@ enum RawToken {
 	Newline,
 	#[regex(r"[ \t\r]")]
 	Whitespace,
-	#[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+	#[regex(r"[a-zA-Z_][a-zA-Z0-9_-]*")]
 	Ident,
 	#[regex(r#""([^"\\]|\\.)*""#)]
 	DoubleQuotedString,
