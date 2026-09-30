@@ -4,6 +4,94 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.6](https://github.com/ifiokjr/mdt/releases/tag/v0.9.6) (2026-09-30)
+
+### 🚀 Feature
+
+#### Add `mdt skill` to load the agent skill straight from the CLI
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #200](https://github.com/ifiokjr/mdt/pull/200)
+
+The mdt agent skill (published separately as `@m-d-t/skills`) is now embedded in the `mdt` binary, so any AI coding agent can learn mdt without installing the skill package, and the instructions always match the installed version.
+
+- `mdt skill` prints `SKILL.md`, the entrypoint an agent reads first.
+- `mdt skill --reference` prints `REFERENCE.md`, the full syntax, transformer, and configuration reference.
+- `mdt skill --install <DIR>` writes both files to `<DIR>/mdt/` (for example `mdt skill --install .claude/skills`), replacing an older copy.
+
+```sh
+mdt skill | head
+mdt skill --install .claude/skills
+```
+
+`mdt --help` lists the new command so agents discover it on their own.
+
+### 📝 Changed
+
+#### Make `mdt` fail loudly and precisely: orphans, exit codes, machine output, and a safer `init`
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+Evaluations of the CLI showed several ways a broken setup reported success. The CLI now surfaces every problem with a location and a fix.
+
+**Exit codes.** `mdt check` exits `0` when every consumer is linked and current, `1` when a consumer is stale, names no provider, or fails to render, and `2` when validation or config errors stop the run. `mdt update` exits `1` when some consumers could not be rendered (it still updates the rest) and `2` on validation errors.
+
+**Orphan consumers fail `mdt check`.** A consumer whose name matches no provider (for example a typo such as `featrues`) used to print one unlocated warning and pass. `check` now lists each one with its location and a did-you-mean suggestion; `update` warns with the same detail.
+
+**Unused providers are warnings.** A provider without consumers no longer stops `check`, `update`, and `list` with exit `2`; it prints a warning that `--ignore-unused-blocks` silences. Warnings (unused providers, unmatched closing tags, providers outside `*.t.md` files) now print by default instead of only with `--verbose`.
+
+**New diagnostics** with help text: nested blocks inside consumers, markdown comments that look like tags but do not parse (`--ignore-invalid-names` now does what it says), unmatched closing tags, and providers outside `*.t.md` files. The unclosed-block hint now points at misspelled closing tags, and the unknown-transformer hint lists every transformer, including `if`.
+
+**Machine-readable output is complete.**
+
+- `--format json` always returns `ok`, `stale`, `stale_files`, `orphans` (with `suggestions`), `errors` (render errors), and `diagnostics` (`severity`, `code`, `file`, `line`, `column`, `message`), including when validation errors stop the check.
+- `--format github` emits `::error` for every failure (stale consumers, orphans, render errors, validation errors) and `::warning` for warnings, so validation errors now annotate pull requests too.
+- In watch mode, status lines go to stderr so JSON on stdout stays parseable.
+
+**`mdt list` always lists.** It prints every block with its line number, reports diagnostics, and only then exits `2` if there were errors, so it can be used to diagnose them.
+
+**`--path` must exist.** A mistyped `--path` used to pass every command against an empty project and create a stray `.mdt/` there; it is now an error. `mdt init` still creates the directory.
+
+**`mdt init` uses the shared core implementation.** It never modifies an existing README (of any case or extension), skips the sample provider when the project already has providers, syncs the sample through the engine, ignores `.mdt/` in git repositories, prints paths relative to the project, and always leaves the project passing `mdt check`.
+
+**`mdt doctor`** reports orphan consumers once, with locations and suggestions, keeps block checks running when a data file fails to load, stops calling unused providers a parser failure, and adds a Consumer Sync check that renders every consumer to catch template errors and stale blocks.
+
+**`mdt assist`** prints the correct setup for each client: `claude mcp add ... -- mdt mcp` and `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` with the `servers` key for GitHub Copilot in VS Code (it previously printed `mcpServers`), and CLI-plus-skill setup for Pi, which has no built-in MCP client. Every profile explains how to load the agent skill with `mdt skill` or `mdt skill --install <dir>`. JSON output adds `id`, `skill`, `mcp_config_file`, and `mcp_install_command`.
+
+**Smaller fixes:** running `mdt` without a subcommand prints help; `update --dry-run` describes what it actually prints and conflicts with `--watch`; `--verbose` prints provider paths relative to the project.
+
+**`mdt mcp --path <DIR>`** now serves that directory instead of ignoring the flag, so user-level MCP configs can pin a project.
+
+**Running from a subdirectory finds the project.** Without `--path`, every command except `mdt init` uses the nearest directory, from the current one upward, that contains `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` — like cargo and git. Running `mdt check` inside `docs/` no longer reports every consumer as an orphan.
+
+`mdt list` shows transformer arguments (`|linePrefix:"//! ":true`), and the unrendered-data warning explains that a project without `[data]` copies `{{ ... }}` literally.
+
+**CI output is complete for every failure.** `--format json` and `--format github` now also report scan failures (invalid `mdt.toml`, duplicate providers, unreadable files) instead of printing nothing on stdout, and template warnings (including unrendered `{{ ... }}` in projects without `[data]`) appear as `mdt::undefined_variables` warnings. GitHub annotation paths are relative to the working directory — the repository checkout in CI — so `mdt check --path packages/lib --format github` annotates `packages/lib/readme.md` rather than `readme.md`, and multi-line messages are escaped into a single workflow command.
+
+Upward config discovery stays inside the current git repository (and does not happen outside one), so a stray `mdt.toml` in a parent directory such as `$HOME` can never become the project root. When the root is not the current directory, commands print `note: using the mdt project at <path>`. `mdt init` warns when it creates a project nested inside another one, and init failures name the directory.
+
+### 🐛 Fixed
+
+- **`mdt init` leaves a green project and clean config.** The sample `readme.md` created by `mdt init` now contains the sample provider's content instead of a placeholder, so a freshly initialized project passes `mdt check` immediately. The generated annotated `mdt.toml` is also rebuilt: the mangled glob examples (`src/**/_.ts`, `packages/_/readme.md`) are restored to `src/**/*.ts` and `packages/*/readme.md`, and the doubled blank lines introduced by markdown formatting of the template source are gone. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #198](https://github.com/ifiokjr/mdt/pull/198)
+- **Stop watch mode from re-triggering itself.** Every scan rewrites the index cache artifact under `.mdt/cache/`, and the recursive watcher treated those writes as project changes — so each check/update scheduled another one after the debounce window, turning watch mode into a busy loop of CPU and disk churn. Watchers now ignore events inside `<root>/.mdt/`. `mdt list` also counts consumers in one pass instead of scanning the consumer list per provider. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Rewrite the documentation to match actual behavior
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #202](https://github.com/ifiokjr/mdt/pull/202)
+
+An audit ran every documented command, flag, default, and example against the CLI. The docs site, crate readmes, the annotated `mdt.toml` that `mdt init` writes, and generated doc comments now match the implementation:
+
+- `[include]` and `[templates] paths` are documented as additive (they were described as narrowing the scan), `[check] comparison = "lenient"` no longer claims to normalize tables or JSON, exclude negation examples work, and formatter patterns are documented as plain globs.
+- Exit codes (`0`/`1`/`2`), the global `--ignore-*` flags, project-root discovery, `mdt skill`, per-client `mdt assist` output, the complete JSON payload, GitHub annotations, and every quoted command output are current.
+- Source-file examples re-apply comment prefixes with `linePrefix:"...":true`, so copied examples compile.
+- Terminology is provider/consumer throughout.
+- Crate readme badges render again (link definitions were joined onto one line).
+- Links that left the book now point at GitHub, and the Pi link points at pi.dev.
+
+</details>
+
 ## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-20)
 
 ### 🐛 Fixed
