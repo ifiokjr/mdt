@@ -1,4 +1,5 @@
 mod default_mdt_toml;
+mod skill;
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -184,6 +185,7 @@ fn main() {
 		Some(Commands::Info { format }) => run_info(&args, format),
 		Some(Commands::Doctor { format }) => run_doctor(&args, format),
 		Some(Commands::Assist { assistant, format }) => run_assist(assistant, format),
+		Some(Commands::Skill { reference, install }) => run_skill(reference, install.as_deref()),
 		Some(Commands::Lsp) => run_lsp(),
 		Some(Commands::Mcp) => run_mcp(),
 		None => {
@@ -2170,6 +2172,33 @@ fn run_assist(
 				}
 			}
 		}
+	}
+
+	Ok(())
+}
+
+fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
+	let Some(skills_dir) = install else {
+		print!(
+			"{}",
+			if reference {
+				skill::REFERENCE_MD
+			} else {
+				skill::SKILL_MD
+			}
+		);
+		return Ok(());
+	};
+
+	let written = skill::install(skills_dir).map_err(|error| {
+		format!(
+			"failed to install the mdt skill into {}: {error}",
+			display_path(skills_dir.join(skill::SKILL_DIR_NAME))
+		)
+	})?;
+	println!("Installed the mdt skill:");
+	for path in written {
+		println!("  {}", display_path(path));
 	}
 
 	Ok(())

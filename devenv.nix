@@ -220,9 +220,18 @@ in
         fix:clippy
         mdt update
         fix:format
+        fix:skill
         fix:actions
       '';
       description = "Fix all autofixable problems.";
+      binary = "bash";
+    };
+    "fix:skill" = {
+      exec = ''
+        set -e
+        cp "$DEVENV_ROOT"/packages/m-d-t__skills/skills/mdt/*.md "$DEVENV_ROOT/mdt_cli/skill/"
+      '';
+      description = "Copy the canonical agent skill into the CLI crate for `mdt skill`.";
       binary = "bash";
     };
     "fix:format" = {

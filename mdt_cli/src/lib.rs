@@ -17,7 +17,7 @@ use clap::ValueEnum;
 	              Create a template file\n  mdt update  Sync all consumer blocks\n  mdt check   \
 	              Verify everything is up to date\n  mdt info    Inspect project diagnostics\n  \
 	              mdt doctor  Run project health checks\n  mdt assist  Print assistant setup \
-	              snippets"
+	              snippets\n  mdt skill   Print the agent skill for AI coding assistants"
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct MdtCli {
@@ -152,6 +152,27 @@ pub enum Commands {
 		/// Output format for the setup profile.
 		#[arg(long, value_enum, default_value_t = AssistOutputFormat::Text)]
 		format: AssistOutputFormat,
+	},
+	/// Print the mdt agent skill so AI coding agents can learn mdt.
+	///
+	/// Prints `SKILL.md`, the same skill published as `@m-d-t/skills`,
+	/// embedded in this binary so it always matches the installed version.
+	/// An agent without the skill installed can run `mdt skill` to load it,
+	/// then `mdt skill --reference` for the full reference.
+	///
+	/// Use `--install <DIR>` to write the skill into an agent skills
+	/// directory, for example `.claude/skills` or `.agents/skills`.
+	Skill {
+		/// Print the detailed reference (`REFERENCE.md`) instead of
+		/// `SKILL.md`.
+		#[arg(long, default_value_t = false, conflicts_with = "install")]
+		reference: bool,
+
+		/// Write `SKILL.md` and `REFERENCE.md` to `<DIR>/mdt/` instead of
+		/// printing, replacing any previous copy. Relative paths resolve
+		/// against the current directory.
+		#[arg(long, value_name = "DIR")]
+		install: Option<PathBuf>,
 	},
 	/// Start the mdt language server (LSP).
 	///
