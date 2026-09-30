@@ -1,20 +1,20 @@
 # Migration Walkthrough
 
-This walkthrough adopts `mdt` in a project that already has documentation drift. The example mirrors reality: the same installation instructions appear in a README, a Rust doc comment, and a docs page.
+This walkthrough adopts mdt in a project that already has documentation drift: the same installation instructions appear in a README, a Rust doc comment, and a docs page. Every step below can be run as written.
 
 ## Before: three copies to maintain
 
-Imagine these three files already exist.
-
-### `readme.md`
+`readme.md`:
 
 ```markdown
+# my-lib
+
 ## Installation
 
 npm install my-lib
 ```
 
-### `src/lib.rs`
+`src/lib.rs`:
 
 ```rust
 //! ## Installation
@@ -22,29 +22,47 @@ npm install my-lib
 //! npm install my-lib
 ```
 
-### `docs/src/getting-started.md`
+`docs/src/getting-started.md`:
 
 ```markdown
+# Getting started
+
 ## Installation
 
 npm install my-lib
 ```
 
-That seems harmless until the command changes to `npm install my-lib@latest`, the project switches to `pnpm`, or you want to add a second setup note. Now you have three edits to make, and one of them eventually gets missed.
+That seems harmless until the command changes to `npm install my-lib@latest`, the project switches to `pnpm`, or you add a second setup note. Now you have three edits to make, and one of them eventually gets missed.
 
-## After: one source, three targets
+## After: one provider, three consumers
 
-### 1. Initialize `mdt`
+### 1. Initialize mdt
+
+From the project root:
 
 ```sh
 mdt init
 ```
 
-This creates a starter template file at `.templates/template.t.md`.
+Output:
 
-### 2. Define one source
+```text
+Created mdt.toml
+Created .templates/template.t.md with a sample `greeting` provider
+Left the existing readme.md unchanged
+Added the `.mdt/` cache directory to .gitignore
 
-Add a source block to `.templates/template.t.md`:
+Next steps:
+  1. Add a consumer to readme.md: <!-- {=greeting} --> <!-- {/greeting} -->
+  2. Run `mdt update` to fill it in (until then `mdt check` warns that `greeting` has no consumers)
+  3. Replace the sample in .templates/template.t.md with your own providers
+```
+
+The `.gitignore` line only appears in a git repository. Your existing README is never modified.
+
+### 2. Replace the sample provider
+
+Replace the whole contents of `.templates/template.t.md` with your own provider:
 
 ```markdown
 <!-- {@install} -->
@@ -56,99 +74,139 @@ npm install my-lib@latest
 <!-- {/install} -->
 ```
 
-### 3. Replace the README copy with a target
+Delete the sample `greeting` provider rather than keeping it next to yours. A provider with no consumers still works, but every `mdt check` and `mdt update` prints an `mdt::unused_provider` warning for it.
+
+### 3. Wrap each copy in consumer tags
+
+Put consumer tags around each existing copy. You do not need to delete the old text: `mdt update` replaces everything between the tags.
+
+`readme.md`:
 
 ```markdown
+# my-lib
+
 <!-- {=install} -->
 
-Old copied content
+## Installation
+
+npm install my-lib
 
 <!-- {/install} -->
 ```
 
-### 4. Replace the docs-page copy with a target
+`docs/src/getting-started.md`:
 
 ```markdown
+# Getting started
+
 <!-- {=install} -->
 
-Old copied content
+## Installation
+
+npm install my-lib
 
 <!-- {/install} -->
 ```
 
-### 5. Replace the Rust doc comment with a transformed target
+`src/lib.rs` needs transformers so the markdown becomes Rust doc comments:
 
 ```rust
 //! <!-- {=install|trim|linePrefix:"//! ":true} -->
-//! Old copied content
+//! ## Installation
+//!
+//! npm install my-lib
 //! <!-- {/install} -->
 ```
 
-If your project uses source-file targets heavily, add padding settings in `mdt.toml` so formatters do not collapse content awkwardly:
+### 4. See what is out of date
 
-```toml
-[padding]
-before = 0
-after = 0
+```sh
+mdt check
 ```
 
-### 6. Sync everything
+Output:
+
+```text
+Check failed.
+  stale consumers: 3
+
+Stale consumers:
+  block `install` at docs/src/getting-started.md:3:1
+  block `install` at readme.md:3:1
+  block `install` at src/lib.rs:1:5
+
+3 consumer block(s) are out of date. Run `mdt update`.
+```
+
+Add `--diff` to see the exact changes.
+
+### 5. Sync everything
 
 ```sh
 mdt update
 ```
 
-After the update, all three places render from the same source.
+Output:
+
+```text
+Updated 3 block(s) in 3 file(s).
+```
+
+All three files now render from the one provider. `src/lib.rs` becomes:
+
+```rust
+//! <!-- {=install|trim|linePrefix:"//! ":true} -->
+//! ## Installation
+//!
+//! npm install my-lib@latest
+//! <!-- {/install} -->
+```
+
+Running `mdt check` again prints `Check passed: all consumer blocks are up to date.`
 
 ## What changed structurally
 
-### Before
+Before:
 
 - each surface owned its own copy
 - wording changes required repeated manual edits
-- CI could not reliably detect drift
+- CI could not detect drift
 
-### After
+After:
 
-- the source in `.templates/template.t.md` becomes the source of truth
-- each surface keeps only a target tag
-- `mdt check` can fail CI when a target is stale
+- the provider in `.templates/template.t.md` is the single source of truth
+- each surface keeps only a consumer tag pair
+- `mdt check` fails CI when a consumer is stale
 
 ## The day-two workflow
 
-Once the migration is done, the maintenance loop is simple:
-
-1. edit the source block
-2. run `mdt update`
-3. run `mdt check`
-4. commit the synchronized result
+1. Edit the provider.
+2. Run `mdt update`.
+3. Run `mdt check`.
+4. Commit the synchronized result.
 
 That is the real adoption win: a repeatable workflow that keeps drift from coming back, not a pile of one-off edits.
 
-## A small migration strategy that works well
+## A migration strategy that works
 
-Do not try to template your entire docs set in one pass.
+Do not template your entire docs set in one pass. Start with content that is:
 
-Start with content that is:
-
-- repeated in 2 or more places
+- repeated in two or more places
 - easy to recognize when it drifts
 - expensive or embarrassing when it diverges
 
 Good first candidates:
 
 - installation instructions
-- support policy / compatibility notes
+- support policy and compatibility notes
 - API overview paragraphs
-- badge/link sections
+- badge and link sections
 - CLI usage summaries
 
 ## How to know the migration paid off
 
-A migration is usually worth it when one of these becomes true:
-
-- you can point to a source that replaced three or more manual copies
-- CI now catches stale docs that previously slipped through
+- one provider replaced three or more manual copies
+- CI catches stale docs that previously slipped through
 - README, source docs, and docs pages no longer need separate wording updates
 
-If you want to see this pattern in a real codebase, inspect the repo-backed examples in [Proof of Value](./proof-of-value.md).
+To see this pattern in a real codebase, read [Proof of Value](./proof-of-value.md).

@@ -1,10 +1,10 @@
 # Data Interpolation
 
-mdt can pull values from project files into your templates: `package.json`, `Cargo.toml`, YAML configs, and more. Version numbers, package names, and other metadata stay in one place and flow into your documentation automatically.
+mdt can pull values from project files and commands into providers: `package.json`, `Cargo.toml`, YAML configs, a `VERSION` file, `git` output, and more. Version numbers, package names, and other metadata stay in one place and flow into your docs.
 
 ## Setup
 
-Add a `[data]` section to your `mdt.toml`:
+Add a `[data]` section to `mdt.toml`. Each key becomes a namespace:
 
 ```toml
 [data]
@@ -13,13 +13,11 @@ release = { path = "release-info", format = "json" }
 version = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
-This maps `package.json` to the namespace `package`.
+- A string is a file path; the parser comes from the extension.
+- `{ path, format }` names the parser explicitly, for files without a useful extension.
+- `{ command, format, watch }` runs a command and parses its stdout. See [Script-backed data sources](#script-backed-data-sources).
 
-- String values are backward-compatible and infer format from extension.
-- Typed values (`{ path, format }`) let you explicitly declare a format for files without extensions.
-- Script values (`{ command, format, watch }`) execute commands and optionally cache stdout based on watched files.
-
-If `package.json` contains:
+Paths are relative to the project root. With this `package.json`:
 
 ```json
 {
@@ -29,74 +27,212 @@ If `package.json` contains:
 }
 ```
 
-Then in your template files you can write:
+a provider can use the values:
 
-```
+```text
 <!-- {@install} -->
 
 Install `{{ package.name }}` version {{ package.version }}:
 
-  npm install {{ package.name }}@{{ package.version }}
+    npm install {{ package.name }}@{{ package.version }}
 
 {{ package.description }}.
 
 <!-- {/install} -->
 ```
 
-After `mdt update`, targets of `install` will contain:
+After `mdt update`, every `install` consumer contains:
 
-```
+```text
 Install `my-lib` version 1.2.3:
 
-  npm install my-lib@1.2.3
+    npm install my-lib@1.2.3
 
 A great library.
 ```
 
-## Supported data formats
+## Supported formats
 
-| Format / Extension | Parser          |
-| ------------------ | --------------- |
-| `text`, `.txt`     | Raw text string |
-| `json`, `.json`    | JSON            |
-| `toml`, `.toml`    | TOML            |
-| `yaml`, `.yaml`    | YAML            |
-| `yml`, `.yml`      | YAML            |
-| `kdl`, `.kdl`      | KDL             |
-| `ini`, `.ini`      | INI             |
+| Format                               | Extensions      | Notes                                                    |
+| ------------------------------------ | --------------- | -------------------------------------------------------- |
+| `json`                               | `.json`         |                                                          |
+| `toml`                               | `.toml`         | Integers stay integers (`8080`, not `8080.0`)            |
+| `yaml`, `yml`                        | `.yaml`, `.yml` |                                                          |
+| `kdl`                                | `.kdl`          | Repeated nodes with the same name become an array        |
+| `ini`                                | `.ini`          |                                                          |
+| `text` (also `string`, `raw`, `txt`) | `.txt`          | The whole file as one string, minus one trailing newline |
 
-All formats convert to a common structure internally. You access values with dot notation regardless of the source format.
+Every format becomes the same nested structure, so you access values with dot notation whatever the source. A missing file, an unsupported format, or a failing command stops the run with exit status 2.
 
 ## Script-backed data sources
 
 <!-- {=mdtScriptDataSourcesGuide} -->
 
-`[data]` entries can run shell commands and use stdout as template data. This is useful for values that come from tooling (for example Nix, git metadata, or generated version files).
+A `[data]` entry can run a shell command and parse its stdout. Use it for values that come from tooling, such as git metadata, Nix, or a generated version file.
 
 ```toml
 [data]
 release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 ```
 
-- `command`: shell command executed from the project root.
-- `format`: parser for stdout (`text`, `json`, `toml`, `yaml`, `yml`, `kdl`, `ini`).
-- `watch`: files that control cache invalidation.
-
-When `watch` files are unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json` instead of re-running the command.
+- `command`: shell command, run from the project root.
+- `format`: parser for stdout: `text` (also `string`, `raw`, `txt`), `json`, `toml`, `yaml`, `yml`, `kdl`, or `ini`. Text drops one trailing newline, so `cat VERSION` renders `1.2.3`, not `1.2.3` plus a line break.
+- `watch`: files whose changes invalidate the cached output.
 
 <!-- {/mdtScriptDataSourcesGuide} -->
 
 <!-- {=mdtScriptDataSourcesNotes} -->
 
-- Script outputs are cached per namespace, command, format, and watch list.
-- If `watch` is empty, mdt re-runs the script every load (no cache hit).
-- A non-zero script exit status fails data loading with an explicit error.
+- Output is cached in `.mdt/cache/data-v1.json`, keyed by namespace, command, format, and watch list. mdt reuses it while the watched files are unchanged.
+- Caching needs every `watch` entry to be an existing file. Without `watch`, or when an entry is missing, a glob, or a directory, the command runs on every mdt run.
+- A command that exits non-zero fails the run with `mdt::data_script` (exit status 2).
 
 <!-- {/mdtScriptDataSourcesNotes} -->
 
+## Examples
+
+### TOML
+
+```toml
+# mdt.toml
+[data]
+cargo = "Cargo.toml"
+```
+
+```toml
+# Cargo.toml
+[package]
+name = "my-crate"
+version = "0.1.0"
+edition = "2024"
+```
+
+```text
+<!-- {@crateInfo} -->
+
+**{{ cargo.package.name }}**: Rust edition {{ cargo.package.edition }}
+
+<!-- {/crateInfo} -->
+```
+
+### YAML
+
+```toml
+# mdt.toml
+[data]
+config = "config.yaml"
+```
+
+```yaml
+# config.yaml
+app:
+  name: My App
+  port: 8080
+features:
+  - auth
+  - logging
+```
+
+```text
+<!-- {@appConfig} -->
+
+{{ config.app.name }} runs on port {{ config.app.port }}.
+
+<!-- {/appConfig} -->
+```
+
+### Several namespaces in one provider
+
+Each namespace is independent, and one provider can use several:
+
+```text
+<!-- {@versions} -->
+
+| Package | Version                     |
+| ------- | --------------------------- |
+| npm     | {{ package.version }}       |
+| crate   | {{ cargo.package.version }} |
+
+<!-- {/versions} -->
+```
+
+## Template syntax
+
+Providers are rendered with [minijinja](https://docs.rs/minijinja), so its variables, conditionals, loops, and built-in filters are available.
+
+Variables use dot notation:
+
+```text
+{{ namespace.key }}
+{{ namespace.nested.deeply.value }}
+```
+
+Conditionals and loops:
+
+```text
+{% if package.private %}
+This is a private package.
+{% else %}
+Available on npm.
+{% endif %}
+
+{%- for feature in config.features %}
+- {{ feature }}
+{%- endfor %}
+```
+
+Tags such as `{% if %}` leave their line breaks in the output. Use `{%-` and `-%}` to trim the whitespace around a tag, as in the loop above, which renders one list item per line.
+
+Filters:
+
+```text
+{{ package.name | upper }}
+{{ package.homepage | default("https://example.com") }}
+{{ config.features | join(", ") }}
+```
+
+Only minijinja's built-in filters are available, such as `upper`, `lower`, `title`, `trim`, `replace`, `join`, `length`, and `default`. Other filters, such as `truncate`, are not available; an unknown filter is a render error for that provider.
+
+An undefined variable renders as empty text, and `mdt check` and `mdt update` print a warning that names it.
+
+## Literal braces
+
+Once `[data]` is configured, **every** provider is rendered as a template, including ones that never mention your data. Text that looks like template syntax, such as GitHub Actions expressions or Handlebars examples, is then interpreted. Wrap it in a raw block:
+
+```text
+{% raw %}token: ${{ secrets.NPM_TOKEN }}{% endraw %}
+```
+
+This renders `token: ${{ secrets.NPM_TOKEN }}`.
+
+## When rendering happens
+
+Template variables are rendered before transformers run:
+
+```text
+Provider content
+  → render {{ variables }} with minijinja
+  → apply |transformers
+  → replace consumer content
+```
+
+Transformers see the rendered text. If `{{ package.name }}` renders to `my-lib`, a `|trim` transformer trims the rendered result.
+
+## No data, no rendering
+
+Without a `[data]` section, mdt skips template rendering entirely and `{{ ... }}` text is copied unchanged. Projects that do not use data interpolation never need to escape braces.
+
+If a provider that has consumers uses namespaced variables anyway, `mdt check` and `mdt update` warn:
+
+```text
+warning: provider block `a` in .templates/t.t.md uses template variable(s) pkg.version, but this project has no `[data]`, so the text is copied without rendering; declare the namespace(s) under `[data]` in this project's mdt.toml
+```
+
+This usually means a sub-project reuses shared providers without declaring the data they need. Add the namespaces to that project's `[data]`; paths may point outside the project, such as `pkg = "../../package.json"`.
+
 ## Inline interpolation patterns
 
-Inline blocks give you one local value from your data scope without creating a reusable source.
+Inline blocks render one value from your data in place, with no provider.
 
 <!-- {=mdtInlineBlocksExamples} -->
 
@@ -131,142 +267,6 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 Release: <!-- {~releaseValue:"{{ release }}"} -->0.0.0<!-- {/releaseValue} -->
 ```
 
-When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+The text format drops the file's trailing newline, so the value stays on one line. While `VERSION` is unchanged, mdt reuses the cached output in `.mdt/cache/data-v1.json`.
 
 <!-- {/mdtInlineBlocksExamples} -->
-
-### TOML example
-
-```toml
-# mdt.toml
-[data]
-cargo = "Cargo.toml"
-```
-
-```toml
-# Cargo.toml
-[package]
-name = "my-crate"
-version = "0.1.0"
-edition = "2024"
-```
-
-Template usage:
-
-```
-<!-- {@crateInfo} -->
-
-**{{ cargo.package.name }}** — Rust edition {{ cargo.package.edition }}
-
-<!-- {/crateInfo} -->
-```
-
-### YAML example
-
-```toml
-# mdt.toml
-[data]
-config = "config.yaml"
-```
-
-```yaml
-# config.yaml
-app:
-  name: My App
-  port: 8080
-features:
-  - auth
-  - logging
-```
-
-Template usage:
-
-```
-<!-- {@appConfig} -->
-
-{{ config.app.name }} runs on port {{ config.app.port }}.
-
-<!-- {/appConfig} -->
-```
-
-## Multiple data sources
-
-You can map as many files as you need:
-
-```toml
-[data]
-package = "package.json"
-cargo = "Cargo.toml"
-config = "config.yaml"
-meta = "metadata.kdl"
-```
-
-Each namespace is independent. Use them together in the same template:
-
-```
-<!-- {@versions} -->
-
-| Package | Version                     |
-| ------- | --------------------------- |
-| npm     | {{ package.version }}       |
-| crate   | {{ cargo.package.version }} |
-
-<!-- {/versions} -->
-```
-
-## Template syntax
-
-mdt uses [minijinja](https://docs.rs/minijinja) for template rendering. The full minijinja syntax is available:
-
-### Variables
-
-```
-{{ namespace.key }}
-{{ namespace.nested.deeply.value }}
-```
-
-Undefined variables render as empty strings (mdt uses minijinja's "chainable" undefined behavior).
-
-### Conditionals
-
-```
-{% if package.private %}
-This is a private package.
-{% else %}
-Available on npm.
-{% endif %}
-```
-
-### Loops
-
-```
-{% for feature in config.features %}
-- {{ feature }}
-{% endfor %}
-```
-
-### Filters
-
-minijinja's built-in filters work alongside mdt's transformers:
-
-```
-{{ package.name | upper }}
-{{ package.description | truncate(50) }}
-```
-
-## When rendering happens
-
-Template variables are rendered **before** transformers are applied. The flow is:
-
-```
-Provider content
-  → Render {{ variables }} via minijinja
-  → Apply |transformers
-  → Replace target content
-```
-
-This means transformers operate on the already-rendered content. For example, if `{{ package.name }}` renders to `my-lib`, then a `|trim` transformer trims the rendered result.
-
-## No data, no rendering
-
-If your project has no `mdt.toml` or no `[data]` section, template variable rendering is skipped entirely. Content containing `{{ }}` syntax passes through unchanged. This keeps mdt fully backwards-compatible for projects that don't need data interpolation.

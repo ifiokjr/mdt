@@ -86,7 +86,7 @@ Run `mdt update` and all three files are in sync. Run `mdt check` in CI and drif
 
 <!-- {=mdtCliInstall} -->
 
-- Install with npm:
+- Install the prebuilt binary with npm:
 
 ```sh
 npm install -g @m-d-t/cli
@@ -95,11 +95,11 @@ npm install -g @m-d-t/cli
 - Or run it without installing:
 
 ```sh
-npx @m-d-t/cli --help
+npx -y @m-d-t/cli --help
 ```
 
-- Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest)
-- Or install with Cargo:
+- Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest).
+- Or build from source with Cargo (slower):
 
 ```sh
 cargo install mdt_cli
@@ -118,59 +118,71 @@ mkdir my-project && cd my-project
 mdt init
 ```
 
-This creates `.templates/template.t.md` (your source blocks) and `mdt.toml` (config).
+`mdt init` creates `mdt.toml`, a sample `greeting` provider in `.templates/template.t.md`, and, because the project has no README yet, a `readme.md` whose `greeting` consumer is already in sync.
 
-### 2. Define a source block
+### 2. Edit the provider
 
 In `.templates/template.t.md`:
 
 ```markdown
 <!-- {@greeting} -->
 
-Hello from mdt!
+Hello from mdt! Edit me once, update everywhere.
 
 <!-- {/greeting} -->
 ```
 
-### 3. Use it in your README
+### 3. Reuse it
 
-In `readme.md`:
+Add a consumer to any other markdown file, for example `docs/intro.md`:
 
 ```markdown
 <!-- {=greeting} -->
 <!-- {/greeting} -->
 ```
 
-### 4. Sync
+### 4. Sync and verify
 
 ```sh
 mdt update
+mdt check
 ```
 
-Every target block named `greeting` now has the same content. Run `mdt check` in CI to catch drift.
+`mdt update` writes the provider's content into every `greeting` consumer. `mdt check` exits non-zero when a consumer is out of date or names no provider, so run it in CI.
 
 <!-- {/mdtQuickStart} -->
 
 ## Learn More
 
+- [Quick Start](./docs/src/getting-started/quick-start.md)
 - [Template Syntax](./docs/src/reference/template-syntax.md)
 - [CLI Reference](./docs/src/reference/cli.md)
 - [Data Interpolation](./docs/src/guide/data-interpolation.md)
 - [Transformers](./docs/src/reference/transformers.md)
+- [Configuration](./docs/src/guide/configuration.md)
 - [CI Integration](./docs/src/guide/ci-integration.md)
 - [Source File Support](./docs/src/guide/source-files.md)
 - [Proof of Value](./docs/src/getting-started/proof-of-value.md)
 - [Migration Walkthrough](./docs/src/getting-started/migration-walkthrough.md)
 
-## Agent Skill Package
+## AI Coding Assistants
 
-If you use a coding agent that supports the [Agent Skills standard](https://agentskills.io) (like [Pi](https://github.com/badlogic/pi)), install the official mdt skill:
+The `mdt` binary carries an agent skill that teaches assistants the tag syntax, transformers, configuration, and workflow for the installed version. Any agent that can run shell commands can load it:
 
 ```sh
-pi install npm:@m-d-t/skills
+mdt skill              # print the skill
+mdt skill --reference  # print the detailed reference
 ```
 
-The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teaches your agent template syntax, MCP tools, CLI workflows, transformer patterns, and configuration, so it can manage your project's documentation templates end to end.
+Or install it where your agent looks for skills:
+
+```sh
+mdt skill --install .claude/skills   # Claude Code
+mdt skill --install .agents/skills   # Codex and other agents
+mdt skill --install .github/skills   # GitHub Copilot
+```
+
+The same skill is published as [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) for [Pi](https://pi.dev) (`pi install npm:@m-d-t/skills`). For MCP setup, run `mdt assist <claude|cursor|copilot|pi|generic>`; see [Assistant Setup](./docs/src/getting-started/assistant-setup.md).
 
 ## Crates
 
@@ -185,16 +197,13 @@ The [`@m-d-t/skills`](https://www.npmjs.com/package/@m-d-t/skills) package teach
 
 <!-- {=mdtContributing} -->
 
-[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
-
-To load the environment automatically, [install direnv](https://devenv.sh/automatic-shell-activation/) and trust the repo's `.envrc`.
+[`devenv`](https://devenv.sh/) provides a reproducible development environment for this project. Follow its [getting started instructions](https://devenv.sh/getting-started/), then enter the environment from the repository root:
 
 ```bash
-# direnv blocks the `.envrc` until you trust it.
-direnv allow .
+devenv shell
 ```
 
-The `nix` commands should now be on your PATH. Run `install:all` to install the tooling and dependencies.
+Run `install:all` to install the remaining tooling. Repository commands such as `build:all`, `test:all`, `lint:all`, and `fix:all` are available inside the shell.
 
 <!-- {/mdtContributing} -->
 

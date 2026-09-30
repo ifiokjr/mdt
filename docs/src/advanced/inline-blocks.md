@@ -1,22 +1,20 @@
 # Inline Blocks
 
-Inline blocks add source-free interpolation for small dynamic values that still need to stay synchronized.
+Inline blocks render a small template in place, with no provider. They need a `[data]` section in `mdt.toml`; without one, the template argument is written as-is.
 
 ## Why this exists
 
 <!-- {=mdtInlineBlocksGuide} -->
 
-Inline blocks interpolate small dynamic values in place, without a separate source. Typical uses: version numbers, toolchain values, environment metadata, short computed strings.
+Inline blocks render a small template in place, with no provider. Use them for short values such as version numbers, toolchain versions, or other metadata from your `[data]` sources.
 
-Inline blocks render minijinja template content from the block's first argument:
+The block's first argument is a minijinja template:
 
 ```markdown
 <!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->
 ```
 
-During `mdt update`, mdt evaluates the template argument with your `[data]` context, then replaces the content between the opening and closing tags.
-
-Because inline blocks are source-free, they fit one-off values that still need to stay in sync.
+`mdt update` renders the argument with your `[data]` context and replaces the text between the opening and closing tags. `mdt check` reports the block as stale when that text is out of date.
 
 <!-- {/mdtInlineBlocksGuide} -->
 
@@ -24,12 +22,13 @@ Because inline blocks are source-free, they fit one-off values that still need t
 
 <!-- {=mdtInlineBlocksLimits} -->
 
-- Inline blocks must include a first argument that is the template string to render.
-- Inline blocks do not resolve source content; everything comes from the inline template argument and current data context.
-- Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
-- In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
-- Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
-- In source files, inline tags follow source scanning rules and respect `[exclude] markdown_codeblocks` filtering.
+- An inline block needs a first argument: the template string to render.
+- Inline blocks do not read a provider; everything comes from the template argument and the `[data]` context. Without `[data]`, the argument is written as-is.
+- Transformers (`|trim`, `|code`, and so on) run after the template is rendered.
+- Padding never applies to inline blocks, so they stay on one line.
+- In markdown, inline blocks work in paragraphs, lists, headings, and table cells. In table cells, do not add transformers: GFM splits cells on `|`, so the tag is not recognized.
+- Tags inside fenced code blocks and inline code spans in markdown are examples, not live blocks.
+- In source files, inline tags follow the source scanning rules, including `[exclude] markdown_codeblocks`.
 
 <!-- {/mdtInlineBlocksLimits} -->
 
@@ -68,11 +67,17 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 Release: <!-- {~releaseValue:"{{ release }}"} -->0.0.0<!-- {/releaseValue} -->
 ```
 
-When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+The text format drops the file's trailing newline, so the value stays on one line. While `VERSION` is unchanged, mdt reuses the cached output in `.mdt/cache/data-v1.json`.
 
 <!-- {/mdtInlineBlocksExamples} -->
 
-## Comparison to sources
+## Table cells
 
-- Use `{@name} ... {/name}` when the same content should be reused in many places.
-- Use `{~name:"..."} ... {/name}` for local dynamic output without a dedicated source block.
+GFM splits table cells on `|`, so an inline tag with transformers inside a cell is cut apart and not recognized, and its closing tag becomes a `mdt::unmatched_closing_tag` error. In table cells, use inline blocks without transformers, as in the table example above.
+
+## Inline blocks or providers?
+
+- Use a provider (`{@name}` in a `*.t.md` file) and consumers (`{=name}`) when the same content appears in several places.
+- Use an inline block (`{~name:"..."}`) for a one-off value computed from `[data]`.
+
+An inline block without a template argument is a render error: `mdt update` skips it and exits with code 1.

@@ -8,21 +8,29 @@
 
 ### CLI Commands
 
-- `mdt init [--path <dir>]` — Create a sample `.templates/template.t.md` file and starter `mdt.toml`.
-- `mdt check [--path <dir>] [--verbose]` — Verify all target blocks are up-to-date. Exits non-zero if any are stale.
-- `mdt update [--path <dir>] [--verbose] [--dry-run]` — Update all target blocks with latest source content.
-- `mdt list [--path <dir>]` — List all provider and target blocks with their link status.
-- `mdt info [--path <dir>]` — Print project diagnostics and cache observability metrics.
-- `mdt doctor [--path <dir>] [--format text|json]` — Run health checks with hints for config, data, layout, and cache issues.
-- `mdt assist <assistant> [--format text|json]` — Print an official assistant setup profile with MCP config and repo-local guidance.
-- `mdt lsp` — Start the mdt language server (LSP) for editor integration. Communicates over stdin/stdout.
-- `mdt mcp` — Start the mdt MCP server for AI assistants. Communicates over stdin/stdout.
+- `mdt init` — Set up a project, adding only what is missing: an annotated `mdt.toml`, a sample provider in `.templates/template.t.md`, a synced `readme.md` when the project has no README, and a `.mdt/` entry in `.gitignore` in git repositories.
+- `mdt check [--diff] [--format text|json|github] [--watch]` — Verify every consumer is linked to a provider and up to date. Exits 0 when in sync, 1 for stale or orphan consumers and render errors, 2 for validation or config errors.
+- `mdt update [--dry-run] [--watch]` — Write the latest provider content into every consumer.
+- `mdt list` — List providers and consumers with their locations and link status.
+- `mdt info [--format text|json]` — Print a project summary, diagnostic totals, and cache metrics.
+- `mdt doctor [--format text|json]` — Run health checks with fix hints. Exits 1 when a check fails.
+- `mdt skill [--reference] [--install <DIR>]` — Print the agent skill for AI coding assistants, or install it into a skills directory.
+- `mdt assist <generic|claude|cursor|copilot|pi> [--format text|json]` — Print MCP setup and skill guidance for an assistant.
+- `mdt lsp` — Start the language server over stdin/stdout.
+- `mdt mcp` — Start the MCP server over stdin/stdout.
+
+### Global Options
+
+- `-p, --path <DIR>` — Project root (default: the current directory). Must exist, except for `mdt init`.
+- `-v, --verbose` — Print more detail, including warnings silenced by `--ignore-*` flags.
+- `--no-color` — Disable colored output (`NO_COLOR` works too).
+- `--ignore-unclosed-blocks`, `--ignore-unused-blocks`, `--ignore-invalid-names`, `--ignore-invalid-transformers` — Skip one class of diagnostics.
 
 ### Diagnostics Workflow
 
-- Run `mdt info` first to inspect project shape, diagnostics totals, and cache reuse telemetry.
-- Run `mdt doctor` when you need actionable health checks and remediation hints (config/data/layout/cache).
-- Use `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency issues and comparing reuse behavior.
+- Run `mdt info` to inspect project shape, diagnostic totals, and cache reuse.
+- Run `mdt doctor` for health checks with remediation hints (config, data, layout, sync, cache).
+- Set `MDT_CACHE_VERIFY_HASH=1` when troubleshooting cache consistency, and `MDT_LOG=debug` for debug logs on stderr.
 
 <!-- {/mdtCliUsage} -->
 
@@ -30,7 +38,7 @@
 
 ### Template Syntax
 
-**Source tag** (defines a template block in `*.t.md` definition files):
+**Provider** (defines content; only recognized in `*.t.md` files):
 
 ```markdown
 <!-- {@blockName} -->
@@ -40,7 +48,7 @@ Content to inject
 <!-- {/blockName} -->
 ```
 
-**Target tag** (marks where content should be injected):
+**Consumer** (its content is replaced by `mdt update`):
 
 ```markdown
 <!-- {=blockName} -->
@@ -50,7 +58,7 @@ This content gets replaced
 <!-- {/blockName} -->
 ```
 
-**Inline tag** (source-free interpolation using configured data):
+**Inline block** (renders its template argument in place; needs `[data]` in `mdt.toml`):
 
 ```markdown
 Current version: <!-- {~version:"{{ "{{" }} package.version {{ "}}" }}"} -->0.0.0<!-- {/version} -->
@@ -62,10 +70,10 @@ Current version: <!-- {~version:"{{ "{{" }} package.version {{ "}}" }}"} -->0.0.
 | mdt_cli  | <!-- {~cliVersion:"{{ "{{" }} package.version {{ "}}" }}"} -->0.0.0<!-- {/cliVersion} --> |
 ```
 
-**Filters and pipes:** Template values support pipe-delimited transformers:
+**Transformers** change the content on its way into a consumer, applied left to right:
 
 ```markdown
-<!-- {=block|prefix:"\n"|indent:"  "} -->
+<!-- {=blockName|trim|linePrefix:"/// ":true} -->
 ```
 
 Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
@@ -86,28 +94,27 @@ Content to inject
 
 <!-- {@mdtInlineBlocksGuide} -->
 
-Inline blocks interpolate small dynamic values in place, without a separate source. Typical uses: version numbers, toolchain values, environment metadata, short computed strings.
+Inline blocks render a small template in place, with no provider. Use them for short values such as version numbers, toolchain versions, or other metadata from your `[data]` sources.
 
-Inline blocks render minijinja template content from the block's first argument:
+The block's first argument is a minijinja template:
 
 ```markdown
 <!-- {~version:"{{ "{{" }} pkg.version {{ "}}" }}"} -->0.0.0<!-- {/version} -->
 ```
 
-During `mdt update`, mdt evaluates the template argument with your `[data]` context, then replaces the content between the opening and closing tags.
-
-Because inline blocks are source-free, they fit one-off values that still need to stay in sync.
+`mdt update` renders the argument with your `[data]` context and replaces the text between the opening and closing tags. `mdt check` reports the block as stale when that text is out of date.
 
 <!-- {/mdtInlineBlocksGuide} -->
 
 <!-- {@mdtInlineBlocksLimits} -->
 
-- Inline blocks must include a first argument that is the template string to render.
-- Inline blocks do not resolve source content; everything comes from the inline template argument and current data context.
-- Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
-- In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
-- Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
-- In source files, inline tags follow source scanning rules and respect `[exclude] markdown_codeblocks` filtering.
+- An inline block needs a first argument: the template string to render.
+- Inline blocks do not read a provider; everything comes from the template argument and the `[data]` context. Without `[data]`, the argument is written as-is.
+- Transformers (`|trim`, `|code`, and so on) run after the template is rendered.
+- Padding never applies to inline blocks, so they stay on one line.
+- In markdown, inline blocks work in paragraphs, lists, headings, and table cells. In table cells, do not add transformers: GFM splits cells on `|`, so the tag is not recognized.
+- Tags inside fenced code blocks and inline code spans in markdown are examples, not live blocks.
+- In source files, inline tags follow the source scanning rules, including `[exclude] markdown_codeblocks`.
 
 <!-- {/mdtInlineBlocksLimits} -->
 
@@ -144,6 +151,6 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 Release: <!-- {~releaseValue:"{{ "{{" }} release {{ "}}" }}"} -->0.0.0<!-- {/releaseValue} -->
 ```
 
-When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+The text format drops the file's trailing newline, so the value stays on one line. While `VERSION` is unchanged, mdt reuses the cached output in `.mdt/cache/data-v1.json`.
 
 <!-- {/mdtInlineBlocksExamples} -->

@@ -1,42 +1,42 @@
 # Installation
 
-## Recommended for Node.js users
+## npm (recommended)
 
-Install the CLI from npm:
+Install the CLI globally:
 
 ```sh
 npm install -g @m-d-t/cli
 ```
 
-This installs the `mdt` command and pulls in the prebuilt binary package that matches your platform.
+This installs the `mdt` command with a prebuilt binary for your platform (macOS, Linux, and Windows on x64 and arm64). It needs Node.js 18 or later, but no Rust toolchain.
 
-You can also run it without a global install:
+Or run it without installing:
 
 ```sh
-npx @m-d-t/cli --help
+npx -y @m-d-t/cli --help
 ```
 
-This path fits JavaScript and TypeScript projects that already use npm and do not want to install the Rust toolchain.
+Pin the version in CI so every run uses the same binary:
 
-## Recommended for most non-Rust users
+```sh
+npx -y @m-d-t/cli@<version> check
+```
 
-Download the prebuilt binary for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and put the `mdt` binary somewhere on your `PATH`.
+## Prebuilt binary
 
-The simplest option if you want to use mdt in a Python, Go, or other non-Rust project without installing the Rust toolchain.
+Download the archive for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and put the `mdt` binary on your `PATH`. This works in any project without Node.js or Rust.
 
-## If you already use Cargo
+## Cargo
 
-Install the CLI from crates.io:
+If you already have a Rust toolchain:
 
 ```sh
 cargo install mdt_cli
 ```
 
-This installs the `mdt` binary.
+This compiles `mdt` from source, which is much slower than the prebuilt options. Prefer npm or a prebuilt binary when speed matters, for example in CI.
 
-## From source
-
-Clone the repository and build from the workspace:
+To build the latest unreleased code from the repository:
 
 ```sh
 git clone https://github.com/ifiokjr/mdt.git
@@ -57,20 +57,22 @@ mdt_core = "0.9.5"
 
 <!-- {/mdtCoreInstall} -->
 
-## Agent skill package
+## For coding agents
 
-If you use [Pi](https://github.com/badlogic/pi) or another agent harness that supports the [Agent Skills standard](https://agentskills.io), install the official mdt skill package:
+The CLI ships its own agent skill, so any coding agent can learn mdt from the installed version:
 
 ```sh
-pi install npm:@m-d-t/skills
+mdt skill                          # print the skill
+mdt skill --install .claude/skills # or write it to an agent skills directory
 ```
 
-This teaches your coding agent how to work with mdt template syntax, MCP tools, CLI commands, transformers, and configuration. See [Assistant Setup](./assistant-setup.md) for more details.
+See [Assistant Setup](./assistant-setup.md) for per-agent instructions and MCP configuration.
 
 ## Verify installation
 
 ```sh
+mdt --version
 mdt --help
 ```
 
-You should see the available commands: `init`, `check`, `update`, `list`, `info`, `doctor`, `assist`, `lsp`, and `mcp`.
+`mdt --help` lists the commands: `init`, `check`, `update`, `list`, `info`, `doctor`, `assist`, `skill`, `lsp`, and `mcp`.

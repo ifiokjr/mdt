@@ -13,7 +13,7 @@
 # Core Concepts
 
 - [How mdt Works](./concepts/how-it-works.md)
-- [Sources and Targets](./concepts/providers-and-consumers.md)
+- [Providers and Consumers](./concepts/providers-and-consumers.md)
 - [Template Files](./concepts/template-files.md)
 
 # User Guide

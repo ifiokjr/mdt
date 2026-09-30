@@ -278,37 +278,33 @@ pub struct PaddingConfig {
 }
 
 /// <!-- {=mdtFormatterPipelineDocs|trim|linePrefix:"/// ":true} -->
-/// Formatter entries make `mdt update` and `mdt check` converge with your formatter's canonical **full-file** output instead of comparing raw injected block text.
-///
-/// This is the long-term fix for the `mdt update → formatter → mdt check` cycle described in issue #46, and it keeps CI green when external formatters rewrite synced files.
-///
-/// Each matching formatter entry:
-///
-/// - reads the full candidate file from stdin
-/// - writes the full replacement file to stdout
-/// - runs from the project root
-/// - runs after block injection during `mdt update`
-/// - runs before expected-output comparison during `mdt check`
-/// - runs in declaration order when multiple entries match the same file
-///
-/// `command` is rendered with minijinja before execution. Available variables:
-///
-/// - `{{ filePath }}` — absolute path to the file being formatted
-/// - `{{ relativeFilePath }}` — path relative to the project root
-/// - `{{ rootDirectory }}` — absolute project root
-///
-/// `patterns` and `ignore` are ordered gitignore-style rule lists. Leading `!` entries negate a prior match, so later rules can re-include paths for a single formatter stage.
-///
-/// If a formatter command fails, exits non-zero, or renders an invalid minijinja command template, mdt returns an explicit formatter error rather than silently falling back to unformatted output.
+/// `[[formatters]]` entries run your formatter inside `mdt update` and `mdt check`. `mdt update` writes formatted files, and `mdt check` compares against formatted output, so the `mdt update` → formatter → `mdt check` loop settles instead of reporting stale blocks after every format.
 ///
 /// ```toml
 /// [[formatters]]
 /// command = "dprint fmt --stdin \"{{ filePath }}\""
-/// patterns = ["**/*.md", "!docs/generated/**"]
-/// ignore = ["vendor/**", "docs/generated/**", "!docs/generated/keep.md"]
+/// patterns = ["**/*.md"]
+/// ignore = ["**/*.t.md"]
 /// ```
 ///
-/// Repositories without configured formatters keep the legacy fast path, so formatter support only adds work when you opt in.
+/// Each matching entry:
+///
+/// - reads the whole file on stdin and writes the formatted file to stdout
+/// - runs from the project root through `sh -c` (`cmd /C` on Windows)
+/// - runs after block injection in `mdt update`, and before comparison in `mdt check`
+/// - runs in declaration order when several entries match the same file
+///
+/// `command` can use three placeholders. mdt passes their values as the environment variables `MDT_FILE_PATH`, `MDT_RELATIVE_FILE_PATH`, and `MDT_ROOT_DIRECTORY`, so the shell never parses a file name. Keep placeholders inside double quotes; inside single quotes they stay literal.
+///
+/// - `{{ filePath }}`: absolute path of the file being formatted
+/// - `{{ relativeFilePath }}`: path relative to the project root
+/// - `{{ rootDirectory }}`: absolute project root
+///
+/// `patterns` and `ignore` are ordered lists of plain globs, not gitignore patterns. A `!` entry negates an earlier match. `vendor/` matches nothing inside the directory; write `vendor/**`.
+///
+/// A formatter that fails or exits non-zero is an error (exit status 2); mdt never falls back to unformatted output. Without `[[formatters]]`, mdt runs no formatter.
+///
+/// Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. CI must install the same formatter versions you use locally.
 /// <!-- {/mdtFormatterPipelineDocs} -->
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]

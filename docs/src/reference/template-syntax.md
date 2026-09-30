@@ -1,53 +1,50 @@
 # Template Syntax Reference
 
-All mdt tags are HTML comments. They are invisible when markdown is rendered.
-
-## Block names
-
-Block names may contain ASCII letters, digits, underscores, and hyphens (`installCommand`, `install-command`). Any other punctuation — `.`, `/`, spaces — makes the tag unparseable, and unparseable tags are **silently ignored**: the block never appears in `mdt list`, `mdt check` stays green, and `mdt doctor` reports nothing. If a block is not being discovered, check the name charset first.
+Every mdt tag is an HTML comment, so tags are invisible in rendered markdown. A block is an opening tag, some content, and a closing tag with the same name.
 
 ## Tag types
 
-### Source tag
+### Provider tag
 
-Defines a named block of content in a template file (`*.t.md`).
+Defines a named block of content. Sigil `@`.
 
-```
+```markdown
 <!-- {@blockName} -->
+
+Content to share.
+
+<!-- {/blockName} -->
 ```
 
-- Sigil: `@`
-- Only recognized in `*.t.md` files.
-- The content between the opening and closing tags becomes the source's content.
+Providers are read only from `*.t.md` template files. A provider tag anywhere else is ignored and reported as a `mdt::provider_outside_template` warning.
 
-### Target tag
+### Consumer tag
 
-Marks where source content should be injected.
+Marks where a provider's content is written. Sigil `=`. Optional [transformers](#transformer-syntax) follow the name.
 
-```
+```markdown
 <!-- {=blockName} -->
-<!-- {=blockName|transformer1|transformer2:"arg"} -->
+<!-- {/blockName} -->
+
+<!-- {=blockName|trim|codeBlock:"sh"} -->
+<!-- {/blockName} -->
 ```
 
-- Sigil: `=`
-- Recognized in any scanned file (markdown or source code).
-- Optionally includes transformers after the block name.
+Consumers work in any scanned file: markdown and [source files](../guide/source-files.md). A consumer whose name matches no provider is an orphan: `mdt check` fails and `mdt update` warns.
 
 ### Inline tag
 
 <!-- {=mdtInlineBlocksGuide} -->
 
-Inline blocks interpolate small dynamic values in place, without a separate source. Typical uses: version numbers, toolchain values, environment metadata, short computed strings.
+Inline blocks render a small template in place, with no provider. Use them for short values such as version numbers, toolchain versions, or other metadata from your `[data]` sources.
 
-Inline blocks render minijinja template content from the block's first argument:
+The block's first argument is a minijinja template:
 
 ```markdown
 <!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} -->
 ```
 
-During `mdt update`, mdt evaluates the template argument with your `[data]` context, then replaces the content between the opening and closing tags.
-
-Because inline blocks are source-free, they fit one-off values that still need to stay in sync.
+`mdt update` renders the argument with your `[data]` context and replaces the text between the opening and closing tags. `mdt check` reports the block as stale when that text is out of date.
 
 <!-- {/mdtInlineBlocksGuide} -->
 
@@ -55,12 +52,13 @@ Because inline blocks are source-free, they fit one-off values that still need t
 
 <!-- {=mdtInlineBlocksLimits} -->
 
-- Inline blocks must include a first argument that is the template string to render.
-- Inline blocks do not resolve source content; everything comes from the inline template argument and current data context.
-- Inline rendering still supports transformers (`|trim`, `|code`, etc.) after template evaluation.
-- In markdown, inline blocks work in normal content (paragraphs, lists, headings, tables) where HTML comments are parsed.
-- Tags shown inside fenced markdown code blocks are treated as examples and are not interpreted as live blocks.
-- In source files, inline tags follow source scanning rules and respect `[exclude] markdown_codeblocks` filtering.
+- An inline block needs a first argument: the template string to render.
+- Inline blocks do not read a provider; everything comes from the template argument and the `[data]` context. Without `[data]`, the argument is written as-is.
+- Transformers (`|trim`, `|code`, and so on) run after the template is rendered.
+- Padding never applies to inline blocks, so they stay on one line.
+- In markdown, inline blocks work in paragraphs, lists, headings, and table cells. In table cells, do not add transformers: GFM splits cells on `|`, so the tag is not recognized.
+- Tags inside fenced code blocks and inline code spans in markdown are examples, not live blocks.
+- In source files, inline tags follow the source scanning rules, including `[exclude] markdown_codeblocks`.
 
 <!-- {/mdtInlineBlocksLimits} -->
 
@@ -99,78 +97,67 @@ release = { command = "cat VERSION", format = "text", watch = ["VERSION"] }
 Release: <!-- {~releaseValue:"{{ release }}"} -->0.0.0<!-- {/releaseValue} -->
 ```
 
-When `VERSION` is unchanged, mdt reuses cached script output from `.mdt/cache/data-v1.json`.
+The text format drops the file's trailing newline, so the value stays on one line. While `VERSION` is unchanged, mdt reuses the cached output in `.mdt/cache/data-v1.json`.
 
 <!-- {/mdtInlineBlocksExamples} -->
 
 ### Close tag
 
-Closes source, target, and inline blocks.
+Closes provider, consumer, and inline blocks. Sigil `/`. The name must match the opening tag.
 
-```
+```markdown
 <!-- {/blockName} -->
 ```
 
-- Sigil: `/`
-- The name must match the opening tag.
-
 ## Block names
 
-Block names follow identifier rules:
+Names match `[A-Za-z_][A-Za-z0-9_-]*`: a letter or underscore, then letters, digits, underscores, or hyphens. Names are case-sensitive, so `apiDocs` and `ApiDocs` are different blocks.
 
-- Start with a letter or underscore
-- Followed by letters, digits, or underscores
-- Case-sensitive
+Valid: `install`, `apiDocs`, `install-command`, `my_block`, `block123`, `_private`.
 
-Valid names: `install`, `apiDocs`, `my_block`, `block123`, `_private`
+Invalid: `my.block`, `docs/intro`, `1starts`, names with spaces.
 
-## Transformer syntax
+## Tag syntax
 
-Transformers are pipe-delimited and follow the block name:
-
-```
-{=name|transformer1|transformer2:"arg1":"arg2"}
-{~name:"{{ value }}"|transformer1|transformer2:"arg1":"arg2"}
-```
-
-### Structure
-
-```
-|transformerName           — no arguments
-|transformerName:"arg"     — one string argument
-|transformerName:4         — one numeric argument
-|transformerName:"a":"b"   — two arguments
-```
-
-### Argument types
-
-| Type    | Syntax                    | Example                     |
-| ------- | ------------------------- | --------------------------- |
-| String  | Double-quoted             | `"hello"`, `"/// "`, `"\n"` |
-| Number  | Unquoted integer or float | `4`, `2.5`                  |
-| Boolean | `true` or `false`         | `true`                      |
-
-String arguments support escape sequences: `\"`, `\\`, `\n`, `\t`.
-
-## Whitespace handling
-
-Whitespace between the comment delimiters and the tag braces is allowed:
+The sigil must come directly after `{`. Whitespace is allowed everywhere else: inside the comment delimiters, after the sigil, and around `|` and `:`. A tag may also span lines.
 
 ```markdown
-<!--  { @blockName }  -->
-```
-
-Newlines within the comment are also allowed:
-
-```markdown
+<!-- {@ blockName } -->
+<!-- {=blockName | trim | replace: "Hi" : "Hello"} -->
 <!--
 {/blockName}
 -->
 ```
 
+`<!-- { @blockName } -->` is not a tag. In markdown, a comment that starts like a tag (`{` followed by `@`, `=`, `~`, or `/`) but does not parse is a `mdt::invalid_tag` error that names the file and line. In source files it is ignored without a diagnostic.
+
+## Transformer syntax
+
+Transformers follow the block name, separated by `|`, and run left to right. Arguments follow the transformer name, separated by `:`.
+
+```text
+{=name|transformer}
+{=name|transformer:"arg"}
+{=name|transformer:"arg1":"arg2"}
+{~name:"{{ value }}"|transformer:"arg"}
+```
+
+See the [transformer reference](transformers.md) for each transformer.
+
+### Argument types
+
+| Type          | Syntax          | Value passed to the transformer                                                           |
+| ------------- | --------------- | ----------------------------------------------------------------------------------------- |
+| Double-quoted | `"text"`        | Text with escapes decoded                                                                 |
+| Single-quoted | `'text'`        | Text exactly as written; backslashes stay literal                                         |
+| Number        | `4`, `2.5`      | Converted to text: `indent:4` prepends the character `4`, not spaces                      |
+| Boolean       | `true`, `false` | A flag as the second argument of `indent`, `linePrefix`, `lineSuffix`; text anywhere else |
+
+Double-quoted strings decode `\"`, `\\`, `\n`, `\t`, and `\u{...}` (for example `\u{2f}` for `/`). If a string contains an escape mdt does not recognize, such as `"\q"`, the whole argument is kept literally and none of its escapes are decoded.
+
 ## Content boundaries
 
-The content of a block is everything between the **end** of the opening tag and the **start** of the closing tag. This includes surrounding whitespace and newlines:
+A block's content is everything between the end of the opening tag and the start of the closing tag, including newlines.
 
 ```markdown
 <!-- {@block} -->
@@ -180,70 +167,61 @@ This content includes the newlines above and below.
 <!-- {/block} -->
 ```
 
-The source content here is `\nThis content includes the newlines above and below.\n\n` — note the leading newline after the opening tag and the trailing newline before the closing tag. Use the `trim` transformer on consumers if you want to strip this whitespace.
+The provider content here is `\n\nThis content includes the newlines above and below.\n\n`. Consumers receive those newlines too. Add `|trim` to a consumer to drop them, and see [`[padding]`](configuration.md#padding) for how mdt places content between the tags.
+
+## Where tags are recognized
+
+**Markdown files** (`.md`, `.mdx`, `.markdown`):
+
+- Tags inside fenced code blocks and inline code spans are inert. That is how documentation shows tag examples, including this page.
+- GFM tables split cells on `|`, so a tag with transformers inside a table cell is cut apart and not recognized; its closing tag is then a `mdt::unmatched_closing_tag` error. In table cells, use an inline block without transformers.
+
+**Source files**: tags are found in any comment, and also inside string literals. See [Source File Support](../guide/source-files.md).
+
+## Nesting
+
+Blocks cannot be nested. A block opened inside another block is a `mdt::nested_block` error (exit 2):
+
+- inside a consumer or inline block, `mdt update` would overwrite the inner block, because it replaces everything between the outer tags;
+- inside a provider, the inner tags would be copied into every consumer of that provider, where they would nest.
+
+Keep blocks flat: put consumers one after another, and reference values in providers with `{{ ... }}` data instead of inline blocks.
+
+## Diagnostics
+
+| Code                             | Severity | Cause                                                                  | Silence with                    |
+| -------------------------------- | -------- | ---------------------------------------------------------------------- | ------------------------------- |
+| `mdt::unclosed_block`            | error    | An opening tag has no matching closing tag (markdown and source files) | `--ignore-unclosed-blocks`      |
+| `mdt::nested_block`              | error    | A block opens inside another block                                     | none                            |
+| `mdt::invalid_tag`               | error    | Markdown only: a comment looks like a tag but does not parse           | `--ignore-invalid-names`        |
+| `mdt::unknown_transformer`       | error    | A transformer name does not exist                                      | `--ignore-invalid-transformers` |
+| `mdt::invalid_transformer_args`  | error    | A transformer got the wrong number of arguments                        | `--ignore-invalid-transformers` |
+| `mdt::duplicate_provider`        | error    | Two providers share a name                                             | none                            |
+| `mdt::unmatched_closing_tag`     | error    | A closing tag has no opening tag, usually a misspelled opening tag     | `--ignore-unclosed-blocks`      |
+| `mdt::unused_provider`           | warning  | A provider has no consumers                                            | `--ignore-unused-blocks`        |
+| `mdt::provider_outside_template` | warning  | A provider tag is outside a `*.t.md` file                              | none                            |
+
+Errors stop `mdt check` and `mdt update` with exit code 2; `mdt list` still prints the listing, then exits 2. Warnings are printed but do not change the exit code. `--verbose` also shows diagnostics silenced by an `--ignore-*` flag. Names listed in `[exclude] blocks` are skipped entirely: their consumers are never filled or checked, and they produce no diagnostics.
+
+Most diagnostics name the file and position, with a hint:
+
+```text
+mdt::unclosed_block
+
+  x [readme.md:9:1] missing closing tag for block `dup`
+  help: add `<!-- {/dup} -->` to close this block, or, if a nearby closing tag
+        has a different name, fix the misspelled tag so the names match
+```
 
 ## Template variables
 
-Inside source blocks, minijinja template syntax is available when data files are configured:
+When `[data]` is configured in `mdt.toml`, provider content is rendered with [minijinja](https://docs.rs/minijinja) before transformers run:
 
-### Variable output
-
-```
-{{ namespace.key }}
-{{ namespace.nested.value }}
-```
-
-### Control flow
-
-```
-{% if condition %}...{% endif %}
-{% if condition %}...{% else %}...{% endif %}
+```text
+{{ package.version }}
+{% if package.private %}...{% endif %}
 {% for item in list %}...{% endfor %}
+{# a comment that is not rendered #}
 ```
 
-### Comments
-
-```
-{# This is a template comment and won't appear in output #}
-```
-
-Template variables are rendered before transformers are applied.
-
-## Examples
-
-### Minimal
-
-```markdown
-<!-- {@greeting} -->
-
-Hello!
-
-<!-- {/greeting} -->
-```
-
-### With transformers
-
-```markdown
-<!-- {=docs|trim|linePrefix:"/// "} -->
-
-Old content.
-
-<!-- {/docs} -->
-```
-
-### With template variables
-
-```markdown
-<!-- {@version} -->
-
-Current version: {{ package.version }}
-
-<!-- {/version} -->
-```
-
-### Complex chain
-
-```markdown
-<!-- {=apiDocs|trim|replace:"Example":"Usage"|codeBlock:"typescript"} -->
-<!-- {/apiDocs} -->
-```
+Without `[data]`, provider content is copied as written, and `check` and `update` warn when a used provider contains a variable such as `{{ pkg.version }}`. See [Data Interpolation](../guide/data-interpolation.md).

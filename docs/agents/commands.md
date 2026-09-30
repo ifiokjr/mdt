@@ -24,6 +24,7 @@ Use repo scripts first when they exist:
 - `fix:all` — run clippy fixes, `mdt update`, formatting, and GitHub Actions linting
 - `fix:clippy` — run clippy fixes for the workspace
 - `fix:format` — format with dprint
+- `fix:skill` — copy the canonical agent skill (`packages/m-d-t__skills/skills/mdt/`) into `mdt_cli/skill/`, which `mdt skill` embeds; run it after editing the skill (a test fails while the copies differ)
 - `fix:actions` — run `actionlint` (actionlint has no autofix mode)
 - `fix:workflows` — run `zizmor --fix` over GitHub Actions workflows
 - `coverage:all` — generate coverage with `cargo llvm-cov`

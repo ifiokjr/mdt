@@ -2,95 +2,86 @@
 
 ## Can I use mdt with non-markdown files?
 
-Yes. mdt scans source code files for target tags inside code comments. Supported languages include Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, Swift, C/C++, and C#. The target tag syntax (`<!-- {=name} -->` / `<!-- {/name} -->`) is the same; it just appears within the file's comment syntax.
+Yes. mdt scans source files for consumer tags inside code comments: Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, Swift, C/C++, C#, and Dart. The tags are the same as in markdown; they sit inside the file's comments.
 
-For example, in a Rust file:
+Re-apply the comment prefix with `linePrefix`, or the synced lines are not comments and the file stops compiling:
 
 ```rust
-//! <!-- {=packageDocs|trim} -->
+//! <!-- {=packageDocs|trim|linePrefix:"//! ":true} -->
 //! Documentation content injected here.
 //! <!-- {/packageDocs} -->
 ```
 
-See [Source File Support](./guide/source-files.md) for the full language list and examples.
+See [Source File Support](./guide/source-files.md) for every language and its prefix.
 
-## What happens if a source is deleted?
+## What happens if a provider is deleted?
 
-Consumers referencing the deleted source become **orphaned**. Their content is left unchanged; mdt does not clear or modify orphaned targets.
+Its consumers become **orphans**. mdt never clears or rewrites them:
 
-- `mdt check` warns about orphaned targets.
-- `mdt list` shows orphaned targets with the `[orphan]` status.
-- `mdt update` skips orphaned targets and proceeds with the rest.
+- `mdt check` fails (exit 1) and lists each orphan with its `file:line:col` and a did-you-mean suggestion when a similar provider exists.
+- `mdt update` prints a warning, leaves orphans untouched, and updates everything else.
+- `mdt list` marks them `[orphan]`.
 
-To fix orphaned targets, either restore the source or remove the target tags from the files that referenced it.
+Restore the provider, or remove the consumer tags.
 
-## Can multiple sources have the same name?
+## Can multiple providers have the same name?
 
-No. Source names must be unique within a project scope. If two `*.t.md` files define a source with the same name, mdt reports an error:
+No. Provider names must be unique within a project, and a duplicate stops every command with exit 2:
 
+```text
+mdt::duplicate_provider
+
+  x duplicate provider `install`: defined in `.templates/api.t.md:1` and
+  | `.templates/docs.t.md:1`
+  help: each provider block name must be unique across the project
 ```
-error: duplicate source `install`: defined in `docs.t.md` and `api.t.md`
-```
 
-In a monorepo, source names only need to be unique within each sub-project (each directory with its own `mdt.toml`). Two different sub-projects can both have an `{@install}` provider without conflict.
+In a monorepo, each sub-project (a directory with its own `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`) is a separate namespace, so two sub-projects can both define `{@install}`.
 
-## How do I keep formatters from mangling template content?
+## How do I keep formatters from fighting mdt?
 
-Formatters can interfere with mdt by reformatting content inside target blocks. The main strategies are:
+1. **Configure `[[formatters]]`** so mdt runs your formatter on every file it writes or checks. This is the real fix for `mdt update`, formatter, `mdt check` loops.
+2. **Keep `*.t.md` out of the formatter's scope**, both in its own config and in the formatter entry's `ignore`, so provider text is never rewritten.
+3. **Include indentation in the prefix** for consumers nested inside a class or `impl` (`linePrefix:"    /// ":true`), or the formatter re-indents them.
 
-1. **Exclude `*.t.md` files** from your formatter so the source-of-truth content is never altered.
-2. **Use ignore comments** (e.g., `<!-- dprint-ignore -->`) before target blocks in markdown files.
-3. **Set `[padding]`** in `mdt.toml` to control whitespace precisely, reducing formatter conflicts.
-4. **Match transformer output** to what the formatter expects (e.g., use the same indentation style).
-
-See [Troubleshooting > Formatter interference](./troubleshooting.md#formatter-interference) for detailed solutions.
+See [Troubleshooting: Formatter loops](./troubleshooting.md#formatter-loops).
 
 ## Can I use conditional logic in templates?
 
-Yes. mdt uses [minijinja](https://docs.rs/minijinja) for template rendering, which supports conditionals, loops, and filters.
+Yes, once `[data]` is configured. Provider content is then rendered with [minijinja](https://docs.rs/minijinja), which supports conditionals, loops, and filters. Without `[data]` (and without block arguments), `{{ ... }}` and `{% ... %}` stay literal text, and mdt warns when a used provider references a namespaced variable such as `{{ pkg.version }}`.
 
-### Conditionals
-
+```toml
+[data]
+package = "package.json"
 ```
-<!-- {@platformInstall} -->
 
-{% if cargo.package.name %}
-cargo add {{ cargo.package.name }}
-{% endif %}
+A conditional:
 
-{% if package.name %}
+```text
+<!-- {@install} -->
+
+{% if not package.private -%}
 npm install {{ package.name }}
 {% endif %}
-
-<!-- {/platformInstall} -->
+<!-- {/install} -->
 ```
 
-### Loops
+A loop:
 
-```
-<!-- {@featureList} -->
+```text
+<!-- {@keywords} -->
 
-{% for feature in config.features %}
-- {{ feature }}
+{% for keyword in package.keywords -%}
+- {{ keyword }}
 {% endfor %}
-
-<!-- {/featureList} -->
+<!-- {/keywords} -->
 ```
 
-### Filters
+The `-%}` trims the newline after a tag so the output has no stray blank lines. minijinja's built-in filters work too, for example `{{ package.name | upper }}`. See [Data Interpolation](./guide/data-interpolation.md).
 
-minijinja's built-in filters work in source content:
+## Can blocks be nested?
 
-```
-{{ package.name | upper }}
-{{ package.description | truncate(80) }}
-```
-
-See [Data Interpolation](./guide/data-interpolation.md) for the full template syntax.
-
-## Can targets appear inside other targets?
-
-No. mdt does not support nested blocks. Each target block is a flat, non-overlapping region. If you need to compose content, define separate providers and place their consumers sequentially:
+No. A block inside another block is the error `mdt::nested_block` (exit 2): `mdt update` replaces everything between a consumer's tags, and a provider's content — tags included — is copied into every consumer. Place consumers one after another instead:
 
 ```markdown
 <!-- {=header} -->
@@ -98,33 +89,32 @@ No. mdt does not support nested blocks. Each target block is a flat, non-overlap
 
 <!-- {=body} -->
 <!-- {/body} -->
-
-<!-- {=footer} -->
-<!-- {/footer} -->
 ```
 
 ## Do tags affect rendered markdown?
 
-No. mdt tags are HTML comments (`<!-- ... -->`), which are invisible when markdown is rendered to HTML. Readers of your documentation never see the template machinery.
+No. Tags are HTML comments, which markdown renderers hide. Some tools show HTML comments verbatim in source-file docs (`go doc`, Python `help()`); rustdoc, dartdoc, and TSDoc hide them.
 
 ## Can I use mdt without a config file?
 
-Yes. `mdt.toml` is optional. Without it, mdt still scans for `*.t.md` template files and processes provider/target blocks. You only need a config file for:
+Yes. Without a config, mdt scans the project with the defaults: `*.t.md` files are providers, and markdown plus supported source files can hold consumers. Add `mdt.toml` (or `.mdt.toml`, `.config/mdt.toml`) when you need:
 
-- Data interpolation (`[data]` section)
-- Custom exclude/include patterns
-- Template search path restrictions
-- Block padding configuration
+- `[data]` for template variables
+- `[exclude]` to skip files, or `[include]` to add file types to the scan
+- `[templates] paths` to read providers from extra directories, such as hidden ones
+- `[padding]` to control blank lines around consumer content
+- `[check]` for lenient comparison, or `[[formatters]]` for formatter integration
 
-## How does mdt handle binary files?
+Unknown keys are rejected, so a typo is reported instead of ignored.
 
-mdt only scans text files with recognized extensions (`.md`, `.mdx`, `.markdown`, `.t.md`, and supported source code extensions). Binary files and unrecognized file types are ignored. A `max_file_size` limit (default 10 MB) prevents accidentally reading very large files.
+## How does mdt handle binary and large files?
+
+The default scan only picks markdown and supported source extensions, and reads them as UTF-8 text. If an `[include]` pattern matches a binary file, the scan fails with `mdt::read_file` naming the file, so keep include globs to text extensions (`**/*.rb`, not `src/**`). A scanned file above `max_file_size` (default 10 MB) is the error `mdt::file_too_large`; exclude it or raise the limit.
 
 ## Can I run mdt on a subset of files?
 
-Not directly. mdt always scans the full project to build the source map. You can control the scan scope, though:
+No. mdt always scans the whole project so every consumer can find its provider. You can shape the project instead:
 
-- Use `--path` to target a specific sub-project directory.
-- Use `[include]` patterns in `mdt.toml` to restrict which source files are scanned.
-- Use `[exclude]` patterns to skip specific files or directories.
-- Use `[templates] paths` to limit where mdt looks for `*.t.md` files.
+- `--path <dir>` runs mdt on a different project root, such as one sub-project in a monorepo. Without it, mdt uses the nearest directory with an mdt config, starting from the current one and walking up within the git repository, so running inside a sub-project targets that sub-project.
+- `[exclude] patterns` skips files and directories.
+- `[include] patterns` and `[templates] paths` only add files to the scan; they never narrow it.

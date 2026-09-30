@@ -1,208 +1,211 @@
 # Source File Support
 
-mdt isn't limited to markdown files. Target tags work inside code comments in any language whose comment syntax can hold `<!-- -->` HTML comments.
+Consumer and inline blocks also work inside source code comments, so doc comments can share content with your README. The tags are the same HTML comments used in markdown, written inside the language's comment syntax. Providers still live only in `*.t.md` files; a provider tag in a source file is ignored with a `mdt::provider_outside_template` warning.
 
-## How it works
+## Scanned files
 
-mdt scans source files for HTML comment patterns (`<!-- ... -->`) embedded in code comments. The same `{=name}` / `{/name}` consumer syntax works regardless of the surrounding comment style.
+| Language   | Extensions                                       |
+| ---------- | ------------------------------------------------ |
+| Markdown   | `.md`, `.mdx`, `.markdown`                       |
+| Rust       | `.rs`                                            |
+| TypeScript | `.ts`, `.tsx`, `.mts`, `.cts`                    |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`                    |
+| Python     | `.py`                                            |
+| Go         | `.go`                                            |
+| Java       | `.java`                                          |
+| Kotlin     | `.kt`                                            |
+| Swift      | `.swift`                                         |
+| C/C++      | `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hh`, `.hpp` |
+| C#         | `.cs`                                            |
+| Dart       | `.dart`                                          |
 
-## Supported languages
-
-mdt recognizes these source file extensions:
-
-| Language   | Extensions         |
-| ---------- | ------------------ |
-| Rust       | `.rs`              |
-| TypeScript | `.ts`, `.tsx`      |
-| JavaScript | `.js`, `.jsx`      |
-| Python     | `.py`              |
-| Go         | `.go`              |
-| Java       | `.java`            |
-| Kotlin     | `.kt`              |
-| Swift      | `.swift`           |
-| C/C++      | `.c`, `.cpp`, `.h` |
-| C#         | `.cs`              |
-| Dart       | `.dart`            |
-
-Files with any other extension are skipped **silently** — a consumer block in an unscanned file never appears in `mdt list`, and `mdt check` passes without it. To scan an unlisted extension, opt it in with `[include]`:
+Files with any other extension are skipped without a message: a consumer in an unscanned file never appears in `mdt list`. To scan another extension, add it with `[include]`:
 
 ```toml
 [include]
-patterns = ["**/*.md", "**/*.dart"]
+patterns = ["**/*.rb"]
 ```
 
-Keep `**/*.md` in the list, or markdown files stop being scanned. Included files are parsed like markdown: the HTML-comment tags are found anywhere in the file, so keep the file valid by wrapping tags in the language's comment syntax.
+`[include]` adds files to the default scan; it never narrows it, so markdown and the extensions above are still scanned. Included files respect `.gitignore` and `[exclude]`. Included non-markdown files are scanned like source files, with tags found in any comment. Avoid broad globs such as `src/**`: a matched binary file fails the scan with `mdt::read_file`.
+
+## Always re-apply the comment marker
+
+`mdt update` replaces every line between the opening and closing tags. The tag lines keep the comment marker you wrote, but content lines only get what the transformers add. A consumer without a prefix transformer writes bare text into the code:
+
+```rust
+//! <!-- {=clientDocs|trim} -->
+A fast HTTP client.
+
+Supports async and blocking modes.
+//! <!-- {/clientDocs} -->
+```
+
+```text
+error: expected one of `!` or `::`, found `fast`
+```
+
+Add `linePrefix:"<marker>":true` to every source-file consumer. With `true`, empty lines get the marker too, with its trailing space trimmed.
 
 ## Examples by language
 
-### Rust doc comments
+Each example below is the file after `mdt update`, using this provider:
 
-Keep crate-level documentation in sync with your README:
+```markdown
+<!-- {@clientDocs} -->
 
-```rust
-//! <!-- {=packageDescription|trim} -->
-//! A fast, type-safe HTTP client for Rust.
-//! <!-- {/packageDescription} -->
+A fast HTTP client.
 
-pub fn main() {}
+Supports async and blocking modes.
+
+<!-- {/clientDocs} -->
 ```
 
-For `///` doc comments on items, use `linePrefix` to add the prefix:
+### Rust
 
 ```rust
-/// <!-- {=apiDocs|trim|linePrefix:"/// "} -->
-/// API documentation here.
-/// <!-- {/apiDocs} -->
+//! <!-- {=clientDocs|trim|linePrefix:"//! ":true} -->
+//! A fast HTTP client.
+//!
+//! Supports async and blocking modes.
+//! <!-- {/clientDocs} -->
+
+/// <!-- {=clientDocs|trim|linePrefix:"/// ":true} -->
+/// A fast HTTP client.
+///
+/// Supports async and blocking modes.
+/// <!-- {/clientDocs} -->
 pub fn create_client() {}
 ```
 
-### TypeScript / JavaScript JSDoc
+Inside an `impl` block or other nested item:
 
-Keep JSDoc in sync with your docs:
+```text
+impl Client {
+    /// <!-- {=clientDocs|trim|linePrefix:"    /// ":true} -->
+    /// A fast HTTP client.
+    ///
+    /// Supports async and blocking modes.
+    /// <!-- {/clientDocs} -->
+    pub fn new() -> Self {
+        Client
+    }
+}
+```
+
+For nested items, put the indentation inside the prefix (`"    /// "`). Indented tag lines keep their indentation, but content lines start at column zero plus the prefix; without the indentation, `rustfmt` re-indents them and `mdt check` reports the consumer stale again.
+
+### TypeScript and JavaScript (JSDoc)
 
 ```typescript
 /**
- * <!-- {=apiDocs|trim|indent:" * "} -->
- * Old JSDoc content.
- * <!-- {/apiDocs} -->
+ * <!-- {=clientDocs|trim|linePrefix:" * ":true} -->
+ * A fast HTTP client.
+ *
+ * Supports async and blocking modes.
+ * <!-- {/clientDocs} -->
  */
 export function createClient() {
 	return {};
 }
 ```
 
-### Python docstrings
+Use `linePrefix:" * ":true`, not `indent:" * ":true`: `indent` keeps the trailing space of the prefix on empty lines, which formatters strip.
+
+### Go
+
+```go
+// <!-- {=clientDocs|trim|linePrefix:"// ":true} -->
+// A fast HTTP client.
+//
+// Supports async and blocking modes.
+// <!-- {/clientDocs} -->
+package client
+```
+
+Without `true`, the blank line splits the comment group and `go doc` shows only the last paragraph.
+
+### Python
+
+Comments:
 
 ```python
-# <!-- {=moduleDoc|trim} -->
-# Module documentation here.
-# <!-- {/moduleDoc} -->
+# <!-- {=clientDocs|trim|linePrefix:"# ":true} -->
+# A fast HTTP client.
+#
+# Supports async and blocking modes.
+# <!-- {/clientDocs} -->
 
-def main():
+
+def create_client():
     pass
 ```
 
-### Go comments
+Docstrings are string literals, so no prefix is needed:
 
-```go
-// <!-- {=packageDoc|trim|linePrefix:"// "} -->
-// Package documentation.
-// <!-- {/packageDoc} -->
-package mylib
+```python
+"""
+<!-- {=clientDocs|trim} -->
+A fast HTTP client.
+
+Supports async and blocking modes.
+<!-- {/clientDocs} -->
+"""
 ```
 
-### Dart doc comments
+### Dart
 
 ```dart
-// <!-- {=pkgDescription|trim|linePrefix:"/// ":true} -->
-// Library description here.
-// <!-- {/pkgDescription} -->
+/// <!-- {=clientDocs|trim|linePrefix:"/// ":true} -->
+/// A fast HTTP client.
+///
+/// Supports async and blocking modes.
+/// <!-- {/clientDocs} -->
 library;
 ```
 
-After `mdt update`, content lines get the transformer's prefix while the tag lines keep the comment prefix they were authored with:
+The default padding works for every language above; no `[padding]` section is needed. See [`[padding]`](../reference/configuration.md#padding) to add blank lines between the tags and the content.
 
-```dart
-// <!-- {=pkgDescription|trim|linePrefix:"/// ":true} -->
-/// Library description here.
-// <!-- {/pkgDescription} -->
-library;
-```
+## Things to know
 
-If the tag lines themselves must be doc comments (e.g. so `dart analyze` attaches the docs), author them with `///`.
+### Unclosed tags are errors
 
-## Recommended: Enable `[padding]`
+An opening tag without a matching closing tag in a source file is a `mdt::unclosed_block` error, as in markdown. `mdt check` and `mdt update` stop with exit code 2 until you close or remove it.
 
-When using target blocks in source files, add a `[padding]` section to your `mdt.toml`:
+### Block comments
 
-```toml
-[padding]
-before = 0
-after = 0
-```
+Everything between the tags is replaced, including a `*/` after the opening tag or a `/*` before the closing tag. Per-line block comments such as `/* <!-- {=name} --> */` therefore do not round-trip: the lines between them merge into one comment. Use line comments, or put both tags inside one `/** ... */` block.
 
-The `before` and `after` values control how many blank lines appear between tags and content:
-
-- With **no `[padding]` section**: content starts on the line after the opening tag and the closing tag is written inline with the content — in source files this glues `-->` onto the last content line.
-- With the section present but values omitted: `before`/`after` default to `1`.
-- `false` — Content inline with tag (no newline)
-- `0` — Content on the very next line (recommended for projects using formatters)
-- `1` — One blank line between tag and content
-- `2` — Two blank lines, etc.
-
-Without `[padding]`, a target with `trim|linePrefix:"//! ":true` could produce:
-
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->//! Content here.<!-- {/docs}
-//! -->
-```
-
-With `before = 0, after = 0`, the output is properly structured:
-
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
-//! Content here.
-//! <!-- {/docs} -->
-```
-
-With `before = 1, after = 1`, blank lines are added between tags and content:
-
-```rust
-//! <!-- {=docs|trim|linePrefix:"//! ":true} -->
-//!
-//! Content here.
-//!
-//! <!-- {/docs} -->
-```
-
-## Key differences from markdown
-
-### Lenient parsing
-
-Source file parsing is **lenient**. An opening tag without a matching close tag is silently ignored rather than producing an error. This avoids false positives when HTML comments appear in strings or other non-tag contexts.
-
-### Source blocks in source files
-
-Source files can only contain **consumer** blocks. Even if you write `{@name}` in a source file, it won't be recognized as a source. Providers must be in `*.t.md` template files.
-
-## Real-world example
-
-Consider a TypeScript library where the README, JSDoc, and mdbook docs need to stay in sync.
-
-**`.templates/*.t.md`** files define the content:
-
-```
-<!-- {@apiDocs} -->
-
-A sample TypeScript library.
-
-## Usage
-
-    import { createClient } from "my-lib";
-    const client = createClient();
-
-<!-- {/apiDocs} -->
-```
-
-**`readme.md`** consumes it as-is:
-
-```
-## API
-
-<!-- {=apiDocs} -->
-<!-- {/apiDocs} -->
-```
-
-**`src/index.ts`** consumes it with transformers for JSDoc formatting:
+Provider text containing `*/` (for example the glob `src/**/*.ts`) ends the surrounding `/* */` comment early. Escape it with `replace`. Write the `/` in the search string as `\u{2f}`, or the tag itself would contain `*/` and end the comment:
 
 ```typescript
 /**
- * <!-- {=apiDocs|trim|indent:" * "} -->
- * <!-- {/apiDocs} -->
+ * <!-- {=globDocs|trim|replace:"*\u{2f}":"*\\/"|linePrefix:" * ":true} -->
+ * Scans `src/**\/*.ts` by default.
+ * <!-- {/globDocs} -->
  */
-export function createClient() {
-	return {};
-}
 ```
 
-Running `mdt update` fills both targets. The readme gets the content as-is; the TypeScript file gets it trimmed and indented with `*` for JSDoc formatting.
+### Tags in string literals are live
+
+mdt does not parse the language, so a complete block inside a string literal is a real block and `mdt update` rewrites it. (A lone closing tag after an odd number of `"` or backticks on its line — `"<!-- {/x} -->"`, or inline code in a doc comment — is ignored rather than reported as unmatched.) Exclude test fixtures that contain example tags:
+
+```toml
+[exclude]
+patterns = ["tests/fixtures/"]
+```
+
+### Tag examples inside doc comments
+
+A fenced code block inside a source comment that shows an mdt tag is scanned like any other comment text. Set `[exclude] markdown_codeblocks = true` to ignore tags inside fenced code blocks in source comments. In markdown files, tags inside fenced code blocks are always inert.
+
+### Visible tags in some doc tools
+
+rustdoc, dartdoc, and TSDoc hide HTML comments. `go doc` and Python's `help()` show them verbatim:
+
+```text
+package client // import "."
+
+<!-- {=clientDocs|trim|linePrefix:"// ":true} --> A fast HTTP client.
+
+Supports async and blocking modes. <!-- {/clientDocs} -->
+```

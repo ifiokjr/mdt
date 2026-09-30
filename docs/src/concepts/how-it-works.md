@@ -1,66 +1,74 @@
 # How mdt Works
 
-mdt's pipeline is straightforward: scan the project for template tags, match sources to targets, render template variables, apply transformers, and replace content.
+mdt finds named blocks in your project, matches each consumer to its provider, and rewrites the consumer's content when it differs.
 
-## The Pipeline
+## The pipeline
 
+```text
+1. Find the project root and load its configuration (optional)
+   └── Read [data] sources (package.json, Cargo.toml, scripts, ...)
+
+2. Scan the project
+   ├── *.t.md files            → provider blocks
+   ├── markdown files          → consumer and inline blocks
+   └── source files (.rs, ...) → consumer and inline blocks in comments
+
+3. Validate: unclosed, unmatched, nested, and invalid tags, unknown
+   transformers, duplicate providers, orphan consumers, unused providers
+
+4. For each consumer:
+   ├── Find the provider with the same name
+   ├── Render template variables ({{ pkg.version }}) when [data] is set
+   ├── Apply the consumer's transformers (|trim|linePrefix:"/// ":true)
+   └── Replace the content between the tags if it differs
 ```
-1. Scan project directory
-   ├── Find *.t.md files → extract source blocks
-   ├── Find *.md files → extract target blocks
-   └── Find source files (.rs, .ts, .py, ...) → extract target blocks from comments
 
-2. Load configuration (mdt.toml)
-   └── Read data files (package.json, Cargo.toml, ...) into template context
+`mdt update` writes the result. `mdt check` runs the same steps without writing and fails if any file would change.
 
-3. For each target:
-   ├── Find its matching source by name
-   ├── Render template variables in source content ({{ package.version }})
-   ├── Apply transformers (|trim|indent:"  ")
-   └── Replace the target's content if it differs
-```
+## Project root
+
+With `--path <dir>`, that directory is the project root. Without it, every command except `mdt init` walks up from the current directory, inside the enclosing git repository, to the nearest directory containing `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`, so you can run mdt from any subdirectory. Outside a git repository, or with no config found, the current directory is the root.
 
 ## Tag anatomy
 
-All mdt tags live inside HTML comments, so they're invisible when markdown is rendered. Readers never see the template machinery.
+Every tag is an HTML comment, so readers of the rendered markdown never see it.
 
-A tag has three parts:
-
-```
-<!-- {sigil name | transformers} -->
-       │      │    │
-       │      │    └── Optional: pipe-delimited content filters
-       │      └─────── The block name
-       └────────────── @ source, = target, ~ inline, / close
+```text
+<!-- {=name|trim|codeBlock:"sh"} -->
+      ││    └─────────────────── optional transformers, separated by |
+      │└──────────────────────── block name
+      └───────────────────────── sigil: @ provider, = consumer, ~ inline, / close
 ```
 
-## File conventions
+The sigil must directly follow `{`. See the [Template Syntax Reference](../reference/template-syntax.md) for the full rules.
 
-mdt determines how to treat files based on their names:
+## File roles
 
-| Pattern                              | Role                                                                    |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `*.t.md`                             | **Template files** — only these can contain source blocks               |
-| `*.md`, `*.mdx`, `*.markdown`        | **Markdown files** — scanned for target and inline blocks               |
-| `*.rs`, `*.ts`, `*.py`, `*.go`, etc. | **Source files** — scanned for target and inline blocks inside comments |
+| Files                                      | Role                                                   |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `*.t.md`                                   | Template files: the only place providers are read from |
+| `*.md`, `*.mdx`, `*.markdown`              | Scanned for consumer and inline blocks                 |
+| Source files (`*.rs`, `*.ts`, `*.py`, ...) | Scanned for consumer and inline blocks inside comments |
 
-Source blocks found in non-template files are ignored, so arbitrary files can't inject content by accident.
+A provider tag outside a `*.t.md` file is ignored with a `mdt::provider_outside_template` warning. See [Source File Support](../guide/source-files.md) for the full extension list.
 
 ## What gets skipped
 
-The scanner skips:
-
-- Hidden directories (starting with `.`)
-- `node_modules/`
-- `target/` (Rust build output)
-- Directories with their own `mdt.toml` (treated as separate projects)
-- Files matching gitignore-style patterns in the `[exclude]` config section
-- Blocks whose names appear in `[exclude] blocks`
-- Tags inside fenced code blocks in source-file comments when `[exclude] markdown_codeblocks` is configured
+- Files ignored by git: `.gitignore` files in the project and its parent directories up to the repository root, plus `.git/info/exclude`. Outside a git repository, only the `.gitignore` files inside the project apply. `disable_gitignore = true` turns this off.
+- Hidden directories other than `.templates/`, plus `node_modules/` and `target/`, even with `disable_gitignore`. List other directories under `[templates] paths` to read their providers.
+- Subdirectories with their own `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`. Each is a separate project.
+- Files with extensions mdt does not scan, unless added with `[include]`.
+- Files matching `[exclude] patterns`, and blocks named in `[exclude] blocks` (their consumers are never filled or checked).
+- Tags inside fenced code blocks and inline code spans in markdown, and inside fenced code blocks in source comments when `[exclude] markdown_codeblocks` is set.
 
 ## Matching rules
 
-- Each source name must be **unique** across all template files. Duplicate names produce an error.
-- A target references a source by name. If no matching source exists, mdt emits a warning but continues.
-- Multiple targets can reference the same source. They all receive the same content (after their own transformers are applied).
-- A single file can contain multiple target blocks.
+- Provider names are unique across the project. Two providers with the same name are a `mdt::duplicate_provider` error.
+- A consumer whose name matches no provider is an orphan. `mdt check` fails and lists it with a suggestion; `mdt update` warns and leaves it unchanged:
+
+  ```text
+  consumer `instalGuide` at readme.md:3:1 has no provider (did you mean `installGuide`?)
+  ```
+
+- A provider with no consumers is a `mdt::unused_provider` warning.
+- Any number of consumers can use one provider, and a file can contain any number of consumers. Each consumer applies its own transformers.

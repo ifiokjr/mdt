@@ -839,13 +839,13 @@ impl BlockCreator {
 }
 
 /// <!-- {=mdtBlockDocs|trim|linePrefix:"/// ":true} -->
-/// A parsed template block representing either a source or consumer.
+/// A parsed template block: a provider, a consumer, or an inline block.
 ///
-/// Source blocks are defined in `*.t.md` template files using `{@name}...{/name}` tag syntax (wrapped in HTML comments). They supply content that gets distributed to matching consumers.
+/// Providers are defined in `*.t.md` template files with `{@name}...{/name}` tags (wrapped in HTML comments). They supply content to every consumer with the same name.
 ///
-/// Target blocks appear in any scanned file using `{=name}...{/name}` tag syntax (wrapped in HTML comments). Their content is replaced with the matching source's content (after applying any transformers) when `mdt update` is run.
+/// Consumers appear in any scanned file with `{=name}...{/name}` tags (wrapped in HTML comments). `mdt update` replaces their content with the matching provider's content, after applying any transformers.
 ///
-/// Each block tracks its [`name`](Block::name) for source-target matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
+/// Each block tracks its [`name`](Block::name) for provider-consumer matching, its [`BlockType`], the [`Position`] of its opening and closing tags, and any [`Transformer`]s to apply during content injection.
 /// <!-- {/mdtBlockDocs} -->
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
@@ -867,15 +867,15 @@ pub struct Block {
 }
 
 /// <!-- {=mdtTransformerDocs|trim|linePrefix:"/// ":true} -->
-/// A content transformer applied to source content during injection into a target block.
+/// A content transformer applied to provider content as it is injected into a consumer.
 ///
-/// Transformers are specified using pipe-delimited syntax after the block name in a target tag:
+/// Transformers are written as pipe-delimited filters after the block name in a consumer tag:
 ///
 /// ```markdown
-/// <!-- {=blockName|trim|indent:"  "|linePrefix:"/// "} -->
+/// <!-- {=blockName|trim|indent:"  "|linePrefix:"/// ":true} -->
 /// ```
 ///
-/// Transformers are applied in left-to-right order. Each transformer has a [`TransformerType`] and zero or more [`Argument`]s passed via colon-delimited syntax (e.g., `indent:"  "`).
+/// Transformers apply left to right. Each has a [`TransformerType`] and zero or more [`Argument`]s passed with colon-delimited syntax (for example `indent:"  "`).
 ///
 /// Available transformers: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`.
 /// <!-- {/mdtTransformerDocs} -->
@@ -891,7 +891,7 @@ pub struct Transformer {
 /// <!-- {=mdtArgumentDocs|trim|linePrefix:"/// ":true} -->
 /// An argument value passed to a [`Transformer`].
 ///
-/// Arguments are specified after the transformer name using colon-delimited syntax:
+/// Arguments follow the transformer name with colon-delimited syntax:
 ///
 /// ```markdown
 /// <!-- {=block|replace:"old":"new"|indent:"  "} -->
@@ -899,9 +899,9 @@ pub struct Transformer {
 ///
 /// Three types are supported:
 ///
-/// - **String** — Quoted text, e.g. `"hello"` or `'hello'`
-/// - **Number** — Integer or floating-point, e.g. `42` or `3.14`
-/// - **Boolean** — `true` or `false`
+/// - **String**: quoted text, such as `"hello"` or `'hello'`. Only double-quoted strings decode escapes like `\n`.
+/// - **Number**: an integer or float, such as `42` or `3.14`. Transformers that expect text use the number's text, so `indent:4` prepends `4`, not four spaces.
+/// - **Boolean**: `true` or `false`.
 /// <!-- {/mdtArgumentDocs} -->
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]

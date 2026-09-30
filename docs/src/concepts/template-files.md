@@ -1,31 +1,29 @@
 # Template Files
 
-Template files are the single source of truth for shared content. They hold **source blocks** that define the content distributed to consumers throughout your project.
+Template files hold the providers: the single source of truth for shared content.
 
-## Naming convention
+## Naming
 
-Template files use the `.t.md` extension:
+Any file ending in `.t.md` is a template file (`t` for template):
 
+```text
+.templates/template.t.md
+.templates/api.t.md
+docs/shared.t.md
 ```
-template.t.md
-docs.t.md
-shared/api-docs.t.md
-```
 
-Any file ending in `.t.md` is treated as a template file. The `t` stands for "template."
-
-Only `*.t.md` files can contain source blocks. Source tags (`{@name}`) in other files are ignored. This prevents accidental content injection from arbitrary files and gives you one place to look for content definitions.
+Only `*.t.md` files can define providers. A provider tag in any other file is ignored with a `mdt::provider_outside_template` warning, so there is one place to look for content definitions.
 
 ## Structure
 
-A template file is regular markdown containing one or more source blocks:
+A template file is regular markdown with one or more providers:
 
-```
+```markdown
 <!-- {@installGuide} -->
 
 Install the package:
 
-  npm install my-lib
+    npm install my-lib
 
 <!-- {/installGuide} -->
 
@@ -36,71 +34,61 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 <!-- {/contributing} -->
 ```
 
-Content outside source blocks is ignored by mdt. Use it for notes, organization, or documentation about the templates themselves.
+Text outside provider blocks is not distributed. Use it for notes about the templates.
 
 ## Template variables
 
-Provider content can include [minijinja](https://docs.rs/minijinja) template variables that reference data from project files. This requires an mdt config file (`mdt.toml`, `.mdt.toml`, or `.config/mdt.toml`). See [Data Interpolation](../guide/data-interpolation.md) for details.
+When `mdt.toml` has a `[data]` section, provider content is rendered with [minijinja](https://docs.rs/minijinja) and can reference project data:
 
-```
+```markdown
 <!-- {@installGuide} -->
 
 Install `{{ package.name }}` version {{ package.version }}:
 
-  npm install {{ package.name }}@{{ package.version }}
+    npm install {{ package.name }}@{{ package.version }}
 
 <!-- {/installGuide} -->
 ```
 
-When mdt renders this source, `{{ package.name }}` and `{{ package.version }}` are replaced with actual values from `package.json` (or whichever file is mapped to the `package` namespace).
+With `package = "package.json"` under `[data]`, `{{ package.version }}` becomes the version from `package.json`. Without `[data]`, provider content is copied as written, and `check` and `update` warn about each used provider that contains variables:
 
-## Where to place template files
-
-Template files can live anywhere in your project directory.
-
-Canonical recommendation: use `.templates/` at the project root.
-
-**Canonical layout (`.templates/`):**
-
+```text
+warning: provider block `installGuide` in .templates/template.t.md uses template variable(s) package.name, package.version, but this project has no `[data]`, so the text is copied without rendering; declare the namespace(s) under `[data]` in this project's mdt.toml
 ```
+
+See [Data Interpolation](../guide/data-interpolation.md).
+
+## Where to put template files
+
+`*.t.md` files anywhere in the project are providers, except in skipped locations such as hidden directories, `node_modules/`, and `target/`. `.templates/` is the one hidden directory that is scanned, and it is the recommended home:
+
+```text
 my-project/
   .templates/
     template.t.md
-    docs.t.md
+    api.t.md
   readme.md
 ```
 
-**Compatible alternative (`templates/`):**
+A `templates/` directory or a single `template.t.md` at the root works too.
 
-```
-my-project/
-  templates/
-    docs.t.md
-    examples.t.md
-  readme.md
-```
-
-**Legacy single template at the root (still supported):**
-
-```
-my-project/
-  template.t.md
-  readme.md
-```
-
-You can also configure explicit template paths in `mdt.toml`:
+To read providers from somewhere the scan does not reach, such as another hidden directory or a shared directory outside a sub-project, list it under `[templates] paths`:
 
 ```toml
 [templates]
-paths = ["shared/templates"]
+paths = [".github/templates", "../../.templates"]
 ```
+
+Each path is relative to the project root and may point outside it. mdt reads only the `*.t.md` files from listed directories; other files there are not treated as consumers. `paths` adds directories and never restricts where else providers are found. Providers read from a directory outside the project are never reported as unused. A listed path that is not a directory is a `mdt::templates_path` error.
 
 ## Multiple template files
 
-A project can have multiple template files. Source names must be unique across **all** template files. If two files define `{@installGuide}`, mdt reports an error:
+A project can have any number of template files. Provider names must be unique across all of them; a second provider with the same name stops `check` and `update` with exit code 2:
 
-```
-error: duplicate source `installGuide`: defined in `docs.t.md` and `api.t.md`
-```
+```text
+mdt::duplicate_provider
 
-Each piece of content has exactly one source of truth.
+  x duplicate provider `installGuide`: defined in `.templates/api.t.md:3` and
+  | `.templates/docs.t.md:1`
+  help: each provider block name must be unique across the project
+```

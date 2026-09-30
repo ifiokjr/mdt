@@ -1,150 +1,161 @@
 ---
 name: mdt
-description: Manage markdown templates with mdt. Synchronize README sections, docs-site content, and source-code comments (TypeScript, Rust, Dart, Python, Go, and more) from shared provider blocks. Use when editing documentation, creating provider/consumer blocks, running mdt commands, resolving formatter conflicts with synced docs, or working with mdt MCP tools.
+description: Manage markdown templates with mdt. Synchronize README sections, docs-site content, and source-code doc comments (TypeScript, Rust, Dart, Python, Go, and more) from shared provider blocks. Use when editing documentation that contains mdt tags (`<!-- {=name} -->`), creating provider/consumer blocks, running mdt commands, fixing `mdt check` failures in CI, resolving formatter conflicts with synced docs, or working with mdt MCP tools.
 ---
 
 # mdt — Markdown Template Management
 
+mdt keeps repeated documentation in sync. Content is defined once in a **provider** block inside a `*.t.md` file and copied into every matching **consumer** block — in markdown files and in source-code comments. `mdt update` rewrites consumers; `mdt check` fails CI when any are stale.
+
 ## Install & version
 
 ```sh
-npm install -g @m-d-t/cli   # provides the `mdt` binary
-mdt --version               # check before relying on newer features
-npm install -g @m-d-t/cli@latest   # upgrade
+npm install -g @m-d-t/cli   # provides the `mdt` binary (or: cargo install mdt_cli)
+mdt --version
+mdt skill                   # this skill, matching the installed binary
+mdt skill --reference       # the full reference (REFERENCE.md)
 ```
 
-- If the CLI is already installed, use it as-is; only upgrade when a feature you need is missing.
-- Recent additions: hyphenated block names (`my-block`), `.dart` source scanning, formatter-aware `[[formatters]]`. If `mdt list` does not discover such blocks, check `mdt --version` and upgrade with `npm install -g @m-d-t/cli@latest`.
+If an installed copy of this skill disagrees with the CLI, trust `mdt skill` — it is embedded in the binary. Upgrade with `npm install -g @m-d-t/cli@latest`.
 
-## Quick start
+## Workflow
 
-```sh
-mdt init     # starter .templates/template.t.md + annotated mdt.toml; leaves the project green
-mdt check    # exit 0 = all consumers current; non-zero = stale (CI-friendly)
-mdt update   # rewrite all stale consumers from provider content
-mdt list     # show every provider/consumer and where it lives
-mdt doctor   # run this FIRST when blocks are not behaving as expected
+1. **Look before adding.** Run `mdt list` (or MCP `mdt_find_reuse`) and search `*.t.md` files; reuse an existing provider instead of creating a near-duplicate.
+2. **Edit the provider, never a synced copy.** Consumer content is overwritten by `mdt update`.
+3. **Sync:** `mdt update`, then `mdt check`. Both must pass — `mdt check` exits `0` only when every consumer is linked and current.
+4. **Never loop `mdt update` against a formatter** — configure `[[formatters]]` instead (see below).
+
+New project: `mdt init` adds an annotated `mdt.toml`, a sample `greeting` provider in `.templates/template.t.md`, a synced sample `readme.md` (only when there is no README), and `.mdt/` to `.gitignore`. It never overwrites existing files. Replace the sample with real providers.
+
+## Blocks
+
+```markdown
+<!-- .templates/install.t.md — providers live ONLY in *.t.md files -->
+<!-- {@installCommand} -->
+
+npm install acme-http
+
+<!-- {/installCommand} -->
 ```
 
-## Core workflow
+```markdown
+<!-- README.md — a consumer; mdt writes the content between the tags -->
+<!-- {=installCommand|trim|codeBlock:"sh"} -->
+<!-- {/installCommand} -->
+```
 
-1. **Define once** — create provider blocks in `*.t.md` files (canonical location: `.templates/`):
-   ```markdown
-   <!-- {@installCommand} -->
+After `mdt update` the consumer contains the fenced command. Rules:
 
-   npm install acme-http
+- Names match `[A-Za-z_][A-Za-z0-9_-]*` and are case-sensitive. The sigil must follow `{` directly: `{@name}` works, `{ @name }` is not a tag (reported as an invalid tag in markdown; in code comments its leftover closing tag is reported as unmatched).
+- Provider names are unique across the project. A `{@name}` outside a `*.t.md` file is ignored (with a warning).
+- Blocks never nest (`mdt::nested_block`): inside a consumer, `mdt update` would overwrite the inner block; inside a provider, its tags would be copied into every consumer. Use `{{ ... }}` data in providers instead of inline blocks.
+- Inline blocks render a data value in place: `Version <!-- {~v:"{{ pkg.version }}"} -->0.0.0<!-- {/v} -->`. Use them for values inside sentences and table cells (in a table cell, leave out `|` transformers — the table syntax splits on `|`).
+- Tags inside fenced code blocks and inline code in markdown are inert examples. An example that contains its own `` ``` `` fence needs a 4-backtick outer fence, or the inner fence closes the outer one early.
 
-   <!-- {/installCommand} -->
-   ```
+## Transformers
 
-2. **Reuse everywhere** — add consumer blocks in markdown or inside code comments:
-   ```markdown
-   <!-- {=installCommand|trim|codeBlock:"sh"} -->
-   <!-- {/installCommand} -->
-   ```
-   ```ts
-   /**
-    * <!-- {=apiDocs|trim|indent:" * ":true} -->
-    * <!-- {/apiDocs} -->
-    */
-   export function createClient() {}
-   ```
+Pipe filters on the consumer tag, applied left to right: `trim`, `trimStart`, `trimEnd`, `indent`, `prefix`, `suffix`, `linePrefix`, `lineSuffix`, `wrap`, `codeBlock`, `code`, `replace`, `if`. Arguments are quoted strings: `linePrefix:"/// ":true`, `replace:"old":"new"`, `codeBlock:"ts"`, `if:"pkg.private"` (a dotted data path, not an expression). `indent:4` prepends the text `4` — write `indent:"    "`.
 
-3. **Sync** — run `mdt update`. If the project formats its files (dprint, prettier, rustfmt, `dart format`), run the formatter too — see [Working with formatters](#working-with-formatters).
+## Source-file consumers
 
-4. **Verify** — run `mdt check`; wire it into CI so stale docs fail the build.
+Tags go inside the language's comments; a transformer re-applies the comment prefix to the content. Always pass `true` so blank lines get the prefix too:
 
-## Working with formatters
+```rust
+//! <!-- {=crateDocs|trim|linePrefix:"//! ":true} -->
+//! <!-- {/crateDocs} -->
+```
 
-`mdt check` compares consumer content **byte-for-byte** against the rendered provider. A formatter that rewraps a synced file makes `mdt check` report stale even though no words changed — the classic `mdt update → formatter → mdt check` loop. Never "fix" this by running `mdt update` in a loop; use one of the built-in escapes:
+```ts
+/**
+ * <!-- {=clientDocs|trim|linePrefix:" * ":true} -->
+ * <!-- {/clientDocs} -->
+ */
+export function createClient() {}
+```
 
-**Fix 1 (preferred): `[[formatters]]` in `mdt.toml`.** mdt runs your formatter itself, so `mdt update` writes and `mdt check` compares formatter-canonical output:
+| Comment                            | Transformer                                                         |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| Rust crate docs (`//!`)            | `linePrefix:"//! ":true`                                            |
+| Rust item docs (`///`)             | `linePrefix:"/// ":true`                                            |
+| Rust item docs inside an `impl`    | `linePrefix:"    /// ":true` (indentation + prefix)                 |
+| TypeScript/JavaScript JSDoc        | `linePrefix:" * ":true`                                             |
+| JSDoc on a class method            | `linePrefix:"   * ":true` (the method's indentation, then the star) |
+| Go, Java, Kotlin, Swift, C# (`//`) | `linePrefix:"// ":true`                                             |
+| Python (`#`)                       | `linePrefix:"# ":true`                                              |
+| Dart (`///`)                       | `linePrefix:"/// ":true`                                            |
+
+- Prefer `linePrefix` over `indent` for comments: `linePrefix` trims trailing spaces on blank lines, so formatters leave the output alone.
+- Scanned: `.rs .ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .java .kt .swift .c .cc .cpp .cxx .h .hh .hpp .cs .dart` plus `.md .mdx .markdown`. Other extensions are skipped silently — opt in with `[include] patterns = ["**/*.rb"]` (this **adds** files; it never narrows the scan).
+- Complete tags inside string literals are live blocks too; exclude such files (`[exclude] patterns`). A lone closing tag inside quotes or backticks (`"<!-- {/x} -->"`) is ignored.
+- Provider text containing `*/` (a `**/*.ts` glob) closes a `/* */` comment. Escape it without writing `*/` in the tag itself: `replace:"*\u{2f}":"*\\/"`.
+
+## Data
+
+```toml
+# mdt.toml
+[data]
+pkg = "package.json" # {{ pkg.version }}
+cargo = "crates/core/Cargo.toml" # {{ cargo.package.version }}
+release = { command = "git describe --tags", format = "text" }
+```
+
+Providers render with minijinja once `[data]` exists: `{{ pkg.version }}`, `{% if %}`, `{% for %}`, filters like `upper`/`replace`/`join`. Literal `{{ }}` in providers (GitHub Actions `${{ secrets.X }}`, Handlebars) must be wrapped in `{% raw %}...{% endraw %}`. Text sources drop one trailing newline. Prefer data over hardcoded versions — they never go stale.
+
+## Formatters
+
+`mdt check` compares bytes. A formatter that rewraps a synced file makes it stale again. Fix it once in `mdt.toml` so mdt runs the formatter itself:
 
 ```toml
 [[formatters]]
-command = "dprint fmt --stdin \"{{ filePath }}\""
+command = "dprint fmt --stdin \"{{ filePath }}\"" # keep placeholders in double quotes
 patterns = ["**/*.md"]
 ignore = ["**/*.t.md"]
 
 [[formatters]]
 command = "prettier --stdin-filepath \"{{ filePath }}\""
 patterns = ["**/*.ts", "**/*.tsx"]
+
+[[formatters]]
+command = "rustfmt --edition 2021" # stdin to stdout; never pass the file path to rustfmt
+patterns = ["**/*.rs"]
 ```
 
-- `{{ filePath }}`, `{{ relativeFilePath }}`, `{{ rootDirectory }}` are available in `command`.
-- Keep `*.t.md` files out of formatter `patterns` (they are provider sources; formatting them as markdown can mangle `#`-commented config examples and `**` globs).
-- After changing this config, run `mdt update` once, then the formatter, then `mdt check` — all three must be stable.
+- Also exclude `*.t.md` in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite `#` lines and `**` globs inside provider text.
+- With formatters, `mdt check` also reports **stale files** (formatting drift anywhere in a file with a consumer); `mdt update` fixes them.
+- CI must install the same formatter versions, or `mdt check` fails.
+- Whitespace-only drift can instead use `[check] comparison = "lenient"` (trailing spaces and blank-line runs only — not indentation or tables).
 
-**Fix 2: `[check] comparison = "lenient"`.** Whitespace-normalized comparison for `mdt check` (blank lines, trailing whitespace, table/JSON formatting). `mdt update` still writes exact bytes. Use when formatter drift is whitespace-only.
+## CI
 
-**Fix 3 (fallback): formatter-stable providers.** Author provider content in the shape your formatter produces: run `mdt update`, run the formatter, copy the formatted block body back into the `*.t.md` provider, run `mdt update` again (it should now report "already up to date"). Re-do this whenever formatter config (e.g. line width) changes.
-
-For consumers in code comments, set `[padding]` `before = 0, after = 0` so formatters have no stray blank lines to rewrite.
-
-## Code files (TypeScript, Rust, Dart, ...)
-
-Consumer and inline blocks work inside code comments. The tags are HTML comments; wrap them in the language's comment syntax and use transformers to re-apply the comment prefix:
-
-```ts
-/**
- * <!-- {=apiDocs|trim|indent:" * ":true} -->
- * <!-- {/apiDocs} -->
- */
+```yaml
+- run: npx -y @m-d-t/cli@<version> check --format github
 ```
 
-```rust
-/// <!-- {=apiDocs|trim|linePrefix:"/// ":true} -->
-/// <!-- {/apiDocs} -->
-pub fn create_client() {}
-```
+Exit codes: `0` in sync; `1` stale, orphan (consumer with no provider), or render error; `2` validation or config error (unclosed, unmatched, or nested tags, invalid tags, unknown transformers, duplicate providers, bad `mdt.toml`).
 
-```dart
-// <!-- {=pkgDescription|trim|linePrefix:"/// ":true} -->
-// <!-- {/pkgDescription} -->
-library;
-```
+**Monorepos.** Every directory with its own `mdt.toml` is a separate project that the parent skips silently — run `mdt check --path <dir>` for each in CI. Without `--path`, mdt uses the nearest ancestor directory with an `mdt.toml` inside the git repository, so it works from any subdirectory. To reuse the root's providers in a sub-project, add `[templates] paths = ["../../.templates"]` and redeclare every `[data]` namespace they use (paths may start with `../`); without `[data]`, `{{ pkg.version }}` is copied literally (mdt warns).
 
-- Set `[padding]` `before = 0, after = 0` in `mdt.toml` when consumers live in source files — without it, content merges onto the tag line.
-- Tag lines keep the comment prefix you author them with; the transformer prefix applies to content lines only. Author the tag lines themselves with the doc-comment prefix (e.g. `///`) when they must be doc comments.
-- Only listed extensions are scanned (`.rs`, `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.java`, `.kt`, `.swift`, `.c`, `.cpp`, `.h`, `.cs`, `.dart`, plus markdown). Other extensions are skipped **silently** — verify with `mdt list` that your consumer appears, or opt the extension in:
+## When `mdt check` fails
 
-  ```toml
-  [include]
-  patterns = ["**/*.md", "**/*.dart"]
-  ```
+| Output                                                | Fix                                                                                    |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `consumer block(s) are out of date`                   | `mdt update` (edit the provider if the synced text is wrong)                           |
+| `has no provider (did you mean ...?)`                 | Fix the name, or move the provider into a `*.t.md` file                                |
+| `missing closing tag` + `has no matching opening tag` | One tag is misspelled — make the names match; don't just add the suggested closing tag |
+| `looks like an mdt tag but cannot be parsed`          | Remove the space after `{` or fix the name                                             |
+| `is inside consumer`                                  | Move the inner block out                                                               |
+| `unknown field` in `mdt.toml`                         | Typo in a config key — unknown keys are rejected                                       |
+| Render error                                          | Fix the provider template; other consumers still update                                |
 
-## Preventing stale docs
+`mdt list` shows every block with `file:line` and `[linked]`/`[orphan]`/`[inline]`, even when there are errors. `mdt doctor` gives health checks with hints. `mdt check --format json` returns `ok`, `stale`, `stale_files`, `orphans`, `errors`, and `diagnostics` with locations.
 
-Sharing one provider beats copy-pasted docs: edit once, `mdt update`, and every copy is current. To keep it that way:
+## Config at a glance
 
-- Run `mdt check` in CI (it exits non-zero on stale consumers).
-- Call `mdt_find_reuse` (MCP) or search `*.t.md` files **before** writing new docs that duplicate an existing provider.
-- Prefer data interpolation over duplication: `{{ pkg.version }}` from `[data] pkg = "pubspec.yaml"` never goes stale.
-- After editing any provider: `mdt check` then `mdt update`.
+`mdt.toml` (or `.mdt.toml`, `.config/mdt.toml`); unknown keys are errors. Default padding puts content on the line after the opening tag and the closing tag on its own line; `[padding] before/after` adds blank lines (`false` = inline). `[exclude] patterns` (gitignore syntax; negate with `dir/*` + `!dir/keep.md`), `[exclude] blocks` (removes those names entirely — their consumers are never filled or checked), `[include] patterns` (adds files), `[templates] paths` (adds `*.t.md` directories, e.g. a shared `../../.templates`), `[check]`, `[[formatters]]`, `max_file_size`, `disable_gitignore`. `.gitignore` rules apply like git. Gitignore the `.mdt/` cache.
 
-## Key rules
+## Agents
 
-- Provider names are **globally unique** across all `*.t.md` files. Names may contain letters, digits, `_`, and `-`; camelCase is the convention.
-- Providers live only in `*.t.md` files. Source files can contain **consumer** and **inline** blocks only.
-- Tags inside properly closed markdown fences are inert examples. But an example that itself contains a `` ``` `` fence closes the outer fence early and leaks the tags after it into live content — use 4-backtick outer fences for such examples, or exclude the file: `[exclude] patterns = ["GUIDE.md"]`.
-- Orphan consumers (no matching provider) only warn; `mdt doctor` catches them.
-- Gitignore `.mdt/` — it is a local cache.
-- Unknown `mdt.toml` keys are silently ignored; validate spelling against the annotated reference in REFERENCE.md when a config change "does nothing".
+- `mdt skill --install .claude/skills` (or `.agents/skills`, `.pi/skills`, `.github/skills`) installs this skill for a project; `mdt assist <claude|cursor|copilot|pi|generic>` prints MCP setup for each client.
+- MCP server (`mdt mcp`): `mdt_find_reuse` (call before creating a provider), `mdt_list`, `mdt_check`, `mdt_update` (`dry_run`), `mdt_preview`, `mdt_get_block`, `mdt_init`. Responses are JSON with `ok`, `action`, and `summary`.
 
-## MCP tools (via `mdt mcp`)
-
-When using the MCP server, **always call `mdt_find_reuse` before creating a new provider**:
-
-| Tool             | Purpose                                                     |
-| ---------------- | ----------------------------------------------------------- |
-| `mdt_find_reuse` | Find similar providers and reuse opportunities — call first |
-| `mdt_list`       | List all providers and consumers                            |
-| `mdt_check`      | Verify consumers are up-to-date                             |
-| `mdt_update`     | Sync all consumers                                          |
-| `mdt_preview`    | Preview rendered output before committing (MCP-only)        |
-| `mdt_get_block`  | Get a specific block's content                              |
-| `mdt_init`       | Initialize a new mdt project                                |
-
-## Detailed reference
-
-For the full transformer table, data interpolation, inline blocks, every configuration option (including `[[formatters]]` and `[check]`), and per-language source-file patterns, see [REFERENCE.md](REFERENCE.md).
+For the full reference — every config key, padding rules, transformer details, diagnostics, and JSON output — run `mdt skill --reference` or read [REFERENCE.md](REFERENCE.md).

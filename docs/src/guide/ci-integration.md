@@ -1,39 +1,30 @@
 # CI Integration
 
-mdt's `check` command is built for CI pipelines. It verifies that all target blocks are up to date and exits non-zero if any are stale.
+`mdt check` is the whole gate. It exits non-zero when anything is wrong:
 
-## Basic CI check
+- `0`: every consumer is linked to a provider and up to date.
+- `1`: a consumer is stale, an orphan (no provider), or its provider fails to render, or a file drifted from its formatter output.
+- `2`: validation errors (unclosed, unmatched, nested, or invalid tags, unknown transformers, duplicate providers) or config and data errors.
 
-Add a step to your CI workflow that runs `mdt check`:
+Warnings, such as unused providers, are printed but never fail the check.
 
-```yaml
-- name: check documentation is up to date
-  run: mdt check
+## Install mdt in CI
+
+Use the prebuilt binary from npm and pin the version you use locally (`mdt --version`):
+
+```sh
+npx -y @m-d-t/cli@0.9.5 check --format github
 ```
 
-If any target blocks are out of date, the step fails and the pipeline reports which blocks need updating.
+Or install it once for several steps:
 
-## CI diagnostics triage
-
-When `mdt check` fails in CI, add diagnostics commands so the logs include root-cause context:
-
-```yaml
-- name: diagnostics
-  run: |
-    mdt info
-    mdt doctor
+```sh
+npm install -g @m-d-t/cli@0.9.5
 ```
 
-This provides:
-
-- Project/config resolution details (`mdt.toml`, `.mdt.toml`, `.config/mdt.toml`)
-- Provider/consumer linkage summary (orphans, missing sources, duplicates)
-- Cache artifact health and reuse/reparse telemetry
-- Actionable doctor hints for config/data/layout/cache issues
+`cargo install mdt_cli` also works, but it builds from source and takes minutes.
 
 ## GitHub Actions
-
-### Full workflow example
 
 ```yaml
 name: docs
@@ -47,169 +38,147 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: install mdt
-        run: cargo install mdt_cli
-
       - name: check documentation sync
-        run: mdt check
+        run: npx -y @m-d-t/cli@0.9.5 check --format github
 ```
 
-### GitHub Actions annotations
+### Annotations
 
-Use `--format github` to produce GitHub Actions annotations. These show up as inline warnings on the pull request diff, pointing at the files with stale blocks:
+`--format github` prints one annotation per problem, which GitHub shows inline on the pull request. Failures are `::error`, warnings are `::warning`:
+
+```text
+::error file=readme.md,line=3,col=1::Consumer block `install` is out of date; run `mdt update`
+::error file=readme.md,line=3,col=1::consumer `installguide` at readme.md:3:1 has no provider (did you mean `installGuide`?)
+::error file=readme.md,line=6,col=1::Template render failed for block `badges`: argument count mismatch: provider `badges` declares 1 parameter(s), but consumer passes 2
+::error file=readme.md::Formatter-normalized file output is out of date; run `mdt update`
+::warning file=.templates/docs.t.md,line=1,col=1::provider block `installGuide` has no consumers
+```
+
+Validation errors, such as `mdt::invalid_tag` or `mdt::nested_block`, are annotated the same way. A one-line summary goes to stderr.
+
+Limitations:
+
+- Annotation paths are relative to the mdt project root. For a sub-project (checked with `--path` or from inside its directory), GitHub reads them relative to the repository root, so the inline annotation can land on the wrong file. The message text still names the right file.
+- Errors that stop the scan before any file is checked (an invalid `mdt.toml`, duplicate providers, an unreadable file) print a full report on stderr instead of annotations. The step still fails with exit 2.
+
+### Show the diff
+
+`--diff` adds a unified diff for each stale consumer to the text output, so the log shows exactly what changed:
+
+```sh
+mdt check --diff
+```
+
+### Diagnostics on failure
+
+`mdt info` and `mdt doctor` explain config resolution, orphan and unused blocks, parser diagnostics, and cache health. Run them only when the check fails:
 
 ```yaml
-- name: check documentation sync
-  run: mdt check --format github
-```
-
-This produces output like:
-
-```
-::warning file=readme.md::Target block `install` is out of date
-```
-
-GitHub renders them as yellow warning annotations on the affected lines in the PR diff.
-
-### With diff output
-
-Use `--diff` to include a unified diff in the CI output showing what changed:
-
-```yaml
-- name: check documentation sync
-  run: mdt check --diff
+- name: mdt diagnostics
+  if: failure()
+  run: |
+    npx -y @m-d-t/cli@0.9.5 info
+    npx -y @m-d-t/cli@0.9.5 doctor
 ```
 
 ## JSON output
 
-For integration with other tools, use `--format json`:
+For other tools, use `--format json`:
 
-```yaml
-- name: check documentation sync
-  run: mdt check --format json
+```sh
+mdt check --format json
 ```
 
 <!-- {=mdtCheckJsonOutput} -->
 
-`mdt check --format json` returns:
+`mdt check --format json` prints one object with every key present:
 
-- `ok` — overall success boolean
-- `stale` — block-level drift entries with `file` and `block`
-- `stale_files` — formatter-only file drift entries with `file`
+| Key           | Entries                                                                      |
+| ------------- | ---------------------------------------------------------------------------- |
+| `ok`          | `true` when every consumer is linked and current                             |
+| `stale`       | Stale consumers: `file`, `block`, `line`, `column`                           |
+| `stale_files` | Files a formatter would change: `file`                                       |
+| `orphans`     | Consumers with no provider: `file`, `block`, `line`, `column`, `suggestions` |
+| `errors`      | Render errors: `file`, `block`, `line`, `column`, `message`                  |
+| `diagnostics` | Errors and warnings: `severity`, `code`, `file`, `line`, `column`, `message` |
 
-When formatter-aware normalization would change the full file without changing any managed block body, `stale_files` is populated and `stale` can remain empty.
-
-Clean output:
-
-```json
-{ "ok": true, "stale": [], "stale_files": [] }
-```
-
-Formatter-only drift example:
+A clean project:
 
 ```json
 {
-	"ok": false,
+	"diagnostics": [],
+	"errors": [],
+	"ok": true,
+	"orphans": [],
 	"stale": [],
-	"stale_files": [{ "file": "docs/readme.md" }]
+	"stale_files": []
 }
 ```
 
+A stale consumer, an orphan, and an unused-provider warning:
+
+```json
+{
+	"diagnostics": [
+		{
+			"code": "mdt::unused_provider",
+			"column": 1,
+			"file": ".templates/template.t.md",
+			"line": 11,
+			"message": "provider block `unused` has no consumers",
+			"severity": "warning"
+		}
+	],
+	"errors": [],
+	"ok": false,
+	"orphans": [
+		{
+			"block": "intor",
+			"column": 1,
+			"file": "readme.md",
+			"line": 7,
+			"suggestions": ["intro"]
+		}
+	],
+	"stale": [{ "block": "intro", "column": 1, "file": "readme.md", "line": 3 }],
+	"stale_files": []
+}
+```
+
+When validation errors (such as an unclosed or nested block) stop the check, the same object is printed with `ok: false` and the errors in `diagnostics`, and the exit status is 2. Errors that stop the scan itself (config and data errors, duplicate providers, unreadable files) print only the error report on stderr, also with exit status 2.
+
 <!-- {/mdtCheckJsonOutput} -->
+
+## Formatters in CI
+
+If `mdt.toml` has `[[formatters]]`, `mdt check` runs those commands. Install the same formatters at the same versions you use locally, or CI reports formatter drift that does not exist on your machine. A formatter that fails or is missing is an error (exit 2).
+
+## Monorepos
+
+Each directory with its own `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` is a separate project that the root scan skips. Check each one:
+
+```yaml
+- name: check docs
+  run: |
+    npm install -g @m-d-t/cli@0.9.5
+    mdt check
+    mdt check --path packages/lib-a
+    mdt check --path packages/lib-b
+```
+
+See [Monorepo setups](../advanced/monorepos.md) for a loop that finds every sub-project.
 
 ## Pre-commit hook
 
-You can also use mdt as a pre-commit check to prevent committing stale docs:
-
-```bash
+```sh
 #!/bin/sh
 # .git/hooks/pre-commit
-
-mdt check --format text
-if [ $? -ne 0 ]; then
-  echo ""
-  echo "Documentation is out of date. Run 'mdt update' before committing."
+if ! mdt check; then
+  echo "mdt check failed. Run 'mdt update' or fix the errors above before committing."
   exit 1
 fi
 ```
 
-## Automated fixes
+## This repository's workflows
 
-To auto-fix in CI rather than just check, run `mdt update` and commit the result:
-
-```yaml
-- name: update documentation
-  run: mdt update
-
-- name: check for changes
-  run: |
-    if [ -n "$(git status --porcelain)" ]; then
-      echo "mdt update produced changes. Please run 'mdt update' locally and commit."
-      git diff
-      exit 1
-    fi
-```
-
-## Publish mdBook on release
-
-This repository publishes the mdBook when an `mdt_cli` release is published on GitHub (or via manual `workflow_dispatch`). Other crate releases (e.g., `mdt_core`, `mdt_lsp`, `mdt_mcp`) do not trigger a docs deploy.
-
-The workflow lives at `.github/workflows/docs-pages.yml` and:
-
-1. Filters on `mdt_cli` release tags (or manual dispatch)
-2. Builds the book with `mdbook build docs`
-3. Uploads `docs/book` as a Pages artifact
-4. Deploys to GitHub Pages
-
-Equivalent workflow structure:
-
-```yaml
-name: docs-pages
-
-on:
-  release:
-    types: [published]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  build:
-    # Only deploy docs on mdt_cli releases (not library-only releases).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      startsWith(github.event.release.tag_name, 'mdt_cli')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: mdbook
-      - uses: actions/configure-pages@v5
-      - run: mdbook build docs
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/book
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/deploy-pages@v4
-```
-
-## Benchmark CI (this repository)
-
-This repository also runs `.github/workflows/benchmark.yml` on `pull_request` and `push` to `main`.
-
-The benchmark job:
-
-1. Builds `mdt` for a baseline ref and the candidate ref.
-2. Runs both binaries against the same deterministic workload.
-3. Compares medians per scenario with relative and absolute thresholds.
-4. Uploads raw benchmark artifacts and posts a PR comment report.
-
-When regressions exceed threshold, pull requests must include a `## Benchmark Justification` section in the PR description to document the tradeoff.
+mdt's own docs site is built and deployed by [`docs-pages.yml`](https://github.com/ifiokjr/mdt/blob/main/.github/workflows/docs-pages.yml) on every push to `main`. Performance regressions are caught by [`benchmark.yml`](https://github.com/ifiokjr/mdt/blob/main/.github/workflows/benchmark.yml); see [Benchmarking and regressions](../advanced/benchmarking-and-regressions.md).
