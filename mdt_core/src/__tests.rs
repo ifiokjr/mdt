@@ -1837,9 +1837,10 @@ fn scan_project_include_respects_gitignore() -> MdtResult<()> {
 fn scan_project_unreadable_file_error_names_the_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::create_dir_all(tmp.path().join("src")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	// Not UTF-8, and it contains `<!--`, so mdt has to decode it.
 	std::fs::write(
 		tmp.path().join("src/logo.png"),
-		[0x89, b'P', b'N', b'G', 0xff, 0xfe],
+		[0x89, b'P', b'N', b'G', 0xff, 0xfe, b'<', b'!', b'-', b'-'],
 	)
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -2308,6 +2309,107 @@ fn template_warnings_flag_namespaced_variables_when_no_data_is_configured() -> M
 	// Un-namespaced braces may be a literal example; only `pkg.version` is
 	// clearly a data reference.
 	assert_eq!(warning.undefined_variables, vec!["pkg.version".to_string()]);
+
+	Ok(())
+}
+
+#[rstest]
+#[case::string_literal("const CLOSE: &str = \"<!-- {/x} -->\";\n", 0)]
+#[case::doc_code_span("/// Close blocks with `<!-- {/x} -->`.\npub fn f() {}\n", 0)]
+#[case::template_literal("const t = `<!-- {/x} -->`;\n", 0)]
+#[case::comment("// <!-- { =x } -->\n// text\n// <!-- {/x} -->\n", 1)]
+fn source_unmatched_closing_tags_ignore_quoted_text(
+	#[case] content: &str,
+	#[case] expected: usize,
+) {
+	let (_, diagnostics) = parse_source_with_diagnostics(content, &CodeBlockFilter::default())
+		.unwrap_or_else(|e| panic!("parse: {e}"));
+	let unmatched = diagnostics
+		.iter()
+		.filter(|diagnostic| matches!(diagnostic, ParseDiagnostic::UnmatchedClosingTag { .. }))
+		.count();
+	assert_eq!(unmatched, expected, "{diagnostics:?}");
+}
+
+#[test]
+fn markdown_closing_tags_never_take_heading_or_bullet_prefixes() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(
+		tmp.path(),
+		"template.t.md",
+		"<!-- {@ver} -->\n\n1.2.3\n\n<!-- {/ver} -->\n",
+	);
+	write_file(
+		tmp.path(),
+		"readme.md",
+		"# Release <!-- {=ver|trim} -->0<!-- {/ver} -->\n\n* item <!-- {=ver|trim} -->0<!-- \
+		 {/ver} -->\n",
+	);
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	let written = &updates.updated_files[&tmp.path().join("readme.md")];
+	assert_eq!(
+		written,
+		"# Release <!-- {=ver|trim} -->\n1.2.3\n<!-- {/ver} -->\n\n* item <!-- {=ver|trim} \
+		 -->\n1.2.3\n<!-- {/ver} -->\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn scan_project_skips_tag_free_files_in_other_encodings() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Latin-1 "café" in a legacy C source without any mdt tags.
+	std::fs::write(tmp.path().join("legacy.c"), b"/* caf\xe9 */\nint x;\n")
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	write_file(tmp.path(), "readme.md", CONSUMER);
+
+	let project = scan_project(tmp.path())?;
+	assert_eq!(project.consumers.len(), 1);
+
+	Ok(())
+}
+
+#[test]
+fn init_project_in_a_repository_subdirectory_reports_the_enclosing_project() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::create_dir_all(tmp.path().join(".git")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	write_file(tmp.path(), "mdt.toml", "");
+	let nested = tmp.path().join("packages/lib");
+
+	let report = init::init_project(&nested)?;
+	assert_eq!(report.enclosing_project, Some(tmp.path().to_path_buf()));
+	assert_eq!(
+		report.gitignore,
+		init::GitignoreOutcome::Created(nested.join(".gitignore"))
+	);
+
+	// Re-running adds no config, so there is nothing new to warn about.
+	assert_eq!(init::init_project(&nested)?.enclosing_project, None);
+
+	Ok(())
+}
+
+#[test]
+fn nested_gitignores_apply_only_inside_a_repository() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(tmp.path(), ".gitignore", "root-ignored.md\n");
+	write_file(tmp.path(), "docs/.gitignore", "nested-ignored.md\n");
+	write_file(tmp.path(), "root-ignored.md", CONSUMER);
+	write_file(tmp.path(), "docs/nested-ignored.md", CONSUMER);
+
+	// Outside git, only the project root's `.gitignore` applies.
+	let project = scan_project(tmp.path())?;
+	assert_eq!(
+		consumer_files(&project, tmp.path()),
+		vec!["docs/nested-ignored.md"]
+	);
+
+	std::fs::create_dir_all(tmp.path().join(".git")).unwrap_or_else(|e| panic!("mkdir: {e}"));
+	let project = scan_project(tmp.path())?;
+	assert!(project.consumers.is_empty(), "{:?}", project.consumers);
 
 	Ok(())
 }

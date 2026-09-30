@@ -10,3 +10,6 @@
 - Consumers without a provider are errors (they fail `mdt check`), still with did-you-mean suggestions. Providers outside `*.t.md` files are warnings.
 - New diagnostics for closing tags without an opening tag (warning), comments that look like tags but do not parse (error), and blocks nested inside a consumer or inline block (error).
 - `MDT_LOG=info mdt lsp` no longer panics at startup: the server keeps a tracing subscriber the CLI already installed.
+- The quick fix computes its edit range from byte offsets in the open document, so lines with non-ASCII text before a tag are no longer corrupted, and it writes CRLF into CRLF documents.
+- Files formatted by a `[[formatters]]` entry get no stale diagnostics or quick fixes, because `mdt check` compares formatter output the server does not compute on every keystroke; run `mdt check` or `mdt update` for them.
+- Markdown headings and bullets before a closing tag are no longer treated as comment prefixes.

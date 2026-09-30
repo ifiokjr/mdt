@@ -811,21 +811,24 @@ fn parse_file_for_scan(
 	file: &Path,
 	options: &ScanOptions,
 ) -> MdtResult<index_cache::CachedFileData> {
-	let raw_content = std::fs::read_to_string(file).map_err(|error| {
+	let read_error = |reason: String| {
 		MdtError::ReadFile {
 			path: file.display().to_string(),
-			reason: error.to_string(),
+			reason,
 		}
-	})?;
+	};
+	let bytes = std::fs::read(file).map_err(|error| read_error(error.to_string()))?;
 	// Every tag is an HTML comment, so a file without one has nothing to
-	// parse. Skipping it avoids building a markdown AST for large docs.
-	if !raw_content.contains("<!--") {
+	// parse. Checking the bytes first skips large tag-free docs cheaply and
+	// never fails on tag-free files in other encodings (legacy C sources).
+	if crate::lexer::memstr(&bytes, b"<!--").is_none() {
 		return Ok(index_cache::CachedFileData {
 			providers: Vec::new(),
 			consumers: Vec::new(),
 			diagnostics: Vec::new(),
 		});
 	}
+	let raw_content = String::from_utf8(bytes).map_err(|error| read_error(error.to_string()))?;
 	let content = normalize_line_endings(&raw_content);
 	let (blocks, parse_diagnostics) = if is_markdown_file(file) {
 		parse_with_diagnostics(&content)?
@@ -1163,6 +1166,9 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 /// Outside a git repository only the root's own `.gitignore` applies.
 struct IgnoreRules {
 	enabled: bool,
+	/// Whether nested `.gitignore` files apply: only inside a repository,
+	/// as in git.
+	nested: bool,
 	stack: Vec<Gitignore>,
 }
 
@@ -1170,6 +1176,7 @@ impl IgnoreRules {
 	fn for_root(root: &Path, enabled: bool) -> Self {
 		let mut rules = Self {
 			enabled,
+			nested: false,
 			stack: Vec::new(),
 		};
 		if !enabled {
@@ -1178,9 +1185,10 @@ impl IgnoreRules {
 
 		let repository_root = root.ancestors().find(|dir| dir.join(".git").exists());
 		let Some(repository_root) = repository_root else {
-			rules.enter(root);
+			rules.push_file(root, &root.join(".gitignore"));
 			return rules;
 		};
+		rules.nested = true;
 
 		rules.push_file(repository_root, &repository_root.join(".git/info/exclude"));
 		let ancestors: Vec<&Path> = root
@@ -1196,7 +1204,7 @@ impl IgnoreRules {
 	/// Push the `.gitignore` of `dir`, if any. Returns whether a matcher was
 	/// pushed so the caller can [`leave`](Self::leave) symmetrically.
 	fn enter(&mut self, dir: &Path) -> bool {
-		self.enabled && self.push_file(dir, &dir.join(".gitignore"))
+		self.enabled && self.nested && self.push_file(dir, &dir.join(".gitignore"))
 	}
 
 	fn leave(&mut self, pushed: bool) {

@@ -173,6 +173,16 @@ fn main() {
 	}))
 	.ok();
 
+	if matches!(
+		args.command,
+		Commands::Check { .. }
+			| Commands::Update { .. }
+			| Commands::List
+			| Commands::Info { .. }
+			| Commands::Doctor { .. }
+	) {
+		note_discovered_root(&args);
+	}
 	let result = validate_project_root(&args).and_then(|()| {
 		match args.command {
 			Commands::Init => run_init(&args),
@@ -214,17 +224,41 @@ fn print_section(title: &str) {
 }
 
 /// The project root: `--path` when given; otherwise the nearest directory,
-/// from the current one upward, with an mdt config file, so running from a
-/// subdirectory behaves like running from the project root. Without any
-/// config in sight (and always for `mdt init`) it is the current directory.
+/// from the current one up to the root of the enclosing git repository,
+/// that has an mdt config file, so running from a subdirectory behaves like
+/// running from the project root. The search never leaves the repository —
+/// a stray config in a parent directory such as `$HOME` must not take over —
+/// and outside a git repository, like `mdt init`, it uses the current
+/// directory.
 fn resolve_root(args: &MdtCli) -> PathBuf {
 	let root = resolve_root_path(args.path.as_deref());
 	if args.path.is_some() || matches!(args.command, Commands::Init) {
 		return root;
 	}
+	let Some(repository) = root.ancestors().find(|dir| dir.join(".git").exists()) else {
+		return root;
+	};
 	root.ancestors()
+		.take_while(|dir| dir.starts_with(repository))
 		.find(|dir| MdtConfig::resolve_path(dir).is_some())
 		.map_or(root.clone(), Path::to_path_buf)
+}
+
+/// Say which project a command runs on when it is not the current directory,
+/// so a surprising root is visible.
+fn note_discovered_root(args: &MdtCli) {
+	if args.path.is_some() || matches!(args.command, Commands::Init) {
+		return;
+	}
+	let root = resolve_root(args);
+	let cwd = resolve_root_path(None);
+	if root != cwd {
+		eprintln!(
+			"{} using the mdt project at {}",
+			styled!(stderr, "note:", cyan),
+			display_path(&root)
+		);
+	}
 }
 
 /// Reject a `--path` that is not an existing directory. A mistyped path used
@@ -276,7 +310,8 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	use mdt_core::init::SampleOutcome;
 
 	let root = resolve_root(args);
-	let report = mdt_core::init::init_project(&root)?;
+	let report = mdt_core::init::init_project(&root)
+		.map_err(|error| format!("failed to initialize {}: {error}", display_path(&root)))?;
 	let rel = |path: &Path| relative_display_path(path, &root);
 
 	if args.path.is_some() {
@@ -321,6 +356,19 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			println!("Added the `.mdt/` cache directory to {}", rel(path));
 		}
 		_ => {}
+	}
+	if let Some(enclosing) = &report.enclosing_project {
+		eprintln!(
+			"{} this is now a separate mdt project inside the one at {}, whose `mdt check` skips \
+			 it; check it with `mdt check --path {}` too, or remove {} to keep one project",
+			styled!(stderr, "warning:", yellow_bold),
+			display_path(enclosing),
+			display_path(&root),
+			match &report.config {
+				ConfigOutcome::Created(path) => display_path(path),
+				_ => "the new config".to_string(),
+			}
+		);
 	}
 
 	let next_steps: Vec<String> = match &report.sample {

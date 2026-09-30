@@ -27,3 +27,8 @@
 - `TransformerType::NAMES` lists every transformer's canonical name, so help text can no longer drift from the implementation.
 - `content_matches` is public, so tools compare consumer content exactly as `mdt check` does under `[check] comparison`.
 - Consumers inside a shared `*.t.md` read through `[templates] paths` from outside the project are no longer treated as the project's consumers, so `mdt update --path <sub-project>` can never rewrite files outside that project.
+- In markdown files, a closing tag only keeps indentation from its line: `#` (a heading) and `*` (a bullet) are no longer mistaken for comment prefixes and copied onto the closing tag's new line.
+- In source files, closing-tag text inside a string literal or a backtick code span on its line (`"<!-- {/x} -->"`) is not reported as an unmatched closing tag.
+- Files without `<!--` are skipped before decoding, so tag-free files in other encodings (such as Latin-1 C sources) no longer fail the scan.
+- Nested `.gitignore` files apply only inside a git repository, as in git; outside one, only the project root's `.gitignore` applies.
+- `init_project` adds `.mdt/` to `.gitignore` in any directory inside a git repository and reports `InitReport::enclosing_project` when it creates a config inside another mdt project. New `formatter_applies` reports whether a `[[formatters]]` entry formats a file.

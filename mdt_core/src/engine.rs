@@ -492,7 +492,7 @@ fn expected_content(
 			);
 			ExpectedContent::Rendered(pad_content_with_config(
 				&transformed,
-				extract_line_comment_prefix(source, consumer.block.closing.start.offset),
+				closing_tag_prefix(consumer, source),
 				effective_padding(ctx),
 			))
 		}
@@ -517,6 +517,29 @@ fn expected_content(
 		}
 		// Scanning never records providers as consumers.
 		BlockType::Provider => ExpectedContent::NoProvider,
+	}
+}
+
+/// Whether a `[[formatters]]` entry formats `file`. For such files the
+/// content `mdt check` expects is only known after running the formatter.
+pub fn formatter_applies(ctx: &ProjectContext, file: &Path) -> bool {
+	!ctx.formatters.is_empty()
+		&& !FormatterPipeline::compile(&ctx.formatters)
+			.commands_for(&ctx.root, file)
+			.is_empty()
+}
+
+/// The text in front of a consumer's closing tag that padding re-applies.
+///
+/// In source files that is the comment prefix (`//! `, ` * `). Markdown has
+/// no comment prefixes — `#` starts a heading and `*` a list item — so only
+/// indentation carries over there.
+fn closing_tag_prefix<'a>(consumer: &ConsumerEntry, source: &'a str) -> &'a str {
+	let prefix = extract_line_comment_prefix(source, consumer.block.closing.start.offset);
+	if is_markdown_path(&consumer.file) && !prefix.trim().is_empty() {
+		""
+	} else {
+		prefix
 	}
 }
 
@@ -1498,20 +1521,6 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 	Ok(())
 }
 
-/// Pad content according to the padding configuration while preserving the
-/// trailing line prefix from the original consumer content. When the closing
-/// tag is preceded by a comment prefix (e.g., `//! ` or `/// `) that prefix
-/// is part of the content range and must be preserved after replacement.
-///
-/// The `before` value controls blank lines between the opening tag and
-/// content, and `after` controls blank lines between content and the closing
-/// tag. Each value can be:
-///
-/// - `false` — No padding; content appears inline with the tag.
-/// - `0` — Content on the very next line (one newline, no blank lines).
-/// - `1` — One blank line between the tag and content.
-/// - `2` — Two blank lines, and so on.
-///
 /// Default padding applied when no `[padding]` section is configured.
 ///
 /// Content starts on the line after the opening tag and the closing tag
@@ -1530,6 +1539,22 @@ fn effective_padding(ctx: &ProjectContext) -> &PaddingConfig {
 	ctx.padding.as_ref().unwrap_or(&DEFAULT_PADDING)
 }
 
+/// Pad content according to the padding configuration while preserving the
+/// trailing line prefix from the original consumer content. When the closing
+/// tag is preceded by a comment prefix (e.g., `//! ` or `/// `) that prefix
+/// is part of the content range and must be preserved after replacement.
+///
+/// The `before` value controls blank lines between the opening tag and
+/// content, and `after` controls blank lines between content and the closing
+/// tag. Each value can be:
+///
+/// - `false` — No padding; content appears inline with the tag.
+/// - `0` — Content on the very next line (one newline, no blank lines).
+/// - `1` — One blank line between the tag and content.
+/// - `2` — Two blank lines, and so on.
+///
+/// Padding adds to newlines the content already starts or ends with, so
+/// untrimmed provider content keeps its own blank lines.
 pub(crate) fn pad_content_with_config(
 	new_content: &str,
 	trailing_prefix: &str,
@@ -1538,7 +1563,7 @@ pub(crate) fn pad_content_with_config(
 	// The trailing prefix is the comment prefix (e.g., `//! `) that precedes
 	// the closing tag in the source file, extracted from the closing tag's
 	// line. It is preserved after replacement so the closing tag stays inside
-	// the comment. For markdown files this is empty.
+	// the comment. For markdown files it is at most indentation.
 	// Trimmed prefix for blank padding lines — avoids trailing whitespace
 	// on empty lines (e.g., "//! " becomes "//!").
 	let blank_line_prefix = trailing_prefix.trim_end();

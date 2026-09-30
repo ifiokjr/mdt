@@ -85,7 +85,8 @@ pub enum ConfigOutcome {
 pub enum GitignoreOutcome {
 	/// Appended `.mdt/` to an existing `.gitignore`.
 	Updated(PathBuf),
-	/// Created `.gitignore` containing `.mdt/` in a git repository.
+	/// Created `.gitignore` containing `.mdt/` in a git repository (or a
+	/// directory inside one).
 	Created(PathBuf),
 	/// `.gitignore` already ignores `.mdt/`.
 	AlreadyIgnored(PathBuf),
@@ -104,6 +105,10 @@ pub struct InitReport {
 	pub sample: SampleOutcome,
 	pub config: ConfigOutcome,
 	pub gitignore: GitignoreOutcome,
+	/// The root of an mdt project that encloses the new one, when this run
+	/// created a config inside it. The enclosing project's scan now skips
+	/// this directory, so its consumers need their own `mdt check`.
+	pub enclosing_project: Option<PathBuf>,
 }
 
 impl InitReport {
@@ -147,6 +152,7 @@ impl InitReport {
 pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 	let created_root = !root.exists();
 	std::fs::create_dir_all(root)?;
+	let repository = root.ancestors().find(|dir| dir.join(".git").exists());
 
 	let config = if let Some(existing) = MdtConfig::resolve_path(root) {
 		ConfigOutcome::Exists(existing)
@@ -156,8 +162,18 @@ pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 		ConfigOutcome::Created(path)
 	};
 
+	let enclosing_project = match (&config, repository) {
+		(ConfigOutcome::Created(_), Some(repository)) => {
+			root.ancestors()
+				.skip(1)
+				.take_while(|dir| dir.starts_with(repository))
+				.find(|dir| MdtConfig::resolve_path(dir).is_some())
+				.map(Path::to_path_buf)
+		}
+		_ => None,
+	};
 	let sample = init_sample(root)?;
-	let gitignore = ignore_cache_directory(root)?;
+	let gitignore = ignore_cache_directory(root, repository.is_some())?;
 
 	Ok(InitReport {
 		root: root.to_path_buf(),
@@ -165,6 +181,7 @@ pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 		sample,
 		config,
 		gitignore,
+		enclosing_project,
 	})
 }
 
@@ -225,7 +242,7 @@ fn sync_file(root: &Path, file: &Path) -> MdtResult<()> {
 	write_updates(&updates)
 }
 
-fn ignore_cache_directory(root: &Path) -> MdtResult<GitignoreOutcome> {
+fn ignore_cache_directory(root: &Path, in_repository: bool) -> MdtResult<GitignoreOutcome> {
 	let path = root.join(".gitignore");
 	if path.is_file() {
 		let content = std::fs::read_to_string(&path)?;
@@ -248,7 +265,9 @@ fn ignore_cache_directory(root: &Path) -> MdtResult<GitignoreOutcome> {
 		return Ok(GitignoreOutcome::Updated(path));
 	}
 
-	if root.join(".git").exists() {
+	// Also in a subdirectory of a repository: git honours nested
+	// `.gitignore` files.
+	if in_repository {
 		std::fs::write(&path, format!("# mdt cache\n{CACHE_IGNORE_ENTRY}\n"))?;
 		return Ok(GitignoreOutcome::Created(path));
 	}

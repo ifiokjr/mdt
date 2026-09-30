@@ -194,6 +194,7 @@ fn assist_copilot_uses_the_vscode_servers_key() {
 #[test]
 fn commands_find_the_project_root_from_a_subdirectory() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
+	std::fs::create_dir_all(tmp.path().join(".git"))?;
 	write(tmp.path(), "mdt.toml", "");
 	write(
 		tmp.path(),
@@ -223,7 +224,8 @@ fn commands_find_the_project_root_from_a_subdirectory() -> std::io::Result<()> {
 		.assert()
 		.success()
 		.stdout(predicate::str::contains("=intro readme.md:1"))
-		.stdout(predicate::str::contains("=intro docs/guide.md:1"));
+		.stdout(predicate::str::contains("=intro docs/guide.md:1"))
+		.stderr(predicate::str::contains("note: using the mdt project at"));
 
 	// `mdt init` still initializes the directory it runs in.
 	common::mdt_cmd()
@@ -287,6 +289,31 @@ fn check_machine_formats_report_scan_errors() -> std::io::Result<()> {
 		!stdout.trim_end().contains('\n'),
 		"multi-line errors must stay one workflow command: {stdout}"
 	);
+
+	Ok(())
+}
+
+#[test]
+fn root_discovery_never_leaves_the_git_repository() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	// A config above the repository (for example in `$HOME`) must not be
+	// adopted: its data scripts would run and other projects would be scanned.
+	write(
+		tmp.path(),
+		"mdt.toml",
+		"[data]\npwned = { command = \"echo > PWNED\", format = \"text\" }\n",
+	);
+	std::fs::create_dir_all(tmp.path().join("repo/.git"))?;
+	write(tmp.path(), "repo/readme.md", "# Repo\n");
+
+	common::mdt_cmd()
+		.current_dir(tmp.path().join("repo"))
+		.arg("check")
+		.assert()
+		.success()
+		.stderr(predicate::str::contains("using the mdt project").not());
+	assert!(!tmp.path().join("PWNED").exists());
+	assert!(!tmp.path().join(".mdt").exists());
 
 	Ok(())
 }

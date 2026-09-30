@@ -6875,6 +6875,23 @@ fn single_code_action_edit(actions: &[CodeActionOrCommand], uri: &Uri) -> TextEd
 	"/**\n * <!-- {=installCommand|trim|linePrefix:\" * \":true} -->\n * npm install old\n * <!-- \
 	 {/installCommand} -->\n */\nexport function install() {}\n"
 )]
+#[case::markdown_non_ascii_before_the_tag(
+	"",
+	"readme.md",
+	"Version ☕ é <!-- {=installCommand|trim|code} -->`npm install old`<!-- {/installCommand} \
+	 -->\n"
+)]
+#[case::markdown_crlf(
+	"",
+	"readme.md",
+	"# Install\r\n\r\n<!-- {=installCommand|trim} -->\r\nnpm install old\r\n<!-- \
+	 {/installCommand} -->\r\n"
+)]
+#[case::markdown_heading(
+	"",
+	"readme.md",
+	"# Release <!-- {=installCommand|trim} -->old<!-- {/installCommand} -->\n"
+)]
 #[case::rust_one_line_padding(
 	"[padding]\nbefore = 1\nafter = 1\n",
 	"lib.rs",
@@ -6911,6 +6928,29 @@ fn consumer_diagnostics_and_fix_match_mdt_update(
 
 	// A file `mdt update` just wrote is in sync: nothing to report or fix.
 	state.parse_document(&uri, updated);
+	let diagnostics = compute_diagnostics(&state, &uri);
+	assert!(diagnostics.is_empty(), "{diagnostics:?}");
+	let actions = compute_code_actions(&state, &uri, whole_document());
+	assert!(actions.is_empty(), "{actions:?}");
+}
+
+#[test]
+fn formatted_files_are_left_to_mdt_check() {
+	// `mdt check` compares formatter output, which the server does not
+	// compute per keystroke; a guessed stale diagnostic or fix would be wrong.
+	let dir = write_fixture_project(&[
+		(
+			"mdt.toml",
+			"[[formatters]]\ncommand = \"cat\"\npatterns = [\"**/*.md\"]\n",
+		),
+		("template.t.md", INSTALL_TEMPLATE),
+		(
+			"readme.md",
+			"<!-- {=installCommand} -->\nnpm install old\n<!-- {/installCommand} -->\n",
+		),
+	]);
+
+	let (state, uri) = open_fixture_file(dir.path(), "readme.md");
 	let diagnostics = compute_diagnostics(&state, &uri);
 	assert!(diagnostics.is_empty(), "{diagnostics:?}");
 	let actions = compute_code_actions(&state, &uri, whole_document());

@@ -35,6 +35,7 @@ use mdt_core::ExpectedContent;
 use mdt_core::ParseDiagnostic;
 use mdt_core::content_matches;
 use mdt_core::expected_consumer_content;
+use mdt_core::formatter_applies;
 use mdt_core::parse_source_with_diagnostics;
 use mdt_core::parse_with_diagnostics;
 use mdt_core::project::ConsumerEntry;
@@ -43,6 +44,7 @@ use mdt_core::project::ProjectContext;
 use mdt_core::project::ProviderEntry;
 use mdt_core::project::extract_content_between_tags;
 use mdt_core::project::is_markdown_path;
+use mdt_core::project::normalize_line_endings;
 use mdt_core::project::scan_project_with_config;
 use mdt_core::project::suggest_similar_provider_names;
 use tokio::sync::RwLock;
@@ -665,17 +667,45 @@ impl LanguageServer for MdtLanguageServer {
 /// checked as they are typed.
 fn expected_block_content(
 	ctx: &ProjectContext,
+	uri: &Uri,
 	doc: &DocumentState,
 	block: &Block,
 ) -> (String, ExpectedContent) {
 	let consumer = ConsumerEntry {
 		block: block.clone(),
-		// The expected content does not depend on the file path.
-		file: PathBuf::new(),
+		// The path decides markdown vs source-file closing-tag prefixes.
+		file: document_path(uri),
 		content: extract_content_between_tags(&doc.content, block),
 	};
 	let expected = expected_consumer_content(ctx, &consumer, &doc.content);
-	(consumer.content, expected)
+	// mdt compares LF text; editors may hold CRLF.
+	(normalize_line_endings(&consumer.content), expected)
+}
+
+/// The file path of a document, for path-based decisions.
+fn document_path(uri: &Uri) -> PathBuf {
+	uri.to_file_path().map_or_else(
+		|| PathBuf::from(uri.path().as_str()),
+		std::borrow::Cow::into_owned,
+	)
+}
+
+/// Whether stale checks for this document can match `mdt check`. With a
+/// `[[formatters]]` entry for the file, `mdt check` compares formatted
+/// output, which the language server does not compute on every keystroke.
+fn can_check_staleness(ctx: &ProjectContext, uri: &Uri) -> bool {
+	!formatter_applies(ctx, &document_path(uri))
+}
+
+/// The LSP position of a byte offset in `content`. LSP counts characters in
+/// UTF-16 code units, while mdt positions count bytes.
+fn offset_to_lsp_position(content: &str, offset: usize) -> Position {
+	let before = &content[..offset.min(content.len())];
+	let line_start = before.rfind('\n').map_or(0, |index| index + 1);
+	Position {
+		line: before.matches('\n').count() as u32,
+		character: utf16_len(&before[line_start..]),
+	}
 }
 
 /// How diagnostics and hovers name a block of the given type.
@@ -822,14 +852,17 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 		.filter_map(parse_diagnostic_to_lsp)
 		.collect();
 	let is_template = uri.path().as_str().ends_with(".t.md");
+	let check_staleness = can_check_staleness(&state.ctx, uri);
 
 	for block in &doc.blocks {
 		match block.r#type {
 			BlockType::Consumer | BlockType::Inline => {
-				let (current, expected) = expected_block_content(&state.ctx, doc, block);
+				let (current, expected) = expected_block_content(&state.ctx, uri, doc, block);
 				match expected {
 					ExpectedContent::Rendered(expected) => {
-						if !content_matches(&current, &expected, &state.ctx.comparison) {
+						if check_staleness
+							&& !content_matches(&current, &expected, &state.ctx.comparison)
+						{
 							diagnostics.push(stale_diagnostic(block, &expected));
 						}
 					}
@@ -991,7 +1024,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 				parts.extend(transformer_chain(block));
 			}
 
-			match expected_block_content(&state.ctx, doc, block).1 {
+			match expected_block_content(&state.ctx, uri, doc, block).1 {
 				ExpectedContent::Rendered(expected) => parts.push(content_preview(&expected)),
 				ExpectedContent::NoProvider => {
 					parts.push("\n*No matching provider found*".to_string());
@@ -1011,7 +1044,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 			if let Some(template) = block.arguments.first() {
 				parts.push(format!("\n**Template:** `{template}`"));
 				parts.extend(transformer_chain(block));
-				match expected_block_content(&state.ctx, doc, block).1 {
+				match expected_block_content(&state.ctx, uri, doc, block).1 {
 					ExpectedContent::Rendered(expected) => parts.push(content_preview(&expected)),
 					ExpectedContent::RenderFailed(message) => {
 						parts.push(format!("\n*Failed to render inline template:* {message}"));
@@ -1384,8 +1417,11 @@ fn compute_code_actions(
 			continue;
 		}
 
+		if !can_check_staleness(&state.ctx, uri) {
+			continue;
+		}
 		let (current, ExpectedContent::Rendered(expected)) =
-			expected_block_content(&state.ctx, doc, block)
+			expected_block_content(&state.ctx, uri, doc, block)
 		else {
 			continue;
 		};
@@ -1394,13 +1430,19 @@ fn compute_code_actions(
 		}
 
 		let diagnostic = stale_diagnostic(block, &expected);
-		// Build a text edit that replaces the content between the tags.
+		// Replace exactly the bytes between the tags, keeping the document's
+		// line endings.
+		let new_text = if doc.content.contains("\r\n") {
+			expected.replace('\n', "\r\n")
+		} else {
+			expected
+		};
 		let edit = TextEdit {
 			range: Range {
-				start: to_lsp_position(&block.opening.end),
-				end: to_lsp_position(&block.closing.start),
+				start: offset_to_lsp_position(&doc.content, block.opening.end.offset),
+				end: offset_to_lsp_position(&doc.content, block.closing.start.offset),
 			},
-			new_text: expected,
+			new_text,
 		};
 
 		let mut changes = HashMap::new();
