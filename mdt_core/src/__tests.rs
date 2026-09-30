@@ -233,8 +233,10 @@ old
 
 #[test]
 fn resolve_root_with_some_path() {
-	let result = resolve_root(Some(Path::new("/tmp/test_project")));
-	assert_eq!(result, PathBuf::from("/tmp/test_project"));
+	// An already-absolute path is returned as is (`/tmp` is not absolute on
+	// Windows, so build a platform-native one).
+	let absolute = std::env::temp_dir().join("test_project");
+	assert_eq!(resolve_root(Some(&absolute)), absolute);
 }
 
 #[test]
