@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpRGFP39
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp0haM4l
     - check
   env:
     NO_COLOR: "1"
@@ -20,4 +20,4 @@ mdt::unknown_transformer
   help: available transformers: trim, trimStart, trimEnd, indent, prefix,
         suffix, linePrefix, lineSuffix, wrap, codeBlock, code, replace, if
 
-error: validation errors found; fix the errors above (see `mdt doctor` for hints)
+error: validation errors found; fix the errors above

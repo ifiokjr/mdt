@@ -213,8 +213,18 @@ fn print_section(title: &str) {
 	println!("{}", styled!(stdout, title, bold));
 }
 
+/// The project root: `--path` when given; otherwise the nearest directory,
+/// from the current one upward, with an mdt config file, so running from a
+/// subdirectory behaves like running from the project root. Without any
+/// config in sight (and always for `mdt init`) it is the current directory.
 fn resolve_root(args: &MdtCli) -> PathBuf {
-	resolve_root_path(args.path.as_deref())
+	let root = resolve_root_path(args.path.as_deref());
+	if args.path.is_some() || matches!(args.command, Commands::Init) {
+		return root;
+	}
+	root.ancestors()
+		.find(|dir| MdtConfig::resolve_path(dir).is_some())
+		.map_or(root.clone(), Path::to_path_buf)
 }
 
 /// Reject a `--path` that is not an existing directory. A mistyped path used
@@ -590,7 +600,7 @@ fn has_error_diagnostics(args: &MdtCli, ctx: &ProjectContext) -> bool {
 /// Error returned once validation errors have been reported, so the process
 /// exits with status 2 without repeating them.
 fn validation_failed() -> Box<dyn std::error::Error> {
-	"validation errors found; fix the errors above (see `mdt doctor` for hints)".into()
+	"validation errors found; fix the errors above".into()
 }
 
 /// Describe a consumer whose name matches no provider.
@@ -603,7 +613,7 @@ fn orphan_description(block_name: &str, location: &str, suggestions: &[String]) 
 
 /// Warn about consumers whose name matches no provider. `check` reports
 /// these as failures instead.
-fn warn_orphans(ctx: &ProjectContext, root: &Path) {
+fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
 	let mut orphans: Vec<&ConsumerEntry> = ctx
 		.project
 		.consumers
@@ -616,6 +626,7 @@ fn warn_orphans(ctx: &ProjectContext, root: &Path) {
 	orphans.sort_by(|a, b| {
 		(&a.file, a.block.opening.start.line).cmp(&(&b.file, b.block.opening.start.line))
 	});
+	let count = orphans.len();
 	for consumer in orphans {
 		let suggestions: Vec<String> = suggest_similar_provider_names(
 			&consumer.block.name,
@@ -636,6 +647,7 @@ fn warn_orphans(ctx: &ProjectContext, root: &Path) {
 			orphan_description(&consumer.block.name, &location, &suggestions)
 		);
 	}
+	count
 }
 
 /// How a single `mdt check` run ended.
@@ -728,7 +740,7 @@ fn diagnostic_json(
 ) -> serde_json::Value {
 	serde_json::json!({
 		"severity": if diag.is_error(options) { "error" } else { "warning" },
-		"code": diagnostic_code(&diag.kind),
+		"code": diag.kind.code(),
 		"file": relative_display_path(&diag.file, root),
 		"line": diag.line,
 		"column": diag.column,
@@ -1135,7 +1147,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 	if report_diagnostics(args, &ctx) {
 		return Err(validation_failed());
 	}
-	warn_orphans(&ctx, &root);
+	let orphan_count = warn_orphans(&ctx, &root);
 	let updates = compute_updates(&ctx)?;
 
 	// Print template variable warnings (they don't prevent updates).
@@ -1159,7 +1171,8 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 
 	if updates.updated_files.is_empty() {
 		if render_errors.is_empty() {
-			println!("All consumer blocks are already up to date.");
+			let scope = if orphan_count > 0 { "linked " } else { "" };
+			println!("All {scope}consumer blocks are already up to date.");
 		}
 		return Ok(render_errors.is_empty());
 	}
@@ -1272,13 +1285,13 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 			let transformers = if consumer.block.transformers.is_empty() {
 				String::new()
 			} else {
-				let names: Vec<String> = consumer
+				let described: Vec<String> = consumer
 					.block
 					.transformers
 					.iter()
-					.map(|t| t.r#type.to_string())
+					.map(describe_transformer)
 					.collect();
-				format!(" |{}", names.join("|"))
+				format!(" |{}", described.join("|"))
 			};
 			println!(
 				"  {sigil}{} {rel}:{}{transformers} [{status}]",
@@ -1298,6 +1311,21 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		return Err(validation_failed());
 	}
 	Ok(())
+}
+
+/// A transformer as written in a tag, e.g. `linePrefix:"/// ":true`.
+fn describe_transformer(transformer: &mdt_core::Transformer) -> String {
+	let arguments = transformer.args.iter().map(|argument| {
+		match argument {
+			mdt_core::Argument::String(value) => format!(":{value:?}"),
+			mdt_core::Argument::Number(value) => format!(":{value}"),
+			mdt_core::Argument::Boolean(value) => format!(":{value}"),
+			_ => ":?".to_string(),
+		}
+	});
+	std::iter::once(transformer.r#type.to_string())
+		.chain(arguments)
+		.collect()
 }
 
 #[derive(serde::Serialize)]
@@ -2569,14 +2597,7 @@ fn run_assist(
 		AssistOutputFormat::Text => {
 			println!("{}", styled!(stdout, "mdt assist", bold));
 			println!();
-			println!(
-				"Assistant                 {}",
-				assistant_display_name(assistant)
-			);
-			println!(
-				"Strategy                  {}",
-				payload["strategy"]["summary"].as_str().unwrap_or_default()
-			);
+			println!("Assistant: {}", assistant_display_name(assistant));
 			println!();
 			println!("Load the mdt skill:");
 			if let Some(command) = payload["skill"]["install_command"].as_str() {
@@ -2656,14 +2677,21 @@ fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 
 	for warning in sorted_warnings {
 		let rel = relative_display_path(&warning.provider_file, root);
-		let mut undefined_vars = warning.undefined_variables.clone();
-		undefined_vars.sort();
-		let vars = undefined_vars.join(", ");
-		eprintln!(
-			"{} provider block `{}` in {rel} references undefined variable(s): {vars}",
-			styled!(stderr, "warning:", yellow_bold),
-			warning.block_name,
-		);
+		let vars = warning.undefined_variables.join(", ");
+		let message = if warning.template_rendered {
+			format!(
+				"provider block `{}` in {rel} references undefined variable(s): {vars}",
+				warning.block_name
+			)
+		} else {
+			format!(
+				"provider block `{}` in {rel} uses template variable(s) {vars}, but this project \
+				 has no `[data]`, so the text is copied without rendering; declare the \
+				 namespace(s) under `[data]` in this project's mdt.toml",
+				warning.block_name
+			)
+		};
+		eprintln!("{} {message}", styled!(stderr, "warning:", yellow_bold));
 	}
 }
 
@@ -2682,21 +2710,6 @@ fn print_diff(current: &str, expected: &str) {
 				eprint!("   {change}");
 			}
 		}
-	}
-}
-
-/// Stable machine-readable code for a diagnostic kind.
-fn diagnostic_code(kind: &DiagnosticKind) -> &'static str {
-	match kind {
-		DiagnosticKind::UnclosedBlock { .. } => "mdt::unclosed_block",
-		DiagnosticKind::UnknownTransformer { .. } => "mdt::unknown_transformer",
-		DiagnosticKind::InvalidTransformerArgs { .. } => "mdt::invalid_transformer_args",
-		DiagnosticKind::UnusedProvider { .. } => "mdt::unused_provider",
-		DiagnosticKind::UnmatchedClosingTag { .. } => "mdt::unmatched_closing_tag",
-		DiagnosticKind::InvalidTag { .. } => "mdt::invalid_tag",
-		DiagnosticKind::NestedBlock { .. } => "mdt::nested_block",
-		DiagnosticKind::ProviderOutsideTemplate { .. } => "mdt::provider_outside_template",
-		_ => "mdt::diagnostic",
 	}
 }
 
@@ -2767,7 +2780,7 @@ fn diagnostic_to_report(
 	};
 
 	let mut diag_value = miette::MietteDiagnostic::new(format!("[{location}] {}", diag.message()))
-		.with_code(diagnostic_code(&diag.kind))
+		.with_code(diag.kind.code())
 		.with_severity(severity);
 	let help = diagnostic_help(&diag.kind);
 	if !help.is_empty() {

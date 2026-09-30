@@ -152,6 +152,23 @@ pub enum DiagnosticKind {
 	ProviderOutsideTemplate { name: String },
 }
 
+impl DiagnosticKind {
+	/// The stable machine-readable code for this kind, such as
+	/// `mdt::unclosed_block`, shared by the CLI, MCP server, and docs.
+	pub fn code(&self) -> &'static str {
+		match self {
+			Self::UnclosedBlock { .. } => "mdt::unclosed_block",
+			Self::UnknownTransformer { .. } => "mdt::unknown_transformer",
+			Self::InvalidTransformerArgs { .. } => "mdt::invalid_transformer_args",
+			Self::UnusedProvider { .. } => "mdt::unused_provider",
+			Self::UnmatchedClosingTag { .. } => "mdt::unmatched_closing_tag",
+			Self::InvalidTag { .. } => "mdt::invalid_tag",
+			Self::NestedBlock { .. } => "mdt::nested_block",
+			Self::ProviderOutsideTemplate { .. } => "mdt::provider_outside_template",
+		}
+	}
+}
+
 /// A diagnostic produced during project scanning and validation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectDiagnostic {
@@ -170,13 +187,16 @@ impl ProjectDiagnostic {
 	/// supplied options. Errors stop `check`, `update`, and `list`.
 	pub fn is_error(&self, options: &ValidationOptions) -> bool {
 		match &self.kind {
-			DiagnosticKind::UnclosedBlock { .. } => !options.ignore_unclosed_blocks,
+			// An unmatched closing tag is the other half of a misspelled or
+			// malformed opening tag, so that block silently stops syncing.
+			DiagnosticKind::UnclosedBlock { .. } | DiagnosticKind::UnmatchedClosingTag { .. } => {
+				!options.ignore_unclosed_blocks
+			}
 			DiagnosticKind::UnknownTransformer { .. }
 			| DiagnosticKind::InvalidTransformerArgs { .. } => !options.ignore_invalid_transformers,
 			DiagnosticKind::InvalidTag { .. } => !options.ignore_invalid_names,
 			DiagnosticKind::NestedBlock { .. } => true,
 			DiagnosticKind::UnusedProvider { .. }
-			| DiagnosticKind::UnmatchedClosingTag { .. }
 			| DiagnosticKind::ProviderOutsideTemplate { .. } => false,
 		}
 	}
@@ -185,14 +205,16 @@ impl ProjectDiagnostic {
 	/// Diagnostics that are neither errors nor ignored are warnings.
 	pub fn is_ignored(&self, options: &ValidationOptions) -> bool {
 		match &self.kind {
-			DiagnosticKind::UnclosedBlock { .. } => options.ignore_unclosed_blocks,
+			DiagnosticKind::UnclosedBlock { .. } | DiagnosticKind::UnmatchedClosingTag { .. } => {
+				options.ignore_unclosed_blocks
+			}
 			DiagnosticKind::UnknownTransformer { .. }
 			| DiagnosticKind::InvalidTransformerArgs { .. } => options.ignore_invalid_transformers,
 			DiagnosticKind::UnusedProvider { .. } => options.ignore_unused_blocks,
 			DiagnosticKind::InvalidTag { .. } => options.ignore_invalid_names,
-			DiagnosticKind::NestedBlock { .. }
-			| DiagnosticKind::UnmatchedClosingTag { .. }
-			| DiagnosticKind::ProviderOutsideTemplate { .. } => false,
+			DiagnosticKind::NestedBlock { .. } | DiagnosticKind::ProviderOutsideTemplate { .. } => {
+				false
+			}
 		}
 	}
 
@@ -921,10 +943,17 @@ fn build_project_from_file_data(
 		diagnostics.extend(entry.diagnostics.iter().cloned());
 		for provider in &entry.providers {
 			if let Some(existing) = providers.get(&provider.block.name) {
+				let location = |entry: &ProviderEntry| {
+					format!(
+						"{}:{}",
+						relative_display_path(&entry.file, root),
+						entry.block.opening.start.line
+					)
+				};
 				return Err(MdtError::DuplicateProvider {
 					name: provider.block.name.clone(),
-					first_file: existing.file.display().to_string(),
-					second_file: provider.file.display().to_string(),
+					first_file: location(existing),
+					second_file: location(provider),
 				});
 			}
 
@@ -939,7 +968,11 @@ fn build_project_from_file_data(
 		.map(|consumer| consumer.block.name.as_str())
 		.collect();
 	for (name, entry) in &providers {
-		if !referenced_names.contains(name.as_str()) {
+		// Providers shared from outside the project (a `[templates] paths`
+		// entry such as `../../.templates`) are a library: each project uses
+		// only some of them.
+		let shared = !entry.file.starts_with(root);
+		if !shared && !referenced_names.contains(name.as_str()) {
 			diagnostics.push(ProjectDiagnostic {
 				file: entry.file.clone(),
 				kind: DiagnosticKind::UnusedProvider { name: name.clone() },
@@ -1074,7 +1107,9 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 	ProjectWalker::new(root, &exclude, use_gitignore).walk(root, &is_scannable_file, &mut files)?;
 
 	for template_dir in &options.template_paths {
-		let dir = root.join(template_dir);
+		// Normalized so shared directories outside the project are
+		// recognizably outside `root`.
+		let dir = normalize_lexically(&root.join(template_dir));
 		if !dir.is_dir() {
 			return Err(MdtError::TemplatesPath {
 				path: template_dir.display().to_string(),

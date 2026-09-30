@@ -44,6 +44,10 @@ pub struct TemplateWarning {
 	/// The undefined variable references found in the template (e.g.,
 	/// `["pkgg.version", "typo"]`).
 	pub undefined_variables: Vec<String>,
+	/// Whether the provider is rendered as a template at all. Providers are
+	/// only rendered when `[data]` is configured (or the provider declares
+	/// parameters); otherwise `{{ ... }}` is copied to consumers literally.
+	pub template_rendered: bool,
 }
 
 /// Result of checking a project for stale consumers.
@@ -222,7 +226,23 @@ pub fn find_undefined_variables(
 	content: &str,
 	data: &HashMap<String, serde_json::Value>,
 ) -> Vec<String> {
-	if data.is_empty() || !has_template_syntax(content) {
+	if data.is_empty() {
+		return Vec::new();
+	}
+
+	undeclared_variables(content)
+		.into_iter()
+		// A variable is truly undefined if its top-level namespace is not
+		// present in the data context.
+		.filter(|var| !data.contains_key(var.split('.').next().unwrap_or(var)))
+		.collect()
+}
+
+/// Every variable a template reads without defining it, with nested access
+/// (`pkg.version`), sorted. Minijinja builtins such as `loop` are left out;
+/// unparsable templates yield nothing (rendering reports those).
+fn undeclared_variables(content: &str) -> Vec<String> {
+	if !has_template_syntax(content) {
 		return Vec::new();
 	}
 
@@ -237,27 +257,13 @@ pub fn find_undefined_variables(
 		return Vec::new();
 	};
 
-	// Get all undeclared variables with nested access (e.g., "pkg.version").
-	let undeclared: HashSet<String> = template.undeclared_variables(true);
-
-	// Also get top-level names so we can check both "pkg.version" (nested)
-	// and "pkg" (top-level).
-	let top_level_names: HashSet<String> = data.keys().cloned().collect();
-
-	let mut undefined: Vec<String> = undeclared
+	let mut undeclared: Vec<String> = template
+		.undeclared_variables(true)
 		.into_iter()
-		.filter(|var| {
-			// Extract the top-level namespace from the variable reference.
-			let top_level = var.split('.').next().unwrap_or(var);
-			// A variable is truly undefined if its top-level namespace is
-			// not present in the data context. Variables like "loop" or
-			// "range" are minijinja builtins that we should not warn about.
-			!top_level_names.contains(top_level) && !is_builtin_variable(top_level)
-		})
+		.filter(|var| !is_builtin_variable(var.split('.').next().unwrap_or(var)))
 		.collect();
-
-	undefined.sort();
-	undefined
+	undeclared.sort();
+	undeclared
 }
 
 /// Check whether a variable name is a minijinja builtin that should not
@@ -1208,12 +1214,25 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 			std::borrow::Cow::Owned(data)
 		};
 
-		let undefined = find_undefined_variables(&provider.content, &data_with_params);
+		// Without data the provider is copied verbatim. Namespaced
+		// variables (`pkg.version`) are almost certainly meant to render —
+		// typically a sub-project reusing shared providers without its own
+		// `[data]` — so point them out instead of copying them silently.
+		let template_rendered = !data_with_params.is_empty();
+		let undefined = if template_rendered {
+			find_undefined_variables(&provider.content, &data_with_params)
+		} else {
+			undeclared_variables(&provider.content)
+				.into_iter()
+				.filter(|variable| variable.contains('.'))
+				.collect()
+		};
 		if !undefined.is_empty() {
 			warnings.push(TemplateWarning {
 				provider_file: provider.file.clone(),
 				block_name: name.clone(),
 				undefined_variables: undefined,
+				template_rendered,
 			});
 		}
 	}

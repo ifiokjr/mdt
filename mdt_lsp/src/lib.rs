@@ -748,7 +748,7 @@ fn parse_diagnostic_to_lsp(diagnostic: &ParseDiagnostic) -> Option<Diagnostic> {
 			(
 				line,
 				column,
-				DiagnosticSeverity::WARNING,
+				DiagnosticSeverity::ERROR,
 				format!(
 					"Closing tag `{{/{name}}}` has no matching opening tag. Check both tags for \
 					 typos."

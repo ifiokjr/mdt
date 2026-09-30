@@ -2206,6 +2206,23 @@ fn template_paths_add_only_template_files() -> MdtResult<()> {
 		consumer_files(&ctx.project, &project_root),
 		vec!["readme.md"]
 	);
+	assert_eq!(
+		ctx.project.providers["block"].file,
+		tmp.path().join("shared/templates/shared.t.md")
+	);
+
+	// A shared provider this project does not consume is not "unused".
+	write_file(
+		tmp.path(),
+		"shared/templates/other.t.md",
+		"<!-- {@other} -->\n\nx\n\n<!-- {/other} -->\n",
+	);
+	let ctx = scan_project_with_config(&project_root)?;
+	assert!(
+		ctx.project.diagnostics.is_empty(),
+		"{:?}",
+		ctx.project.diagnostics
+	);
 
 	Ok(())
 }
@@ -2264,6 +2281,32 @@ fn transformer_names_cover_every_variant() {
 	];
 	let displayed: Vec<String> = variants.iter().map(ToString::to_string).collect();
 	assert_eq!(displayed, TransformerType::NAMES);
+}
+
+#[test]
+fn template_warnings_flag_namespaced_variables_when_no_data_is_configured() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	write_file(
+		tmp.path(),
+		"template.t.md",
+		"<!-- {@install} -->\nnpm i acme@{{ pkg.version }} {{ literal }}\n<!-- {/install} -->\n",
+	);
+	write_file(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=install} -->\n<!-- {/install} -->\n",
+	);
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let result = check_project(&ctx)?;
+	assert_eq!(result.warnings.len(), 1);
+	let warning = &result.warnings[0];
+	assert!(!warning.template_rendered);
+	// Un-namespaced braces may be a literal example; only `pkg.version` is
+	// clearly a data reference.
+	assert_eq!(warning.undefined_variables, vec!["pkg.version".to_string()]);
+
+	Ok(())
 }
 
 // --- Config tests ---
@@ -7841,18 +7884,23 @@ fn diagnostic_is_error_all_kinds() {
 		})
 		.is_error(&default_opts)
 	);
-	for warning in [
-		DiagnosticKind::UnmatchedClosingTag {
-			name: "x".to_string(),
-		},
-		DiagnosticKind::ProviderOutsideTemplate {
-			name: "x".to_string(),
-		},
-	] {
-		let diag = make_diag(warning);
-		assert!(!diag.is_error(&default_opts));
-		assert!(!diag.is_ignored(&default_opts));
-	}
+	// An unmatched closing tag means a block stopped syncing; it is an error
+	// that `--ignore-unclosed-blocks` downgrades like an unclosed block.
+	let unmatched = make_diag(DiagnosticKind::UnmatchedClosingTag {
+		name: "x".to_string(),
+	});
+	assert!(unmatched.is_error(&default_opts));
+	let ignore_unclosed = ValidationOptions {
+		ignore_unclosed_blocks: true,
+		..Default::default()
+	};
+	assert!(!unmatched.is_error(&ignore_unclosed));
+	assert!(unmatched.is_ignored(&ignore_unclosed));
+	let outside = make_diag(DiagnosticKind::ProviderOutsideTemplate {
+		name: "x".to_string(),
+	});
+	assert!(!outside.is_error(&default_opts));
+	assert!(!outside.is_ignored(&default_opts));
 
 	// Ignoring transformers should suppress both unknown and invalid args
 	let ignore_transformers = ValidationOptions {
@@ -11638,6 +11686,7 @@ fn check_result_status_helpers_cover_errors_and_warnings() {
 			provider_file: PathBuf::from("template.t.md"),
 			block_name: "block".to_string(),
 			undefined_variables: vec!["missing.value".to_string()],
+			template_rendered: true,
 		}],
 	};
 	assert!(!with_warnings.is_ok());

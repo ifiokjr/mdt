@@ -19,3 +19,7 @@ Several mistakes used to pass `mdt check` silently. They are now reported, and t
 - **TOML and KDL integers stay integers.** `port = 8080` renders as `8080`, not `8080.0`, and large integers keep full precision.
 
 The index cache schema moves to version 3 so cached scans pick up the new diagnostics.
+- **Unmatched closing tags are errors.** A `{/name}` with no open block is the other half of a misspelled or malformed opening tag, so that block silently stops syncing — in source-file comments nothing else reports it. `--ignore-unclosed-blocks` downgrades it like an unclosed block.
+- **Unrendered data references warn.** In a project without `[data]`, providers are copied verbatim; a used provider containing namespaced variables such as `{{ pkg.version }}` now produces a `TemplateWarning` with `template_rendered: false`, instead of copying the braces silently (typically a sub-project reusing shared providers without declaring its own `[data]`).
+- **Shared providers are never "unused".** Providers read from a `[templates] paths` directory outside the project are a shared library, so each project may use only some of them without warnings.
+- `DiagnosticKind::code()` returns the stable `mdt::*` code for every diagnostic kind, and duplicate-provider errors name both definitions as project-relative `file:line`.

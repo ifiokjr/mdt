@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmp2t1sVj
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpl5vipq
     - "--verbose"
     - list
   env:
@@ -22,7 +22,7 @@ Providers:
   @greeting template.t.md:1 (2 consumer(s))
 
 Consumers:
-  =greeting lib.rs:1 |trim|linePrefix [linked]
+  =greeting lib.rs:1 |trim|linePrefix:"//! ":true [linked]
   =greeting readme.md:3 [linked]
   =apiDocs readme.md:11 |trim [linked]
 

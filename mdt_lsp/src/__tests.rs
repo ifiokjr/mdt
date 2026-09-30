@@ -6964,7 +6964,7 @@ fn source_tags_in_ignored_code_blocks_are_not_diagnosed() {
 #[rstest::rstest]
 #[case::unmatched_closing_tag(
 	"<!-- {/ghost} -->\n",
-	DiagnosticSeverity::WARNING,
+	DiagnosticSeverity::ERROR,
 	"Closing tag `{/ghost}` has no matching opening tag. Check both tags for typos."
 )]
 #[case::space_before_sigil(

@@ -189,3 +189,48 @@ fn assist_copilot_uses_the_vscode_servers_key() {
 		"mdt skill --install .github/skills"
 	);
 }
+
+#[test]
+fn commands_find_the_project_root_from_a_subdirectory() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	write(tmp.path(), "mdt.toml", "");
+	write(
+		tmp.path(),
+		".templates/intro.t.md",
+		"<!-- {@intro} -->\n\nHello\n\n<!-- {/intro} -->\n",
+	);
+	write(
+		tmp.path(),
+		"readme.md",
+		"<!-- {=intro} -->\n\nHello\n\n<!-- {/intro} -->\n",
+	);
+	write(
+		tmp.path(),
+		"docs/guide.md",
+		"<!-- {=intro} -->\n\nHello\n\n<!-- {/intro} -->\n",
+	);
+
+	// Scanning `docs/` alone would report both consumers as orphans.
+	common::mdt_cmd()
+		.current_dir(tmp.path().join("docs"))
+		.arg("check")
+		.assert()
+		.success();
+	common::mdt_cmd()
+		.current_dir(tmp.path().join("docs"))
+		.arg("list")
+		.assert()
+		.success()
+		.stdout(predicate::str::contains("=intro readme.md:1"))
+		.stdout(predicate::str::contains("=intro docs/guide.md:1"));
+
+	// `mdt init` still initializes the directory it runs in.
+	common::mdt_cmd()
+		.current_dir(tmp.path().join("docs"))
+		.arg("init")
+		.assert()
+		.success();
+	assert!(tmp.path().join("docs/mdt.toml").is_file());
+
+	Ok(())
+}

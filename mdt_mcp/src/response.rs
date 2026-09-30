@@ -14,7 +14,6 @@ use mdt_core::BlockType;
 use mdt_core::CheckResult;
 use mdt_core::MdtError;
 use mdt_core::project::ConsumerEntry;
-use mdt_core::project::DiagnosticKind;
 use mdt_core::project::ProjectContext;
 use mdt_core::project::ValidationOptions;
 use mdt_core::project::relative_display_path;
@@ -108,6 +107,9 @@ fn to_json(value: &impl Serialize) -> Value {
 #[derive(Debug, Serialize)]
 pub(crate) struct DiagnosticInfo {
 	pub kind: &'static str,
+	/// The same code `mdt check --format json` reports, e.g.
+	/// `mdt::unclosed_block`.
+	pub code: &'static str,
 	pub severity: Severity,
 	pub file: String,
 	pub line: usize,
@@ -137,7 +139,8 @@ pub(crate) fn diagnostics(
 		.filter(|diagnostic| !diagnostic.is_ignored(options))
 		.map(|diagnostic| {
 			DiagnosticInfo {
-				kind: diagnostic_kind_name(&diagnostic.kind),
+				kind: diagnostic.kind.code().trim_start_matches("mdt::"),
+				code: diagnostic.kind.code(),
 				severity: if diagnostic.is_error(options) {
 					Severity::Error
 				} else {
@@ -159,22 +162,6 @@ pub(crate) fn error_count(diagnostics: &[DiagnosticInfo]) -> usize {
 		.iter()
 		.filter(|diagnostic| diagnostic.severity == Severity::Error)
 		.count()
-}
-
-fn diagnostic_kind_name(kind: &DiagnosticKind) -> &'static str {
-	match kind {
-		DiagnosticKind::UnclosedBlock { .. } => "unclosed_block",
-		DiagnosticKind::UnknownTransformer { .. } => "unknown_transformer",
-		DiagnosticKind::InvalidTransformerArgs { .. } => "invalid_transformer_args",
-		DiagnosticKind::UnusedProvider { .. } => "unused_provider",
-		DiagnosticKind::UnmatchedClosingTag { .. } => "unmatched_closing_tag",
-		DiagnosticKind::InvalidTag { .. } => "invalid_tag",
-		DiagnosticKind::NestedBlock { .. } => "nested_block",
-		DiagnosticKind::ProviderOutsideTemplate { .. } => "provider_outside_template",
-		// `DiagnosticKind` is non-exhaustive; newer kinds still carry a
-		// message and severity.
-		_ => "diagnostic",
-	}
 }
 
 /// How a consumer or inline block compares with what `mdt update` would
@@ -359,6 +346,9 @@ pub(crate) struct TemplateWarningInfo {
 	pub block_name: String,
 	pub file: String,
 	pub undefined_variables: Vec<String>,
+	/// False when the project has no `[data]`, so the provider's
+	/// `{{ ... }}` text is copied to consumers without rendering.
+	pub template_rendered: bool,
 }
 
 impl TemplateWarningInfo {
@@ -372,6 +362,7 @@ impl TemplateWarningInfo {
 					block_name: warning.block_name.clone(),
 					file: relative_display_path(&warning.provider_file, root),
 					undefined_variables,
+					template_rendered: warning.template_rendered,
 				}
 			})
 			.collect();

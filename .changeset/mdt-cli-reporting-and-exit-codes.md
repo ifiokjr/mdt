@@ -33,3 +33,7 @@ Evaluations of the CLI showed several ways a broken setup reported success. The 
 **Smaller fixes:** running `mdt` without a subcommand prints help; `update --dry-run` describes what it actually prints and conflicts with `--watch`; `--verbose` prints provider paths relative to the project.
 
 **`mdt mcp --path <DIR>`** now serves that directory instead of ignoring the flag, so user-level MCP configs can pin a project.
+
+**Running from a subdirectory finds the project.** Without `--path`, every command except `mdt init` uses the nearest directory, from the current one upward, that contains `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` — like cargo and git. Running `mdt check` inside `docs/` no longer reports every consumer as an orphan.
+
+`mdt list` shows transformer arguments (`|linePrefix:"//! ":true`), and the unrendered-data warning explains that a project without `[data]` copies `{{ ... }}` literally.

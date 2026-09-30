@@ -13,8 +13,7 @@ exit_code: 0
 ----- stdout -----
 mdt assist
 
-Assistant                 Claude Code
-Strategy                  mdt ships assistant setup presets and repo-local guidance, not a plugin marketplace.
+Assistant: Claude Code
 
 Load the mdt skill:
   mdt skill --install .claude/skills

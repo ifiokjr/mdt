@@ -3550,6 +3550,7 @@ async fn check_reports_diagnostic_details() {
 		json["diagnostics"],
 		serde_json::json!([{
 			"kind": "unclosed_block",
+			"code": "mdt::unclosed_block",
 			"severity": "error",
 			"file": "notes.md",
 			"line": 1,

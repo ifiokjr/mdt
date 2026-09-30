@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpOsC4PF
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpkBTcJL
     - "--verbose"
     - check
   env:
@@ -25,4 +25,4 @@ mdt::unclosed_block
         closing tag has a different name, fix the misspelled tag so the names
         match
 
-error: validation errors found; fix the errors above (see `mdt doctor` for hints)
+error: validation errors found; fix the errors above

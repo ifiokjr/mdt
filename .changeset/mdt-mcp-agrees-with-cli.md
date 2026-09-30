@@ -19,3 +19,4 @@ The MCP tools re-implemented parts of `mdt check`, `mdt update`, and `mdt init`,
 - **Startup.** `run_server_in(root)` serves a chosen directory (`run_server()` still serves the current one), and `MDT_LOG=info mdt mcp` no longer panics when the CLI has already installed a tracing subscriber.
 
 Tool handlers now return `CallToolResult` directly, and `PathParam` is replaced by `CheckParam` and `ListParam`.
+- Diagnostics include the same `code` as `mdt check --format json` (for example `mdt::unclosed_block`), and `warnings` entries report `template_rendered`.
