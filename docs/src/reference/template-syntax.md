@@ -180,16 +180,19 @@ The provider content here is `\n\nThis content includes the newlines above and b
 
 ## Nesting
 
-A consumer or inline block cannot contain another block, because `mdt update` replaces everything between its tags. A block opened inside one is a `mdt::nested_block` error.
+Blocks cannot be nested. A block opened inside another block is a `mdt::nested_block` error (exit 2):
 
-Provider bodies are not checked for nesting, but a provider's content is copied into its consumers with any tags it contains. A block inside a provider therefore becomes a nested block in every consumer of that provider, and `mdt check` fails there. Keep blocks flat: put consumers one after another instead of inside each other.
+- inside a consumer or inline block, `mdt update` would overwrite the inner block, because it replaces everything between the outer tags;
+- inside a provider, the inner tags would be copied into every consumer of that provider, where they would nest.
+
+Keep blocks flat: put consumers one after another, and reference values in providers with `{{ ... }}` data instead of inline blocks.
 
 ## Diagnostics
 
 | Code                             | Severity | Cause                                                                  | Silence with                    |
 | -------------------------------- | -------- | ---------------------------------------------------------------------- | ------------------------------- |
 | `mdt::unclosed_block`            | error    | An opening tag has no matching closing tag (markdown and source files) | `--ignore-unclosed-blocks`      |
-| `mdt::nested_block`              | error    | A block opens inside a consumer or inline block                        | none                            |
+| `mdt::nested_block`              | error    | A block opens inside another block                                     | none                            |
 | `mdt::invalid_tag`               | error    | Markdown only: a comment looks like a tag but does not parse           | `--ignore-invalid-names`        |
 | `mdt::unknown_transformer`       | error    | A transformer name does not exist                                      | `--ignore-invalid-transformers` |
 | `mdt::invalid_transformer_args`  | error    | A transformer got the wrong number of arguments                        | `--ignore-invalid-transformers` |

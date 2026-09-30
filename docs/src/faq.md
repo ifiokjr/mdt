@@ -81,7 +81,7 @@ The `-%}` trims the newline after a tag so the output has no stray blank lines. 
 
 ## Can blocks be nested?
 
-Not inside consumers. `mdt update` replaces everything between a consumer's tags, so a block inside a consumer (or an inline block) is the error `mdt::nested_block` (exit 2). Place consumers one after another instead:
+No. A block inside another block is the error `mdt::nested_block` (exit 2): `mdt update` replaces everything between a consumer's tags, and a provider's content — tags included — is copied into every consumer. Place consumers one after another instead:
 
 ```markdown
 <!-- {=header} -->

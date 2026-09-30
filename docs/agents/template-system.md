@@ -1,8 +1,8 @@
 # Template system
 
-## Provider and target tags
+## Provider and consumer tags
 
-### Source block
+### Provider block
 
 ```md
 <!-- {@blockName} -->
@@ -12,7 +12,7 @@ Content to inject
 <!-- {/blockName} -->
 ```
 
-### Target block
+### Consumer block
 
 ```md
 <!-- {=blockName} -->
@@ -56,8 +56,8 @@ Example:
 
 - Use `*.t.md` for template definition files.
 - Providers are only recognized in `*.t.md` files.
-- Other `.md`, `.mdx`, and `.markdown` files may contain target blocks.
-- Supported source files may contain target blocks inside comments.
+- Other `.md`, `.mdx`, and `.markdown` files may contain consumer and inline blocks.
+- Supported source files may contain consumer and inline blocks inside comments.
 
 ## Data interpolation
 
@@ -82,17 +82,13 @@ Supported data formats:
 - KDL
 - INI
 
-## Block padding for source files
+## Padding
 
-When using target blocks in source files, prefer explicit padding in `mdt.toml`:
+Without a `[padding]` section, content starts on the line after the opening tag and the closing tag starts on its own line (`before = 0`, `after = 0`). Set `[padding]` only to add blank lines; values add to the content's own newlines, so use `|trim` for exact control.
 
-```toml
-[padding]
-before = 0
-after = 0
-```
+## Agent skill
 
-Use this to avoid formatter-induced mangling when line-based transformers are involved.
+The user-facing agent skill lives in `packages/m-d-t__skills/skills/mdt/` and ships inside the CLI (`mdt skill`, `mdt skill --reference`, `mdt skill --install <dir>`) from the copy in `mdt_cli/skill/`. Run `fix:skill` after editing it.
 
 ## Cache diagnostics
 
