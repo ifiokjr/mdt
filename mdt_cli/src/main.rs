@@ -2388,9 +2388,9 @@ fn run_lsp() -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
-fn run_mcp(_args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+fn run_mcp(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	let rt = tokio::runtime::Runtime::new()?;
-	rt.block_on(mdt_mcp::run_server());
+	rt.block_on(mdt_mcp::run_server_in(resolve_root(args)));
 	Ok(())
 }
 

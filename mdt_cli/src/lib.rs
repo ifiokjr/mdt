@@ -202,7 +202,9 @@ pub enum Commands {
 	///
 	/// Communicates over stdin/stdout using the Model Context Protocol.
 	/// Configure your AI assistant to run `mdt mcp` as an MCP server
-	/// to give it structured access to mdt's template system.
+	/// to give it structured access to mdt's template system. The server
+	/// manages the current directory, or `--path <DIR>`; tool `path`
+	/// arguments must stay inside it.
 	///
 	/// Exposes tools for checking, updating, and listing template blocks,
 	/// allowing AI assistants to manage documentation synchronization.
