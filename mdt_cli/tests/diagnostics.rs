@@ -7,9 +7,11 @@ use predicates::prelude::*;
 
 fn write(root: &Path, relative: &str, content: &str) {
 	let path = root.join(relative);
+
 	if let Some(parent) = path.parent() {
 		std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("mkdir: {e}"));
 	}
+
 	std::fs::write(&path, content).unwrap_or_else(|e| panic!("write {relative}: {e}"));
 }
 
@@ -27,6 +29,7 @@ fn commands_reject_a_missing_project_path() -> std::io::Result<()> {
 			.code(2)
 			.stderr(predicate::str::contains("does not exist"));
 	}
+
 	assert!(
 		!missing.exists(),
 		"a mistyped path must not be created as a side effect"

@@ -6,6 +6,7 @@ export function defineConfig(
 	config: WrappedConfig<MdtConfig>,
 ): Promise<MdtConfig> {
 	let value: Promise<MdtConfig>;
+
 	if (typeof config === "function") {
 		value = Promise.resolve(config());
 	} else {

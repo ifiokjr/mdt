@@ -94,6 +94,7 @@ fn tool_result(payload: Value, is_error: bool) -> CallToolResult {
 	} else {
 		CallToolResult::success(content)
 	};
+
 	result.structured_content = Some(payload);
 	result
 }
@@ -146,6 +147,7 @@ pub(crate) fn diagnostics(
 				} else {
 					Severity::Warning
 				},
+
 				file: relative_display_path(&diagnostic.file, root),
 				line: diagnostic.line,
 				column: diagnostic.column,
@@ -194,6 +196,7 @@ impl ConsumerStatuses {
 		let mut statuses = Self {
 			by_file: HashMap::new(),
 		};
+
 		for entry in &result.stale {
 			statuses.insert(
 				&entry.file,
@@ -203,6 +206,7 @@ impl ConsumerStatuses {
 				None,
 			);
 		}
+
 		for error in &result.render_errors {
 			statuses.insert(
 				&error.file,
@@ -212,6 +216,7 @@ impl ConsumerStatuses {
 				Some(error.message.clone()),
 			);
 		}
+
 		for orphan in &result.orphans {
 			statuses.insert(
 				&orphan.file,
@@ -221,6 +226,7 @@ impl ConsumerStatuses {
 				None,
 			);
 		}
+
 		statuses
 	}
 

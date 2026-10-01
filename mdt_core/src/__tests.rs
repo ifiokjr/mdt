@@ -308,7 +308,6 @@ fn shared_provider_name_suggestions_skip_identical_and_distant_names() {
 }
 
 // --- Transformer tests ---
-
 #[test]
 fn transformer_trim() {
 	let result = apply_transformers(
@@ -573,7 +572,6 @@ fn transformer_replace_with_empty_replacement() {
 }
 
 // --- Engine tests ---
-
 #[test]
 fn check_project_with_matching_content() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1274,6 +1272,7 @@ fn compute_updates_reports_render_errors_and_updates_healthy_consumers() -> MdtR
 		"unexpected message: {}",
 		error.message
 	);
+
 	assert!(!error.message.contains("__inline__"));
 	let written = &updates.updated_files[&tmp.path().join("readme.md")];
 	assert!(written.contains("v1.2.3"));
@@ -1380,7 +1379,6 @@ fn compute_updates_with_template_rendering() -> MdtResult<()> {
 }
 
 // --- Project scanning tests ---
-
 #[test]
 fn find_missing_providers_detects_orphans() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1790,6 +1788,7 @@ fn check_project_fails_on_orphan_consumers_with_suggestions() -> MdtResult<()> {
 	let orphan = &result.orphans[0];
 	assert_eq!(orphan.block_name, "featrues");
 	assert_eq!((orphan.line, orphan.column), (3, 1));
+
 	assert_eq!(orphan.suggestions, vec!["features".to_string()]);
 
 	Ok(())
@@ -1805,6 +1804,7 @@ fn include_set(pattern: &str) -> globset::GlobSet {
 #[test]
 fn scan_project_include_respects_gitignore() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+
 	for dir in ["vendor", "lib"] {
 		std::fs::create_dir_all(tmp.path().join(dir)).unwrap_or_else(|e| panic!("mkdir: {e}"));
 		std::fs::write(
@@ -1813,6 +1813,7 @@ fn scan_project_include_respects_gitignore() -> MdtResult<()> {
 		)
 		.unwrap_or_else(|e| panic!("write: {e}"));
 	}
+
 	std::fs::write(tmp.path().join(".gitignore"), "vendor/\n")
 		.unwrap_or_else(|e| panic!("write: {e}"));
 
@@ -2059,9 +2060,11 @@ fn init_project_creates_a_missing_root() -> MdtResult<()> {
 
 fn write_file(root: &Path, relative: &str, content: &str) {
 	let path = root.join(relative);
+
 	if let Some(parent) = path.parent() {
 		std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("mkdir: {e}"));
 	}
+
 	std::fs::write(&path, content).unwrap_or_else(|e| panic!("write {relative}: {e}"));
 }
 
@@ -2142,6 +2145,7 @@ fn scan_project_honours_nested_and_ancestor_gitignores() -> MdtResult<()> {
 	write_file(repo, "packages/lib/mdt.toml", "");
 	write_file(repo, "packages/lib/readme.md", CONSUMER);
 	write_file(repo, "packages/lib/local.md", CONSUMER);
+
 	write_file(repo, "packages/lib/dist/readme.md", CONSUMER);
 	write_file(repo, "packages/lib/docs/.gitignore", "draft.md\n!keep.md\n");
 	write_file(repo, "packages/lib/docs/draft.md", CONSUMER);
@@ -2415,7 +2419,6 @@ fn nested_gitignores_apply_only_inside_a_repository() -> MdtResult<()> {
 }
 
 // --- Config tests ---
-
 #[rstest]
 #[case::top_level("max_filesize = 1\n", "max_filesize")]
 #[case::section("[paddding]\nbefore = 0\n", "paddding")]
@@ -2670,7 +2673,6 @@ fn config_multiple_data_namespaces() -> MdtResult<()> {
 }
 
 // --- Template rendering tests ---
-
 #[test]
 fn render_template_with_variables() -> MdtResult<()> {
 	let mut data = HashMap::new();
@@ -2773,7 +2775,6 @@ fn render_template_with_conditional() -> MdtResult<()> {
 }
 
 // --- Source scanner tests ---
-
 #[test]
 fn source_scanner_extract_html_comments() {
 	let content = "// some code\n// <!-- {=block} -->\n// content\n// <!-- {/block} -->\n";
@@ -2899,7 +2900,6 @@ fn source_scanner_comment_positions() {
 }
 
 // --- Parser edge case tests ---
-
 #[test]
 fn parse_block_with_underscores_in_name() -> MdtResult<()> {
 	let input = "<!-- {@my_block_name} -->\n\ncontent\n\n<!-- {/my_block_name} -->\n";
@@ -2933,6 +2933,7 @@ old
 	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::TrimStart);
 	assert_eq!(blocks[0].transformers[2].r#type, TransformerType::TrimEnd);
 	assert_eq!(blocks[0].transformers[3].r#type, TransformerType::Indent);
+
 	assert_eq!(blocks[0].transformers[4].r#type, TransformerType::Prefix);
 	assert_eq!(blocks[0].transformers[5].r#type, TransformerType::Wrap);
 	assert_eq!(blocks[0].transformers[6].r#type, TransformerType::CodeBlock);
@@ -2949,6 +2950,7 @@ fn parse_consumer_with_numeric_argument() -> MdtResult<()> {
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].transformers.len(), 1);
 	assert_eq!(blocks[0].transformers[0].args.len(), 1);
+
 	match &blocks[0].transformers[0].args[0] {
 		Argument::Number(n) => assert!((n.0 - 4.0).abs() < f64::EPSILON),
 		other => panic!("expected Number, got {other:?}"),
@@ -3001,7 +3003,6 @@ fn parse_provider_in_non_template_file_not_provider() -> MdtResult<()> {
 }
 
 // --- Unicode and special character tests ---
-
 #[test]
 fn parse_unicode_content() -> MdtResult<()> {
 	let input = "<!-- {@block} -->\n\nHello, world! \u{1f600} Привет мир!\n\n<!-- {/block} -->\n";
@@ -3027,7 +3028,6 @@ fn transformer_indent_with_unicode() {
 }
 
 // --- Write updates test ---
-
 #[test]
 fn write_updates_creates_files() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -3051,7 +3051,6 @@ fn write_updates_creates_files() -> MdtResult<()> {
 }
 
 // --- Error type tests ---
-
 #[test]
 fn error_missing_closing_tag_message() {
 	let err = MdtError::MissingClosingTag("myBlock".to_string());
@@ -3094,7 +3093,6 @@ fn error_config_parse_message() {
 }
 
 // --- Position tests ---
-
 #[test]
 fn point_advance_str_basic() {
 	let mut point = Point::new(1, 1, 0);
@@ -3123,7 +3121,6 @@ fn point_advance_str_empty() {
 }
 
 // --- Suffix transformer tests ---
-
 #[test]
 fn transformer_suffix() {
 	let result = apply_transformers(
@@ -3242,7 +3239,6 @@ fn transformer_chain_line_prefix_and_suffix() {
 }
 
 // --- Parse new transformer names ---
-
 #[test]
 fn parse_suffix_transformer() -> MdtResult<()> {
 	let input = r#"<!-- {=block|suffix:"!"} -->
@@ -3322,7 +3318,6 @@ old
 }
 
 // --- Duplicate provider detection tests ---
-
 #[test]
 fn duplicate_provider_detected() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -3359,7 +3354,6 @@ fn error_duplicate_provider_message() {
 }
 
 // --- Validate transformers tests ---
-
 #[test]
 fn validate_transformers_valid() -> MdtResult<()> {
 	let transformers = vec![
@@ -3415,7 +3409,6 @@ fn validate_transformers_empty_is_ok() -> MdtResult<()> {
 }
 
 // --- Unknown transformer and invalid args error tests ---
-
 #[test]
 fn error_unknown_transformer_message() {
 	let err = MdtError::UnknownTransformer("foobar".to_string());
@@ -3437,7 +3430,6 @@ fn error_invalid_transformer_args_message() {
 }
 
 // --- Block PartialEq tests ---
-
 #[test]
 fn block_partial_eq() -> MdtResult<()> {
 	let input = "<!-- {=myBlock} -->\n\ncontent\n\n<!-- {/myBlock} -->\n";
@@ -3475,7 +3467,6 @@ fn transformer_partial_ne() {
 }
 
 // --- CRLF normalization tests ---
-
 #[test]
 fn normalize_line_endings_lf_passthrough() {
 	let content = "line1\nline2\nline3\n";
@@ -3514,7 +3505,6 @@ fn crlf_content_parsed_correctly() {
 }
 
 // --- File size limit tests ---
-
 #[test]
 fn file_too_large_error() {
 	let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -3559,7 +3549,6 @@ fn file_within_size_limit_succeeds() {
 }
 
 // --- UTF-8 edge case tests ---
-
 #[test]
 fn parse_content_with_emoji() {
 	let content = "<!-- {=emoji} -->\n\n🦀 Hello 🌍\n\n<!-- {/emoji} -->\n";
@@ -3608,7 +3597,6 @@ fn transformer_indent_with_multibyte_chars() {
 }
 
 // --- No trailing newline edge case ---
-
 #[test]
 fn parse_block_without_trailing_newline() {
 	let content = "<!-- {=test} -->\ncontent\n<!-- {/test} -->";
@@ -3618,7 +3606,6 @@ fn parse_block_without_trailing_newline() {
 }
 
 // --- Insta snapshot tests ---
-
 #[test]
 fn snapshot_tokenize_consumer() -> MdtResult<()> {
 	let nodes = get_html_nodes(r#"<!-- {=exampleName|trim|indent:"/// "} -->"#)?;
@@ -3684,7 +3671,6 @@ old
 }
 
 // --- Edge case tests ---
-
 #[test]
 fn parse_empty_provider_content() -> MdtResult<()> {
 	let input = "<!-- {@block} -->\n<!-- {/block} -->\n";
@@ -3737,9 +3723,11 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 	let updates = compute_updates(&ctx)?;
 	assert_eq!(updates.updated_count, 2);
 	assert_eq!(updates.updated_files.len(), 2);
+
 	for content in updates.updated_files.values() {
 		assert!(content.contains("Shared content."));
 	}
+
 	Ok(())
 }
 
@@ -3749,10 +3737,12 @@ fn transformer_with_boolean_argument() -> MdtResult<()> {
 	let blocks = parse(input)?;
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].transformers.len(), 1);
+
 	match &blocks[0].transformers[0].args[0] {
 		Argument::Boolean(b) => assert!(b),
 		other => panic!("expected Boolean, got {other:?}"),
 	}
+
 	Ok(())
 }
 
@@ -3903,7 +3893,6 @@ fn tokenize_empty_tag_name() -> MdtResult<()> {
 }
 
 // --- Fuzz-style no-panic tests ---
-
 #[test]
 fn fuzz_tokenizer_no_panic() {
 	let long_input = "<!-- {=".to_string() + &"x".repeat(10000) + "} -->";
@@ -3935,6 +3924,7 @@ fn fuzz_tokenizer_no_panic() {
 
 	for input in &inputs {
 		let result = get_html_nodes(input);
+
 		if let Ok(nodes) = result {
 			let _ = tokenize(nodes);
 		}
@@ -3976,7 +3966,6 @@ fn fuzz_source_scanner_no_panic() {
 }
 
 // --- Diagnostic tests ---
-
 #[test]
 fn parse_with_diagnostics_reports_unclosed_block() {
 	let input = "<!-- {=block} -->\n\nold content\n";
@@ -3987,6 +3976,7 @@ fn parse_with_diagnostics_reports_unclosed_block() {
 		"unclosed block should not produce a Block"
 	);
 	assert_eq!(diagnostics.len(), 1);
+
 	match &diagnostics[0] {
 		ParseDiagnostic::UnclosedBlock { name, line, .. } => {
 			assert_eq!(name, "block");
@@ -4012,6 +4002,7 @@ fn parse_with_diagnostics_reports_unknown_transformer() {
 		"unknown transformer should not be in list"
 	);
 	assert_eq!(diagnostics.len(), 1);
+
 	match &diagnostics[0] {
 		ParseDiagnostic::UnknownTransformer { name, .. } => {
 			assert_eq!(name, "foobar");
@@ -4173,7 +4164,6 @@ fn stale_entry_includes_line_and_column() {
 }
 
 // --- padding tests ---
-
 #[test]
 fn pad_blocks_markdown_update() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -4999,7 +4989,6 @@ fn pad_blocks_csharp_comments() -> MdtResult<()> {
 }
 
 // --- padding: before=0, after=0 tests ---
-
 #[test]
 fn padding_zero_rust_doc_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -5241,7 +5230,6 @@ fn padding_mixed_before_zero_after_one() -> MdtResult<()> {
 }
 
 // --- Exclude configuration tests ---
-
 #[test]
 fn custom_exclude_patterns_skip_matching_files() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -5589,9 +5577,7 @@ fn config_defaults_for_exclude_fields() {
 // =============================================================================
 // Coverage improvement tests
 // =============================================================================
-
 // --- tokens.rs: GetDynamicRange impls for all numeric types ---
-
 /// Helper that exercises `GetDynamicRange` for a given value.
 /// Creates a `TokenGroup` with known tokens and calls `position_of_range`.
 fn exercise_get_dynamic_range(range: &impl GetDynamicRange) {
@@ -5806,7 +5792,6 @@ fn get_dynamic_range_range_to_inclusive_usize() {
 }
 
 // --- tokens.rs: Token::Display ---
-
 #[test]
 fn token_display_all_variants() {
 	use crate::tokens::Token;
@@ -5819,6 +5804,7 @@ fn token_display_all_variants() {
 	assert_eq!(format!("{}", Token::ConsumerTag), "{=");
 	assert_eq!(format!("{}", Token::ProviderTag), "{@");
 	assert_eq!(format!("{}", Token::CloseTag), "{/");
+
 	assert_eq!(format!("{}", Token::BraceClose), "}");
 	assert_eq!(format!("{}", Token::Pipe), "|");
 	assert_eq!(format!("{}", Token::ArgumentDelimiter), ":");
@@ -5841,7 +5827,6 @@ fn token_display_all_variants() {
 }
 
 // --- tokens.rs: Token::same_type ---
-
 #[test]
 fn token_same_type_different_variants() {
 	use crate::tokens::Token;
@@ -5877,7 +5862,6 @@ fn token_same_type_different_variants() {
 }
 
 // --- tokens.rs: Token::increment ---
-
 #[test]
 fn token_increment_all_variants() {
 	use crate::tokens::Token;
@@ -5890,6 +5874,7 @@ fn token_increment_all_variants() {
 	assert_eq!(Token::Newline.increment(), 1);
 	assert_eq!(Token::BraceClose.increment(), 1);
 	assert_eq!(Token::Pipe.increment(), 1);
+
 	assert_eq!(Token::ArgumentDelimiter.increment(), 1);
 	assert_eq!(Token::Whitespace(b' ').increment(), 1);
 	assert_eq!(Token::String("abc".to_string(), b'"').increment(), 5); // 3 + 2 quotes
@@ -5900,7 +5885,6 @@ fn token_increment_all_variants() {
 }
 
 // --- tokens.rs: DynamicRange start/end for different bound types ---
-
 #[test]
 fn dynamic_range_start_end_all_bound_types() {
 	use std::ops::Bound;
@@ -5939,7 +5923,6 @@ fn dynamic_range_start_end_all_bound_types() {
 }
 
 // --- tokens.rs: position_of_range ---
-
 #[test]
 fn position_of_range_with_all_numeric_types() {
 	let group = closing_token_group();
@@ -5954,6 +5937,7 @@ fn position_of_range_with_all_numeric_types() {
 	let _ = group.position_of_range(&0_isize);
 	let _ = group.position_of_range(&0_i128);
 	let _ = group.position_of_range(&0_i64);
+
 	let _ = group.position_of_range(&0_i32);
 	let _ = group.position_of_range(&0_i16);
 	let _ = group.position_of_range(&0_i8);
@@ -5966,7 +5950,6 @@ fn position_of_range_with_all_numeric_types() {
 }
 
 // --- config.rs: Additional format coverage ---
-
 #[test]
 fn config_load_data_toml_with_all_value_types() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -6054,6 +6037,7 @@ fn config_load_data_kdl_complex() -> MdtResult<()> {
 	// named args should be an object
 	assert!(conf["named_args"].is_object());
 	assert_eq!(conf["named_args"]["key"], "value");
+
 	assert_eq!(conf["named_args"]["other"], "thing");
 	// nested should be an object with inner child
 	assert_eq!(conf["nested"]["inner"], "deep");
@@ -6181,7 +6165,6 @@ fn config_load_with_all_sections() -> MdtResult<()> {
 }
 
 // --- position.rs: Point::new and Position constructors ---
-
 #[test]
 fn point_new_and_fields() {
 	let p = Point::new(5, 10, 42);
@@ -6237,7 +6220,6 @@ fn position_advance_end() {
 }
 
 // --- position.rs: Debug impls ---
-
 #[test]
 fn point_debug_format() {
 	let p = Point::new(3, 7, 20);
@@ -6253,7 +6235,6 @@ fn position_debug_format() {
 }
 
 // --- position.rs: From<UnistPosition> ---
-
 #[test]
 fn position_from_unist_position() {
 	use markdown::unist::Point as UnistPoint;
@@ -6296,7 +6277,6 @@ fn point_from_unist_point() {
 }
 
 // --- position.rs: Point::advance with newlines ---
-
 #[test]
 fn point_advance_display_impl() {
 	let mut p = Point::new(1, 1, 0);
@@ -6308,7 +6288,6 @@ fn point_advance_display_impl() {
 }
 
 // --- project.rs: is_template_file additional cases ---
-
 #[test]
 fn is_template_file_edge_cases() {
 	assert!(is_template_file(Path::new("a.t.md")));
@@ -6321,7 +6300,6 @@ fn is_template_file_edge_cases() {
 }
 
 // --- project.rs: normalize_line_endings edge cases ---
-
 #[test]
 fn normalize_line_endings_empty_string() {
 	assert_eq!(normalize_line_endings(""), "");
@@ -6348,7 +6326,6 @@ fn normalize_line_endings_multiple_bare_cr() {
 }
 
 // --- project.rs: collect_included_files via scan_project_with_options ---
-
 #[test]
 fn scan_with_include_patterns() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -6405,7 +6382,6 @@ fn scan_with_include_patterns() -> MdtResult<()> {
 }
 
 // --- project.rs: template_paths ---
-
 #[test]
 fn scan_with_template_paths() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -6445,7 +6421,6 @@ fn scan_with_template_paths() -> MdtResult<()> {
 }
 
 // --- parser.rs: BlockType::Display ---
-
 #[test]
 fn block_type_display() {
 	assert_eq!(format!("{}", BlockType::Provider), "provider");
@@ -6454,7 +6429,6 @@ fn block_type_display() {
 }
 
 // --- parser.rs: TransformerType::Display ---
-
 #[test]
 fn transformer_type_display_all() {
 	assert_eq!(format!("{}", TransformerType::Trim), "trim");
@@ -6465,6 +6439,7 @@ fn transformer_type_display_all() {
 	assert_eq!(format!("{}", TransformerType::CodeBlock), "codeBlock");
 	assert_eq!(format!("{}", TransformerType::Code), "code");
 	assert_eq!(format!("{}", TransformerType::Replace), "replace");
+
 	assert_eq!(format!("{}", TransformerType::Prefix), "prefix");
 	assert_eq!(format!("{}", TransformerType::Suffix), "suffix");
 	assert_eq!(format!("{}", TransformerType::LinePrefix), "linePrefix");
@@ -6473,7 +6448,6 @@ fn transformer_type_display_all() {
 }
 
 // --- parser.rs: OrderedFloat::Display ---
-
 #[test]
 fn ordered_float_display() {
 	let f = OrderedFloat(2.75);
@@ -6496,7 +6470,6 @@ fn ordered_float_partial_eq() {
 }
 
 // --- parser.rs: Argument::Number and Argument::Boolean parsing ---
-
 #[test]
 fn parse_consumer_with_float_argument() -> MdtResult<()> {
 	let input = "<!-- {=block|indent:2.75} -->\nold\n<!-- {/block} -->\n";
@@ -6504,6 +6477,7 @@ fn parse_consumer_with_float_argument() -> MdtResult<()> {
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].transformers.len(), 1);
 	assert_eq!(blocks[0].transformers[0].args.len(), 1);
+
 	match &blocks[0].transformers[0].args[0] {
 		Argument::Number(n) => assert!((n.0 - 2.75).abs() < 0.001),
 		other => panic!("expected Number, got {other:?}"),
@@ -6517,6 +6491,7 @@ fn parse_consumer_with_false_boolean() -> MdtResult<()> {
 	let input = "<!-- {=block|indent:false} -->\nold\n<!-- {/block} -->\n";
 	let blocks = parse(input)?;
 	assert_eq!(blocks.len(), 1);
+
 	match &blocks[0].transformers[0].args[0] {
 		Argument::Boolean(b) => assert!(!b),
 		other => panic!("expected Boolean(false), got {other:?}"),
@@ -6531,6 +6506,7 @@ fn parse_consumer_with_scientific_notation() -> MdtResult<()> {
 	let blocks = parse(input)?;
 	assert_eq!(blocks.len(), 1);
 	assert_eq!(blocks[0].transformers.len(), 1);
+
 	match &blocks[0].transformers[0].args[0] {
 		Argument::Number(n) => assert!((n.0 - 100.0).abs() < 0.001),
 		other => panic!("expected Number, got {other:?}"),
@@ -6540,7 +6516,6 @@ fn parse_consumer_with_scientific_notation() -> MdtResult<()> {
 }
 
 // --- lexer.rs: memstr function ---
-
 #[test]
 fn memstr_basic() {
 	use crate::lexer::memstr;
@@ -6556,7 +6531,6 @@ fn memstr_basic() {
 }
 
 // --- lexer.rs: single-quoted strings ---
-
 #[test]
 fn tokenize_single_quoted_string() -> MdtResult<()> {
 	let input = r"<!-- {=block|indent:'  '} -->";
@@ -6587,7 +6561,6 @@ fn tokenize_single_quoted_string_with_escapes() -> MdtResult<()> {
 }
 
 // --- lexer.rs: float numbers ---
-
 #[test]
 fn tokenize_float_number_in_tag() -> MdtResult<()> {
 	let input = "<!-- {=block|indent:2.5} -->";
@@ -6634,7 +6607,6 @@ fn tokenize_integer_number_in_tag() -> MdtResult<()> {
 }
 
 // --- engine.rs: get_bool_arg with Number coercion ---
-
 #[test]
 fn transformer_indent_with_number_bool_coercion() {
 	// When a Number is passed where a bool is expected (second arg of indent),
@@ -6670,7 +6642,6 @@ fn transformer_indent_with_zero_number_bool_coercion() {
 }
 
 // --- engine.rs: get_string_arg with Number ---
-
 #[test]
 fn transformer_prefix_with_number_arg() {
 	// When a Number is passed where a string is expected, it should be
@@ -6686,7 +6657,6 @@ fn transformer_prefix_with_number_arg() {
 }
 
 // --- engine.rs: get_string_arg with Boolean ---
-
 #[test]
 fn transformer_prefix_with_boolean_arg() {
 	let result = apply_transformers(
@@ -6700,7 +6670,6 @@ fn transformer_prefix_with_boolean_arg() {
 }
 
 // --- engine.rs: get_bool_arg with String coercion ---
-
 #[test]
 fn transformer_indent_with_string_true_bool_coercion() {
 	let result = apply_transformers(
@@ -6734,7 +6703,6 @@ fn transformer_indent_with_string_false_bool_coercion() {
 }
 
 // --- parser.rs: parse_with_diagnostics additional coverage ---
-
 #[test]
 fn parse_with_diagnostics_valid_input_no_diagnostics() -> MdtResult<()> {
 	let input = "<!-- {=block|trim} -->\n\nold\n\n<!-- {/block} -->\n";
@@ -6761,7 +6729,6 @@ fn parse_with_diagnostics_unknown_transformer_on_provider() -> MdtResult<()> {
 }
 
 // --- project.rs: ProjectDiagnostic::message ---
-
 #[test]
 fn project_diagnostic_message_all_kinds() {
 	use project::DiagnosticKind;
@@ -6814,7 +6781,6 @@ fn project_diagnostic_message_all_kinds() {
 }
 
 // --- project.rs: ValidationOptions coverage ---
-
 #[test]
 fn validation_options_all_kinds() {
 	use project::DiagnosticKind;
@@ -6869,7 +6835,6 @@ fn validation_options_all_kinds() {
 }
 
 // --- project.rs: ProjectContext::find_missing_providers ---
-
 #[test]
 fn project_context_find_missing_providers() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -6901,7 +6866,6 @@ fn project_context_find_missing_providers() -> MdtResult<()> {
 }
 
 // --- Token PartialEq edge cases ---
-
 #[test]
 fn token_partial_eq_edge_cases() {
 	use crate::tokens::Token;
@@ -6926,7 +6890,6 @@ fn token_partial_eq_edge_cases() {
 }
 
 // --- lexer.rs: escaped strings ---
-
 fn string_token_values(group: &TokenGroup) -> Vec<String> {
 	group
 		.tokens
@@ -7023,7 +6986,6 @@ fn tokenize_single_quoted_string_keeps_escapes_literal() -> MdtResult<()> {
 }
 
 // --- Error display coverage ---
-
 #[test]
 #[allow(deprecated)]
 fn error_symlink_cycle_message() {
@@ -7059,7 +7021,6 @@ fn error_unconvertible_float_message() {
 }
 
 // --- parser.rs: Argument Display coverage (via Debug) ---
-
 #[test]
 fn argument_debug_all_variants() {
 	let s = Argument::String("test".to_string());
@@ -7072,7 +7033,6 @@ fn argument_debug_all_variants() {
 }
 
 // --- lexer.rs: edge cases ---
-
 #[test]
 fn tokenize_comment_with_only_whitespace_and_close() -> MdtResult<()> {
 	// A comment that has whitespace inside but no valid tag
@@ -7095,14 +7055,12 @@ fn tokenize_multiple_comments_in_one_input() -> MdtResult<()> {
 }
 
 // --- config.rs: default max file size ---
-
 #[test]
 fn default_max_file_size_value() {
 	assert_eq!(DEFAULT_MAX_FILE_SIZE, 10 * 1024 * 1024);
 }
 
 // --- config.rs: MdtConfig defaults ---
-
 #[test]
 fn config_default_max_file_size() {
 	let config: MdtConfig = toml::from_str("").unwrap_or_else(|e| panic!("parse: {e}"));
@@ -7113,12 +7071,12 @@ fn config_default_max_file_size() {
 	assert!(config.data.is_empty());
 	assert!(config.exclude.patterns.is_empty());
 	assert!(config.include.patterns.is_empty());
+
 	assert!(config.templates.paths.is_empty());
 }
 
 // --- engine.rs: line_prefix and line_suffix with Number and Boolean bool args
 // ---
-
 #[test]
 fn transformer_line_prefix_with_number_bool_arg() {
 	let result = apply_transformers(
@@ -7150,7 +7108,6 @@ fn transformer_line_suffix_with_number_bool_arg() {
 }
 
 // --- engine.rs: replace with Number and Boolean string coercions ---
-
 #[test]
 fn transformer_replace_with_number_args() {
 	let result = apply_transformers(
@@ -7179,7 +7136,6 @@ fn transformer_replace_with_boolean_args() {
 }
 
 // --- lexer.rs: context-dependent behavior edge cases ---
-
 #[test]
 fn tokenize_nested_comment_like_content() -> MdtResult<()> {
 	// Content that looks like a nested comment open inside a tag
@@ -7202,7 +7158,6 @@ fn tokenize_tab_whitespace_in_comment() -> MdtResult<()> {
 }
 
 // --- parser.rs: parse various transformer snake_case aliases ---
-
 #[test]
 fn parse_codeblock_alias() -> MdtResult<()> {
 	let input = r#"<!-- {=block|codeblock:"rs"} -->
@@ -7217,7 +7172,6 @@ old
 }
 
 // --- Token PartialEq between different variant types ---
-
 #[test]
 fn token_eq_cross_variant_returns_false() {
 	use crate::tokens::Token;
@@ -7254,7 +7208,6 @@ fn token_eq_cross_variant_returns_false() {
 }
 
 // --- source_scanner.rs: extract_html_comments with no comments ---
-
 #[test]
 fn extract_html_comments_empty_input() {
 	let nodes = extract_html_comments("");
@@ -7281,7 +7234,6 @@ fn extract_html_comments_open_at_end() {
 
 // --- Coverage: config.rs TOML integer, float, array, table, datetime
 // conversions ---
-
 #[test]
 fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7333,6 +7285,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 		.as_str()
 		.unwrap_or_else(|| panic!("expected string"));
 	assert!(dt_str.contains("2024"));
+
 	// Array conversion
 	let arr = conf["array_val"]
 		.as_array()
@@ -7352,7 +7305,6 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs KDL data file with various entry types ---
-
 #[test]
 fn config_kdl_empty_node_entries() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7517,6 +7469,7 @@ fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
 	assert_eq!(conf["bool_val"], serde_json::json!(true));
 	// Null
 	assert!(conf["null_val"].is_null());
+
 	// String
 	assert_eq!(conf["string_val"], "hello");
 
@@ -7551,7 +7504,6 @@ fn config_kdl_children_node() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs MdtConfig::load reading from disk ---
-
 #[test]
 fn config_load_full_config_from_disk() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7611,7 +7563,6 @@ fn config_load_full_config_from_disk() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs scan_project_with_config with real mdt.toml ---
-
 #[test]
 fn scan_project_with_config_loads_data_and_scans() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7670,7 +7621,6 @@ fn scan_project_with_config_no_config_file() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs extra template directories ---
-
 #[test]
 fn scan_project_with_extra_template_dirs() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7736,7 +7686,6 @@ fn scan_project_with_extra_template_dir_nonexistent_is_an_error() {
 }
 
 // --- Coverage: project.rs include patterns ---
-
 #[test]
 fn scan_project_with_include_patterns() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -7779,7 +7728,6 @@ fn scan_project_with_include_patterns() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs diagnostic conversion from ParseDiagnostic ---
-
 #[test]
 fn scan_project_unclosed_block_diagnostic_has_correct_fields() {
 	use project::DiagnosticKind;
@@ -7804,6 +7752,7 @@ fn scan_project_unclosed_block_diagnostic_has_correct_fields() {
 		}
 		other => panic!("expected UnclosedBlock, got {other:?}"),
 	}
+
 	assert!(diag.line > 0);
 	assert!(diag.column > 0);
 	assert!(diag.file.to_string_lossy().contains("readme.md"));
@@ -7838,6 +7787,7 @@ fn scan_project_unknown_transformer_diagnostic_has_correct_fields() {
 		}
 		other => panic!("expected UnknownTransformer, got {other:?}"),
 	}
+
 	assert!(diag.line > 0);
 	assert!(diag.column > 0);
 }
@@ -7878,12 +7828,12 @@ fn scan_project_invalid_transformer_args_diagnostic_has_correct_fields() {
 		}
 		other => panic!("expected InvalidTransformerArgs, got {other:?}"),
 	}
+
 	assert!(diag.line > 0);
 	assert!(diag.column > 0);
 }
 
 // --- Coverage: project.rs diagnostic message ---
-
 #[test]
 fn project_diagnostic_messages_are_descriptive() {
 	use project::DiagnosticKind;
@@ -7938,7 +7888,6 @@ fn project_diagnostic_messages_are_descriptive() {
 }
 
 // --- Coverage: project.rs is_error for all diagnostic kinds ---
-
 #[test]
 fn diagnostic_is_error_all_kinds() {
 	use project::DiagnosticKind;
@@ -7995,6 +7944,7 @@ fn diagnostic_is_error_all_kinds() {
 		name: "x".to_string(),
 	});
 	assert!(unmatched.is_error(&default_opts));
+
 	let ignore_unclosed = ValidationOptions {
 		ignore_unclosed_blocks: true,
 		..Default::default()
@@ -8041,7 +7991,6 @@ fn diagnostic_is_error_all_kinds() {
 }
 
 // --- Coverage: project.rs normalize_line_endings via CRLF scanning ---
-
 #[test]
 fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8077,7 +8026,6 @@ fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 
 // --- Coverage: project.rs ProjectContext::find_missing_providers with multiple
 // missing ---
-
 #[test]
 fn project_context_find_multiple_missing_providers() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8104,7 +8052,6 @@ fn project_context_find_multiple_missing_providers() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs validate_project ---
-
 #[test]
 fn validate_project_ok_when_all_providers_exist() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8127,7 +8074,6 @@ fn validate_project_ok_when_all_providers_exist() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs is_template_file additional edge cases ---
-
 #[test]
 fn is_template_file_more_edge_cases() {
 	// Various additional edge cases
@@ -8141,7 +8087,6 @@ fn is_template_file_more_edge_cases() {
 }
 
 // --- Coverage: error.rs SymlinkCycle display ---
-
 #[test]
 #[allow(deprecated)]
 fn error_symlink_cycle_display_format() {
@@ -8154,7 +8099,6 @@ fn error_symlink_cycle_display_format() {
 }
 
 // --- Coverage: error.rs FileTooLarge display ---
-
 #[test]
 fn error_file_too_large_display_format() {
 	let err = MdtError::FileTooLarge {
@@ -8169,7 +8113,6 @@ fn error_file_too_large_display_format() {
 }
 
 // --- Coverage: error.rs UnconvertibleFloat display ---
-
 #[test]
 fn error_unconvertible_float_display_format() {
 	let err = MdtError::UnconvertibleFloat {
@@ -8182,7 +8125,6 @@ fn error_unconvertible_float_display_format() {
 }
 
 // --- Coverage: config.rs unsupported format with explicit check ---
-
 #[test]
 fn config_unsupported_format_returns_specific_error() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8203,7 +8145,6 @@ fn config_unsupported_format_returns_specific_error() {
 }
 
 // --- Coverage: project.rs source file scanning with unclosed block ---
-
 #[test]
 fn scan_project_source_file_unclosed_block_diagnostic() {
 	use project::DiagnosticKind;
@@ -8231,7 +8172,6 @@ fn scan_project_source_file_unclosed_block_diagnostic() {
 }
 
 // --- Coverage: config.rs TOML with nested arrays of tables ---
-
 #[test]
 fn config_toml_nested_array_of_tables() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8268,7 +8208,6 @@ fn config_toml_nested_array_of_tables() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs scan_project_with_config with pad_blocks ---
-
 #[test]
 fn scan_project_with_config_pad_blocks_flag() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8287,7 +8226,6 @@ fn scan_project_with_config_pad_blocks_flag() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs scan with include excluding hidden directories ---
-
 #[test]
 fn include_pattern_does_not_scan_hidden_dirs() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8339,7 +8277,6 @@ fn include_pattern_does_not_scan_hidden_dirs() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs invalid JSON data file ---
-
 #[test]
 fn config_load_data_invalid_json() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8356,7 +8293,6 @@ fn config_load_data_invalid_json() {
 }
 
 // --- Coverage: config.rs invalid TOML data file ---
-
 #[test]
 fn config_load_data_invalid_toml() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8373,7 +8309,6 @@ fn config_load_data_invalid_toml() {
 }
 
 // --- Coverage: config.rs invalid YAML data file ---
-
 #[test]
 fn config_load_data_invalid_yaml() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8391,7 +8326,6 @@ fn config_load_data_invalid_yaml() {
 }
 
 // --- Coverage: config.rs invalid KDL data file ---
-
 #[test]
 fn config_load_data_invalid_kdl() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8412,7 +8346,6 @@ fn config_load_data_invalid_kdl() {
 
 // --- Coverage: project.rs exclude patterns with include patterns interaction
 // ---
-
 #[test]
 fn include_patterns_respect_exclude_patterns() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8472,7 +8405,6 @@ fn include_patterns_respect_exclude_patterns() -> MdtResult<()> {
 
 // --- Coverage: config.rs pad_blocks + data loading through
 // scan_project_with_config ---
-
 #[test]
 fn scan_project_with_config_pad_blocks_and_data() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8519,7 +8451,6 @@ fn scan_project_with_config_pad_blocks_and_data() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs TOML all value types exercised individually ---
-
 #[test]
 fn config_toml_integer_value_standalone() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8646,7 +8577,6 @@ fn config_toml_deeply_nested_table() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs KDL integer and float values in named entries ---
-
 #[test]
 fn config_kdl_named_entries_with_integer_and_float() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8673,13 +8603,13 @@ fn config_kdl_named_entries_with_integer_and_float() -> MdtResult<()> {
 	let weight = conf["server"]["weight"]
 		.as_f64()
 		.unwrap_or_else(|| panic!("expected number"));
+
 	assert!((weight - 1.5).abs() < f64::EPSILON);
 
 	Ok(())
 }
 
 // --- Coverage: config.rs KDL mixed entries with integers and floats ---
-
 #[test]
 fn config_kdl_mixed_entries_with_numbers() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8720,7 +8650,6 @@ fn config_kdl_mixed_entries_with_numbers() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs KDL node with children containing integers ---
-
 #[test]
 fn config_kdl_children_with_integer_and_float_values() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8752,6 +8681,7 @@ fn config_kdl_children_with_integer_and_float_values() -> MdtResult<()> {
 		.as_f64()
 		.unwrap_or_else(|| panic!("expected number"));
 	assert!((rate - 0.95).abs() < 0.001);
+
 	// Boolean child
 	assert_eq!(conf["config"]["debug"], false);
 
@@ -8760,7 +8690,6 @@ fn config_kdl_children_with_integer_and_float_values() -> MdtResult<()> {
 
 // --- Coverage: project.rs collect_included_files with subdirectory recursion
 // ---
-
 #[test]
 fn include_pattern_scans_nested_subdirectories() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8810,7 +8739,6 @@ fn include_pattern_scans_nested_subdirectories() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs include patterns with exclude interaction ---
-
 #[test]
 fn include_pattern_respects_exclude_patterns() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8869,7 +8797,6 @@ fn include_pattern_respects_exclude_patterns() -> MdtResult<()> {
 }
 
 // --- Coverage: project.rs include patterns skip node_modules and target ---
-
 #[test]
 fn include_pattern_skips_node_modules_and_target() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8932,7 +8859,6 @@ fn include_pattern_skips_node_modules_and_target() -> MdtResult<()> {
 }
 
 // --- Coverage: config.rs read_to_string success path (line 124) ---
-
 #[test]
 fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -8976,7 +8902,6 @@ fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 
 // --- Coverage: project.rs scan_project_with_config with all config sections
 // ---
-
 #[test]
 fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -9038,7 +8963,6 @@ fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 // =============================================================================
 // Feature 1: [exclude] markdown_codeblocks
 // =============================================================================
-
 #[test]
 fn config_parses_exclude_markdown_codeblocks_true() {
 	let toml_content = "[exclude]\nmarkdown_codeblocks = true\n";
@@ -9298,7 +9222,6 @@ fn source_scanner_filters_codeblock_with_info_string_match() -> MdtResult<()> {
 // =============================================================================
 // Feature 2: [exclude] blocks
 // =============================================================================
-
 #[test]
 fn config_parses_exclude_blocks() {
 	let toml_content = "[exclude]\nblocks = [\"internal\", \"debug\"]\n";
@@ -9374,7 +9297,6 @@ fn excluded_blocks_defaults_to_empty() {
 }
 
 // --- Undefined template variable detection tests ---
-
 #[test]
 fn find_undefined_variables_with_valid_data() {
 	let mut data = HashMap::new();
@@ -9591,7 +9513,6 @@ fn find_undefined_variables_partial_match() {
 }
 
 // ─── Block arguments ───────────────────────────────────────────────────
-
 #[test]
 fn parse_provider_with_arguments() -> MdtResult<()> {
 	let input = "<!-- {@badges:\"crate_name\"} -->\n\nContent with {{ crate_name }}\n\n<!-- \
@@ -10069,7 +9990,6 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 }
 
 // --- engine.rs: `if` transformer tests ---
-
 #[test]
 fn transformer_if_truthy_bool_includes_content() {
 	let mut data = HashMap::new();
@@ -10590,6 +10510,7 @@ old content
 		updated_content.contains("\n[coverage-link]:"),
 		"coverage-link should be on its own line"
 	);
+
 	assert!(
 		updated_content.contains("\n[unlicense-image]:"),
 		"unlicense-image should be on its own line"
@@ -10707,7 +10628,6 @@ old content
 }
 
 // --- PR2: config discovery + typed data entries + ini + canonical templates ---
-
 #[test]
 fn config_load_data_ini() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -11329,6 +11249,7 @@ fn scan_project_cache_telemetry_tracks_full_cache_hit() -> MdtResult<()> {
 		.last_scan
 		.as_ref()
 		.unwrap_or_else(|| panic!("expected last scan telemetry"));
+
 	assert!(last_scan.full_project_hit);
 	assert_eq!(last_scan.reused_files, 2);
 	assert_eq!(last_scan.reparsed_files, 0);
@@ -11382,6 +11303,7 @@ fn scan_project_cache_telemetry_tracks_incremental_reuse() -> MdtResult<()> {
 		.as_ref()
 		.unwrap_or_else(|| panic!("expected last scan telemetry"));
 	assert!(!last_scan.full_project_hit);
+
 	assert_eq!(last_scan.reused_files, 2);
 	assert_eq!(last_scan.reparsed_files, 1);
 	assert_eq!(last_scan.total_files, 3);
@@ -11424,6 +11346,7 @@ fn scan_project_cache_telemetry_resets_after_cold_cache_rebuild() -> MdtResult<(
 		.as_ref()
 		.unwrap_or_else(|| panic!("expected last scan telemetry"));
 	assert!(!last_scan.full_project_hit);
+
 	assert_eq!(last_scan.reused_files, 0);
 	assert_eq!(last_scan.reparsed_files, 2);
 	assert_eq!(last_scan.total_files, 2);
@@ -11714,6 +11637,7 @@ fn config_load_data_typed_missing_file_reports_data_file_error() -> MdtResult<()
 
 	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
 	let err = config.load_data(tmp.path()).unwrap_err();
+
 	assert!(matches!(err, MdtError::DataFile { path, .. } if path == "missing.json"));
 
 	Ok(())
@@ -11732,6 +11656,7 @@ fn config_load_data_invalid_ini_reports_data_file_error() -> MdtResult<()> {
 
 	let config = MdtConfig::load(tmp.path())?.unwrap_or_else(|| panic!("expected Some"));
 	let err = config.load_data(tmp.path()).unwrap_err();
+
 	assert!(matches!(err, MdtError::DataFile { path, .. } if path == "settings.ini"));
 
 	Ok(())
@@ -11920,6 +11845,7 @@ fn render_template_invalid_syntax_returns_template_render_error() {
 	data.insert("value".to_string(), serde_json::json!("ok"));
 
 	let err = render_template("{{ value | }}", &data).unwrap_err();
+
 	assert!(matches!(err, MdtError::TemplateRender(message) if !message.is_empty()));
 }
 
@@ -11979,6 +11905,7 @@ patterns = ["**/*.md"]
 
 	let ctx = scan_project_with_config(tmp.path())?;
 	let err = compute_updates(&ctx).unwrap_err();
+
 	assert!(matches!(err, MdtError::Formatter { reason, .. } if reason == "boom"));
 
 	Ok(())
@@ -12055,7 +11982,6 @@ fn formatter_warnings_deduplicate_providers_and_ignore_provider_params() -> MdtR
 }
 
 // --- lenient comparison mode: unit tests ---
-
 #[test]
 fn normalize_whitespace_collapses_blank_lines() {
 	let input = "hello\n\n\n\nworld\n";
@@ -12120,7 +12046,6 @@ fn strict_config_is_default() {
 // ──────────────────────────────────────────────────────────────────────────────
 // Tracing instrumentation tests
 // ──────────────────────────────────────────────────────────────────────────────
-
 #[traced_test]
 #[allow(clippy::disallowed_methods)]
 #[test]
@@ -12595,7 +12520,6 @@ fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 // ---------------------------------------------------------------------------
 // padding: comment prefix recovery when migrating from inline content
 // ---------------------------------------------------------------------------
-
 use crate::config::PaddingConfig;
 use crate::config::PaddingValue;
 use crate::engine::pad_content_with_config;
@@ -12649,6 +12573,7 @@ fn extract_comment_prefix_matches_common_markers() {
 	assert_eq!(extract_comment_prefix(" * docs"), " * ");
 	assert_eq!(extract_comment_prefix("  //! indented"), "  //! ");
 	assert_eq!(extract_comment_prefix("plain text"), "");
+
 	assert_eq!(extract_comment_prefix("<!-- {/x} -->"), "");
 	assert_eq!(extract_comment_prefix(""), "");
 	// Indentation alone is kept so indented closing tags stay in place.
