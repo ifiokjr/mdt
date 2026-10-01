@@ -58,10 +58,12 @@ pub(crate) fn confine_root(
 
 	match requirement {
 		RootRequirement::Creatable => Ok(root),
-		RootRequirement::ExistingDirectory => Err(ToolError::new(
-			PATH_NOT_FOUND,
-			format!("path `{shown}` does not exist"),
-		)),
+		RootRequirement::ExistingDirectory => {
+			Err(ToolError::new(
+				PATH_NOT_FOUND,
+				format!("path `{shown}` does not exist"),
+			))
+		}
 	}
 }
 

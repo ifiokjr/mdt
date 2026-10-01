@@ -509,11 +509,13 @@ fn expected_content(
 				);
 			};
 			match render_template(template, &ctx.data) {
-				Ok(rendered) => ExpectedContent::Rendered(apply_transformers_with_data(
-					&rendered,
-					&consumer.block.transformers,
-					Some(&ctx.data),
-				)),
+				Ok(rendered) => {
+					ExpectedContent::Rendered(apply_transformers_with_data(
+						&rendered,
+						&consumer.block.transformers,
+						Some(&ctx.data),
+					))
+				}
 				Err(error) => ExpectedContent::RenderFailed(render_error_message(error)),
 			}
 		}
@@ -1012,10 +1014,12 @@ impl FormatterPipeline {
 		Self {
 			entries: formatters
 				.iter()
-				.map(|formatter| FormatterPipelineEntry {
-					command: formatter.command.clone(),
-					patterns: crate::config::FormatterRuleSet::compile(&formatter.patterns),
-					ignore: crate::config::FormatterRuleSet::compile(&formatter.ignore),
+				.map(|formatter| {
+					FormatterPipelineEntry {
+						command: formatter.command.clone(),
+						patterns: crate::config::FormatterRuleSet::compile(&formatter.patterns),
+						ignore: crate::config::FormatterRuleSet::compile(&formatter.ignore),
+					}
 				})
 				.collect(),
 		}
@@ -1061,12 +1065,13 @@ fn run_formatter_command(
 	input: &str,
 ) -> MdtResult<String> {
 	let relative_file = file.strip_prefix(&ctx.root).unwrap_or(file);
-	let interpolated =
-		interpolate_formatter_command(command).map_err(|reason| MdtError::Formatter {
+	let interpolated = interpolate_formatter_command(command).map_err(|reason| {
+		MdtError::Formatter {
 			file: relative_file.display().to_string(),
 			command: command.to_string(),
 			reason,
-		})?;
+		}
+	})?;
 	let mut command_builder = if cfg!(windows) {
 		let mut command_builder = Command::new("cmd");
 		command_builder.arg("/C").arg(&interpolated);
@@ -1174,14 +1179,16 @@ fn parse_candidate_consumer_contents(
 		.collect();
 	let normalized = normalize_line_endings(content);
 	let (blocks, _) = if is_markdown_path(file) {
-		parse_with_diagnostics(&normalized).map_err(|error| MdtError::Formatter {
-			file: file
-				.strip_prefix(&ctx.root)
-				.unwrap_or(file)
-				.display()
-				.to_string(),
-			command: formatter_commands.join(" && "),
-			reason: format!("formatter pipeline produced unparsable markdown: {error}"),
+		parse_with_diagnostics(&normalized).map_err(|error| {
+			MdtError::Formatter {
+				file: file
+					.strip_prefix(&ctx.root)
+					.unwrap_or(file)
+					.display()
+					.to_string(),
+				command: formatter_commands.join(" && "),
+				reason: format!("formatter pipeline produced unparsable markdown: {error}"),
+			}
 		})?
 	} else {
 		parse_source_with_diagnostics(&normalized, &ctx.markdown_codeblocks).map_err(|error| {
@@ -1662,17 +1669,21 @@ pub(crate) fn pad_content_with_config(
 }
 
 fn get_string_arg(args: &[Argument], index: usize) -> Option<String> {
-	args.get(index).map(|arg| match arg {
-		Argument::String(s) => s.clone(),
-		Argument::Number(n) => n.to_string(),
-		Argument::Boolean(b) => b.to_string(),
+	args.get(index).map(|arg| {
+		match arg {
+			Argument::String(s) => s.clone(),
+			Argument::Number(n) => n.to_string(),
+			Argument::Boolean(b) => b.to_string(),
+		}
 	})
 }
 
 fn get_bool_arg(args: &[Argument], index: usize) -> Option<bool> {
-	args.get(index).map(|arg| match arg {
-		Argument::Boolean(b) => *b,
-		Argument::String(s) => s == "true",
-		Argument::Number(n) => n.0 != 0.0,
+	args.get(index).map(|arg| {
+		match arg {
+			Argument::Boolean(b) => *b,
+			Argument::String(s) => s == "true",
+			Argument::Number(n) => n.0 != 0.0,
+		}
 	})
 }

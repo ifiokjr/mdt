@@ -87,11 +87,13 @@ pub(crate) fn check(root: &Path, options: &ValidationOptions) -> Result<CallTool
 	let mut stale: Vec<_> = result
 		.stale
 		.iter()
-		.map(|entry| StaleInfo {
-			block_name: entry.block_name.clone(),
-			file: relative_display_path(&entry.file, root),
-			line: entry.line,
-			column: entry.column,
+		.map(|entry| {
+			StaleInfo {
+				block_name: entry.block_name.clone(),
+				file: relative_display_path(&entry.file, root),
+				line: entry.line,
+				column: entry.column,
+			}
 		})
 		.collect();
 	stale.sort_by(|a, b| (&a.file, a.line, a.column).cmp(&(&b.file, b.line, b.column)));
@@ -104,12 +106,14 @@ pub(crate) fn check(root: &Path, options: &ValidationOptions) -> Result<CallTool
 	let orphans: Vec<_> = result
 		.orphans
 		.iter()
-		.map(|orphan| OrphanInfo {
-			block_name: orphan.block_name.clone(),
-			file: relative_display_path(&orphan.file, root),
-			line: orphan.line,
-			column: orphan.column,
-			suggestions: orphan.suggestions.clone(),
+		.map(|orphan| {
+			OrphanInfo {
+				block_name: orphan.block_name.clone(),
+				file: relative_display_path(&orphan.file, root),
+				line: orphan.line,
+				column: orphan.column,
+				suggestions: orphan.suggestions.clone(),
+			}
 		})
 		.collect();
 	let render_errors = RenderErrorInfo::list(&result.render_errors, root);
@@ -258,13 +262,15 @@ pub(crate) fn list(
 		.project
 		.providers
 		.iter()
-		.map(|(name, provider)| ProviderSummary {
-			name: name.clone(),
-			file: relative_display_path(&provider.file, root),
-			line: provider.block.opening.start.line,
-			column: provider.block.opening.start.column,
-			consumer_count: consumers_by_name.get(name.as_str()).map_or(0, Vec::len),
-			content: include_content.then(|| provider.content.trim().to_string()),
+		.map(|(name, provider)| {
+			ProviderSummary {
+				name: name.clone(),
+				file: relative_display_path(&provider.file, root),
+				line: provider.block.opening.start.line,
+				column: provider.block.opening.start.column,
+				consumer_count: consumers_by_name.get(name.as_str()).map_or(0, Vec::len),
+				content: include_content.then(|| provider.content.trim().to_string()),
+			}
 		})
 		.collect();
 	providers.sort_by(|a, b| a.name.cmp(&b.name));
@@ -516,9 +522,11 @@ pub(crate) fn get_block(root: &Path, block_name: &str) -> Result<CallToolResult,
 	let provider = provider.map(|provider| ProviderDetail::new(&ctx, provider, root));
 	let consumers: Vec<_> = blocks
 		.into_iter()
-		.map(|consumer| BlockDetail {
-			info: ConsumerInfo::new(consumer, root, &statuses),
-			current_content: consumer.content.clone(),
+		.map(|consumer| {
+			BlockDetail {
+				info: ConsumerInfo::new(consumer, root, &statuses),
+				current_content: consumer.content.clone(),
+			}
 		})
 		.collect();
 
@@ -637,9 +645,11 @@ fn block_summary(
 }
 
 fn read_source(file: &Path, root: &Path) -> Result<String, ToolError> {
-	let content = std::fs::read_to_string(file).map_err(|error| MdtError::ReadFile {
-		path: relative_display_path(file, root),
-		reason: error.to_string(),
+	let content = std::fs::read_to_string(file).map_err(|error| {
+		MdtError::ReadFile {
+			path: relative_display_path(file, root),
+			reason: error.to_string(),
+		}
 	})?;
 	Ok(normalize_line_endings(&content))
 }

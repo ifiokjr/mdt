@@ -184,21 +184,23 @@ fn main() {
 	) {
 		note_discovered_root(&args);
 	}
-	let result = validate_project_root(&args).and_then(|()| match args.command {
-		Commands::Init => run_init(&args),
-		Commands::Check {
-			diff,
-			format,
-			watch,
-		} => run_check(&args, diff, format, watch),
-		Commands::Update { dry_run, watch } => run_update(&args, dry_run, watch),
-		Commands::List => run_list(&args),
-		Commands::Info { format } => run_info(&args, format),
-		Commands::Doctor { format } => run_doctor(&args, format),
-		Commands::Assist { assistant, format } => run_assist(assistant, format),
-		Commands::Skill { reference, install } => run_skill(reference, install.as_deref()),
-		Commands::Lsp => run_lsp(),
-		Commands::Mcp => run_mcp(&args),
+	let result = validate_project_root(&args).and_then(|()| {
+		match args.command {
+			Commands::Init => run_init(&args),
+			Commands::Check {
+				diff,
+				format,
+				watch,
+			} => run_check(&args, diff, format, watch),
+			Commands::Update { dry_run, watch } => run_update(&args, dry_run, watch),
+			Commands::List => run_list(&args),
+			Commands::Info { format } => run_info(&args, format),
+			Commands::Doctor { format } => run_doctor(&args, format),
+			Commands::Assist { assistant, format } => run_assist(assistant, format),
+			Commands::Skill { reference, install } => run_skill(reference, install.as_deref()),
+			Commands::Lsp => run_lsp(),
+			Commands::Mcp => run_mcp(&args),
+		}
 	});
 
 	if let Err(e) = result {
@@ -454,17 +456,20 @@ fn data_source_format(source: &mdt_core::DataSource) -> (String, bool) {
 	}
 
 	let inferred = match source {
-		mdt_core::DataSource::Path(path) => path
-			.extension()
-			.and_then(|ext| ext.to_str())
-			.unwrap_or("unknown")
-			.to_ascii_lowercase(),
-		mdt_core::DataSource::Typed(typed) => typed
-			.path
-			.extension()
-			.and_then(|ext| ext.to_str())
-			.unwrap_or("unknown")
-			.to_ascii_lowercase(),
+		mdt_core::DataSource::Path(path) => {
+			path.extension()
+				.and_then(|ext| ext.to_str())
+				.unwrap_or("unknown")
+				.to_ascii_lowercase()
+		}
+		mdt_core::DataSource::Typed(typed) => {
+			typed
+				.path
+				.extension()
+				.and_then(|ext| ext.to_str())
+				.unwrap_or("unknown")
+				.to_ascii_lowercase()
+		}
 		mdt_core::DataSource::Script(_) => "text".to_string(),
 		_ => "unknown".to_string(),
 	};
@@ -476,14 +481,16 @@ fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String)
 	match source {
 		mdt_core::DataSource::Path(path) => (display_path(path), "file".to_string()),
 		mdt_core::DataSource::Typed(typed) => (display_path(&typed.path), "file".to_string()),
-		mdt_core::DataSource::Script(script) => (
-			format!("script: {}", script.command),
-			if script.watch.is_empty() {
-				"script".to_string()
-			} else {
-				format!("script (watch: {})", script.watch.len())
-			},
-		),
+		mdt_core::DataSource::Script(script) => {
+			(
+				format!("script: {}", script.command),
+				if script.watch.is_empty() {
+					"script".to_string()
+				} else {
+					format!("script (watch: {})", script.watch.len())
+				},
+			)
+		}
 
 		_ => ("unknown".to_string(), "unknown".to_string()),
 	}
@@ -1550,11 +1557,13 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 /// A transformer as written in a tag, e.g. `linePrefix:"/// ":true`.
 fn describe_transformer(transformer: &mdt_core::Transformer) -> String {
-	let arguments = transformer.args.iter().map(|argument| match argument {
-		mdt_core::Argument::String(value) => format!(":{value:?}"),
-		mdt_core::Argument::Number(value) => format!(":{value}"),
-		mdt_core::Argument::Boolean(value) => format!(":{value}"),
-		_ => ":?".to_string(),
+	let arguments = transformer.args.iter().map(|argument| {
+		match argument {
+			mdt_core::Argument::String(value) => format!(":{value:?}"),
+			mdt_core::Argument::Number(value) => format!(":{value}"),
+			mdt_core::Argument::Boolean(value) => format!(":{value}"),
+			_ => ":?".to_string(),
+		}
 	});
 	std::iter::once(transformer.r#type.to_string())
 		.chain(arguments)
@@ -1707,16 +1716,15 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 		reused_file_count_total.saturating_add(reparsed_file_count_total),
 	);
 	let last_scan = telemetry.and_then(|metrics| {
-		metrics
-			.last_scan
-			.as_ref()
-			.map(|scan| InfoCacheLastScanSection {
+		metrics.last_scan.as_ref().map(|scan| {
+			InfoCacheLastScanSection {
 				timestamp_unix_ms: scan.timestamp_unix_ms,
 				full_project_hit: scan.full_project_hit,
 				reused_files: scan.reused_files,
 				reparsed_files: scan.reparsed_files,
 				total_files: scan.total_files,
-			})
+			}
+		})
 	});
 
 	let template_hints = template_directory_hints(&config.template_dirs);
@@ -1736,12 +1744,14 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let data_sources: Vec<InfoDataSourceSection> = config
 		.data_sources
 		.iter()
-		.map(|source| InfoDataSourceSection {
-			namespace: source.namespace.clone(),
-			location: source.location.clone(),
-			kind: source.kind.clone(),
-			format: source.format.clone(),
-			explicit_format: source.explicit_format,
+		.map(|source| {
+			InfoDataSourceSection {
+				namespace: source.namespace.clone(),
+				location: source.location.clone(),
+				kind: source.kind.clone(),
+				format: source.format.clone(),
+				explicit_format: source.explicit_format,
+			}
 		})
 		.collect();
 
@@ -2078,32 +2088,34 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 			);
 		}
 
-		Some(config) => match config.load_data(&root) {
-			Ok(loaded_data) => {
-				add_doctor_check(
-					&mut checks,
-					"data_sources",
-					"Data Sources",
-					DoctorStatus::Pass,
-					format!("loaded {} namespace(s) successfully", loaded_data.len()),
-					None,
-				);
-			}
-			Err(error) => {
-				add_doctor_check(
-					&mut checks,
-					"data_sources",
-					"Data Sources",
-					DoctorStatus::Fail,
-					format!("failed to load configured data sources: {error}"),
-					Some(
-						"verify data file paths, script commands, formats, and parse validity \
+		Some(config) => {
+			match config.load_data(&root) {
+				Ok(loaded_data) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Pass,
+						format!("loaded {} namespace(s) successfully", loaded_data.len()),
+						None,
+					);
+				}
+				Err(error) => {
+					add_doctor_check(
+						&mut checks,
+						"data_sources",
+						"Data Sources",
+						DoctorStatus::Fail,
+						format!("failed to load configured data sources: {error}"),
+						Some(
+							"verify data file paths, script commands, formats, and parse validity \
 							 for each [data] namespace"
-							.to_string(),
-					),
-				);
+								.to_string(),
+						),
+					);
+				}
 			}
-		},
+		}
 		None => {
 			add_doctor_check(
 				&mut checks,
@@ -2697,23 +2709,31 @@ fn assistant_mcp_setup(assistant: Assistant) -> Option<(&'static str, serde_json
 	let stdio_server = serde_json::json!({ "type": "stdio", "command": "mdt", "args": ["mcp"] });
 
 	match assistant {
-		Assistant::Generic => Some((
-			"your client's MCP settings (stdio server)",
-			serde_json::json!({ "mcpServers": { "mdt": server } }),
-		)),
-		Assistant::Claude => Some((
-			".mcp.json",
-			serde_json::json!({ "mcpServers": { "mdt": stdio_server } }),
-		)),
-		Assistant::Cursor => Some((
-			".cursor/mcp.json",
-			serde_json::json!({ "mcpServers": { "mdt": server } }),
-		)),
+		Assistant::Generic => {
+			Some((
+				"your client's MCP settings (stdio server)",
+				serde_json::json!({ "mcpServers": { "mdt": server } }),
+			))
+		}
+		Assistant::Claude => {
+			Some((
+				".mcp.json",
+				serde_json::json!({ "mcpServers": { "mdt": stdio_server } }),
+			))
+		}
+		Assistant::Cursor => {
+			Some((
+				".cursor/mcp.json",
+				serde_json::json!({ "mcpServers": { "mdt": server } }),
+			))
+		}
 		// VS Code keys servers by `servers`, not `mcpServers`.
-		Assistant::Copilot => Some((
-			".vscode/mcp.json",
-			serde_json::json!({ "servers": { "mdt": stdio_server } }),
-		)),
+		Assistant::Copilot => {
+			Some((
+				".vscode/mcp.json",
+				serde_json::json!({ "servers": { "mdt": stdio_server } }),
+			))
+		}
 		Assistant::Pi => None,
 	}
 }
