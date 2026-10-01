@@ -138,21 +138,19 @@ pub(crate) fn diagnostics(
 		.diagnostics
 		.iter()
 		.filter(|diagnostic| !diagnostic.is_ignored(options))
-		.map(|diagnostic| {
-			DiagnosticInfo {
-				kind: diagnostic.kind.code().trim_start_matches("mdt::"),
-				code: diagnostic.kind.code(),
-				severity: if diagnostic.is_error(options) {
-					Severity::Error
-				} else {
-					Severity::Warning
-				},
+		.map(|diagnostic| DiagnosticInfo {
+			kind: diagnostic.kind.code().trim_start_matches("mdt::"),
+			code: diagnostic.kind.code(),
+			severity: if diagnostic.is_error(options) {
+				Severity::Error
+			} else {
+				Severity::Warning
+			},
 
-				file: relative_display_path(&diagnostic.file, root),
-				line: diagnostic.line,
-				column: diagnostic.column,
-				message: diagnostic.message(),
-			}
+			file: relative_display_path(&diagnostic.file, root),
+			line: diagnostic.line,
+			column: diagnostic.column,
+			message: diagnostic.message(),
 		})
 		.collect();
 	diagnostics.sort_by(|a, b| (&a.file, a.line, a.column).cmp(&(&b.file, b.line, b.column)));
@@ -331,14 +329,12 @@ impl RenderErrorInfo {
 	pub(crate) fn list(errors: &[mdt_core::RenderError], root: &Path) -> Vec<Self> {
 		let mut infos: Vec<_> = errors
 			.iter()
-			.map(|error| {
-				Self {
-					block_name: error.block_name.clone(),
-					file: relative_display_path(&error.file, root),
-					line: error.line,
-					column: error.column,
-					message: error.message.clone(),
-				}
+			.map(|error| Self {
+				block_name: error.block_name.clone(),
+				file: relative_display_path(&error.file, root),
+				line: error.line,
+				column: error.column,
+				message: error.message.clone(),
 			})
 			.collect();
 		infos.sort_by(|a, b| (&a.file, a.line, a.column).cmp(&(&b.file, b.line, b.column)));

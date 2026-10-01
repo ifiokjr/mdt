@@ -167,13 +167,12 @@ pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 	};
 
 	let enclosing_project = match (&config, repository) {
-		(ConfigOutcome::Created(_), Some(repository)) => {
-			root.ancestors()
-				.skip(1)
-				.take_while(|dir| dir.starts_with(repository))
-				.find(|dir| MdtConfig::resolve_path(dir).is_some())
-				.map(Path::to_path_buf)
-		}
+		(ConfigOutcome::Created(_), Some(repository)) => root
+			.ancestors()
+			.skip(1)
+			.take_while(|dir| dir.starts_with(repository))
+			.find(|dir| MdtConfig::resolve_path(dir).is_some())
+			.map(Path::to_path_buf),
 		_ => None,
 	};
 

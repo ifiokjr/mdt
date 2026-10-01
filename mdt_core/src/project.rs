@@ -751,69 +751,57 @@ fn hash_file_contents(path: &Path) -> MdtResult<u64> {
 
 fn parse_diagnostic_to_project(file: &Path, diag: ParseDiagnostic) -> ProjectDiagnostic {
 	match diag {
-		ParseDiagnostic::UnclosedBlock { name, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::UnclosedBlock { name },
-				line,
-				column,
-			}
-		}
-		ParseDiagnostic::UnknownTransformer { name, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::UnknownTransformer { name },
-				line,
-				column,
-			}
-		}
+		ParseDiagnostic::UnclosedBlock { name, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::UnclosedBlock { name },
+			line,
+			column,
+		},
+		ParseDiagnostic::UnknownTransformer { name, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::UnknownTransformer { name },
+			line,
+			column,
+		},
 		ParseDiagnostic::InvalidTransformerArgs {
 			name,
 			expected,
 			got,
 			line,
 			column,
-		} => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::InvalidTransformerArgs {
-					name,
-					expected,
-					got,
-				},
-				line,
-				column,
-			}
-		}
-		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::UnmatchedClosingTag { name },
-				line,
-				column,
-			}
-		}
-		ParseDiagnostic::InvalidTag { tag, line, column } => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::InvalidTag { tag },
-				line,
-				column,
-			}
-		}
+		} => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::InvalidTransformerArgs {
+				name,
+				expected,
+				got,
+			},
+			line,
+			column,
+		},
+		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::UnmatchedClosingTag { name },
+			line,
+			column,
+		},
+		ParseDiagnostic::InvalidTag { tag, line, column } => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::InvalidTag { tag },
+			line,
+			column,
+		},
 		ParseDiagnostic::NestedBlock {
 			outer,
 			inner,
 			line,
 			column,
-		} => {
-			ProjectDiagnostic {
-				file: file.to_path_buf(),
-				kind: DiagnosticKind::NestedBlock { outer, inner },
-				line,
-				column,
-			}
-		}
+		} => ProjectDiagnostic {
+			file: file.to_path_buf(),
+			kind: DiagnosticKind::NestedBlock { outer, inner },
+			line,
+			column,
+		},
 	}
 }
 
@@ -821,11 +809,9 @@ fn parse_file_for_scan(
 	file: &Path,
 	options: &ScanOptions,
 ) -> MdtResult<index_cache::CachedFileData> {
-	let read_error = |reason: String| {
-		MdtError::ReadFile {
-			path: file.display().to_string(),
-			reason,
-		}
+	let read_error = |reason: String| MdtError::ReadFile {
+		path: file.display().to_string(),
+		reason,
 	};
 	let bytes = std::fs::read(file).map_err(|error| read_error(error.to_string()))?;
 	// Every tag is an HTML comment, so a file without one has nothing to
@@ -1384,28 +1370,17 @@ fn is_scannable_file(path: &Path) -> bool {
 		ext,
 		"md" | "mdx"
 			| "markdown"
-			| "rs"
-			| "ts"
-			| "tsx"
-			| "mts"
-			| "cts"
-			| "js"
-			| "jsx"
-			| "mjs"
-			| "cjs"
-			| "py"
-			| "go"
-			| "java"
-			| "kt"
-			| "swift"
-			| "c"
-			| "cc"
-			| "cpp"
-			| "cxx"
-			| "h"
-			| "hh"
-			| "hpp"
-			| "cs"
+			| "rs" | "ts"
+			| "tsx" | "mts"
+			| "cts" | "js"
+			| "jsx" | "mjs"
+			| "cjs" | "py"
+			| "go" | "java"
+			| "kt" | "swift"
+			| "c" | "cc"
+			| "cpp" | "cxx"
+			| "h" | "hh"
+			| "hpp" | "cs"
 			| "dart"
 	)
 }

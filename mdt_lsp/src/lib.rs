@@ -758,75 +758,63 @@ fn stale_diagnostic(block: &Block, expected: &str) -> Diagnostic {
 /// reports. Returns `None` for kinds this server does not know yet.
 fn parse_diagnostic_to_lsp(diagnostic: &ParseDiagnostic) -> Option<Diagnostic> {
 	let (line, column, severity, message) = match diagnostic {
-		ParseDiagnostic::UnclosedBlock { name, line, column } => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!("Missing closing tag for block `{name}`"),
-			)
-		}
-		ParseDiagnostic::UnknownTransformer { name, line, column } => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!("Unknown transformer `{name}`"),
-			)
-		}
+		ParseDiagnostic::UnclosedBlock { name, line, column } => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!("Missing closing tag for block `{name}`"),
+		),
+		ParseDiagnostic::UnknownTransformer { name, line, column } => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!("Unknown transformer `{name}`"),
+		),
 		ParseDiagnostic::InvalidTransformerArgs {
 			name,
 			expected,
 			got,
 			line,
 			column,
-		} => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!("Transformer `{name}` expects {expected} argument(s), got {got}"),
-			)
-		}
-		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!(
-					"Closing tag `{{/{name}}}` has no matching opening tag. Check both tags for \
+		} => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!("Transformer `{name}` expects {expected} argument(s), got {got}"),
+		),
+		ParseDiagnostic::UnmatchedClosingTag { name, line, column } => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!(
+				"Closing tag `{{/{name}}}` has no matching opening tag. Check both tags for \
 					 typos."
-				),
-			)
-		}
-		ParseDiagnostic::InvalidTag { tag, line, column } => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!(
-					"`{tag}` looks like an mdt tag but cannot be parsed, so mdt ignores it. The \
+			),
+		),
+		ParseDiagnostic::InvalidTag { tag, line, column } => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!(
+				"`{tag}` looks like an mdt tag but cannot be parsed, so mdt ignores it. The \
 					 sigil (`@`, `=`, `~`, `/`) must directly follow `{{`, and block names must \
 					 match `[A-Za-z_][A-Za-z0-9_-]*`."
-				),
-			)
-		}
+			),
+		),
 		ParseDiagnostic::NestedBlock {
 			outer,
 			inner,
 			line,
 			column,
-		} => {
-			(
-				line,
-				column,
-				DiagnosticSeverity::ERROR,
-				format!(
-					"Block `{inner}` is inside block `{outer}`, whose content `mdt update` \
+		} => (
+			line,
+			column,
+			DiagnosticSeverity::ERROR,
+			format!(
+				"Block `{inner}` is inside block `{outer}`, whose content `mdt update` \
 					 replaces; move `{inner}` outside `{outer}`."
-				),
-			)
-		}
+			),
+		),
 		_ => return None,
 	};
 
@@ -1212,17 +1200,15 @@ fn block_name_completions(state: &WorkspaceState) -> Vec<CompletionItem> {
 		.project
 		.providers
 		.iter()
-		.map(|(name, entry)| {
-			CompletionItem {
-				label: name.clone(),
-				kind: Some(CompletionItemKind::REFERENCE),
-				detail: Some(format!("Provider from {}", entry.file.display())),
-				documentation: Some(Documentation::MarkupContent(MarkupContent {
-					kind: MarkupKind::Markdown,
-					value: format!("```\n{}\n```", entry.content.trim()),
-				})),
-				..Default::default()
-			}
+		.map(|(name, entry)| CompletionItem {
+			label: name.clone(),
+			kind: Some(CompletionItemKind::REFERENCE),
+			detail: Some(format!("Provider from {}", entry.file.display())),
+			documentation: Some(Documentation::MarkupContent(MarkupContent {
+				kind: MarkupKind::Markdown,
+				value: format!("```\n{}\n```", entry.content.trim()),
+			})),
+			..Default::default()
 		})
 		.collect()
 }
@@ -1273,14 +1259,12 @@ fn transformer_completions() -> Vec<CompletionItem> {
 	transformers
 		.iter()
 		.enumerate()
-		.map(|(i, (name, desc))| {
-			CompletionItem {
-				label: (*name).to_string(),
-				kind: Some(CompletionItemKind::FUNCTION),
-				detail: Some((*desc).to_string()),
-				sort_text: Some(format!("{i:02}")),
-				..Default::default()
-			}
+		.map(|(i, (name, desc))| CompletionItem {
+			label: (*name).to_string(),
+			kind: Some(CompletionItemKind::FUNCTION),
+			detail: Some((*desc).to_string()),
+			sort_text: Some(format!("{i:02}")),
+			..Default::default()
 		})
 		.collect()
 }

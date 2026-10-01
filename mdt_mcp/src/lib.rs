@@ -216,8 +216,7 @@ fn non_blank(value: Option<String>) -> Option<String> {
 		.filter(|value| !value.is_empty())
 }
 
-const SERVER_INSTRUCTIONS: &str =
-	"mdt (manage markdown templates) keeps documentation in sync. Provider blocks (`{@name}` tags \
+const SERVER_INSTRUCTIONS: &str = "mdt (manage markdown templates) keeps documentation in sync. Provider blocks (`{@name}` tags \
 	 in `*.t.md` files) define content once; consumer blocks (`{=name}` tags in markdown and \
 	 source-code comments) receive it. Every tool returns a JSON object, also sent as structured \
 	 content, with `ok`, `action`, and `summary`; results marked isError add `error.code` and \
@@ -297,13 +296,11 @@ impl MdtMcpServer {
 		match outcome {
 			Ok(Ok(result)) => result,
 			Ok(Err(error)) => error.into_result(action),
-			Err(error) => {
-				ToolError::new(
-					"mdt::internal",
-					format!("the `{action}` tool failed: {error}"),
-				)
-				.into_result(action)
-			}
+			Err(error) => ToolError::new(
+				"mdt::internal",
+				format!("the `{action}` tool failed: {error}"),
+			)
+			.into_result(action),
 		}
 	}
 

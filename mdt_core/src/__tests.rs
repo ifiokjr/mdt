@@ -1669,22 +1669,20 @@ fn parse_diagnostic_summary(content: &str) -> Vec<String> {
 	let (_, diagnostics) = parse_with_diagnostics(content).unwrap_or_else(|e| panic!("parse: {e}"));
 	diagnostics
 		.into_iter()
-		.map(|diagnostic| {
-			match diagnostic {
-				ParseDiagnostic::UnmatchedClosingTag { name, line, .. } => {
-					format!("unmatched {name} L{line}")
-				}
-				ParseDiagnostic::NestedBlock {
-					outer, inner, line, ..
-				} => format!("nested {inner} in {outer} L{line}"),
-				ParseDiagnostic::UnclosedBlock { name, line, .. } => {
-					format!("unclosed {name} L{line}")
-				}
-				ParseDiagnostic::InvalidTag { tag, line, column } => {
-					format!("invalid {tag} L{line}:{column}")
-				}
-				other => format!("{other:?}"),
+		.map(|diagnostic| match diagnostic {
+			ParseDiagnostic::UnmatchedClosingTag { name, line, .. } => {
+				format!("unmatched {name} L{line}")
 			}
+			ParseDiagnostic::NestedBlock {
+				outer, inner, line, ..
+			} => format!("nested {inner} in {outer} L{line}"),
+			ParseDiagnostic::UnclosedBlock { name, line, .. } => {
+				format!("unclosed {name} L{line}")
+			}
+			ParseDiagnostic::InvalidTag { tag, line, column } => {
+				format!("invalid {tag} L{line}:{column}")
+			}
+			other => format!("{other:?}"),
 		})
 		.collect()
 }
@@ -5822,7 +5820,6 @@ fn token_display_all_variants() {
 	);
 	assert_eq!(format!("{}", Token::Int(42)), "42");
 	assert_eq!(format!("{}", Token::Int(-7)), "-7");
-
 	assert_eq!(format!("{}", Token::Float(2.75)), "2.75");
 	assert_eq!(format!("{}", Token::Float(0.0)), "0");
 }
@@ -6895,11 +6892,9 @@ fn string_token_values(group: &TokenGroup) -> Vec<String> {
 	group
 		.tokens
 		.iter()
-		.filter_map(|token| {
-			match token {
-				tokens::Token::String(value, _) => Some(value.clone()),
-				_ => None,
-			}
+		.filter_map(|token| match token {
+			tokens::Token::String(value, _) => Some(value.clone()),
+			_ => None,
 		})
 		.collect()
 }
@@ -7273,8 +7268,7 @@ fn config_toml_data_with_integers_and_floats() -> MdtResult<()> {
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
 			- 2.72)
-			.abs()
-			< f64::EPSILON
+			.abs() < f64::EPSILON
 	);
 	// Boolean conversion
 	assert_eq!(conf["bool_val"], serde_json::json!(true));
@@ -7463,8 +7457,7 @@ fn config_kdl_integer_float_bool_null_values() -> MdtResult<()> {
 			.as_f64()
 			.unwrap_or_else(|| panic!("expected f64"))
 			- 2.72)
-			.abs()
-			< 0.001
+			.abs() < 0.001
 	);
 	// Boolean
 	assert_eq!(conf["bool_val"], serde_json::json!(true));

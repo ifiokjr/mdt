@@ -9,7 +9,6 @@ import {
 	readdirSync,
 	readFileSync,
 } from "node:fs";
-
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
