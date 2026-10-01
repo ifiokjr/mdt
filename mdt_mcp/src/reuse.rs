@@ -43,6 +43,7 @@ pub(crate) fn match_name(query: &str, name: &str) -> Option<NameMatch> {
 
 	let query = normalize_name(query);
 	let name = normalize_name(name);
+
 	if query.is_empty() {
 		return None;
 	}
@@ -59,6 +60,7 @@ pub(crate) fn match_name(query: &str, name: &str) -> Option<NameMatch> {
 	} else {
 		return None;
 	};
+
 	Some(NameMatch { kind, distance })
 }
 

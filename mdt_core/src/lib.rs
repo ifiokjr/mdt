@@ -79,6 +79,7 @@ mod error;
 mod index_cache;
 pub mod init;
 pub(crate) mod lexer;
+
 mod parser;
 pub(crate) mod patterns;
 mod position;

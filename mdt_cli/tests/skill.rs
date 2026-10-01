@@ -102,6 +102,7 @@ fn skill_reference_conflicts_with_install() {
 fn embedded_skill_matches_skill_package() {
 	let package_dir =
 		Path::new(env!("CARGO_MANIFEST_DIR")).join("../packages/m-d-t__skills/skills/mdt");
+
 	if !package_dir.is_dir() {
 		return;
 	}

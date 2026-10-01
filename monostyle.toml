@@ -1,0 +1,30 @@
+# monostyle's configuration for this repository.
+#
+# The ignore list names what a reader is not meant to read: generated
+# output, vendored upstream sources, deliberately-broken test fixtures,
+# and pure data tables. Everything authored and readable is measured with
+# the default rules — no per-path threshold overrides.
+
+# CI gate: each category's measured floor, two points of headroom.
+[fail-under]
+readability = 84
+complexity = 73
+
+[rules]
+max-line-width = 100
+tab-width = 4
+
+[rules.ignore]
+patterns = [
+  "CHANGELOG.md",
+  "**/CHANGELOG.md",
+  "**/changelog.md",
+  "**/*.g.dart",
+  "**/*.freezed.dart",
+  "**/*.pb.rs",
+  "**/*.pb.go",
+  "**/*.gen.ts",
+  "**/*.min.js",
+  "mdt_cli/tests/fixtures/**",
+  "mdt_cli/src/default_mdt_toml.rs",
+]

@@ -87,12 +87,14 @@ pub fn copy_fixture(name: &str, dest: &Path) {
 fn copy_dir_recursive(src: &Path, dst: &Path) {
 	std::fs::create_dir_all(dst)
 		.unwrap_or_else(|e| panic!("create_dir_all {}: {e}", dst.display()));
+
 	for entry in
 		std::fs::read_dir(src).unwrap_or_else(|e| panic!("read_dir {}: {e}", src.display()))
 	{
 		let entry = entry.unwrap_or_else(|e| panic!("entry: {e}"));
 		let src_path = entry.path();
 		let dst_path = dst.join(entry.file_name());
+
 		if src_path.is_dir() {
 			copy_dir_recursive(&src_path, &dst_path);
 		} else {
