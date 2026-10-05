@@ -37,21 +37,25 @@ pub(crate) fn confine_root(
 	requirement: RootRequirement,
 ) -> Result<PathBuf, ToolError> {
 	let requested = requested.filter(|path| !path.trim().is_empty());
+
 	let root = match requested {
 		Some(requested) => resolve_within(base, requested)?,
 		None => base.to_path_buf(),
 	};
+
 	let shown = requested.unwrap_or(".");
 
 	if root.is_dir() {
 		return Ok(root);
 	}
+
 	if root.exists() {
 		return Err(ToolError::new(
 			PATH_NOT_DIRECTORY,
 			format!("path `{shown}` is not a directory"),
 		));
 	}
+
 	match requirement {
 		RootRequirement::Creatable => Ok(root),
 		RootRequirement::ExistingDirectory => {
@@ -82,6 +86,7 @@ fn resolve_within(base: &Path, requested: &str) -> Result<PathBuf, ToolError> {
 	if root.starts_with(base) {
 		return Ok(root);
 	}
+
 	Err(ToolError::new(
 		PATH_OUTSIDE_ROOT,
 		format!(
@@ -111,6 +116,7 @@ fn canonicalize_existing_prefix(path: &Path) -> io::Result<PathBuf> {
 					.rev()
 					.fold(canonical, |resolved, component| resolved.join(component)));
 			}
+
 			Err(error) if current.symlink_metadata().is_ok() => return Err(error),
 			Err(error) => {
 				let (Some(parent), Some(name)) = (current.parent(), current.file_name()) else {

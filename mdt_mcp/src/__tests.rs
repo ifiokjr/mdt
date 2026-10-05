@@ -8,7 +8,6 @@ use super::*;
 // ---------------------------------------------------------------------------
 // Helper: extract text from the first Content item in a CallToolResult
 // ---------------------------------------------------------------------------
-
 fn extract_text(result: &CallToolResult) -> &str {
 	let content = result
 		.content
@@ -25,6 +24,7 @@ fn extract_json(result: &CallToolResult) -> serde_json::Value {
 	if let Some(value) = result.structured_content.clone() {
 		return value;
 	}
+
 	serde_json::from_str(extract_text(result))
 		.unwrap_or_else(|e| panic!("invalid JSON result: {e}"))
 }
@@ -32,7 +32,6 @@ fn extract_json(result: &CallToolResult) -> serde_json::Value {
 // ---------------------------------------------------------------------------
 // Helper: create a minimal mdt project in a temp directory
 // ---------------------------------------------------------------------------
-
 /// Create a project with a provider named `greeting` and a **stale** consumer.
 fn create_stale_project(root: &Path) {
 	let template = "\
@@ -153,7 +152,6 @@ fn create_warning_project(root: &Path) {
 // ===========================================================================
 // MdtMcpServer::new / Default
 // ===========================================================================
-
 #[test]
 fn server_new_creates_instance() {
 	let _server = MdtMcpServer::new();
@@ -167,7 +165,6 @@ fn server_default_creates_instance() {
 // ===========================================================================
 // init
 // ===========================================================================
-
 #[tokio::test]
 async fn init_creates_template_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -200,6 +197,7 @@ async fn init_creates_template_file() {
 		json["gitignore"],
 		serde_json::json!({ "status": "not_applicable" })
 	);
+
 	assert_eq!(
 		json["written_files"],
 		serde_json::json!(["mdt.toml", ".templates/template.t.md", "readme.md"])
@@ -360,7 +358,6 @@ async fn init_rejects_a_path_that_is_a_file() {
 // ===========================================================================
 // check
 // ===========================================================================
-
 #[tokio::test]
 async fn check_on_empty_project_reports_up_to_date() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -445,7 +442,6 @@ async fn check_reports_formatter_only_stale_files() {
 // ===========================================================================
 // update
 // ===========================================================================
-
 #[tokio::test]
 async fn update_on_up_to_date_project_reports_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -602,7 +598,6 @@ async fn update_includes_template_warnings_in_json() {
 // ===========================================================================
 // list
 // ===========================================================================
-
 #[tokio::test]
 async fn list_on_empty_project_returns_empty() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -861,7 +856,6 @@ Old changelog content.
 // ===========================================================================
 // get_block
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_for_provider_returns_provider_info() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -968,6 +962,7 @@ Some orphan content.
 	assert_eq!(entries.len(), 1);
 	assert_eq!(entries[0]["type"], "consumer");
 	assert_eq!(entries[0]["name"], "orphan");
+
 	assert_eq!(entries[0]["status"], "orphan");
 	assert_eq!(entries[0]["line"], 1);
 	assert_eq!(
@@ -1006,7 +1001,6 @@ async fn get_block_for_nonexistent_returns_error() {
 // ===========================================================================
 // preview
 // ===========================================================================
-
 #[tokio::test]
 async fn preview_for_existing_provider_returns_rendered_content() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1114,7 +1108,6 @@ Nobody references me.
 // ===========================================================================
 // check: missing provider detection
 // ===========================================================================
-
 #[tokio::test]
 async fn check_detects_missing_providers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1173,7 +1166,6 @@ async fn check_includes_template_warnings_in_json() {
 // ===========================================================================
 // list: consumer_count tracking
 // ===========================================================================
-
 #[tokio::test]
 async fn list_shows_correct_consumer_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1206,7 +1198,6 @@ async fn list_shows_correct_consumer_count() {
 // ===========================================================================
 // list: summary field
 // ===========================================================================
-
 #[tokio::test]
 async fn list_includes_summary() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1240,7 +1231,6 @@ async fn list_includes_summary() {
 // ===========================================================================
 // update: multiple blocks
 // ===========================================================================
-
 #[tokio::test]
 async fn update_fixes_multiple_stale_blocks() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1277,7 +1267,6 @@ async fn update_fixes_multiple_stale_blocks() {
 // ===========================================================================
 // init: created file contains expected content
 // ===========================================================================
-
 #[tokio::test]
 async fn init_creates_file_with_provider_block() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1304,7 +1293,6 @@ async fn init_creates_file_with_provider_block() {
 // ===========================================================================
 // get_info
 // ===========================================================================
-
 #[test]
 fn get_info_returns_server_info() {
 	let server = MdtMcpServer::new();
@@ -1335,7 +1323,6 @@ fn get_info_returns_server_info() {
 // ===========================================================================
 // check: stale consumers with missing providers combined
 // ===========================================================================
-
 #[tokio::test]
 async fn check_reports_both_stale_and_missing() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1382,7 +1369,6 @@ placeholder
 // ===========================================================================
 // update: actual write (not dry_run) with verification
 // ===========================================================================
-
 #[tokio::test]
 async fn update_writes_files_and_reports_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1426,7 +1412,6 @@ async fn update_writes_files_and_reports_count() {
 // ===========================================================================
 // get_block: consumer with stale content and provider present
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_for_provider_shows_stale_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1460,7 +1445,6 @@ async fn get_block_for_provider_shows_stale_consumers() {
 // ===========================================================================
 // list: with stale consumers shows correct staleness
 // ===========================================================================
-
 #[tokio::test]
 async fn list_with_stale_and_synced_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1506,7 +1490,6 @@ async fn list_with_stale_and_synced_consumers() {
 // ===========================================================================
 // check: project with data interpolation in templates
 // ===========================================================================
-
 #[tokio::test]
 async fn check_with_template_data_interpolation() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1551,7 +1534,6 @@ async fn check_with_template_data_interpolation() {
 // ===========================================================================
 // update: with template data and actual write
 // ===========================================================================
-
 #[tokio::test]
 async fn update_with_data_interpolation_writes_rendered_content() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1605,7 +1587,6 @@ async fn update_with_data_interpolation_writes_rendered_content() {
 // ===========================================================================
 // get_block: consumer entries when provider exists (stale check with rendering)
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_consumer_with_provider_and_data() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1653,7 +1634,6 @@ async fn get_block_consumer_with_provider_and_data() {
 // ===========================================================================
 // Missing and non-directory project paths
 // ===========================================================================
-
 /// Call every tool except `mdt_init` with `path`, labelled by action.
 async fn call_project_tools(
 	server: &MdtMcpServer,
@@ -1758,7 +1738,6 @@ async fn tools_report_a_missing_server_root_as_an_error_result() {
 // ===========================================================================
 // check: project with only providers and no consumers
 // ===========================================================================
-
 #[tokio::test]
 async fn check_project_providers_only_no_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1791,7 +1770,6 @@ Hello from mdt!
 // ===========================================================================
 // list: project with only providers shows empty consumers
 // ===========================================================================
-
 #[tokio::test]
 async fn list_project_with_only_providers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1834,7 +1812,6 @@ Hello from mdt!
 // ===========================================================================
 // list: project with only consumers (orphans) shows empty providers
 // ===========================================================================
-
 #[tokio::test]
 async fn list_project_with_only_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1882,7 +1859,6 @@ Some content.
 // ===========================================================================
 // list: consumer transformers are listed
 // ===========================================================================
-
 #[tokio::test]
 async fn list_shows_consumer_transformers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1939,7 +1915,6 @@ Hello from mdt!
 // ===========================================================================
 // update: dry_run reports block count
 // ===========================================================================
-
 #[tokio::test]
 async fn update_dry_run_reports_block_and_file_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1972,7 +1947,6 @@ async fn update_dry_run_reports_block_and_file_count() {
 // ===========================================================================
 // update: on empty project reports no changes
 // ===========================================================================
-
 #[tokio::test]
 async fn update_empty_project_reports_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -1996,7 +1970,6 @@ async fn update_empty_project_reports_no_changes() {
 // ===========================================================================
 // update: dry_run on synced project reports no changes
 // ===========================================================================
-
 #[tokio::test]
 async fn update_dry_run_synced_project_no_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2021,7 +1994,6 @@ async fn update_dry_run_synced_project_no_changes() {
 // ===========================================================================
 // get_block: provider with no consumers lists empty consumer_files
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_provider_with_no_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2063,7 +2035,6 @@ Nobody references me.
 // ===========================================================================
 // get_block: provider raw_content vs rendered_content differ with data
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_provider_raw_vs_rendered_content() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2119,7 +2090,6 @@ async fn get_block_provider_raw_vs_rendered_content() {
 // ===========================================================================
 // preview: with data interpolation
 // ===========================================================================
-
 #[tokio::test]
 async fn preview_with_data_interpolation() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2164,7 +2134,6 @@ async fn preview_with_data_interpolation() {
 // ===========================================================================
 // preview: with transformers applied to consumers
 // ===========================================================================
-
 #[tokio::test]
 async fn preview_shows_transformed_consumer_content() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2202,7 +2171,6 @@ Hello from mdt!
 // ===========================================================================
 // check: stale project reports stale block names in output
 // ===========================================================================
-
 #[tokio::test]
 async fn check_stale_project_reports_block_name_and_file() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2230,7 +2198,6 @@ async fn check_stale_project_reports_block_name_and_file() {
 // ===========================================================================
 // update: idempotent (second update on same project is no-op)
 // ===========================================================================
-
 #[tokio::test]
 async fn update_is_idempotent() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2280,7 +2247,6 @@ async fn update_is_idempotent() {
 // ===========================================================================
 // init: path with nested directories
 // ===========================================================================
-
 #[tokio::test]
 async fn init_in_nested_directory() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2316,7 +2282,6 @@ async fn init_in_nested_directory() {
 // ===========================================================================
 // check: multiple stale blocks reports count
 // ===========================================================================
-
 #[tokio::test]
 async fn check_multiple_stale_blocks_reports_count() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2345,7 +2310,6 @@ async fn check_multiple_stale_blocks_reports_count() {
 // ===========================================================================
 // get_block: multiple consumers for same block
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_provider_with_multiple_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2402,7 +2366,6 @@ Old content 2.
 // ===========================================================================
 // update: with multiple files being updated
 // ===========================================================================
-
 #[tokio::test]
 async fn update_multiple_files() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2468,7 +2431,6 @@ Old docs content.
 // ===========================================================================
 // list: summary format is correct
 // ===========================================================================
-
 #[tokio::test]
 async fn list_summary_format() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2502,7 +2464,6 @@ async fn list_summary_format() {
 // ===========================================================================
 // list: provider content is trimmed in output
 // ===========================================================================
-
 #[tokio::test]
 async fn list_provider_content_is_trimmed() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2538,7 +2499,6 @@ async fn list_provider_content_is_trimmed() {
 // ===========================================================================
 // list: provider file paths are relative
 // ===========================================================================
-
 #[tokio::test]
 async fn list_uses_relative_file_paths() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2582,7 +2542,6 @@ async fn list_uses_relative_file_paths() {
 // ===========================================================================
 // preview: with multiple consumers shows all
 // ===========================================================================
-
 #[tokio::test]
 async fn preview_with_multiple_consumers() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2639,7 +2598,6 @@ Hello from mdt!
 // ===========================================================================
 // Tool-level failures are isError results, not JSON-RPC errors
 // ===========================================================================
-
 #[tokio::test]
 async fn tools_report_an_invalid_config_as_an_error_result() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2739,7 +2697,6 @@ async fn update_reports_a_failing_formatter_as_an_error_result() {
 // ===========================================================================
 // Block arguments helpers
 // ===========================================================================
-
 /// Create a project where the provider declares a parameter (`crate_name`)
 /// and the consumer passes an argument value (`mdt_core`).  The consumer
 /// body is stale — it does NOT match the rendered provider content.
@@ -2790,7 +2747,6 @@ Old content.
 // ===========================================================================
 // check: block arguments
 // ===========================================================================
-
 #[tokio::test]
 async fn check_with_block_arguments_detects_stale() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2838,7 +2794,6 @@ async fn check_reports_argument_count_mismatch() {
 // ===========================================================================
 // update: block arguments
 // ===========================================================================
-
 #[tokio::test]
 async fn update_with_block_arguments_applies_changes() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2879,7 +2834,6 @@ async fn update_with_block_arguments_applies_changes() {
 // ===========================================================================
 // preview: block arguments
 // ===========================================================================
-
 #[tokio::test]
 async fn preview_with_block_arguments_shows_provider_template() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2907,7 +2861,6 @@ async fn preview_with_block_arguments_shows_provider_template() {
 // ===========================================================================
 // path confinement
 // ===========================================================================
-
 #[tokio::test]
 async fn tools_reject_paths_outside_server_root() {
 	let base = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -2928,6 +2881,7 @@ async fn tools_reject_paths_outside_server_root() {
 			"{action}: expected confinement error, got: {json}"
 		);
 	}
+
 	let init = server
 		.init(Parameters(InitParam {
 			path: Some(outside_path),
@@ -2997,6 +2951,7 @@ async fn tools_reject_symlinks_that_leave_the_root() {
 			"{action}"
 		);
 	}
+
 	let readme = std::fs::read_to_string(outside.path().join("readme.md"))
 		.unwrap_or_else(|e| panic!("read readme: {e}"));
 	assert!(
@@ -3066,7 +3021,6 @@ async fn tools_default_to_server_root() {
 // ===========================================================================
 // Regressions from the MCP evaluation
 // ===========================================================================
-
 fn create_padded_synced_project(root: &Path) {
 	std::fs::write(root.join("mdt.toml"), "[padding]\nbefore = 1\nafter = 1\n")
 		.unwrap_or_else(|e| panic!("write config: {e}"));
@@ -3351,7 +3305,6 @@ fn regression_tool_schemas_and_annotations() {
 // ===========================================================================
 // Server startup
 // ===========================================================================
-
 #[test]
 fn init_tracing_tolerates_an_existing_global_subscriber() {
 	// `MDT_LOG=info mdt mcp`: the CLI installs its subscriber first.
@@ -3391,6 +3344,7 @@ async fn serve_in_identifies_as_mdt_and_serves_the_given_root() {
 		}),
 	];
 	let mut responses = Vec::new();
+
 	for message in messages {
 		let mut line = message.to_string();
 		line.push('\n');
@@ -3398,9 +3352,11 @@ async fn serve_in_identifies_as_mdt_and_serves_the_given_root() {
 			.write_all(line.as_bytes())
 			.await
 			.unwrap_or_else(|e| panic!("write: {e}"));
+
 		if message.get("id").is_none() {
 			continue;
 		}
+
 		let response = tokio::time::timeout(std::time::Duration::from_secs(10), lines.next_line())
 			.await
 			.unwrap_or_else(|e| panic!("timed out waiting for a response: {e}"))
@@ -3411,6 +3367,7 @@ async fn serve_in_identifies_as_mdt_and_serves_the_given_root() {
 				.unwrap_or_else(|e| panic!("invalid JSON-RPC response: {e}")),
 		);
 	}
+
 	client_write
 		.shutdown()
 		.await
@@ -3461,6 +3418,7 @@ fn tool_annotations_mark_only_update_and_init_as_writing() {
 	] {
 		assert_eq!(read_only(name), Some(true), "{name}");
 	}
+
 	for name in ["mdt_update", "mdt_init"] {
 		assert_eq!(read_only(name), Some(false), "{name}");
 	}
@@ -3493,6 +3451,7 @@ fn tool_schemas_expose_validation_and_content_options() {
 			);
 		}
 	}
+
 	assert!(properties("mdt_list").get("include_content").is_some());
 	assert!(properties("mdt_find_reuse").get("content_query").is_some());
 }
@@ -3500,7 +3459,6 @@ fn tool_schemas_expose_validation_and_content_options() {
 // ===========================================================================
 // Response envelope
 // ===========================================================================
-
 #[tokio::test]
 async fn every_tool_response_carries_ok_action_and_summary() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -3528,7 +3486,6 @@ async fn every_tool_response_carries_ok_action_and_summary() {
 // ===========================================================================
 // Validation diagnostics
 // ===========================================================================
-
 fn create_unclosed_block_project(root: &Path) {
 	create_stale_project(root);
 	std::fs::write(
@@ -3640,6 +3597,7 @@ async fn update_refuses_to_write_when_validation_fails() {
 	assert_eq!(json["diagnostics"][0]["kind"], "unclosed_block");
 	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
 		.unwrap_or_else(|e| panic!("read readme: {e}"));
+
 	assert!(
 		readme.contains("Old stale content."),
 		"update must not write"
@@ -3690,7 +3648,6 @@ async fn list_reports_validation_errors() {
 // ===========================================================================
 // Render errors
 // ===========================================================================
-
 /// A project where `broken` fails to render and `greeting` is stale.
 fn create_render_error_project(root: &Path) {
 	std::fs::write(root.join("mdt.toml"), "[data]\npkg = \"package.json\"\n")
@@ -3727,6 +3684,7 @@ async fn update_syncs_what_renders_and_reports_the_rest() {
 	assert_eq!(error["block_name"], "broken");
 	assert_eq!(error["file"], "readme.md");
 	assert_eq!(error["line"], 1);
+
 	assert_eq!(error["column"], 1);
 	let message = error["message"].as_str().unwrap_or_default();
 	assert!(
@@ -3787,7 +3745,6 @@ async fn preview_reports_a_provider_that_fails_to_render() {
 // ===========================================================================
 // Staleness agrees with `mdt check`
 // ===========================================================================
-
 #[tokio::test]
 async fn get_block_and_preview_agree_with_check_under_padding() {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
@@ -3849,6 +3806,7 @@ async fn list_reports_consumer_type_location_and_status() {
 	assert_eq!(consumers[0]["status"], "stale");
 	assert_eq!(consumers[0]["is_stale"], true);
 	assert_eq!(consumers[1]["type"], "consumer");
+
 	assert_eq!(consumers[1]["status"], "current");
 	assert_eq!(consumers[2]["name"], "missing");
 	assert_eq!(consumers[2]["status"], "orphan");
@@ -3864,7 +3822,6 @@ async fn list_reports_consumer_type_location_and_status() {
 // ===========================================================================
 // Reuse ranking
 // ===========================================================================
-
 fn provider_names(json: &serde_json::Value) -> Vec<String> {
 	json["candidates"]
 		.as_array()
@@ -4022,6 +3979,7 @@ fn match_name_normalizes_case_and_separators() {
 	assert_eq!(kind("installGuide", "guide"), Some(MatchKind::Substring));
 	assert_eq!(kind("greting", "greeting"), Some(MatchKind::Similar));
 	assert_eq!(kind("greeting", "badges"), None);
+
 	assert_eq!(
 		kind("-", "badges"),
 		None,

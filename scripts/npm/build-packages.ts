@@ -125,15 +125,19 @@ export function _resetSpawnSync(): void {
 
 export function parseArgs(argv: string[]): Record<string, string> {
 	const args: Record<string, string> = {};
+
 	for (let index = 0; index < argv.length; index += 1) {
 		const key = argv[index];
 		const value = argv[index + 1];
+
 		if (!key.startsWith("--") || value === undefined) {
 			continue;
 		}
+
 		args[key.slice(2)] = value;
 		index += 1;
 	}
+
 	return args;
 }
 
@@ -151,11 +155,13 @@ export function run(
 		stdio: options.stdio ?? "pipe",
 		cwd: options.cwd,
 	});
+
 	if (result.status !== 0) {
 		const detail = result.stderr || result.stdout ||
 			`exit code ${result.status ?? "unknown"}`;
 		throw new Error(`${command} ${args.join(" ")} failed: ${detail}`);
 	}
+
 	return result;
 }
 
@@ -167,16 +173,20 @@ export function findArchive(
 ): string {
 	const archiveName = `mdt-${target}-${releaseTag}.${archiveExt}`;
 	const archivePath = join(assetsDir, archiveName);
+
 	if (!existsSync(archivePath)) {
 		throw new Error(`missing release asset: ${archiveName}`);
 	}
+
 	return archivePath;
 }
 
 export function* walk(dir: string): Generator<string> {
 	const entries = readdirSync(dir, { withFileTypes: true });
+
 	for (const entry of entries) {
 		const entryPath = join(dir, entry.name);
+
 		if (entry.isDirectory()) {
 			yield* walk(entryPath);
 		} else {
@@ -190,14 +200,19 @@ export function extractArchive(
 	destinationDir: string,
 ): void {
 	ensureDirectory(destinationDir);
+
 	if (archivePath.endsWith(".zip")) {
 		run("unzip", ["-q", archivePath, "-d", destinationDir]);
+
 		return;
 	}
+
 	if (archivePath.endsWith(".tar.gz")) {
 		run("tar", ["-xzf", archivePath, "-C", destinationDir]);
+
 		return;
 	}
+
 	throw new Error(`unsupported archive: ${basename(archivePath)}`);
 }
 
@@ -210,6 +225,7 @@ export function findBinary(
 			return filePath;
 		}
 	}
+
 	throw new Error(`could not find ${binaryName} in ${extractedDir}`);
 }
 
@@ -223,11 +239,13 @@ export function packageMetadata(dir: string): Record<string, unknown> {
 
 export function hasBinary(dir: string): boolean {
 	const binDir = join(dir, "bin");
+
 	if (!existsSync(binDir)) {
 		return false;
 	}
 
 	const entries = readdirSync(binDir);
+
 	return entries.some((entry) => entry.startsWith("mdt"));
 }
 
@@ -263,6 +281,7 @@ export function populatePlatformPackage({
 
 	ensureDirectory(binDir);
 	copyFileSync(binaryPath, join(binDir, spec.binaryName));
+
 	if (spec.binaryName === "mdt") {
 		chmodSync(join(binDir, spec.binaryName), 0o755);
 	}

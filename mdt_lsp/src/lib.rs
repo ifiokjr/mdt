@@ -177,6 +177,7 @@ impl WorkspaceState {
 		// Update consumers for this file: remove existing then re-add.
 		let consumers = &mut self.ctx.project.consumers;
 		consumers.retain(|c| c.file != file_path);
+
 		for block in &doc.blocks {
 			if matches!(block.r#type, BlockType::Consumer | BlockType::Inline) {
 				let block_content = extract_content_between_tags(&doc.content, block);
@@ -249,6 +250,7 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 			.iter()
 			.filter(|block| block.r#type == BlockType::Provider && block.name == name)
 			.count();
+
 		if count == 0 {
 			continue;
 		}
@@ -275,6 +277,7 @@ fn provider_conflicts_for(state: &WorkspaceState, uri: &Uri, name: &str) -> (usi
 			}
 		} else {
 			let current_file = uri.to_file_path().map(std::borrow::Cow::into_owned);
+
 			if current_file
 				.as_ref()
 				.is_none_or(|file| *file != provider.file)
@@ -315,14 +318,17 @@ fn to_lsp_range(pos: &mdt_core::Position) -> Range {
 /// bounds.
 fn lsp_position_to_offset(content: &str, position: Position) -> Option<usize> {
 	let mut offset = 0;
+
 	for (i, line) in content.split('\n').enumerate() {
 		if i == position.line as usize {
 			// LSP character offsets are UTF-16 code units, so convert to a
 			// byte index instead of slicing by code units.
 			return utf16_col_to_byte_offset(line, position.character).map(|col| offset + col);
 		}
+
 		offset += line.len() + 1; // +1 for '\n'
 	}
+
 	None
 }
 
@@ -333,12 +339,15 @@ fn lsp_position_to_offset(content: &str, position: Position) -> Option<usize> {
 /// such positions do not map to a character boundary.
 fn utf16_col_to_byte_offset(line: &str, character: u32) -> Option<usize> {
 	let mut utf16_offset = 0u32;
+
 	for (byte_idx, ch) in line.char_indices() {
 		if utf16_offset == character {
 			return Some(byte_idx);
 		}
+
 		utf16_offset += ch.len_utf16() as u32;
 	}
+
 	(utf16_offset == character).then_some(line.len())
 }
 
@@ -419,6 +428,7 @@ impl LanguageServer for MdtLanguageServer {
 		{
 			let mut state = self.state.write().await;
 			state.root = root;
+
 			match scan {
 				Some(Ok(ctx)) => state.apply_scan(ctx),
 				Some(Err(e)) => tracing::error!("failed to scan project: {e}"),
@@ -490,6 +500,7 @@ impl LanguageServer for MdtLanguageServer {
 			if let Some(change) = params.content_changes.into_iter().next_back() {
 				self.on_document_change(&uri, change.text).await;
 			}
+
 			return;
 		};
 
@@ -500,6 +511,7 @@ impl LanguageServer for MdtLanguageServer {
 			if let Some(range) = change.range {
 				let start = lsp_position_to_offset(&content, range.start);
 				let end = lsp_position_to_offset(&content, range.end);
+
 				if let (Some(start), Some(end)) = (start, end) {
 					if start <= end {
 						content.replace_range(start..end, &change.text);
@@ -533,6 +545,7 @@ impl LanguageServer for MdtLanguageServer {
 			// Config changed — full rescan needed for data and exclude
 			// changes. Scan off the runtime, then apply under a short lock.
 			let root = { self.state.read().await.root.clone() };
+
 			if let Some(root) = root {
 				match Self::scan_project_offload(&root).await {
 					Ok(ctx) => {
@@ -658,7 +671,6 @@ impl LanguageServer for MdtLanguageServer {
 // ---------------------------------------------------------------------------
 // Diagnostics
 // ---------------------------------------------------------------------------
-
 /// The content currently between a consumer or inline block's tags in the
 /// open document `doc`, and what `mdt update` would write there.
 ///
@@ -817,6 +829,7 @@ fn parse_diagnostic_to_lsp(diagnostic: &ParseDiagnostic) -> Option<Diagnostic> {
 		}
 		_ => return None,
 	};
+
 	let position = Position {
 		line: line.saturating_sub(1) as u32,
 		character: column.saturating_sub(1) as u32,
@@ -897,11 +910,14 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 				if is_template {
 					let (current_count, other_files) =
 						provider_conflicts_for(state, uri, &block.name);
+
 					if current_count > 1 || !other_files.is_empty() {
 						let mut details = Vec::new();
+
 						if current_count > 1 {
 							details.push("multiple definitions in this file".to_string());
 						}
+
 						details.extend(
 							other_files
 								.iter()
@@ -929,6 +945,7 @@ fn compute_diagnostics(state: &WorkspaceState, uri: &Uri) -> Vec<Diagnostic> {
 						consumer.block.r#type == BlockType::Consumer
 							&& consumer.block.name == block.name
 					});
+
 					if !has_consumers {
 						diagnostics.push(Diagnostic {
 							range: to_lsp_range(&block.opening),
@@ -965,6 +982,7 @@ fn missing_provider_message(state: &WorkspaceState, name: &str) -> String {
 		name,
 		state.ctx.project.providers.keys().map(String::as_str),
 	);
+
 	if suggestions.is_empty() {
 		return format!("No provider found for consumer block `{name}`");
 	}
@@ -982,15 +1000,16 @@ fn missing_provider_message(state: &WorkspaceState, name: &str) -> String {
 // ---------------------------------------------------------------------------
 // Hover
 // ---------------------------------------------------------------------------
-
 /// Find the block at a given cursor position.
 fn find_block_at_position(blocks: &[Block], position: Position) -> Option<&Block> {
 	for block in blocks {
 		let opening_range = to_lsp_range(&block.opening);
+
 		if position_in_range(position, opening_range) {
 			return Some(block);
 		}
 	}
+
 	None
 }
 
@@ -999,12 +1018,15 @@ fn position_in_range(pos: Position, range: Range) -> bool {
 	if pos.line < range.start.line || pos.line > range.end.line {
 		return false;
 	}
+
 	if pos.line == range.start.line && pos.character < range.start.character {
 		return false;
 	}
+
 	if pos.line == range.end.line && pos.character > range.end.character {
 		return false;
 	}
+
 	true
 }
 
@@ -1046,6 +1068,7 @@ fn compute_hover(state: &WorkspaceState, uri: &Uri, position: Position) -> Optio
 			if let Some(template) = block.arguments.first() {
 				parts.push(format!("\n**Template:** `{template}`"));
 				parts.extend(transformer_chain(block));
+
 				match expected_block_content(&state.ctx, uri, doc, block).1 {
 					ExpectedContent::Rendered(expected) => parts.push(content_preview(&expected)),
 					ExpectedContent::RenderFailed(message) => {
@@ -1127,7 +1150,6 @@ fn content_preview(text: &str) -> String {
 // ---------------------------------------------------------------------------
 // Completions
 // ---------------------------------------------------------------------------
-
 /// Compute completion items at a position.
 fn compute_completions(
 	state: &WorkspaceState,
@@ -1266,7 +1288,6 @@ fn transformer_completions() -> Vec<CompletionItem> {
 // ---------------------------------------------------------------------------
 // Go to Definition
 // ---------------------------------------------------------------------------
-
 /// Compute go-to-definition: consumer → provider.
 /// Convert a workspace file path to a file URI.
 ///
@@ -1281,6 +1302,7 @@ fn path_to_uri(path: &Path) -> Option<Uri> {
 	}
 
 	let text = path.display().to_string();
+
 	if text.starts_with('/') {
 		return format!("file://{text}").parse().ok();
 	}
@@ -1342,7 +1364,6 @@ fn compute_goto_definition(
 // ---------------------------------------------------------------------------
 // Document Symbols
 // ---------------------------------------------------------------------------
-
 /// Compute document symbols for the outline view using `DocumentSymbol`
 /// (hierarchical, non-deprecated).
 fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSymbol> {
@@ -1363,6 +1384,7 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSy
 				BlockType::Inline => "~",
 				_ => "?",
 			};
+
 			let full_range = Range {
 				start: to_lsp_position(&block.opening.start),
 				end: to_lsp_position(&block.closing.end),
@@ -1387,7 +1409,6 @@ fn compute_document_symbols(state: &WorkspaceState, uri: &Uri) -> Vec<DocumentSy
 // ---------------------------------------------------------------------------
 // Code Actions
 // ---------------------------------------------------------------------------
-
 /// Compute code actions for a range. Offers "Update block" for consumer and
 /// inline blocks whose content differs from what `mdt update` would write.
 /// Blocks that fail to render or have no provider get no fix: `mdt update`
@@ -1422,11 +1443,13 @@ fn compute_code_actions(
 		if !can_check_staleness(&state.ctx, uri) {
 			continue;
 		}
+
 		let (current, ExpectedContent::Rendered(expected)) =
 			expected_block_content(&state.ctx, uri, doc, block)
 		else {
 			continue;
 		};
+
 		if content_matches(&current, &expected, &state.ctx.comparison) {
 			continue;
 		}
@@ -1439,6 +1462,7 @@ fn compute_code_actions(
 		} else {
 			expected
 		};
+
 		let edit = TextEdit {
 			range: Range {
 				start: offset_to_lsp_position(&doc.content, block.opening.end.offset),
@@ -1476,7 +1500,6 @@ fn ranges_overlap(a: Range, b: Range) -> bool {
 // ---------------------------------------------------------------------------
 // References
 // ---------------------------------------------------------------------------
-
 /// Compute references: return all locations that share the same block name.
 /// If on a consumer, return the provider + all other consumers.
 /// If on a provider, return all consumers (and the provider itself if
@@ -1539,7 +1562,6 @@ fn compute_references(
 // ---------------------------------------------------------------------------
 // Rename
 // ---------------------------------------------------------------------------
-
 /// Find the range of the block name within a tag, given the tag text and
 /// the tag's starting LSP position. The name appears after `{@`, `{=`, `{~`, or
 /// `{/` in the tag text.
@@ -1604,6 +1626,7 @@ fn find_name_range_in_tag(tag_text: &str, tag_start: Position, name: &str) -> Op
 fn extract_tag_text<'a>(content: &'a str, tag_pos: &mdt_core::Position) -> &'a str {
 	let start = tag_pos.start.offset;
 	let end = tag_pos.end.offset;
+
 	if end <= content.len() && start <= end {
 		&content[start..end]
 	} else {
@@ -1675,6 +1698,7 @@ fn compute_rename(
 
 		// Rename in the opening tag.
 		let open_text = extract_tag_text(content, &blk.opening);
+
 		if let Some(range) =
 			find_name_range_in_tag(open_text, to_lsp_position(&blk.opening.start), old_name)
 		{
@@ -1686,6 +1710,7 @@ fn compute_rename(
 
 		// Rename in the closing tag.
 		let close_text = extract_tag_text(content, &blk.closing);
+
 		if let Some(range) =
 			find_name_range_in_tag(close_text, to_lsp_position(&blk.closing.start), old_name)
 		{
@@ -1705,6 +1730,7 @@ fn compute_rename(
 	// the stored file path.
 	if let Some(provider) = state.ctx.project.providers.get(old_name) {
 		let provider_uri_opt = path_to_uri(&provider.file);
+
 		if let Some(provider_uri) = provider_uri_opt {
 			if !state.documents.contains_key(&provider_uri) {
 				// Read file from disk.
@@ -1748,7 +1774,9 @@ fn compute_rename(
 		if consumer.block.name != *old_name {
 			continue;
 		}
+
 		let consumer_uri_opt = path_to_uri(&consumer.file);
+
 		if let Some(consumer_uri) = consumer_uri_opt {
 			if !state.documents.contains_key(&consumer_uri) {
 				if let Ok(content) = std::fs::read_to_string(&consumer.file) {
@@ -1806,6 +1834,7 @@ fn init_tracing() {
 		.with_env_filter(filter)
 		.with_writer(std::io::stderr)
 		.try_init();
+
 	if installed.is_err() {
 		tracing::debug!("keeping the tracing subscriber that is already installed");
 	}
