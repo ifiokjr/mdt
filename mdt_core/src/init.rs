@@ -116,9 +116,11 @@ impl InitReport {
 	/// written.
 	pub fn written_files(&self) -> Vec<&Path> {
 		let mut files: Vec<&Path> = Vec::new();
+
 		if let ConfigOutcome::Created(config) = &self.config {
 			files.push(config);
 		}
+
 		match &self.sample {
 			SampleOutcome::CreatedWithReadme { template, readme } => {
 				files.push(template);
@@ -127,9 +129,11 @@ impl InitReport {
 			SampleOutcome::CreatedWithoutConsumer { template, .. } => files.push(template),
 			SampleOutcome::TemplateExists { .. } | SampleOutcome::ProvidersExist { .. } => {}
 		}
+
 		if let GitignoreOutcome::Updated(path) | GitignoreOutcome::Created(path) = &self.gitignore {
 			files.push(path);
 		}
+
 		files
 	}
 }
@@ -172,6 +176,7 @@ pub fn init_project(root: &Path) -> MdtResult<InitReport> {
 		}
 		_ => None,
 	};
+
 	let sample = init_sample(root)?;
 	let gitignore = ignore_cache_directory(root, repository.is_some())?;
 
@@ -190,11 +195,13 @@ fn init_sample(root: &Path) -> MdtResult<SampleOutcome> {
 		.chain(LEGACY_TEMPLATE_PATHS)
 		.map(|relative| root.join(relative))
 		.find(|path| path.exists());
+
 	if let Some(template) = existing_template {
 		return Ok(SampleOutcome::TemplateExists { template });
 	}
 
 	let provider_count = scan_project_with_config(root)?.project.providers.len();
+
 	if provider_count > 0 {
 		return Ok(SampleOutcome::ProvidersExist {
 			count: provider_count,
@@ -202,9 +209,11 @@ fn init_sample(root: &Path) -> MdtResult<SampleOutcome> {
 	}
 
 	let template = root.join(SAMPLE_TEMPLATE_PATH);
+
 	if let Some(parent) = template.parent() {
 		std::fs::create_dir_all(parent)?;
 	}
+
 	std::fs::write(&template, sample_provider())?;
 
 	if let Some(readme) = find_readme(root)? {
@@ -226,10 +235,12 @@ fn find_readme(root: &Path) -> MdtResult<Option<PathBuf>> {
 			.file_name()
 			.to_str()
 			.is_some_and(|name| name.to_ascii_lowercase().starts_with("readme"));
+
 		if is_readme && entry.file_type()?.is_file() {
 			return Ok(Some(entry.path()));
 		}
 	}
+
 	Ok(None)
 }
 
@@ -244,12 +255,14 @@ fn sync_file(root: &Path, file: &Path) -> MdtResult<()> {
 
 fn ignore_cache_directory(root: &Path, in_repository: bool) -> MdtResult<GitignoreOutcome> {
 	let path = root.join(".gitignore");
+
 	if path.is_file() {
 		let content = std::fs::read_to_string(&path)?;
 		let already_ignored = content
 			.lines()
 			.map(str::trim)
 			.any(|line| matches!(line, ".mdt" | ".mdt/" | "/.mdt" | "/.mdt/"));
+
 		if already_ignored {
 			return Ok(GitignoreOutcome::AlreadyIgnored(path));
 		}
@@ -258,10 +271,12 @@ fn ignore_cache_directory(root: &Path, in_repository: bool) -> MdtResult<Gitigno
 		} else {
 			"\n"
 		};
+
 		std::fs::write(
 			&path,
 			format!("{content}{separator}\n# mdt cache\n{CACHE_IGNORE_ENTRY}\n"),
 		)?;
+
 		return Ok(GitignoreOutcome::Updated(path));
 	}
 
@@ -269,6 +284,7 @@ fn ignore_cache_directory(root: &Path, in_repository: bool) -> MdtResult<Gitigno
 	// `.gitignore` files.
 	if in_repository {
 		std::fs::write(&path, format!("# mdt cache\n{CACHE_IGNORE_ENTRY}\n"))?;
+
 		return Ok(GitignoreOutcome::Created(path));
 	}
 

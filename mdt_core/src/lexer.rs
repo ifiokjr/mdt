@@ -156,10 +156,13 @@ impl<'a> TokenWalker<'a> {
 
 		while self.cursor < self.raw_tokens.len() {
 			let (result, _) = &self.raw_tokens[self.cursor];
+
 			if matches!(result, Ok(RawToken::HtmlCommentClose)) {
 				self.advance_cursor();
+
 				return;
 			}
+
 			self.advance_cursor();
 		}
 	}
@@ -222,6 +225,7 @@ impl<'a> TokenWalker<'a> {
 					}
 					None => break,
 				}
+
 				continue;
 			};
 
@@ -386,9 +390,11 @@ pub fn memstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 
 	while search_from + needle.len() <= haystack.len() {
 		let offset = search_from + memchr::memchr(first, &haystack[search_from..])?;
+
 		if haystack[offset..].starts_with(needle) {
 			return Some(offset);
 		}
+
 		search_from = offset + 1;
 	}
 

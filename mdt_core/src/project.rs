@@ -94,6 +94,7 @@ impl ScanOptions {
 			.unwrap_or_default();
 		let excluded_blocks = config.map(|c| c.exclude.blocks.clone()).unwrap_or_default();
 		let cache_verify_hash = std::env::var_os("MDT_CACHE_VERIFY_HASH").is_some();
+
 		let include_set = build_glob_set(include_patterns);
 
 		Self {
@@ -319,6 +320,7 @@ pub fn resolve_root(path: Option<&Path>) -> PathBuf {
 /// without touching the filesystem.
 pub fn normalize_lexically(path: &Path) -> PathBuf {
 	let mut components: Vec<std::path::Component<'_>> = Vec::new();
+
 	for component in path.components() {
 		match component {
 			std::path::Component::CurDir => {}
@@ -337,6 +339,7 @@ pub fn normalize_lexically(path: &Path) -> PathBuf {
 			other => components.push(other),
 		}
 	}
+
 	components.iter().collect()
 }
 
@@ -351,6 +354,7 @@ pub fn relative_display_path(path: &Path, root: &Path) -> String {
 		.unwrap_or(path)
 		.display()
 		.to_string();
+
 	if rendered.contains('\\') {
 		rendered.replace('\\', "/")
 	} else {
@@ -552,11 +556,14 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let comparison = config
 		.as_ref()
 		.map_or_else(Default::default, |c| c.check.comparison.clone());
+
 	let markdown_codeblocks = options.markdown_codeblocks.clone();
+
 	let data = match config {
 		Some(config) => config.load_data(root)?,
 		None => HashMap::new(),
 	};
+
 	debug!(data_namespaces = data.len(), "loaded data sources");
 
 	Ok(ProjectContext {
@@ -573,11 +580,13 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 /// Build a `GlobSet` from a list of glob pattern strings.
 fn build_glob_set(patterns: &[String]) -> GlobSet {
 	let mut builder = GlobSetBuilder::new();
+
 	for pattern in patterns {
 		if let Ok(glob) = Glob::new(pattern) {
 			builder.add(glob);
 		}
 	}
+
 	builder.build().unwrap_or_else(|_| GlobSet::empty())
 }
 
@@ -709,6 +718,7 @@ fn collect_file_fingerprints(
 
 	for file in files {
 		let metadata = std::fs::metadata(file)?;
+
 		if metadata.len() > max_file_size {
 			return Err(MdtError::FileTooLarge {
 				path: file.display().to_string(),
@@ -828,6 +838,7 @@ fn parse_file_for_scan(
 			diagnostics: Vec::new(),
 		});
 	}
+
 	let raw_content = String::from_utf8(bytes).map_err(|error| read_error(error.to_string()))?;
 	let content = normalize_line_endings(&raw_content);
 	let (blocks, parse_diagnostics) = if is_markdown_file(file) {
@@ -904,6 +915,7 @@ fn parse_file_for_scan(
 					});
 					continue;
 				}
+
 				providers.push(ProviderEntry {
 					block,
 					file: file.to_path_buf(),
@@ -943,6 +955,7 @@ fn build_project_from_file_data(
 		};
 
 		diagnostics.extend(entry.diagnostics.iter().cloned());
+
 		for provider in &entry.providers {
 			if let Some(existing) = providers.get(&provider.block.name) {
 				let location = |entry: &ProviderEntry| {
@@ -961,6 +974,7 @@ fn build_project_from_file_data(
 
 			providers.insert(provider.block.name.clone(), provider.clone());
 		}
+
 		// Only the project's own files are consumers: a shared `*.t.md` read
 		// through `[templates] paths` may contain consumers of its own, and
 		// updating them would write outside the project.
@@ -978,11 +992,13 @@ fn build_project_from_file_data(
 		.filter(|consumer| consumer.block.r#type == BlockType::Consumer)
 		.map(|consumer| consumer.block.name.as_str())
 		.collect();
+
 	for (name, entry) in &providers {
 		// Providers shared from outside the project (a `[templates] paths`
 		// entry such as `../../.templates`) are a library: each project uses
 		// only some of them.
 		let shared = !entry.file.starts_with(root);
+
 		if !shared && !referenced_names.contains(name.as_str()) {
 			diagnostics.push(ProjectDiagnostic {
 				file: entry.file.clone(),
@@ -1031,6 +1047,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 				.telemetry
 				.record_scan(true, files.len(), 0, files.len());
 			index_cache::save(root, cached);
+
 			return Ok(cached.project.clone());
 		}
 	}
@@ -1038,6 +1055,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 	let mut merged_file_data = BTreeMap::new();
 	let mut reused_file_count = 0usize;
 	let mut reparsed_file_count = 0usize;
+
 	for file in &files {
 		let file_key = index_cache::relative_file_key(root, file);
 		let fingerprint = file_fingerprints.get(&file_key);
@@ -1067,9 +1085,11 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 		merged_file_data,
 		project.clone(),
 	);
+
 	if let Some(previous_cache) = cache {
 		next_cache.telemetry = previous_cache.telemetry;
 	}
+
 	next_cache
 		.telemetry
 		.record_scan(false, reused_file_count, reparsed_file_count, files.len());
@@ -1096,11 +1116,13 @@ pub fn extract_content_between_tags(source: &str, block: &Block) -> String {
 /// on top of any `.gitignore` rules.
 fn build_exclude_matcher(root: &Path, patterns: &[String]) -> MdtResult<Gitignore> {
 	let mut builder = GitignoreBuilder::new(root);
+
 	for pattern in patterns {
 		builder.add_line(None, pattern).map_err(|e| {
 			MdtError::ConfigParse(format!("invalid exclude pattern `{pattern}`: {e}"))
 		})?;
 	}
+
 	builder
 		.build()
 		.map_err(|e| MdtError::ConfigParse(format!("failed to build exclude rules: {e}")))
@@ -1128,11 +1150,13 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 		// Normalized so shared directories outside the project are
 		// recognizably outside `root`.
 		let dir = normalize_lexically(&root.join(template_dir));
+
 		if !dir.is_dir() {
 			return Err(MdtError::TemplatesPath {
 				path: template_dir.display().to_string(),
 			});
 		}
+
 		walk(&dir, &is_template_file, &mut files)?;
 	}
 
@@ -1150,12 +1174,14 @@ fn collect_project_files(root: &Path, options: &ScanOptions) -> MdtResult<Vec<Pa
 	// paths only when a walk met a symlink.
 	files.sort();
 	files.dedup();
+
 	if saw_symlink {
 		let mut canonical_files = HashSet::with_capacity(files.len());
 		files.retain(|file| {
 			canonical_files.insert(file.canonicalize().unwrap_or_else(|_| file.clone()))
 		});
 	}
+
 	Ok(files)
 }
 
@@ -1179,6 +1205,7 @@ impl IgnoreRules {
 			nested: false,
 			stack: Vec::new(),
 		};
+
 		if !enabled {
 			return rules;
 		}
@@ -1186,6 +1213,7 @@ impl IgnoreRules {
 		let repository_root = root.ancestors().find(|dir| dir.join(".git").exists());
 		let Some(repository_root) = repository_root else {
 			rules.push_file(root, &root.join(".gitignore"));
+
 			return rules;
 		};
 		rules.nested = true;
@@ -1195,9 +1223,11 @@ impl IgnoreRules {
 			.ancestors()
 			.take_while(|dir| dir.starts_with(repository_root))
 			.collect();
+
 		for dir in ancestors.into_iter().rev() {
 			rules.enter(dir);
 		}
+
 		rules
 	}
 
@@ -1217,9 +1247,11 @@ impl IgnoreRules {
 		if !file.is_file() {
 			return false;
 		}
+
 		let mut builder = GitignoreBuilder::new(dir);
 		// A malformed line only disables that line, as in git.
 		let _ = builder.add(file);
+
 		match builder.build() {
 			Ok(matcher) => {
 				self.stack.push(matcher);
@@ -1239,6 +1271,7 @@ impl IgnoreRules {
 				ignore::Match::None => {}
 			}
 		}
+
 		false
 	}
 }
@@ -1284,6 +1317,7 @@ impl<'a> ProjectWalker<'a> {
 				.file_name()
 				.and_then(|name| name.to_str())
 				.is_some_and(is_ignored_directory_name);
+
 			if skipped_name {
 				continue;
 			}
@@ -1295,6 +1329,7 @@ impl<'a> ProjectWalker<'a> {
 				continue;
 			};
 			let is_dir = metadata.is_dir();
+
 			if self.ignore_rules.is_ignored(&path, is_dir)
 				|| self.exclude.matched(&path, is_dir).is_ignore()
 			{
@@ -1306,6 +1341,7 @@ impl<'a> ProjectWalker<'a> {
 				if has_project_config(&path) {
 					continue;
 				}
+
 				let pushed = self.ignore_rules.enter(&path);
 				let walked = self.walk(&path, accept, files);
 				self.ignore_rules.leave(pushed);
@@ -1398,16 +1434,19 @@ pub fn is_template_file(path: &Path) -> bool {
 ))]
 pub fn find_missing_providers(project: &Project) -> Vec<String> {
 	let mut missing = Vec::new();
+
 	for consumer in &project.consumers {
 		if consumer.block.r#type != BlockType::Consumer {
 			continue;
 		}
+
 		if !project.providers.contains_key(&consumer.block.name)
 			&& !missing.contains(&consumer.block.name)
 		{
 			missing.push(consumer.block.name.clone());
 		}
 	}
+
 	debug!(missing = missing.len(), "found missing providers");
 	missing
 }
@@ -1420,6 +1459,7 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
 	if a_len == 0 {
 		return b_len;
 	}
+
 	if b_len == 0 {
 		return a_len;
 	}
@@ -1429,12 +1469,14 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
 
 	for (i, a_char) in a.chars().enumerate() {
 		curr_row[0] = i + 1;
+
 		for (j, b_char) in b.chars().enumerate() {
 			let cost = usize::from(a_char != b_char);
 			curr_row[j + 1] = (prev_row[j + 1] + 1)
 				.min(curr_row[j] + 1)
 				.min(prev_row[j] + cost);
 		}
+
 		std::mem::swap(&mut prev_row, &mut curr_row);
 	}
 
@@ -1467,9 +1509,11 @@ pub fn suggest_similar_provider_names<'a>(
 ))]
 pub fn validate_project(project: &Project) -> MdtResult<()> {
 	let missing = find_missing_providers(project);
+
 	if let Some(name) = missing.into_iter().next() {
 		return Err(MdtError::MissingProvider(name));
 	}
+
 	debug!("project validation passed");
 	Ok(())
 }

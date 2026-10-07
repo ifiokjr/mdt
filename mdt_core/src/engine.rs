@@ -179,6 +179,7 @@ pub fn render_template(
 	data: &HashMap<String, serde_json::Value>,
 ) -> MdtResult<String> {
 	trace!("rendering template");
+
 	if data.is_empty() || !has_template_syntax(content) {
 		return Ok(content.to_string());
 	}
@@ -293,12 +294,15 @@ pub fn normalize_whitespace(content: &str) -> String {
 			if !prev_blank && !result.is_empty() {
 				result.push('\n');
 			}
+
 			prev_blank = true;
 		} else {
 			if !result.is_empty() {
 				result.push('\n');
 			}
+
 			result.push_str(trimmed);
+
 			prev_blank = false;
 		}
 	}
@@ -351,6 +355,7 @@ pub fn build_render_context<S: BuildHasher + Clone>(
 	}
 
 	let mut data = base_data.clone();
+
 	for (name, value) in provider
 		.block
 		.arguments
@@ -483,6 +488,7 @@ fn expected_content(
 				Ok(rendered_content) => rendered_content,
 				Err(message) => return ExpectedContent::RenderFailed(message),
 			};
+
 			let transformed = apply_transformers_with_data(
 				&rendered_content,
 				&consumer.block.transformers,
@@ -534,6 +540,7 @@ pub fn formatter_applies(ctx: &ProjectContext, file: &Path) -> bool {
 /// indentation carries over there.
 fn closing_tag_prefix<'a>(consumer: &ConsumerEntry, source: &'a str) -> &'a str {
 	let prefix = extract_line_comment_prefix(source, consumer.block.closing.start.offset);
+
 	if is_markdown_path(&consumer.file) && !prefix.trim().is_empty() {
 		""
 	} else {
@@ -600,6 +607,7 @@ fn stale_entry(consumer: &ConsumerEntry, expected_content: String) -> StaleEntry
 ))]
 pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	debug!("checking project");
+
 	if ctx.formatters.is_empty() {
 		return check_project_without_formatters(ctx);
 	}
@@ -612,6 +620,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut orphans = Vec::new();
 	let warnings = collect_template_warnings(ctx);
 	debug!(warnings = warnings.len(), "collected template warnings");
+
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
 	for (file, consumers) in consumers_by_file {
@@ -640,24 +649,30 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 					continue;
 				}
 			};
+
 			eligible[index] = true;
+
 			if consumer.content != expected {
 				replace_consumer_content(&mut candidate, consumer, &expected);
 			}
+
 			raw_expected[index] = Some(expected);
 		}
 
 		let (candidate, formatter_commands) =
 			apply_formatter_pipeline(&formatter_pipeline, ctx, &file, &candidate)?;
+
 		if formatter_commands.is_empty() {
 			for (index, consumer) in ordered_consumers.iter().enumerate() {
 				let Some(expected) = raw_expected[index].take() else {
 					continue;
 				};
+
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 					stale.push(stale_entry(consumer, expected));
 				}
 			}
+
 			continue;
 		}
 
@@ -673,13 +688,17 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 			&formatter_commands,
 		)?;
 		let mut file_stale_count = 0;
+
 		for (index, consumer) in ordered_consumers.iter().enumerate() {
 			if !eligible[index] {
 				continue;
 			}
+
 			let expected = final_contents[index].clone();
+
 			if !content_matches(&consumer.content, &expected, &ctx.comparison) {
 				file_stale_count += 1;
+
 				stale.push(stale_entry(consumer, expected));
 			}
 		}
@@ -725,6 +744,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 ))]
 pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	debug!("computing updates");
+
 	if ctx.formatters.is_empty() {
 		return compute_updates_without_formatters(ctx);
 	}
@@ -757,14 +777,17 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 			};
 
 			eligible[index] = true;
+
 			if consumer.content != new_content {
 				replace_consumer_content(&mut candidate, consumer, &new_content);
 			}
+
 			raw_expected[index] = Some(new_content);
 		}
 
 		let (candidate, formatter_commands) =
 			apply_formatter_pipeline(&formatter_pipeline, ctx, &file, &candidate)?;
+
 		if candidate == original {
 			continue;
 		}
@@ -830,7 +853,9 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 				normalize_line_endings(&std::fs::read_to_string(&consumer.file)?),
 			);
 		}
+
 		let source = &file_contents[&consumer.file];
+
 		match expected_content(ctx, &mut render_cache, consumer, source) {
 			ExpectedContent::Rendered(expected) => {
 				if !content_matches(&consumer.content, &expected, &ctx.comparison) {
@@ -892,6 +917,7 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 					buf.push_str(&result[end..]);
 					result = buf;
 					had_update = true;
+
 					updated_count += 1;
 				}
 			}
@@ -912,12 +938,14 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 
 fn group_consumers_by_file(consumers: &[ConsumerEntry]) -> HashMap<PathBuf, Vec<&ConsumerEntry>> {
 	let mut grouped: HashMap<PathBuf, Vec<&ConsumerEntry>> = HashMap::new();
+
 	for consumer in consumers {
 		grouped
 			.entry(consumer.file.clone())
 			.or_default()
 			.push(consumer);
 	}
+
 	grouped
 }
 
@@ -935,6 +963,7 @@ fn sort_consumers_in_file(mut consumers: Vec<&ConsumerEntry>) -> Vec<&ConsumerEn
 fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_content: &str) {
 	let start = consumer.block.opening.end.offset;
 	let end = consumer.block.closing.start.offset;
+
 	if start > end || end > result.len() {
 		return;
 	}
@@ -959,6 +988,7 @@ fn apply_formatter_pipeline(
 		.collect();
 
 	let mut current = content.to_string();
+
 	for command in &matching_commands {
 		current = run_formatter_command(ctx, file, command, &current)?;
 	}
@@ -1051,6 +1081,7 @@ fn run_formatter_command(
 		command_builder.arg("-c").arg(&interpolated);
 		command_builder
 	};
+
 	let mut child = command_builder
 		.current_dir(&ctx.root)
 		.env(FORMATTER_FILE_PATH_ENV, file)
@@ -1172,6 +1203,7 @@ fn parse_candidate_consumer_contents(
 			}
 		})?
 	};
+
 	let consumer_contents: Vec<String> = blocks
 		.into_iter()
 		.filter(|block| {
@@ -1212,10 +1244,13 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 		if consumer.block.r#type != BlockType::Consumer {
 			continue;
 		}
+
 		let name = &consumer.block.name;
+
 		if checked_providers.contains(name) {
 			continue;
 		}
+
 		checked_providers.insert(name.clone());
 
 		let Some(provider) = ctx.project.providers.get(name) else {
@@ -1228,10 +1263,12 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 			std::borrow::Cow::Borrowed(&ctx.data)
 		} else {
 			let mut data = ctx.data.clone();
+
 			for param in &provider.block.arguments {
 				data.entry(param.clone())
 					.or_insert(serde_json::Value::String(String::new()));
 			}
+
 			std::borrow::Cow::Owned(data)
 		};
 
@@ -1248,6 +1285,7 @@ fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
 				.filter(|variable| variable.contains('.'))
 				.collect()
 		};
+
 		if !undefined.is_empty() {
 			warnings.push(TemplateWarning {
 				provider_file: provider.file.clone(),
@@ -1268,6 +1306,7 @@ pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 		trace!(path = %path.display(), "writing updated file");
 		std::fs::write(path, content)?;
 	}
+
 	Ok(())
 }
 
@@ -1352,6 +1391,7 @@ fn apply_transformer(
 				// between every character, which is never what a template means.
 				return content.to_string();
 			}
+
 			let replacement = get_string_arg(&transformer.args, 1).unwrap_or_default();
 			content.replace(&search, &replacement)
 		}
@@ -1516,6 +1556,7 @@ pub fn validate_transformers(transformers: &[Transformer]) -> MdtResult<()> {
 			});
 		}
 	}
+
 	Ok(())
 }
 
@@ -1595,6 +1636,7 @@ pub(crate) fn pad_content_with_config(
 		Some(n) if n > 0 => new_content.strip_prefix('\n').unwrap_or(new_content),
 		_ => new_content,
 	};
+
 	result.push_str(new_content);
 
 	// After padding: lines between content and closing tag
@@ -1607,6 +1649,7 @@ pub(crate) fn pad_content_with_config(
 			if !new_content.ends_with('\n') {
 				result.push('\n');
 			}
+
 			result.push_str(trailing_prefix);
 		}
 		Some(n) => {
@@ -1617,6 +1660,7 @@ pub(crate) fn pad_content_with_config(
 				result.push_str(blank_line_prefix);
 				result.push('\n');
 			}
+
 			result.push_str(trailing_prefix);
 		}
 	}

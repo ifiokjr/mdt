@@ -59,7 +59,6 @@ const PROVIDER_NOT_FOUND: &str = "mdt::provider_not_found";
 // ---------------------------------------------------------------------------
 // mdt_check
 // ---------------------------------------------------------------------------
-
 /// A consumer whose content differs from what `mdt update` would write.
 #[derive(Debug, Serialize)]
 struct StaleInfo {
@@ -156,7 +155,6 @@ pub(crate) fn check(root: &Path, options: &ValidationOptions) -> Result<CallTool
 // ---------------------------------------------------------------------------
 // mdt_update
 // ---------------------------------------------------------------------------
-
 pub(crate) fn update(
 	root: &Path,
 	options: &ValidationOptions,
@@ -168,6 +166,7 @@ pub(crate) fn update(
 	// Like `mdt update`, validation errors stop the update before anything
 	// is written.
 	let diagnostic_errors = error_count(&diagnostics);
+
 	if diagnostic_errors > 0 {
 		return Err(ToolError::new(
 			VALIDATION_FAILED,
@@ -183,6 +182,7 @@ pub(crate) fn update(
 	}
 
 	let updates = compute_updates(&ctx)?;
+
 	if !dry_run && !updates.updated_files.is_empty() {
 		write_updates(&updates)?;
 	}
@@ -208,6 +208,7 @@ pub(crate) fn update(
 		}
 		(files, blocks, false) => format!("Updated {blocks} block(s) in {files} file(s)."),
 	};
+
 	let summary = match render_errors.len() {
 		0 => outcome,
 		failed => {
@@ -234,7 +235,6 @@ pub(crate) fn update(
 // ---------------------------------------------------------------------------
 // mdt_list
 // ---------------------------------------------------------------------------
-
 /// A provider as `mdt_list` reports it.
 #[derive(Debug, Serialize)]
 struct ProviderSummary {
@@ -292,6 +292,7 @@ pub(crate) fn list(
 		providers.len(),
 		consumers.len()
 	);
+
 	let summary = match diagnostic_errors {
 		0 => counts,
 		errors => format!("{counts} {errors} validation error(s)."),
@@ -310,7 +311,6 @@ pub(crate) fn list(
 // ---------------------------------------------------------------------------
 // mdt_find_reuse
 // ---------------------------------------------------------------------------
-
 /// What `mdt_find_reuse` searches for.
 pub(crate) struct ReuseQuery<'a> {
 	pub block_name: Option<&'a str>,
@@ -432,7 +432,6 @@ fn unique_display_paths<'a>(
 // ---------------------------------------------------------------------------
 // mdt_get_block and mdt_preview
 // ---------------------------------------------------------------------------
-
 /// A provider as `mdt_get_block` and `mdt_preview` report it.
 #[derive(Debug, Serialize)]
 struct ProviderDetail {
@@ -509,6 +508,7 @@ pub(crate) fn get_block(root: &Path, block_name: &str) -> Result<CallToolResult,
 		.iter()
 		.filter(|consumer| consumer.block.name == block_name)
 		.collect();
+
 	if provider.is_none() && blocks.is_empty() {
 		return Err(ToolError::new(
 			BLOCK_NOT_FOUND,
@@ -569,15 +569,18 @@ pub(crate) fn preview(root: &Path, block_name: &str) -> Result<CallToolResult, T
 
 	let mut sources: HashMap<&Path, String> = HashMap::new();
 	let mut previews = Vec::with_capacity(consumers.len());
+
 	for consumer in consumers {
 		let source = match sources.entry(consumer.file.as_path()) {
 			Entry::Occupied(entry) => entry.into_mut(),
 			Entry::Vacant(entry) => entry.insert(read_source(&consumer.file, root)?),
 		};
+
 		let rendered_content = match expected_consumer_content(&ctx, consumer, source) {
 			ExpectedContent::Rendered(content) => Some(content),
 			_ => None,
 		};
+
 		previews.push(ConsumerPreview {
 			info: ConsumerInfo::new(consumer, root, &statuses),
 			current_content: consumer.content.clone(),
@@ -628,9 +631,11 @@ fn block_summary(
 			 synced."
 		)
 	}];
+
 	if let Some(error) = provider_error {
 		sentences.push(format!("The provider fails to render: {error}"));
 	}
+
 	if render_errors > 0 {
 		sentences.push(format!("{render_errors} consumer block(s) fail to render."));
 	}
@@ -652,7 +657,6 @@ fn read_source(file: &Path, root: &Path) -> Result<String, ToolError> {
 // ---------------------------------------------------------------------------
 // mdt_init
 // ---------------------------------------------------------------------------
-
 /// Initialize `root` with [`init_project`], the implementation behind
 /// `mdt init`. Paths in the payload are relative to `root`; `root` itself is
 /// shown relative to the server root `base`.
@@ -666,6 +670,7 @@ pub(crate) fn init(base: &Path, root: &Path) -> Result<CallToolResult, ToolError
 		// `ConfigOutcome` is non-exhaustive.
 		_ => json!({ "status": "unknown" }),
 	};
+
 	let sample = match &report.sample {
 		SampleOutcome::CreatedWithReadme { template, readme } => {
 			json!({
@@ -690,6 +695,7 @@ pub(crate) fn init(base: &Path, root: &Path) -> Result<CallToolResult, ToolError
 		// `SampleOutcome` is non-exhaustive.
 		_ => json!({ "status": "unknown" }),
 	};
+
 	let gitignore = match &report.gitignore {
 		GitignoreOutcome::Updated(file) => json!({ "status": "updated", "file": rel(file) }),
 		GitignoreOutcome::Created(file) => json!({ "status": "created", "file": rel(file) }),
@@ -702,6 +708,7 @@ pub(crate) fn init(base: &Path, root: &Path) -> Result<CallToolResult, ToolError
 	};
 
 	let written_files: Vec<_> = report.written_files().into_iter().map(rel).collect();
+
 	let root_display = match relative_display_path(root, base) {
 		relative if relative.is_empty() => ".".to_string(),
 		relative => relative,
@@ -731,6 +738,7 @@ pub(crate) fn init(base: &Path, root: &Path) -> Result<CallToolResult, ToolError
 
 fn init_next_steps(report: &InitReport, root: &Path) -> Vec<String> {
 	let rel = |path: &Path| relative_display_path(path, root);
+
 	match &report.sample {
 		SampleOutcome::CreatedWithReadme { template, readme } => {
 			vec![
@@ -771,11 +779,11 @@ fn init_next_steps(report: &InitReport, root: &Path) -> Vec<String> {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
-
 /// Consumer blocks (not inline blocks) grouped by the provider name they
 /// reference.
 fn consumers_by_provider_name(ctx: &ProjectContext) -> HashMap<&str, Vec<&ConsumerEntry>> {
 	let mut grouped: HashMap<&str, Vec<&ConsumerEntry>> = HashMap::new();
+
 	for consumer in &ctx.project.consumers {
 		if consumer.block.r#type == BlockType::Consumer {
 			grouped
@@ -784,6 +792,7 @@ fn consumers_by_provider_name(ctx: &ProjectContext) -> HashMap<&str, Vec<&Consum
 				.push(consumer);
 		}
 	}
+
 	grouped
 }
 

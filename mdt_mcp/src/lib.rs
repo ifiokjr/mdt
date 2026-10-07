@@ -508,6 +508,7 @@ where
 	E: std::error::Error + Send + Sync + 'static,
 {
 	init_tracing();
+
 	match MdtMcpServer::with_base_root(root).serve(transport).await {
 		Ok(running) => {
 			if let Err(error) = running.waiting().await {
@@ -529,6 +530,7 @@ fn init_tracing() {
 		.with_env_filter(filter)
 		.with_writer(std::io::stderr)
 		.try_init();
+
 	if let Err(error) = installed {
 		tracing::debug!("keeping the existing tracing subscriber: {error}");
 	}
