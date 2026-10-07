@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.6](https://github.com/ifiokjr/mdt/releases/tag/v0.9.6) (2026-10-07)
+
+### 🚀 Feature
+
+- **Confine MCP tool paths to the server's startup directory.** Every tool accepted a caller-supplied `path` and resolved it verbatim, so an assistant could point `mdt_check`/`mdt_update`/`mdt_init` at any directory on disk — executing whatever `[data]` shell commands and formatters that directory's `mdt.toml` declares, and reading/writing files there. Paths (including relative `..` escapes and symlink targets) must now resolve inside the directory the server started in; anything else is rejected with an invalid-params error explaining how to restart the server in the project to manage. A new `MdtMcpServer::with_base_root` constructor sets the permitted root explicitly, and tool handlers run scans, updates, and init writes on the blocking thread pool so a slow script or formatter cannot freeze the stdio transport. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+
+### 📝 Changed
+
+#### MCP tools now agree with the CLI and report every failure as a structured result
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+The MCP tools re-implemented parts of `mdt check`, `mdt update`, and `mdt init`, and drifted from them. They now call the same `mdt_core` functions, so an agent sees exactly what the CLI would report.
+
+- **Staleness matches `mdt check`.** `mdt_list`, `mdt_get_block`, and `mdt_preview` take each block's status from `check_project`, so `[padding]`, lenient comparison, and `[[formatters]]` are honoured. Consumer entries gain `type` (`consumer` or `inline`), `line`, `column`, `arguments`, and `status` (`current`, `stale`, `render_error`, `orphan`); inline blocks get a status too.
+- **Validation is no longer skipped.** `mdt_check`, `mdt_update`, and `mdt_list` return `diagnostics` (`kind`, `severity`, `file`, `line`, `column`, `message`), and `ok` is false when any is an error. `mdt_update` refuses to write while validation errors exist, like the CLI. All three accept `ignore_unclosed_blocks`, `ignore_unused_blocks`, `ignore_invalid_names`, and `ignore_invalid_transformers`, mirroring the `--ignore-*` flags.
+- **Orphan consumers fail `mdt_check`** and are listed in `orphans` with suggested provider names.
+- **Render errors are reported, not hidden.** `mdt_update` returns `render_errors` and syncs everything else instead of failing the request; `mdt_get_block` and `mdt_preview` report `render_error` with `ok: false` instead of falling back to the raw template.
+- **`mdt_init` is `mdt init`.** It calls `mdt_core::init::init_project` and returns the `config`, `sample`, and `gitignore` outcomes, `written_files` relative to the initialized root, and `next_steps` with correctly written consumer tags.
+- **Tool-level failures are `isError` results**, not JSON-RPC errors that many clients hide from the model: an invalid `mdt.toml`, a missing data file, duplicate providers, a failing formatter, or a bad `path` return `{ ok: false, action, summary, error: { code, message, help? } }` with the diagnostic code (for example `mdt::config_parse`). A `path` that does not exist or is not a directory is now an error instead of an empty, passing project.
+- **Consistent responses.** Every tool returns `ok`, `action`, and `summary`. `mdt_get_block` returns one object shape, `{ ok, action, summary, block_name, provider, consumers }`, instead of a bare array for consumer lookups.
+- **Smaller `mdt_list`.** Provider bodies are omitted unless `include_content` is true.
+- **Better reuse search.** `mdt_find_reuse` ranks exact names, then names equal up to case and separators, prefixes, substrings, and close spellings, leaves unrelated providers out, reports the `match` kind, and accepts a `content_query` to search provider bodies. The `limit` schema now declares its 1–20 range.
+- **Protocol.** The server identifies as `mdt` with the crate version, read-only tools carry `readOnlyHint`, tool descriptions say what each returns, and the instructions point agents at `mdt skill`.
+- **Startup.** `run_server_in(root)` serves a chosen directory (`run_server()` still serves the current one), and `MDT_LOG=info mdt mcp` no longer panics when the CLI has already installed a tracing subscriber.
+
+Tool handlers now return `CallToolResult` directly, and `PathParam` is replaced by `CheckParam` and `ListParam`.
+
+- Diagnostics include the same `code` as `mdt check --format json` (for example `mdt::unclosed_block`), and `warnings` entries report `template_rendered`.
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Rewrite the documentation to match actual behavior
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #202](https://github.com/ifiokjr/mdt/pull/202)
+
+An audit ran every documented command, flag, default, and example against the CLI. The docs site, crate readmes, the annotated `mdt.toml` that `mdt init` writes, and generated doc comments now match the implementation:
+
+- `[include]` and `[templates] paths` are documented as additive (they were described as narrowing the scan), `[check] comparison = "lenient"` no longer claims to normalize tables or JSON, exclude negation examples work, and formatter patterns are documented as plain globs.
+- Exit codes (`0`/`1`/`2`), the global `--ignore-*` flags, project-root discovery, `mdt skill`, per-client `mdt assist` output, the complete JSON payload, GitHub annotations, and every quoted command output are current.
+- Source-file examples re-apply comment prefixes with `linePrefix:"...":true`, so copied examples compile.
+- Terminology is provider/consumer throughout.
+- Crate readme badges render again (link definitions were joined onto one line).
+- Links that left the book now point at GitHub, and the Pi link points at pi.dev.
+
+</details>
+
+<details>
+<summary><strong>🔒 Security</strong></summary>
+
+- **Stop `mdt_init` from writing outside the server root through a symlink.** A tool `path` that did not exist yet could not be canonicalized, so confinement fell back to the lexical path: with `esc` symlinked to a directory outside the server root, `mdt_init` with `path: "esc/sub"` passed the containment check and wrote there. Paths are now resolved through their deepest existing ancestor before the check, and a dangling symlink along the path is rejected (`mdt::path_unresolvable`) because creating directories through it would follow it wherever it points. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+</details>
+
 ## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-20)
 
 ### Changed
