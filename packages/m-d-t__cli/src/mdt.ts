@@ -33,6 +33,7 @@ function resolveBinary(pkgName: string): string | null {
 		const packageDir = dirname(packageJsonPath);
 		const binaryName = process.platform === "win32" ? "mdt.exe" : "mdt";
 		const binaryPath = join(packageDir, "bin", binaryName);
+
 		if (existsSync(binaryPath)) {
 			return binaryPath;
 		}
@@ -53,6 +54,7 @@ function shouldTryNextPackage(result: ReturnType<typeof spawnSync>): boolean {
 	}
 
 	const stderr = String(result.stderr ?? "");
+
 	return /not found|no such file or directory|exec format error/i.test(stderr);
 }
 
@@ -60,6 +62,7 @@ function forwardOutput(result: ReturnType<typeof spawnSync>): void {
 	if (result.stdout) {
 		process.stdout.write(String(result.stdout));
 	}
+
 	if (result.stderr) {
 		process.stderr.write(String(result.stderr));
 	}
@@ -67,6 +70,7 @@ function forwardOutput(result: ReturnType<typeof spawnSync>): void {
 
 function main(): void {
 	const candidates = getCandidatePackages();
+
 	if (candidates.length === 0) {
 		console.error(
 			`mdt does not currently publish npm binaries for ${process.platform}/${process.arch}. ` +
@@ -76,8 +80,10 @@ function main(): void {
 	}
 
 	const failures: string[] = [];
+
 	for (const pkgName of candidates) {
 		const binaryPath = resolveBinary(pkgName);
+
 		if (!binaryPath) {
 			continue;
 		}
@@ -103,9 +109,11 @@ function main(): void {
 		"Unable to find a compatible mdt binary in the installed npm packages.",
 	);
 	console.error(`Tried: ${candidates.join(", ")}`);
+
 	if (failures.length > 0) {
 		console.error(failures.join("\n"));
 	}
+
 	console.error(
 		"Reinstall with `npm install -g @m-d-t/cli`, download a binary from GitHub releases, or use `cargo install mdt_cli`.",
 	);

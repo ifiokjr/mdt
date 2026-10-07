@@ -119,21 +119,25 @@ struct TagLikeComment {
 /// then one of the `@`, `=`, `~`, `/` sigils.
 fn find_tag_like_comments(nodes: &[Html]) -> Vec<TagLikeComment> {
 	let mut comments = Vec::new();
+
 	for node in nodes {
 		let Some(position) = &node.position else {
 			continue;
 		};
 		let mut search_from = 0;
+
 		while let Some(open) = node.value[search_from..].find("<!--") {
 			let start = search_from + open;
 			let end = node.value[start..]
 				.find("-->")
 				.map_or(node.value.len(), |close| start + close + 3);
+
 			let text = &node.value[start..end];
 			let looks_like_tag = text[4..]
 				.trim_start()
 				.strip_prefix('{')
 				.is_some_and(|rest| rest.trim_start().starts_with(['@', '=', '~', '/']));
+
 			if looks_like_tag {
 				let before = &node.value[..start];
 				let line = position.start.line + before.matches('\n').count();
@@ -147,9 +151,11 @@ fn find_tag_like_comments(nodes: &[Html]) -> Vec<TagLikeComment> {
 					text: text.chars().take(80).collect(),
 				});
 			}
+
 			search_from = end;
 		}
 	}
+
 	comments
 }
 
@@ -208,11 +214,13 @@ fn build_blocks_recording_tags(
 	for group in token_groups {
 		let pending_before = pending.len();
 		let kind = classify_group_with_diagnostics(group, &mut diagnostics);
+
 		if let Some(recognized) = recognized.as_deref_mut() {
 			if !matches!(kind, GroupKind::Unknown) {
 				recognized.insert(group.position.start.offset);
 			}
 		}
+
 		match kind {
 			GroupKind::Provider {
 				name,
@@ -291,11 +299,13 @@ fn build_blocks_recording_tags(
 						column: inner_opening.start.column,
 					});
 				}
+
 				creator.closing = Some(group.position);
 				blocks.push(creator.into_block()?);
 			}
 			GroupKind::Unknown => {}
 		}
+
 		if pending.len() > pending_before {
 			completed_before.push(blocks.len());
 		}
@@ -369,6 +379,7 @@ fn build_blocks_inner(token_groups: &[TokenGroup], lenient: bool) -> MdtResult<V
 					creator.closing = Some(group.position);
 					blocks.push(creator.into_block()?);
 				}
+
 				// If no matching open block is found, silently ignore the close
 				// tag. This keeps parsing lenient.
 			}
@@ -571,6 +582,7 @@ fn extract_name_transformers_and_arguments(
 			if token.same_type(tag_token) {
 				found_tag = true;
 			}
+
 			continue;
 		}
 
@@ -579,6 +591,7 @@ fn extract_name_transformers_and_arguments(
 				name.clone_from(ident);
 				found_name = true;
 			}
+
 			continue;
 		}
 
@@ -592,6 +605,7 @@ fn extract_name_transformers_and_arguments(
 					if let Some(Token::String(s, _)) = iter.next() {
 						arguments.push(s.clone());
 					}
+
 					continue;
 				}
 				Token::Pipe => {
@@ -599,6 +613,7 @@ fn extract_name_transformers_and_arguments(
 					if let Some(transformer) = parse_transformer(&mut iter) {
 						transformers.push(transformer);
 					}
+
 					continue;
 				}
 				_ => continue,
@@ -636,6 +651,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 			if token.same_type(tag_token) {
 				found_tag = true;
 			}
+
 			continue;
 		}
 
@@ -644,6 +660,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 				name.clone_from(ident);
 				found_name = true;
 			}
+
 			continue;
 		}
 
@@ -656,6 +673,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 					if let Some(Token::String(s, _)) = iter.next() {
 						arguments.push(s.clone());
 					}
+
 					continue;
 				}
 				Token::Pipe => {
@@ -669,6 +687,7 @@ fn extract_name_transformers_arguments_with_diagnostics(
 						}
 						TransformerParseResult::NoIdent => {}
 					}
+
 					continue;
 				}
 				_ => continue,
@@ -777,7 +796,9 @@ fn parse_transformer_args(
 					Some(Token::Float(n)) => {
 						args.push(Argument::Number(OrderedFloat(*n)));
 					}
+
 					Some(Token::Ident(s)) if s == "true" => args.push(Argument::Boolean(true)),
+
 					Some(Token::Ident(s)) if s == "false" => args.push(Argument::Boolean(false)),
 					_ => break,
 				}
@@ -795,18 +816,21 @@ fn extract_close_name(group: &TokenGroup) -> String {
 		if let Token::CloseTag = token {
 			// The name is the next Ident token after CloseTag
 			let mut found_close = false;
+
 			for t in &group.tokens {
 				if found_close {
 					if let Token::Ident(name) = t {
 						return name.clone();
 					}
 				}
+
 				if matches!(t, Token::CloseTag) {
 					found_close = true;
 				}
 			}
 		}
 	}
+
 	String::new()
 }
 

@@ -43,6 +43,7 @@ fn check_outputs_are_snapshotted(
 		if verbose {
 			cmd.arg("--verbose");
 		}
+
 		cmd.arg("check");
 
 		assert_cmd_snapshot!(snapshot_name, cmd);
@@ -175,6 +176,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 	use clap::Parser;
 
 	let cli = MdtCli::parse_from(["mdt", "check", "--watch"]);
+
 	match cli.command {
 		Commands::Check { watch, diff, .. } => {
 			assert!(watch);
@@ -184,6 +186,7 @@ fn check_watch_flag_is_accepted_by_cli_parser() {
 	}
 
 	let cli = MdtCli::parse_from(["mdt", "check"]);
+
 	match cli.command {
 		Commands::Check { watch, .. } => {
 			assert!(!watch);
@@ -214,6 +217,7 @@ fn info_command_is_accepted_by_cli_parser() {
 	use clap::Parser;
 
 	let cli = MdtCli::parse_from(["mdt", "info"]);
+
 	match cli.command {
 		Commands::Info { format } => {
 			assert!(matches!(format, InfoOutputFormat::Text));
@@ -222,6 +226,7 @@ fn info_command_is_accepted_by_cli_parser() {
 	}
 
 	let cli = MdtCli::parse_from(["mdt", "info", "--format", "json"]);
+
 	match cli.command {
 		Commands::Info { format } => {
 			assert!(matches!(format, InfoOutputFormat::Json));
@@ -235,6 +240,7 @@ fn doctor_command_is_accepted_by_cli_parser() {
 	use clap::Parser;
 
 	let cli = MdtCli::parse_from(["mdt", "doctor"]);
+
 	match cli.command {
 		Commands::Doctor { format } => {
 			assert!(matches!(format, DoctorOutputFormat::Text));
@@ -243,6 +249,7 @@ fn doctor_command_is_accepted_by_cli_parser() {
 	}
 
 	let cli = MdtCli::parse_from(["mdt", "doctor", "--format", "json"]);
+
 	match cli.command {
 		Commands::Doctor { format } => {
 			assert!(matches!(format, DoctorOutputFormat::Json));
@@ -256,6 +263,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 	use clap::Parser;
 
 	let cli = MdtCli::parse_from(["mdt", "assist", "claude"]);
+
 	match cli.command {
 		Commands::Assist { assistant, format } => {
 			assert!(matches!(assistant, Assistant::Claude));
@@ -265,6 +273,7 @@ fn assist_command_is_accepted_by_cli_parser() {
 	}
 
 	let cli = MdtCli::parse_from(["mdt", "assist", "pi", "--format", "json"]);
+
 	match cli.command {
 		Commands::Assist { assistant, format } => {
 			assert!(matches!(assistant, Assistant::Pi));

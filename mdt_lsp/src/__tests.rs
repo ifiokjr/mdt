@@ -70,6 +70,7 @@ fn make_test_state(provider_content: &str, consumer_content: &str) -> (Workspace
 	providers.insert("greeting".to_string(), provider_entry.clone());
 
 	let mut consumers = Vec::new();
+
 	for block in &consumer_blocks {
 		if block.r#type == BlockType::Consumer {
 			consumers.push(ConsumerEntry {
@@ -135,6 +136,7 @@ fn make_inline_test_state(
 	let consumer_uri = test_uri(Path::new("/tmp/test/readme.md"));
 
 	let mut consumers = Vec::new();
+
 	for block in &blocks {
 		if block.r#type == BlockType::Inline {
 			consumers.push(ConsumerEntry {
@@ -166,7 +168,6 @@ fn make_inline_test_state(
 }
 
 // ---- Diagnostics tests ----
-
 #[test]
 fn diagnostics_stale_consumer() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -202,6 +203,7 @@ fn diagnostics_up_to_date_consumer() {
 	if content == expected {
 		assert!(diagnostics.is_empty(), "expected no diagnostics");
 	}
+
 	// If they differ due to whitespace, a diagnostic is expected — that's OK.
 }
 
@@ -384,7 +386,6 @@ fn diagnostics_duplicate_provider_in_same_file() {
 	}));
 }
 // ---- Hover tests ----
-
 #[test]
 fn hover_on_consumer_shows_provider_content() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -401,6 +402,7 @@ fn hover_on_consumer_shows_provider_content() {
 
 	assert!(hover.is_some());
 	let hover = hover.unwrap();
+
 	if let HoverContents::Markup(markup) = &hover.contents {
 		assert!(markup.value.contains("Consumer block"));
 		assert!(markup.value.contains("greeting"));
@@ -465,6 +467,7 @@ fn hover_on_provider_shows_consumer_count() {
 	let position = to_lsp_position(&provider_block.opening.start);
 	let hover = compute_hover(&state, &provider_uri, position);
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(markup.value.contains("Provider block"));
 		assert!(markup.value.contains("1 consumer(s)"));
@@ -487,7 +490,6 @@ fn hover_outside_block_returns_none() {
 }
 
 // ---- Completion tests ----
-
 #[test]
 fn completion_inside_consumer_tag() {
 	let consumer_doc = "<!-- {=gre";
@@ -677,7 +679,6 @@ fn completion_outside_tag_returns_empty() {
 }
 
 // ---- Go to Definition tests ----
-
 #[test]
 fn goto_definition_consumer_to_provider() {
 	let (state, uri) = make_test_state("Hello!", "Old");
@@ -692,6 +693,7 @@ fn goto_definition_consumer_to_provider() {
 	let result = compute_goto_definition(&state, &uri, position);
 
 	assert!(result.is_some());
+
 	match result.unwrap() {
 		GotoDefinitionResponse::Scalar(loc) => {
 			assert!(
@@ -740,7 +742,6 @@ fn goto_definition_without_matching_provider_returns_none() {
 }
 
 // ---- Document Symbols tests ----
-
 #[test]
 fn document_symbols_lists_blocks() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n\n<!-- {=other} \
@@ -803,7 +804,6 @@ fn document_symbols_empty_for_no_blocks() {
 }
 
 // ---- Code Action tests ----
-
 #[test]
 fn code_action_for_stale_consumer() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -893,7 +893,6 @@ fn code_action_not_offered_when_up_to_date() {
 }
 
 // ---- Helper function tests ----
-
 #[test]
 fn position_in_range_basic() {
 	let range = Range {
@@ -1014,12 +1013,12 @@ fn transformer_type_display_all() {
 	assert_eq!(TransformerType::Wrap.to_string(), "wrap");
 	assert_eq!(TransformerType::CodeBlock.to_string(), "codeBlock");
 	assert_eq!(TransformerType::Code.to_string(), "code");
+
 	assert_eq!(TransformerType::Replace.to_string(), "replace");
 	assert_eq!(TransformerType::If.to_string(), "if");
 }
 
 // ---- New diagnostic tests ----
-
 #[test]
 fn diagnostics_unclosed_block() {
 	let content = "<!-- {=greeting} -->\n\nHello\n";
@@ -1301,7 +1300,6 @@ fn parse_document_content_with_unknown_transformer() {
 }
 
 // ---- Go to Definition: Provider → Consumers (reverse direction) ----
-
 #[test]
 fn goto_definition_provider_to_single_consumer() {
 	let provider_template = "<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n";
@@ -1358,6 +1356,7 @@ fn goto_definition_provider_to_single_consumer() {
 	let result = compute_goto_definition(&state, &provider_uri, position);
 
 	assert!(result.is_some(), "expected goto definition result");
+
 	match result.unwrap() {
 		GotoDefinitionResponse::Scalar(loc) => {
 			assert!(
@@ -1456,6 +1455,7 @@ fn goto_definition_provider_to_multiple_consumers() {
 	let result = compute_goto_definition(&state, &provider_uri, position);
 
 	assert!(result.is_some(), "expected goto definition result");
+
 	match result.unwrap() {
 		GotoDefinitionResponse::Array(locs) => {
 			assert_eq!(locs.len(), 3, "expected 3 consumer locations");
@@ -1529,7 +1529,6 @@ fn goto_definition_provider_with_no_consumers_returns_none() {
 }
 
 // ---- Code Action edge cases ----
-
 #[test]
 fn code_action_no_overlap_with_block_returns_empty() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -1595,7 +1594,6 @@ fn code_action_consumer_without_matching_provider() {
 }
 
 // ---- Completion edge cases ----
-
 #[test]
 fn completion_cursor_past_line_length_returns_empty() {
 	let consumer_doc = "short";
@@ -1721,7 +1719,6 @@ fn completion_for_unknown_document_returns_empty() {
 }
 
 // ---- Diagnostics: InvalidTransformerArgs parse diagnostic ----
-
 #[test]
 fn diagnostics_invalid_transformer_args() {
 	let content = "<!-- {=greeting|trim} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -1776,7 +1773,6 @@ fn diagnostics_invalid_transformer_args() {
 }
 
 // ---- update_document_in_project tests ----
-
 #[test]
 fn update_document_in_project_removes_deleted_providers() {
 	// A provider registered by an earlier save must disappear once the
@@ -2023,7 +2019,6 @@ fn update_document_in_project_unknown_document_is_noop() {
 }
 
 // ---- parse_document (WorkspaceState method) tests ----
-
 #[test]
 fn workspace_parse_document_stores_state() {
 	let uri = "file:///tmp/test/readme.md"
@@ -2104,7 +2099,6 @@ fn workspace_parse_document_replaces_previous() {
 }
 
 // ---- Hover: consumer without matching provider ----
-
 #[test]
 fn hover_consumer_without_provider_shows_no_matching() {
 	let consumer_doc = "<!-- {=orphan} -->\n\nstuff\n\n<!-- {/orphan} -->\n";
@@ -2138,6 +2132,7 @@ fn hover_consumer_without_provider_shows_no_matching() {
 	let hover = compute_hover(&state, &uri, position);
 
 	assert!(hover.is_some(), "expected hover result");
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("No matching provider found"),
@@ -2152,7 +2147,6 @@ fn hover_consumer_without_provider_shows_no_matching() {
 }
 
 // ---- Hover: consumer with transformers ----
-
 #[test]
 fn hover_consumer_with_transformers_shows_transformer_list() {
 	let consumer_doc = "<!-- {=greeting|trim|indent:\"  \"} -->\n\nstuff\n\n<!-- {/greeting} -->\n";
@@ -2203,6 +2197,7 @@ fn hover_consumer_with_transformers_shows_transformer_list() {
 	let hover = compute_hover(&state, &uri, position);
 
 	assert!(hover.is_some(), "expected hover result");
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Transformers"),
@@ -2225,7 +2220,6 @@ fn hover_consumer_with_transformers_shows_transformer_list() {
 }
 
 // ---- TransformerType::Suffix and TransformerType::LineSuffix Display ----
-
 #[test]
 fn transformer_type_display_suffix() {
 	assert_eq!(TransformerType::Suffix.to_string(), "suffix");
@@ -2242,7 +2236,6 @@ fn transformer_type_display_line_prefix() {
 }
 
 // ---- position_in_range edge cases ----
-
 #[test]
 fn position_in_range_exact_start_boundary() {
 	let range = Range {
@@ -2412,7 +2405,6 @@ fn position_in_range_end_line_after_end_char() {
 }
 
 // ---- ranges_overlap edge cases ----
-
 #[test]
 fn ranges_overlap_same_line_touching_at_boundary() {
 	// Ranges that touch at exact boundary (end of A == start of B).
@@ -2542,7 +2534,6 @@ fn ranges_overlap_adjacent_lines_no_overlap() {
 }
 
 // ---- Diagnostics for document not in state ----
-
 #[test]
 fn diagnostics_unknown_document_returns_empty() {
 	let state = WorkspaceState {
@@ -2563,7 +2554,6 @@ fn diagnostics_unknown_document_returns_empty() {
 }
 
 // ---- Hover: provider with consumer file listing ----
-
 #[test]
 fn hover_provider_lists_consumer_files() {
 	let provider_template = "<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n";
@@ -2634,6 +2624,7 @@ fn hover_provider_lists_consumer_files() {
 	let hover = compute_hover(&state, &provider_uri, position);
 
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("2 consumer(s)"),
@@ -2658,7 +2649,6 @@ fn hover_provider_lists_consumer_files() {
 }
 
 // ---- Code Action: document not in state ----
-
 #[test]
 fn code_actions_unknown_document_returns_empty() {
 	let state = WorkspaceState {
@@ -2690,7 +2680,6 @@ fn code_actions_unknown_document_returns_empty() {
 }
 
 // ---- Document Symbols: unknown document ----
-
 #[test]
 fn document_symbols_unknown_document_returns_empty() {
 	let state = WorkspaceState {
@@ -2711,7 +2700,6 @@ fn document_symbols_unknown_document_returns_empty() {
 }
 
 // ---- Hover: unknown document returns None ----
-
 #[test]
 fn hover_unknown_document_returns_none() {
 	let state = WorkspaceState {
@@ -2736,7 +2724,6 @@ fn hover_unknown_document_returns_none() {
 }
 
 // ---- Go to Definition: unknown document returns None ----
-
 #[test]
 fn goto_definition_unknown_document_returns_none() {
 	let state = WorkspaceState {
@@ -2761,7 +2748,6 @@ fn goto_definition_unknown_document_returns_none() {
 }
 
 // ---- to_lsp_range helper ----
-
 #[test]
 fn to_lsp_range_converts_correctly() {
 	let pos = mdt_core::Position::new(2, 5, 10, 4, 20, 50);
@@ -2773,7 +2759,6 @@ fn to_lsp_range_converts_correctly() {
 }
 
 // ---- find_block_at_position helper ----
-
 #[test]
 fn find_block_at_position_returns_none_for_empty_blocks() {
 	let position = Position {
@@ -2812,7 +2797,6 @@ fn find_block_at_position_returns_none_outside_all_blocks() {
 }
 
 // ---- parse_document_content for different extensions ----
-
 #[test]
 fn parse_document_content_mdx_is_markdown() {
 	let uri = "file:///test/page.mdx"
@@ -2850,7 +2834,6 @@ fn parse_document_content_typescript_file() {
 }
 
 // ---- rescan_project without root is noop ----
-
 #[test]
 fn rescan_project_without_root_is_noop() {
 	let mut state = WorkspaceState {
@@ -2869,7 +2852,6 @@ fn rescan_project_without_root_is_noop() {
 // ===========================================================================
 // Diagnostics: stale consumer with data interpolation
 // ===========================================================================
-
 #[test]
 fn diagnostics_stale_consumer_with_template_data() {
 	// When provider content uses template variables and data is available,
@@ -2934,7 +2916,6 @@ fn diagnostics_stale_consumer_with_template_data() {
 // ===========================================================================
 // Diagnostics: stale diagnostic includes expected content data
 // ===========================================================================
-
 #[test]
 fn diagnostics_stale_consumer_includes_data_payload() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -2957,7 +2938,6 @@ fn diagnostics_stale_consumer_includes_data_payload() {
 // ===========================================================================
 // Diagnostics: multiple consumers in one document
 // ===========================================================================
-
 #[test]
 fn diagnostics_multiple_consumers_in_single_document() {
 	let consumer_doc = "\
@@ -3046,11 +3026,9 @@ Old farewell
 
 // Note: completion_inside_provider_tag_context and
 // completion_inside_close_tag_context are already tested above.
-
 // ===========================================================================
 // Completion: multiple providers returns all
 // ===========================================================================
-
 #[test]
 fn completion_returns_all_provider_names() {
 	let doc = "<!-- {=";
@@ -3110,11 +3088,11 @@ fn completion_returns_all_provider_names() {
 // ===========================================================================
 // Completion: transformer completions have correct kind
 // ===========================================================================
-
 #[test]
 fn transformer_completions_have_function_kind() {
 	let completions = transformer_completions();
 	assert!(!completions.is_empty());
+
 	for item in &completions {
 		assert_eq!(
 			item.kind,
@@ -3127,6 +3105,7 @@ fn transformer_completions_have_function_kind() {
 #[test]
 fn transformer_completions_have_sort_text() {
 	let completions = transformer_completions();
+
 	for (i, item) in completions.iter().enumerate() {
 		assert_eq!(
 			item.sort_text,
@@ -3155,6 +3134,7 @@ fn transformer_completions_include_all_known_transformers() {
 		"replace",
 		"if",
 	];
+
 	for name in expected {
 		assert!(
 			names.contains(&name),
@@ -3166,7 +3146,6 @@ fn transformer_completions_include_all_known_transformers() {
 // ===========================================================================
 // Block name completions have correct kind
 // ===========================================================================
-
 #[test]
 fn block_name_completions_have_reference_kind() {
 	let mut providers = HashMap::new();
@@ -3206,7 +3185,6 @@ fn block_name_completions_have_reference_kind() {
 
 // Note: document_symbols_provider_block_has_class_kind and
 // document_symbols_consumer_block_has_variable_kind are already tested below.
-
 #[test]
 fn document_symbols_full_range_spans_opening_to_closing() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -3250,7 +3228,6 @@ fn document_symbols_full_range_spans_opening_to_closing() {
 // ===========================================================================
 // Code action: edit replaces content between tags
 // ===========================================================================
-
 #[test]
 fn code_action_edit_targets_content_between_tags() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -3305,7 +3282,6 @@ fn code_action_edit_targets_content_between_tags() {
 // ===========================================================================
 // to_lsp_position: zero/underflow handling
 // ===========================================================================
-
 #[test]
 fn to_lsp_position_saturates_at_zero() {
 	// Point with line=0, column=0 (below the 1-indexed minimum).
@@ -3319,7 +3295,6 @@ fn to_lsp_position_saturates_at_zero() {
 // ===========================================================================
 // parse_document_content: python file (source scanner path)
 // ===========================================================================
-
 #[test]
 fn parse_document_content_python_file() {
 	let uri = "file:///test/main.py"
@@ -3335,7 +3310,6 @@ fn parse_document_content_python_file() {
 // ===========================================================================
 // parse_document_content: empty content returns empty
 // ===========================================================================
-
 #[test]
 fn parse_document_content_empty_string() {
 	let uri = "file:///test/readme.md"
@@ -3347,11 +3321,9 @@ fn parse_document_content_empty_string() {
 }
 
 // Note: hover_provider_with_zero_consumers is already tested below.
-
 // ===========================================================================
 // Hover: provider shows content preview in code block
 // ===========================================================================
-
 #[test]
 fn hover_provider_shows_content_in_code_block() {
 	let provider_template =
@@ -3396,6 +3368,7 @@ fn hover_provider_shows_content_in_code_block() {
 	let hover = compute_hover(&state, &provider_uri, position);
 
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Hello from provider!"),
@@ -3413,7 +3386,6 @@ fn hover_provider_shows_content_in_code_block() {
 // ===========================================================================
 // Hover: consumer with provider shows source file path
 // ===========================================================================
-
 #[test]
 fn hover_consumer_shows_provider_source_path() {
 	let (state, uri) = make_test_state("Hello world!", "Old content");
@@ -3428,6 +3400,7 @@ fn hover_consumer_shows_provider_source_path() {
 	let hover = compute_hover(&state, &uri, position);
 
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Provider source:"),
@@ -3444,11 +3417,9 @@ fn hover_consumer_shows_provider_source_path() {
 
 // Note: rescan_project_with_valid_project_populates_state is already tested
 // below.
-
 // ===========================================================================
 // Goto definition: consumer cursor not on any block
 // ===========================================================================
-
 #[test]
 fn goto_definition_cursor_between_blocks_returns_none() {
 	let content = "\
@@ -3504,7 +3475,6 @@ Bye
 // ===========================================================================
 // Code action: multiple stale consumers in one document
 // ===========================================================================
-
 #[test]
 fn code_actions_for_multiple_stale_blocks() {
 	let consumer_doc = "\
@@ -3603,7 +3573,6 @@ Old farewell
 }
 
 // ---- WorkspaceState default ----
-
 #[test]
 fn workspace_state_default() {
 	let state = WorkspaceState::default();
@@ -3615,7 +3584,6 @@ fn workspace_state_default() {
 }
 
 // ---- Completion: provider tag context ----
-
 #[test]
 fn completion_inside_provider_tag_context() {
 	let doc = "<!-- {@gre";
@@ -3725,7 +3693,6 @@ fn completion_inside_close_tag_context() {
 }
 
 // ---- Code action: provider block is skipped (not a consumer) ----
-
 #[test]
 fn code_action_skips_provider_blocks() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -3764,7 +3731,6 @@ fn code_action_skips_provider_blocks() {
 }
 
 // ---- rescan_project with a real tempdir project ----
-
 #[test]
 fn rescan_project_with_valid_project_populates_state() {
 	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
@@ -3876,7 +3842,6 @@ fn rescan_project_with_data_from_config() {
 }
 
 // ---- update_document_in_project with non-file URI ----
-
 #[test]
 fn update_document_in_project_non_file_uri_is_noop() {
 	let uri = "untitled:Untitled-1"
@@ -3916,7 +3881,6 @@ fn update_document_in_project_non_file_uri_is_noop() {
 }
 
 // ---- Diagnostics with template render failure ----
-
 #[test]
 fn diagnostics_consumer_render_failure_is_an_error() {
 	// Provider content with broken template syntax cannot be rendered.
@@ -3987,7 +3951,6 @@ fn diagnostics_consumer_render_failure_is_an_error() {
 }
 
 // ---- Hover: consumer with render_template failure ----
-
 #[test]
 fn hover_consumer_with_render_template_failure_shows_the_error() {
 	// Provider content has broken template syntax.
@@ -4047,6 +4010,7 @@ fn hover_consumer_with_render_template_failure_shows_the_error() {
 	let hover = compute_hover(&state, &consumer_uri, position);
 
 	assert!(hover.is_some(), "expected hover result");
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Consumer block"),
@@ -4075,7 +4039,6 @@ fn hover_consumer_with_render_template_failure_shows_the_error() {
 }
 
 // ---- Code Actions: render_template failure path ----
-
 #[test]
 fn code_action_not_offered_when_provider_fails_to_render() {
 	let provider_content = "{{ broken";
@@ -4141,7 +4104,6 @@ fn code_action_not_offered_when_provider_fails_to_render() {
 }
 
 // ---- Diagnostics: stale consumer with transformers applied ----
-
 #[test]
 fn diagnostics_stale_consumer_with_transformers() {
 	// Provider content is "Hello world!" but the consumer has a trim
@@ -4199,7 +4161,6 @@ fn diagnostics_stale_consumer_with_transformers() {
 }
 
 // ---- Provider hover with no consumers (0 consumer count) ----
-
 #[test]
 fn hover_provider_with_zero_consumers() {
 	let provider_template = "<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n";
@@ -4243,6 +4204,7 @@ fn hover_provider_with_zero_consumers() {
 	let hover = compute_hover(&state, &provider_uri, position);
 
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Provider block"),
@@ -4268,7 +4230,6 @@ fn hover_provider_with_zero_consumers() {
 }
 
 // ---- Document Symbols: provider block uses CLASS kind ----
-
 #[test]
 fn document_symbols_provider_block_has_class_kind() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -4300,7 +4261,6 @@ fn document_symbols_provider_block_has_class_kind() {
 }
 
 // ---- Document Symbols: consumer block uses VARIABLE kind ----
-
 #[test]
 fn document_symbols_consumer_block_has_variable_kind() {
 	let content = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -4332,7 +4292,6 @@ fn document_symbols_consumer_block_has_variable_kind() {
 }
 
 // ---- Diagnostics: provider with consumers (not unused) ----
-
 #[test]
 fn diagnostics_provider_with_consumers_no_unused_warning() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -4398,7 +4357,6 @@ fn diagnostics_provider_with_consumers_no_unused_warning() {
 }
 
 // ---- Diagnostics: up-to-date consumer with data rendering ----
-
 #[test]
 fn diagnostics_stale_consumer_with_successful_template_rendering() {
 	// Provider content uses template syntax that resolves with data.
@@ -4478,7 +4436,6 @@ fn diagnostics_stale_consumer_with_successful_template_rendering() {
 }
 
 // ---- Hover: consumer with transformers shows transformed preview ----
-
 #[test]
 fn hover_consumer_with_transformers_shows_transformed_content() {
 	let consumer_doc = "<!-- {=greeting|trim} -->\n\nstuff\n\n<!-- {/greeting} -->\n";
@@ -4529,6 +4486,7 @@ fn hover_consumer_with_transformers_shows_transformed_content() {
 	let hover = compute_hover(&state, &uri, position);
 
 	assert!(hover.is_some(), "expected hover result");
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Transformers"),
@@ -4552,7 +4510,6 @@ fn hover_consumer_with_transformers_shows_transformed_content() {
 }
 
 // ---- Completion: multiple providers ----
-
 #[test]
 fn completion_lists_all_providers() {
 	let doc = "<!-- {=";
@@ -4624,11 +4581,8 @@ fn completion_lists_all_providers() {
 }
 
 // ---- suggest_similar_names edge cases ----
-
 // ---- levenshtein_distance additional edge cases ----
-
 // ---- Code action: stale consumer with data rendering (successful render) ----
-
 #[test]
 fn code_action_with_successful_template_rendering() {
 	let provider_template =
@@ -4719,7 +4673,6 @@ fn code_action_with_successful_template_rendering() {
 }
 
 // ---- Hover: provider with render_template for data ----
-
 #[test]
 fn hover_provider_shows_raw_content_with_template_syntax() {
 	let provider_template =
@@ -4764,6 +4717,7 @@ fn hover_provider_shows_raw_content_with_template_syntax() {
 	let hover = compute_hover(&state, &provider_uri, position);
 
 	assert!(hover.is_some());
+
 	if let HoverContents::Markup(markup) = &hover.unwrap().contents {
 		assert!(
 			markup.value.contains("Provider block"),
@@ -4781,7 +4735,6 @@ fn hover_provider_shows_raw_content_with_template_syntax() {
 }
 
 // ---- Multiple blocks in same document ----
-
 #[test]
 fn diagnostics_multiple_blocks_mixed_states() {
 	let consumer_doc = "<!-- {=greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n\n<!-- {=missing} \
@@ -4843,7 +4796,6 @@ fn diagnostics_multiple_blocks_mixed_states() {
 }
 
 // ---- update_document_in_project: provider in non-template file ----
-
 #[test]
 fn update_document_in_project_provider_in_non_template_file_not_registered() {
 	let content = "<!-- {@greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -4879,7 +4831,6 @@ fn update_document_in_project_provider_in_non_template_file_not_registered() {
 }
 
 // ---- Document symbols: multiple blocks with correct details ----
-
 #[test]
 fn document_symbols_multiple_blocks_correct_ranges() {
 	let content = "<!-- {@first} -->\n\nContent1\n\n<!-- {/first} -->\n\n<!-- {=second} \
@@ -4924,7 +4875,6 @@ fn document_symbols_multiple_blocks_correct_ranges() {
 }
 
 // ---- Block arguments tests ----
-
 /// Build a `WorkspaceState` with a provider that declares a parameter and a
 /// consumer that passes an argument value.  The provider template uses
 /// `{{ crate_name }}` which should be replaced by the consumer's argument.
@@ -4961,6 +4911,7 @@ fn make_args_test_state(consumer_arg: &str, consumer_body: &str) -> (WorkspaceSt
 	providers.insert("badges".to_string(), provider_entry.clone());
 
 	let mut consumers = Vec::new();
+
 	for block in &consumer_blocks {
 		if block.r#type == BlockType::Consumer {
 			consumers.push(ConsumerEntry {
@@ -5038,6 +4989,7 @@ fn hover_on_consumer_with_block_arguments_shows_rendered_content() {
 
 	assert!(hover.is_some());
 	let hover = hover.unwrap();
+
 	if let HoverContents::Markup(markup) = &hover.contents {
 		assert!(
 			markup.value.contains("Consumer block"),
@@ -5109,7 +5061,6 @@ fn code_action_for_stale_consumer_with_block_arguments() {
 }
 
 // ---- References tests ----
-
 #[test]
 fn references_from_consumer_returns_provider_and_consumers() {
 	let (state, consumer_uri) = make_test_state("Hello!", "Old");
@@ -5300,7 +5251,6 @@ fn references_consumer_without_provider_returns_only_consumer() {
 }
 
 // ---- Prepare Rename tests ----
-
 #[test]
 fn prepare_rename_on_consumer_returns_name_range() {
 	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -5333,6 +5283,7 @@ fn prepare_rename_on_consumer_returns_name_range() {
 	let result = compute_prepare_rename(&state, &uri, position);
 
 	assert!(result.is_some(), "expected prepare rename result");
+
 	match result.unwrap() {
 		PrepareRenameResponse::Range(range) => {
 			// The name "greeting" in `<!-- {=greeting} -->` starts after
@@ -5378,6 +5329,7 @@ fn prepare_rename_on_provider_returns_name_range() {
 	let result = compute_prepare_rename(&state, &uri, position);
 
 	assert!(result.is_some(), "expected prepare rename result");
+
 	match result.unwrap() {
 		PrepareRenameResponse::Range(range) => {
 			// The name "myBlock" in `<!-- {@myBlock} -->` starts after
@@ -5404,7 +5356,6 @@ fn prepare_rename_outside_block_returns_none() {
 }
 
 // ---- Rename tests ----
-
 #[test]
 fn rename_consumer_renames_both_tags_in_open_document() {
 	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
@@ -5435,6 +5386,7 @@ fn rename_consumer_renames_both_tags_in_open_document() {
 	providers.insert("greeting".to_string(), provider_entry);
 
 	let mut consumers = Vec::new();
+
 	for block in &consumer_blocks {
 		if block.r#type == BlockType::Consumer {
 			consumers.push(ConsumerEntry {
@@ -5497,6 +5449,7 @@ fn rename_consumer_renames_both_tags_in_open_document() {
 		2,
 		"expected 2 edits for consumer (open + close tag)"
 	);
+
 	for edit in consumer_edits {
 		assert_eq!(edit.new_text, "salutation");
 	}
@@ -5508,6 +5461,7 @@ fn rename_consumer_renames_both_tags_in_open_document() {
 		2,
 		"expected 2 edits for provider (open + close tag)"
 	);
+
 	for edit in provider_edits {
 		assert_eq!(edit.new_text, "salutation");
 	}
@@ -5526,7 +5480,6 @@ fn rename_outside_block_returns_none() {
 }
 
 // ---- find_name_range_in_tag tests ----
-
 #[test]
 fn find_name_range_in_consumer_tag() {
 	let tag = "<!-- {=greeting} -->";
@@ -5540,6 +5493,7 @@ fn find_name_range_in_consumer_tag() {
 	assert_eq!(range.start.line, 0);
 	assert_eq!(range.start.character, 7); // after `<!-- {=`
 	assert_eq!(range.end.line, 0);
+
 	assert_eq!(range.end.character, 15); // 7 + 8
 }
 
@@ -5556,6 +5510,7 @@ fn find_name_range_in_provider_tag() {
 	assert_eq!(range.start.line, 0);
 	assert_eq!(range.start.character, 7); // after `<!-- {@`
 	assert_eq!(range.end.line, 0);
+
 	assert_eq!(range.end.character, 14); // 7 + 7
 }
 
@@ -5572,6 +5527,7 @@ fn find_name_range_in_close_tag() {
 	assert_eq!(range.start.line, 0);
 	assert_eq!(range.start.character, 7); // after `<!-- {/`
 	assert_eq!(range.end.line, 0);
+
 	assert_eq!(range.end.character, 15); // 7 + 8
 }
 
@@ -5588,6 +5544,7 @@ fn find_name_range_with_nonzero_start() {
 	assert_eq!(range.start.line, 5);
 	assert_eq!(range.start.character, 17); // 10 + 7
 	assert_eq!(range.end.line, 5);
+
 	assert_eq!(range.end.character, 25); // 17 + 8
 }
 
@@ -5604,11 +5561,11 @@ fn find_name_range_in_consumer_with_transformers() {
 	assert_eq!(range.start.line, 0);
 	assert_eq!(range.start.character, 7);
 	assert_eq!(range.end.line, 0);
+
 	assert_eq!(range.end.character, 15);
 }
 
 // ---- Incremental sync helpers ----
-
 #[test]
 fn lsp_position_to_offset_start_of_file() {
 	let content = "hello\nworld\n";
@@ -5763,7 +5720,6 @@ fn lsp_position_to_offset_surrogate_pair() {
 }
 
 // ---- Incremental change application tests ----
-
 /// Helper to apply a single incremental change to content.
 fn apply_incremental_change(content: &str, range: Range, new_text: &str) -> String {
 	let mut result = content.to_string();
@@ -6353,6 +6309,7 @@ fn rename_reads_unopened_provider_and_consumer_files_from_disk() {
 	let consumer_doc = "<!-- {=greeting} -->\n\nHello\n\n<!-- {/greeting} -->\n";
 	std::fs::write(&provider_path, provider_doc).unwrap_or_else(|e| panic!("write provider: {e}"));
 	std::fs::write(&consumer_path, consumer_doc).unwrap_or_else(|e| panic!("write consumer: {e}"));
+
 	std::fs::write(&extra_consumer_path, consumer_doc)
 		.unwrap_or_else(|e| panic!("write extra consumer: {e}"));
 
@@ -6773,17 +6730,18 @@ async fn language_server_request_wrappers_delegate_to_core_handlers() {
 }
 
 // ---- Parity with `mdt update` and `mdt check` ----
-
 const INSTALL_TEMPLATE: &str =
 	"<!-- {@installCommand} -->\n\nnpm install mdt\n\n<!-- {/installCommand} -->\n";
 
 /// Write `files` into a fresh project directory.
 fn write_fixture_project(files: &[(&str, &str)]) -> tempfile::TempDir {
 	let dir = tempdir().unwrap_or_else(|e| panic!("failed to create tempdir: {e}"));
+
 	for (path, content) in files {
 		std::fs::write(dir.path().join(path), content)
 			.unwrap_or_else(|e| panic!("failed to write {path}: {e}"));
 	}
+
 	dir
 }
 

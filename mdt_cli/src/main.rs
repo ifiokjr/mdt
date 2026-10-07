@@ -169,6 +169,7 @@ fn main() {
 		if disable_miette_color {
 			opts = opts.color(false).unicode(false);
 		}
+
 		Box::new(opts.build())
 	}))
 	.ok();
@@ -214,6 +215,7 @@ fn main() {
 				eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 			}
 		}
+
 		process::exit(2);
 	}
 }
@@ -232,9 +234,11 @@ fn print_section(title: &str) {
 /// directory.
 fn resolve_root(args: &MdtCli) -> PathBuf {
 	let root = resolve_root_path(args.path.as_deref());
+
 	if args.path.is_some() || matches!(args.command, Commands::Init) {
 		return root;
 	}
+
 	let Some(repository) = root.ancestors().find(|dir| dir.join(".git").exists()) else {
 		return root;
 	};
@@ -250,8 +254,10 @@ fn note_discovered_root(args: &MdtCli) {
 	if args.path.is_some() || matches!(args.command, Commands::Init) {
 		return;
 	}
+
 	let root = resolve_root(args);
 	let cwd = resolve_root_path(None);
+
 	if root != cwd {
 		eprintln!(
 			"{} using the mdt project at {}",
@@ -269,6 +275,7 @@ fn validate_project_root(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>
 	let Some(path) = &args.path else {
 		return Ok(());
 	};
+
 	if matches!(args.command, Commands::Init) || path.is_dir() {
 		return Ok(());
 	}
@@ -277,6 +284,7 @@ fn validate_project_root(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>
 	} else {
 		"does not exist"
 	};
+
 	Err(format!("project path `{}` {problem}", display_path(path)).into())
 }
 
@@ -320,6 +328,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		} else {
 			"Initializing"
 		};
+
 		println!("{verb} {}", display_path(&root));
 	}
 
@@ -328,6 +337,7 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		ConfigOutcome::Exists(path) => println!("Using existing config {}", rel(path)),
 		_ => {}
 	}
+
 	match &report.sample {
 		SampleOutcome::CreatedWithReadme { template, readme } => {
 			println!(
@@ -351,12 +361,14 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		}
 		_ => {}
 	}
+
 	match &report.gitignore {
 		GitignoreOutcome::Updated(path) | GitignoreOutcome::Created(path) => {
 			println!("Added the `.mdt/` cache directory to {}", rel(path));
 		}
 		_ => {}
 	}
+
 	if let Some(enclosing) = &report.enclosing_project {
 		eprintln!(
 			"{} this is now a separate mdt project inside the one at {}, whose `mdt check` skips \
@@ -396,9 +408,11 @@ fn run_init(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		}
 		_ => Vec::new(),
 	};
+
 	if !next_steps.is_empty() {
 		println!();
 		println!("Next steps:");
+
 		for (index, step) in next_steps.iter().enumerate() {
 			println!("  {}. {step}", index + 1);
 		}
@@ -477,6 +491,7 @@ fn data_source_summary_fields(source: &mdt_core::DataSource) -> (String, String)
 				},
 			)
 		}
+
 		_ => ("unknown".to_string(), "unknown".to_string()),
 	}
 }
@@ -531,14 +546,17 @@ fn display_path(path: impl AsRef<Path>) -> String {
 
 fn normalize_dir_hint(path: &Path) -> String {
 	let mut hint = display_path(path);
+
 	if !hint.ends_with('/') {
 		hint.push('/');
 	}
+
 	hint
 }
 
 fn template_directory_hints(template_dirs: &[PathBuf]) -> Vec<String> {
 	let mut hints = BTreeSet::new();
+
 	for dir in template_dirs {
 		hints.insert(normalize_dir_hint(dir));
 	}
@@ -594,6 +612,7 @@ fn scan(args: &MdtCli) -> Result<ProjectContext, Box<dyn std::error::Error>> {
 			println!("  Providers:");
 			let mut names: Vec<_> = ctx.project.providers.keys().collect();
 			names.sort();
+
 			for name in names {
 				let entry = &ctx.project.providers[name];
 				println!(
@@ -626,14 +645,17 @@ fn report_diagnostics(args: &MdtCli, ctx: &ProjectContext) -> bool {
 	let root = resolve_root(args);
 	let options = validation_options(args);
 	let mut has_errors = false;
+
 	for diag in sorted_diagnostics(ctx, &root) {
 		let rel = relative_display_path(&diag.file, &root);
 		let is_error = diag.is_error(&options);
 		has_errors |= is_error;
+
 		if is_error || !diag.is_ignored(&options) || args.verbose {
 			eprintln!("{:?}", diagnostic_to_report(diag, &rel, is_error));
 		}
 	}
+
 	has_errors
 }
 
@@ -675,6 +697,7 @@ fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
 		(&a.file, a.block.opening.start.line).cmp(&(&b.file, b.block.opening.start.line))
 	});
 	let count = orphans.len();
+
 	for consumer in orphans {
 		let suggestions: Vec<String> = suggest_similar_provider_names(
 			&consumer.block.name,
@@ -695,6 +718,7 @@ fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
 			orphan_description(&consumer.block.name, &location, &suggestions)
 		);
 	}
+
 	count
 }
 
@@ -741,6 +765,7 @@ fn run_check(
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
 		eprintln!("\nFile change detected, checking...");
+
 		if let Err(e) = run_check_once(args, show_diff, format) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
@@ -771,6 +796,7 @@ fn spawn_watcher(
 						.paths
 						.iter()
 						.any(|path| path.strip_prefix(&cache_dir).is_err());
+
 					if outside_cache {
 						let _ = tx.send(());
 					}
@@ -832,6 +858,7 @@ fn run_check_once(
 			return Ok(CheckStatus::Invalid);
 		}
 	};
+
 	let root = resolve_root(args);
 	let options = validation_options(args);
 
@@ -839,6 +866,7 @@ fn run_check_once(
 		OutputFormat::Text => report_diagnostics(args, &ctx),
 		OutputFormat::Json | OutputFormat::Github => has_error_diagnostics(args, &ctx),
 	};
+
 	let visible_diagnostics: Vec<&ProjectDiagnostic> = sorted_diagnostics(&ctx, &root)
 		.into_iter()
 		.filter(|diag| diag.is_error(&options) || !diag.is_ignored(&options))
@@ -866,9 +894,11 @@ fn run_check_once(
 				for diag in &visible_diagnostics {
 					print_github_diagnostic(diag, &options);
 				}
+
 				eprintln!("Check aborted by validation errors.");
 			}
 		}
+
 		return Ok(CheckStatus::Invalid);
 	}
 
@@ -1046,6 +1076,7 @@ fn print_github_diagnostic(diag: &ProjectDiagnostic, options: &ValidationOptions
 	} else {
 		"warning"
 	};
+
 	println!(
 		"{}",
 		github_annotation(
@@ -1122,6 +1153,7 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 		("stale consumers:", result.stale.len()),
 		("stale files:", result.stale_files.len()),
 	];
+
 	for (label, count) in counts {
 		if count > 0 {
 			eprintln!(
@@ -1133,9 +1165,11 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 	}
 
 	let sorted_errors = sorted_render_errors(result, root);
+
 	if !sorted_errors.is_empty() {
 		eprintln!();
 		eprintln!("{}", styled!(stderr, "Render errors:", red_bold));
+
 		for err in sorted_errors {
 			let rel = relative_display_path(&err.file, root);
 			eprintln!(
@@ -1152,6 +1186,7 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 	if !result.orphans.is_empty() {
 		eprintln!();
 		eprintln!("{}", styled!(stderr, "Orphan consumers:", yellow_bold));
+
 		for orphan in &result.orphans {
 			let location = format!(
 				"{}:{}:{}",
@@ -1167,9 +1202,11 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 	}
 
 	let sorted_stale = sorted_stale_entries(result, root);
+
 	if !sorted_stale.is_empty() {
 		eprintln!();
 		eprintln!("{}", styled!(stderr, "Stale consumers:", yellow_bold));
+
 		for entry in sorted_stale {
 			let rel = relative_display_path(&entry.file, root);
 			eprintln!(
@@ -1187,12 +1224,15 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 	}
 
 	let sorted_stale_files = sorted_stale_files(result, root);
+
 	if !sorted_stale_files.is_empty() {
 		eprintln!();
 		eprintln!("{}", styled!(stderr, "Stale files:", yellow_bold));
+
 		for entry in sorted_stale_files {
 			let rel = relative_display_path(&entry.file, root);
 			eprintln!("  file {}", styled!(stderr, rel, cyan));
+
 			if show_diff {
 				print_diff(&entry.current_content, &entry.expected_content);
 			}
@@ -1207,10 +1247,12 @@ fn print_check_failure(result: &mdt_core::CheckResult, root: &Path, show_diff: b
 fn check_summary(result: &mdt_core::CheckResult) -> String {
 	let mut problems = Vec::new();
 	let mut fixes = Vec::new();
+
 	if !result.render_errors.is_empty() {
 		problems.push(format!("{} render error(s)", result.render_errors.len()));
 		fixes.push("fix the provider templates named above");
 	}
+
 	if !result.orphans.is_empty() {
 		problems.push(format!(
 			"{} consumer block(s) have no provider",
@@ -1218,7 +1260,9 @@ fn check_summary(result: &mdt_core::CheckResult) -> String {
 		));
 		fixes.push("rename those consumers or define the providers in `*.t.md` files");
 	}
+
 	let stale = result.stale.len() + result.stale_files.len();
+
 	if stale > 0 {
 		if !result.stale.is_empty() {
 			problems.push(format!(
@@ -1226,18 +1270,23 @@ fn check_summary(result: &mdt_core::CheckResult) -> String {
 				result.stale.len()
 			));
 		}
+
 		if !result.stale_files.is_empty() {
 			problems.push(format!(
 				"{} formatter-normalized file(s) are out of date",
 				result.stale_files.len()
 			));
 		}
+
 		fixes.push("run `mdt update`");
 	}
+
 	let mut fix_text = fixes.join(", then ");
+
 	if let Some(first) = fix_text.get(..1) {
 		fix_text = first.to_uppercase() + &fix_text[1..];
 	}
+
 	format!("{}. {fix_text}.", problems.join(" and "))
 }
 
@@ -1289,6 +1338,7 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 		if !succeeded {
 			process::exit(1);
 		}
+
 		return Ok(());
 	}
 
@@ -1307,6 +1357,7 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
 		println!("\nFile change detected, updating...");
+
 		if let Err(e) = run_update_once(args, false) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
@@ -1318,9 +1369,11 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::error::Error>> {
 	let ctx = scan(args)?;
 	let root = resolve_root(args);
+
 	if report_diagnostics(args, &ctx) {
 		return Err(validation_failed());
 	}
+
 	let orphan_count = warn_orphans(&ctx, &root);
 	let updates = compute_updates(&ctx)?;
 
@@ -1331,6 +1384,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 
 	let mut render_errors: Vec<_> = updates.render_errors.iter().collect();
 	render_errors.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+
 	for err in &render_errors {
 		eprintln!(
 			"{} block `{}` at {}:{}:{} was not updated: {}",
@@ -1348,6 +1402,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 			let scope = if orphan_count > 0 { "linked " } else { "" };
 			println!("All {scope}consumer blocks are already up to date.");
 		}
+
 		return Ok(render_errors.is_empty());
 	}
 
@@ -1364,14 +1419,17 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 				updates.updated_files.len()
 			);
 		}
+
 		let mut paths: Vec<_> = updates.updated_files.keys().collect();
 		paths.sort();
+
 		for path in paths {
 			let rel = relative_display_path(path, &root);
 			println!("  {rel}");
 		}
 	} else {
 		write_updates(&updates)?;
+
 		if updates.updated_count == 0 {
 			println!(
 				"Normalized {} file(s) via formatter integration.",
@@ -1388,6 +1446,7 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 		if args.verbose {
 			let mut paths: Vec<_> = updates.updated_files.keys().collect();
 			paths.sort();
+
 			for path in paths {
 				let rel = relative_display_path(path, &root);
 				println!("  {rel}");
@@ -1408,6 +1467,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 
 	if ctx.project.providers.is_empty() && ctx.project.consumers.is_empty() {
 		println!("No provider or consumer blocks found.");
+
 		return if has_errors {
 			Err(validation_failed())
 		} else {
@@ -1420,6 +1480,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		println!("{}", styled!(stdout, "Providers:", bold));
 		// One pass over consumers instead of a scan per provider.
 		let mut consumer_counts: HashMap<&str, usize> = HashMap::new();
+
 		for consumer in &ctx.project.consumers {
 			if consumer.block.r#type == BlockType::Consumer {
 				*consumer_counts
@@ -1427,8 +1488,10 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 					.or_default() += 1;
 			}
 		}
+
 		let mut names: Vec<_> = ctx.project.providers.keys().collect();
 		names.sort();
+
 		for name in names {
 			let entry = &ctx.project.providers[name];
 			let rel = relative_display_path(&entry.file, &root);
@@ -1443,9 +1506,12 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 		if !ctx.project.providers.is_empty() {
 			println!();
 		}
+
 		println!("{}", styled!(stdout, "Consumers:", bold));
+
 		for consumer in &ctx.project.consumers {
 			let rel = relative_display_path(&consumer.file, &root);
+
 			let (sigil, status) = match consumer.block.r#type {
 				BlockType::Consumer => {
 					let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
@@ -1467,6 +1533,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 					.collect();
 				format!(" |{}", described.join("|"))
 			};
+
 			println!(
 				"  {sigil}{} {rel}:{}{transformers} [{status}]",
 				consumer.block.name, consumer.block.opening.start.line
@@ -1484,6 +1551,7 @@ fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
 	if has_errors {
 		return Err(validation_failed());
 	}
+
 	Ok(())
 }
 
@@ -1642,6 +1710,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 	let reparsed_file_count_total =
 		telemetry.map_or(0, |metrics| metrics.reparsed_file_count_total);
 	let full_project_hit_rate = ratio_percent_string(full_project_hit_count, scan_count);
+
 	let file_reuse_rate = ratio_percent_string(
 		reused_file_count_total,
 		reused_file_count_total.saturating_add(reparsed_file_count_total),
@@ -1810,6 +1879,7 @@ fn run_info(args: &MdtCli, format: InfoOutputFormat) -> Result<(), Box<dyn std::
 			} else {
 				"ok".to_string()
 			};
+
 			print_field("Artifact status", cache_status);
 			let schema_display = report.cache.schema_version.map_or_else(
 				|| "unknown".to_string(),
@@ -1963,6 +2033,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	let options = validation_options(args);
 
 	let config_path = MdtConfig::resolve_path(&root);
+
 	if let Some(path) = &config_path {
 		add_doctor_check(
 			&mut checks,
@@ -2016,6 +2087,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 				None,
 			);
 		}
+
 		Some(config) => {
 			match config.load_data(&root) {
 				Ok(loaded_data) => {
@@ -2175,6 +2247,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	add_sync_check(&mut checks, &root);
 
 	let cache = inspect_project_cache(&root, &scan_options);
+
 	if !cache.artifact.exists {
 		add_doctor_check(
 			&mut checks,
@@ -2247,6 +2320,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	} else {
 		"content-hash verification disabled (mtime + size fingerprints only)".to_string()
 	};
+
 	add_doctor_check(
 		&mut checks,
 		"cache_hash_mode",
@@ -2262,6 +2336,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		let total_files = telemetry
 			.reused_file_count_total
 			.saturating_add(telemetry.reparsed_file_count_total);
+
 		if telemetry.scan_count < 3 || total_files == 0 {
 			add_doctor_check(
 				&mut checks,
@@ -2274,6 +2349,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 		} else {
 			let reparse_rate =
 				ratio_percent_string(telemetry.reparsed_file_count_total, total_files);
+
 			if telemetry.reparsed_file_count_total
 				> telemetry.reused_file_count_total.saturating_mul(3)
 			{
@@ -2322,6 +2398,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 	}
 
 	let mut summary = DoctorSummary::default();
+
 	for check in &checks {
 		match check.status {
 			DoctorStatus::Pass => summary.pass += 1,
@@ -2350,6 +2427,7 @@ fn run_doctor(args: &MdtCli, format: DoctorOutputFormat) -> Result<(), Box<dyn s
 					check.title,
 					check.message
 				);
+
 				if let Some(hint) = &check.hint {
 					println!("       hint: {hint}");
 				}
@@ -2393,6 +2471,7 @@ fn add_block_checks(
 	orphans.sort_by(|a, b| {
 		(&a.file, a.block.opening.start.line).cmp(&(&b.file, b.block.opening.start.line))
 	});
+
 	if orphans.is_empty() {
 		add_doctor_check(
 			checks,
@@ -2429,6 +2508,7 @@ fn add_block_checks(
 			orphans.len(),
 			described.join("; ")
 		);
+
 		if more > 0 {
 			message = format!("{message}; and {more} more");
 		}
@@ -2438,6 +2518,7 @@ fn add_block_checks(
 		} else {
 			"rename the consumers to match a provider, or define the providers in `*.t.md` files"
 		};
+
 		add_doctor_check(
 			checks,
 			"orphan_consumers",
@@ -2449,6 +2530,7 @@ fn add_block_checks(
 	}
 
 	let unused_provider_count = count_unused_providers(&project.providers, &project.consumers);
+
 	if unused_provider_count == 0 {
 		add_doctor_check(
 			checks,
@@ -2494,6 +2576,7 @@ fn add_block_checks(
 			"no parser diagnostics found".to_string(),
 			None,
 		);
+
 		return;
 	};
 	let first_description = format!(
@@ -2503,11 +2586,13 @@ fn add_block_checks(
 		first.column,
 		first.message()
 	);
+
 	let status = if errors > 0 {
 		DoctorStatus::Fail
 	} else {
 		DoctorStatus::Warn
 	};
+
 	let help = diagnostic_help(&first.kind);
 	add_doctor_check(
 		checks,
@@ -2527,6 +2612,7 @@ fn add_block_checks(
 /// report whether the project is in sync.
 fn add_sync_check(checks: &mut Vec<DoctorCheck>, root: &Path) {
 	let result = scan_project_with_config(root).and_then(|ctx| check_project(&ctx));
+
 	let result = match result {
 		Ok(result) => result,
 		Err(error) => {
@@ -2621,6 +2707,7 @@ fn assistant_display_name(assistant: Assistant) -> &'static str {
 fn assistant_mcp_setup(assistant: Assistant) -> Option<(&'static str, serde_json::Value)> {
 	let server = serde_json::json!({ "command": "mdt", "args": ["mcp"] });
 	let stdio_server = serde_json::json!({ "type": "stdio", "command": "mdt", "args": ["mcp"] });
+
 	match assistant {
 		Assistant::Generic => {
 			Some((
@@ -2665,12 +2752,14 @@ fn assistant_skills_dir(assistant: Assistant) -> Option<&'static str> {
 
 fn assistant_setup_payload(assistant: Assistant) -> serde_json::Value {
 	let mcp_setup = assistant_mcp_setup(assistant);
+
 	let install_command = match assistant {
 		Assistant::Claude => {
 			Some("claude mcp add --transport stdio --scope project mdt -- mdt mcp")
 		}
 		_ => None,
 	};
+
 	let skill_install =
 		assistant_skills_dir(assistant).map(|dir| format!("mdt skill --install {dir}"));
 	let guidance = vec![
@@ -2683,6 +2772,7 @@ fn assistant_setup_payload(assistant: Assistant) -> serde_json::Value {
 		"After documentation edits, run `mdt check`; run `mdt update` when consumers are stale."
 			.to_string(),
 	];
+
 	let notes = match assistant {
 		Assistant::Generic => {
 			vec![
@@ -2780,6 +2870,7 @@ fn run_assist(
 			} else {
 				println!("  mdt skill");
 			}
+
 			println!();
 			println!("MCP server:");
 			if let Some(file) = payload["mcp_config_file"].as_str() {
@@ -2789,10 +2880,12 @@ fn run_assist(
 				} else {
 					println!("  add to {file}:");
 				}
+
 				println!("{}", serde_json::to_string_pretty(&payload["mcp_config"])?);
 			} else {
 				println!("  not supported by {}", assistant_display_name(assistant));
 			}
+
 			println!();
 			println!("Suggested repo-local guidance:");
 			for item in payload["repo_guidance"].as_array().into_iter().flatten() {
@@ -2800,6 +2893,7 @@ fn run_assist(
 					println!("- {text}");
 				}
 			}
+
 			println!();
 			println!("Notes for {}:", assistant_display_name(assistant));
 			for item in payload["notes"].as_array().into_iter().flatten() {
@@ -2823,6 +2917,7 @@ fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std:
 				skill::SKILL_MD
 			}
 		);
+
 		return Ok(());
 	};
 
@@ -2833,6 +2928,7 @@ fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std:
 		)
 	})?;
 	println!("Installed the mdt skill:");
+
 	for path in written {
 		println!("  {}", display_path(path));
 	}
@@ -2844,6 +2940,7 @@ fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std:
 fn template_warning_message(warning: &TemplateWarning, root: &Path) -> String {
 	let rel = relative_display_path(&warning.provider_file, root);
 	let vars = warning.undefined_variables.join(", ");
+
 	if warning.template_rendered {
 		format!(
 			"provider block `{}` in {rel} references undefined variable(s): {vars}",
@@ -2880,6 +2977,7 @@ fn print_template_warnings(warnings: &[TemplateWarning], root: &Path) {
 /// Print a unified diff between two strings, colorized.
 fn print_diff(current: &str, expected: &str) {
 	let diff = TextDiff::from_lines(current, expected);
+
 	for change in diff.iter_all_changes() {
 		match change.tag() {
 			ChangeTag::Delete => {
@@ -2965,8 +3063,10 @@ fn diagnostic_to_report(
 		.with_code(diag.kind.code())
 		.with_severity(severity);
 	let help = diagnostic_help(&diag.kind);
+
 	if !help.is_empty() {
 		diag_value = diag_value.with_help(help);
 	}
+
 	miette::Report::new(diag_value)
 }
