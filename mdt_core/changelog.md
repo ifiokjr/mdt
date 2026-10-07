@@ -4,6 +4,148 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.6](https://github.com/ifiokjr/mdt/releases/tag/v0.9.6) (2026-10-07)
+
+### 🚀 Feature
+
+- **Add `FormatterRuleSet` for precompiled formatter globs.** `FormatterRuleSet::compile` turns a formatter's `patterns` or `ignore` list into reusable glob matchers with gitignore-style ordered `!` negation semantics, and `FormatterConfig::matches_file` keeps its behavior. Check and update runs compile the rules once per run instead of recompiling every glob for every scanned file. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+- **Support hyphenated block names and Dart source files.** Block names may now contain hyphens (`install-command`), matching kebab-case conventions; previously such tags failed tokenization and were silently ignored — they never appeared in `mdt list` or `mdt check`. `.dart` files are now scanned for consumer and inline blocks by default, like other supported source languages, so Dart doc comments can be synchronized from shared providers. Use `[include] patterns` to opt unlisted extensions in on older versions. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #198](https://github.com/ifiokjr/mdt/pull/198)
+
+#### Add `init::init_project`, the shared implementation behind `mdt init` and `mdt_init`
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+`mdt_core::init::init_project(root)` adds only what a project is missing and reports what it did through `InitReport` (`SampleOutcome`, `ConfigOutcome`, `GitignoreOutcome`):
+
+- writes the annotated starter `mdt.toml` unless `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` exists;
+- writes a sample `greeting` provider to `.templates/template.t.md` unless a sample template or any provider already exists, so it never introduces a duplicate provider into a project that uses mdt without a config;
+- writes `readme.md` with the sample consumer already synced through the engine (so an existing `[padding]` is honoured) when the project has no README of any case or extension, and never modifies an existing README;
+- adds `.mdt/` to `.gitignore` in git repositories so the local cache is not committed;
+- creates the root directory when it does not exist.
+
+The CLI and the MCP server both call it, so they produce the same files and always leave the project passing `mdt check`.
+
+### 📝 Changed
+
+#### Catch silent failures: orphan consumers fail checks, malformed tags are reported, unknown config keys are rejected
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+Several mistakes used to pass `mdt check` silently. They are now reported, and the severities match how much damage each one can do.
+
+- **Orphan consumers fail the check.** `CheckResult` gains `orphans`: consumers whose name matches no provider, each with a location and `suggestions` of similar provider names. `CheckResult::is_ok()` is false while any exist. A misspelled `<!-- {=featrues} -->` used to leave the docs silently unsynced while CI stayed green.
+- **Unused providers are warnings, not errors.** `ProjectDiagnostic::is_error` no longer treats a provider without consumers as an error, so adding a provider before wiring its consumers (or running `mdt init` in a repository that already has a README) no longer blocks `check`, `update`, and `list`. The new `ProjectDiagnostic::is_ignored` reports whether `--ignore-unused-blocks` (or another ignore flag) silences a diagnostic.
+- **New diagnostics** (`DiagnosticKind` and `ParseDiagnostic` variants):
+  - `NestedBlock` (error): a block that opens inside a consumer or inline block. `mdt update` replaced everything between the outer tags and silently destroyed the inner block.
+  - `InvalidTag` (error, silenced by `ignore_invalid_names`): a markdown comment that looks like a tag — `{` followed by `@`, `=`, `~`, or `/` — but does not parse, such as `<!-- { @name } -->` or `<!-- {=my.block} -->`. These were silently ignored.
+  - `UnmatchedClosingTag` (warning): a `{/name}` with no open block of that name, usually the other half of a misspelled tag.
+  - `ProviderOutsideTemplate` (warning): a provider tag outside a `*.t.md` file, which mdt ignores.
+- **Unknown `mdt.toml` keys are rejected.** Every config table now denies unknown fields, so `[paddding]` or `max_filesize` fails with the offending key and the config path instead of being ignored. Config parse errors name the config file.
+- **The closing tag starts on its own line by default.** Without a `[padding]` section, the default is now `before = 0`, `after = 0`. The old `after = false` default glued the closing tag to the last content line, which broke every trimmed `codeBlock` consumer (`` ```<!-- {/x} --> `` is not a closing fence, so the fence swallowed the rest of the file) and dropped the comment prefix from source-file closing tags. Existing consumers in projects without `[padding]` will report stale once; run `mdt update`.
+- **Text data drops one trailing newline**, as shell `$(...)` does. `release = { command = "cat VERSION", format = "text" }` now renders `1.2.3` rather than `1.2.3\n`, so inline values stay on one line.
+- **TOML and KDL integers stay integers.** `port = 8080` renders as `8080`, not `8080.0`, and large integers keep full precision.
+
+The index cache schema moves to version 3 so cached scans pick up the new diagnostics.
+
+- **Unmatched closing tags are errors.** A `{/name}` with no open block is the other half of a misspelled or malformed opening tag, so that block silently stops syncing — in source-file comments nothing else reports it. `--ignore-unclosed-blocks` downgrades it like an unclosed block.
+- **Unrendered data references warn.** In a project without `[data]`, providers are copied verbatim; a used provider containing namespaced variables such as `{{ pkg.version }}` now produces a `TemplateWarning` with `template_rendered: false`, instead of copying the braces silently (typically a sub-project reusing shared providers without declaring its own `[data]`).
+- **Shared providers are never "unused".** Providers read from a `[templates] paths` directory outside the project are a shared library, so each project may use only some of them without warnings.
+- `DiagnosticKind::code()` returns the stable `mdt::*` code for every diagnostic kind, and duplicate-provider errors name both definitions as project-relative `file:line`.
+- **Blocks never nest.** `NestedBlock` now also covers blocks inside a provider: their tags would be copied into every consumer, where they nest. The error now appears at the provider instead of in every consumer.
+
+### 🐛 Fixed
+
+- **Feed formatter stdin from a dedicated thread.** Formatter commands received their full input through the pipe before stdout was drained. A formatter that fills its stdout pipe while mdt is still writing a large file deadlocked both processes. stdin is now written from a spawned thread while the main thread reads output, and a formatter that exits early is reported through its exit status instead of a broken-pipe I/O error. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+
+#### Fix scanning boundaries, symlinks, backtick-safe code transformers, and padding edge cases
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+- A directory directly under the project root with its own `mdt.toml` is now treated as a separate project. Only directories two or more levels down were isolated, so `tools/mdt.toml` leaked its providers into the parent and caused duplicate-provider errors.
+- Symlinked directories no longer abort the scan with a false "symlink cycle" error. Each directory is visited once by canonical path, so aliases (common in iOS `Pods/` and vendored trees) are scanned once, real cycles terminate, and the `[include]` walk no longer loops forever on a cycle. `MdtError::SymlinkCycle` is deprecated.
+- `codeBlock` picks a fence longer than any backtick run in the content, and `code` picks a delimiter that does not occur in it, so a provider containing its own fence or inline code can no longer break the surrounding document.
+- `replace` with an empty search string leaves content unchanged instead of inserting the replacement between every character.
+- `[exclude] blocks` no longer makes `[[formatters]]` fail with "formatter pipeline changed the number of consumer blocks".
+- A closing tag indented with whitespace only (in a list item or docstring) keeps its indentation.
+- With `before` padding of 1 or more, the first blank-line comment prefix no longer lands on the opening tag's line when the content starts with a newline.
+- `[include]` now honours `.gitignore` like the default scan does, and a file that cannot be read as UTF-8 text fails with `mdt::read_file` naming the file.
+- `.mjs`, `.cjs`, `.mts`, `.cts`, `.cc`, `.cxx`, `.hh`, and `.hpp` files are scanned by default.
+- `compute_updates` no longer aborts on the first provider that fails to render. `UpdateResult::render_errors` lists every consumer that was left untouched, with its location, and all other consumers are still updated. Render messages drop the internal template name and the duplicated "template rendering failed" prefix, and report the template line.
+- The new `expected_consumer_content` function (and `ExpectedContent` enum) computes exactly what `mdt update` writes for one consumer. The CLI, MCP server, and language server share it.
+- Repeated KDL nodes with the same name (`dep "a"`, `dep "b"`) collect into an array instead of the last one winning.
+- The scan cache can no longer write to the wrong file. The project root is always made absolute and normalized (`resolve_root`), and the cache key includes it, so running `mdt update --path ..` from a subdirectory, or scanning a project that moved, rescans instead of reusing file paths recorded from another location. Previously this could splice provider content into an unrelated file.
+- Edits that restore the modification time (`cp -p`, `rsync -t`, `touch -r`, archive extraction) are detected: file fingerprints include the inode change time on Unix.
+- A script data source whose `watch` entries are not all existing files (a typo, a glob, or a directory) re-runs every time instead of serving cached output forever.
+- Git ignore rules match git: nested `.gitignore` files, the ancestors' `.gitignore` files up to the repository root (so `mdt check --path packages/lib` skips the root's `dist/`), and `.git/info/exclude` all apply. Outside a git repository only the root `.gitignore` applies, as before.
+- Symlinked files are scanned once (a symlinked `*.t.md` no longer causes a duplicate-provider error), and dangling symlinks are skipped instead of aborting the scan.
+- `[templates] paths` adds only `*.t.md` files from each directory, uses the project's `[exclude]` and git ignore rules, and fails with `mdt::templates_path` when an entry is not a directory. A sub-project can point it at a shared template directory outside its root; files there are never treated as its consumers.
+- `[exclude] blocks` also silences structural diagnostics (unclosed, unmatched, or nested tags) for the excluded names, and invalid `[include] patterns` globs are rejected when the config loads instead of being dropped.
+- Files without any `<!--` are no longer parsed, which removes the dominant cost of scanning large tag-free markdown files.
+- `TransformerType::NAMES` lists every transformer's canonical name, so help text can no longer drift from the implementation.
+- `content_matches` is public, so tools compare consumer content exactly as `mdt check` does under `[check] comparison`.
+- Consumers inside a shared `*.t.md` read through `[templates] paths` from outside the project are no longer treated as the project's consumers, so `mdt update --path <sub-project>` can never rewrite files outside that project.
+- In markdown files, a closing tag only keeps indentation from its line: `#` (a heading) and `*` (a bullet) are no longer mistaken for comment prefixes and copied onto the closing tag's new line.
+- In source files, closing-tag text inside a string literal or a backtick code span on its line (`"<!-- {/x} -->"`) is not reported as an unmatched closing tag.
+- Files without `<!--` are skipped before decoding, so tag-free files in other encodings (such as Latin-1 C sources) no longer fail the scan.
+- Nested `.gitignore` files apply only inside a git repository, as in git; outside one, only the project root's `.gitignore` applies.
+- `init_project` adds `.mdt/` to `.gitignore` in any directory inside a git repository and reports `InitReport::enclosing_project` when it creates a config inside another mdt project. New `formatter_applies` reports whether a `[[formatters]]` entry formats a file.
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### Rewrite the documentation to match actual behavior
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #202](https://github.com/ifiokjr/mdt/pull/202)
+
+An audit ran every documented command, flag, default, and example against the CLI. The docs site, crate readmes, the annotated `mdt.toml` that `mdt init` writes, and generated doc comments now match the implementation:
+
+- `[include]` and `[templates] paths` are documented as additive (they were described as narrowing the scan), `[check] comparison = "lenient"` no longer claims to normalize tables or JSON, exclude negation examples work, and formatter patterns are documented as plain globs.
+- Exit codes (`0`/`1`/`2`), the global `--ignore-*` flags, project-root discovery, `mdt skill`, per-client `mdt assist` output, the complete JSON payload, GitHub annotations, and every quoted command output are current.
+- Source-file examples re-apply comment prefixes with `linePrefix:"...":true`, so copied examples compile.
+- Terminology is provider/consumer throughout.
+- Crate readme badges render again (link definitions were joined onto one line).
+- Links that left the book now point at GitHub, and the Pi link points at pi.dev.
+
+</details>
+
+<details>
+<summary><strong>⚡ Performance</strong></summary>
+
+#### Cut repeated work in scan, parse, and render hot paths
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #194](https://github.com/ifiokjr/mdt/pull/194)
+
+- The four grammar patterns used to classify token groups are now built once per thread instead of per HTML comment, eliminating hundreds of closure and string allocations for every comment scanned.
+- Source-file comment extraction now locifies `<!--`/`-->` via `memchr` (SIMD) instead of a byte-window scan per offset — previously the dominant cost of scanning large non-markdown files.
+- Provider templates without parameters render once per run instead of once per consumer, and the base data map is no longer deep-cloned per consumer.
+- GFM parse options are constructed once per thread rather than per markdown file.
+- Lenient comparisons skip whitespace normalization when bytes already match.
+- The index cache artifact serializes as compact JSON instead of pretty JSON.
+- File collection deduplication is set-based instead of a linear `contains` scan; comment extraction no longer over-allocates by file size.
+
+</details>
+
+<details>
+<summary><strong>🔒 Security</strong></summary>
+
+#### Stop `[[formatters]]` from passing file names through the shell
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #201](https://github.com/ifiokjr/mdt/pull/201)
+
+`{{ filePath }}`, `{{ relativeFilePath }}`, and `{{ rootDirectory }}` in a formatter `command` used to be pasted into the `sh -c` (or `cmd /C`) command line as raw text. A file named `docs/a$(touch pwned).md` ran `touch pwned` during `mdt check` or `mdt update`, so a hostile file name in a pull request could execute code in CI.
+
+The placeholders now render as references to environment variables that mdt sets for each formatter run (`MDT_FILE_PATH`, `MDT_RELATIVE_FILE_PATH`, `MDT_ROOT_DIRECTORY`), so the shell expands the path as data and never parses it. The documented form keeps working unchanged:
+
+```toml
+[[formatters]]
+command = "dprint fmt --stdin \"{{ filePath }}\""
+patterns = ["**/*.md"]
+```
+
+Keep placeholders in double quotes. A placeholder inside single quotes (`'{{ filePath }}'`) now reaches the formatter as the literal text `${MDT_FILE_PATH}`; switch those to double quotes.
+
+</details>
+
 ## [0.9.5](https://github.com/ifiokjr/mdt/releases/tag/v0.9.5) (2026-09-20)
 
 ### Changed

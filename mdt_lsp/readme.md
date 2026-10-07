@@ -43,7 +43,7 @@ It communicates over stdin/stdout and uses the editor's workspace folder as the 
 
 ```toml
 [dependencies]
-mdt_lsp = "0.9.5"
+mdt_lsp = "0.9.6"
 ```
 
 <!-- {/mdtLspInstall} -->
