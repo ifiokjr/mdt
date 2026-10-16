@@ -284,6 +284,8 @@ pub struct ProjectContext {
 	/// Padding configuration controlling blank lines between tags and content.
 	/// `None` means no padding is applied.
 	pub padding: Option<PaddingConfig>,
+	/// Internal formatting applied to block content.
+	pub format: crate::config::FormatConfig,
 	/// Ordered formatter pipeline entries used to normalize full-file output.
 	pub formatters: Vec<FormatterConfig>,
 	/// Source scanning code block filtering needed when reparsing source files.
@@ -550,6 +552,9 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		"project scan complete",
 	);
 	let padding = config.as_ref().and_then(|c| c.padding.clone());
+	let format = config
+		.as_ref()
+		.map_or_else(crate::config::FormatConfig::default, |c| c.format);
 	let formatters = config
 		.as_ref()
 		.map_or_else(Vec::new, |c| c.formatters.clone());
@@ -571,6 +576,7 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 		project,
 		data,
 		padding,
+		format,
 		formatters,
 		markdown_codeblocks,
 		comparison,

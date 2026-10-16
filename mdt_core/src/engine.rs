@@ -14,6 +14,7 @@ use tracing::trace;
 use tracing::warn;
 
 use crate::Argument;
+use crate::Block;
 use crate::BlockType;
 use crate::MdtError;
 use crate::MdtResult;
@@ -489,6 +490,15 @@ fn expected_content(
 				Err(message) => return ExpectedContent::RenderFailed(message),
 			};
 
+			// Internal table alignment runs before transformers so consumers
+			// that wrap content in comment prefixes or code fences receive
+			// the same alignment a markdown formatter would produce.
+			let rendered_content = if ctx.format.tables {
+				crate::format::normalize_markdown_tables(&rendered_content)
+			} else {
+				rendered_content
+			};
+
 			let transformed = apply_transformers_with_data(
 				&rendered_content,
 				&consumer.block.transformers,
@@ -715,6 +725,8 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	// Files are visited in hash order; report orphans in source order.
 	orphans.sort_by(|a, b| (&a.file, a.line, a.column).cmp(&(&b.file, b.line, b.column)));
 
+	check_provider_tables(ctx, &mut stale);
+
 	debug!(
 		stale = stale.len(),
 		stale_files = stale_files.len(),
@@ -827,6 +839,8 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 		updated_count, "updates computed"
 	);
 
+	apply_provider_table_updates(ctx, &mut file_contents, &mut updated_count)?;
+
 	Ok(UpdateResult {
 		updated_files: file_contents,
 		updated_count,
@@ -868,6 +882,8 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 			}
 		}
 	}
+
+	check_provider_tables(ctx, &mut stale);
 
 	Ok(CheckResult {
 		stale,
@@ -928,6 +944,8 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		}
 	}
 
+	apply_provider_table_updates(ctx, &mut file_contents, &mut updated_count)?;
+
 	Ok(UpdateResult {
 		updated_files: file_contents,
 		updated_count,
@@ -961,8 +979,13 @@ fn sort_consumers_in_file(mut consumers: Vec<&ConsumerEntry>) -> Vec<&ConsumerEn
 }
 
 fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_content: &str) {
-	let start = consumer.block.opening.end.offset;
-	let end = consumer.block.closing.start.offset;
+	replace_block_content(result, &consumer.block, new_content);
+}
+
+/// Replace the content between a block's tags, splicing by byte offset.
+fn replace_block_content(result: &mut String, block: &Block, new_content: &str) {
+	let start = block.opening.end.offset;
+	let end = block.closing.start.offset;
 
 	if start > end || end > result.len() {
 		return;
@@ -973,6 +996,95 @@ fn replace_consumer_content(result: &mut String, consumer: &ConsumerEntry, new_c
 	buf.push_str(new_content);
 	buf.push_str(&result[end..]);
 	*result = buf;
+}
+
+/// Providers whose content changes under `[format] tables` normalization,
+/// paired with the normalized content.
+fn unnormalized_providers(ctx: &ProjectContext) -> Vec<(&ProviderEntry, String)> {
+	if !ctx.format.tables {
+		return Vec::new();
+	}
+
+	ctx.project
+		.providers
+		.values()
+		.filter_map(|provider| {
+			let normalized = crate::format::normalize_markdown_tables(&provider.content);
+			(normalized != provider.content).then_some((provider, normalized))
+		})
+		.collect()
+}
+
+/// Staleness report for a provider block whose tables are not aligned.
+fn provider_stale_entry(provider: &ProviderEntry, expected_content: String) -> StaleEntry {
+	StaleEntry {
+		file: provider.file.clone(),
+		block_name: provider.block.name.clone(),
+		current_content: provider.content.clone(),
+		expected_content,
+		line: provider.block.opening.start.line,
+		column: provider.block.opening.start.column,
+	}
+}
+
+/// Report provider blocks whose tables are not aligned as stale.
+fn check_provider_tables(ctx: &ProjectContext, stale: &mut Vec<StaleEntry>) {
+	for (provider, normalized) in unnormalized_providers(ctx) {
+		stale.push(provider_stale_entry(provider, normalized));
+	}
+}
+
+/// Rewrite provider blocks whose tables are unaligned, so `*.t.md` files and
+/// their consumers carry identical table bytes.
+///
+/// Splices run against a fresh parse of each file's current content — the
+/// in-memory candidate when the consumer pass already rewrote the file, the
+/// file on disk otherwise — because the formatter pipeline may have shifted
+/// offsets after the scan.
+fn apply_provider_table_updates(
+	ctx: &ProjectContext,
+	file_contents: &mut HashMap<PathBuf, String>,
+	updated_count: &mut usize,
+) -> MdtResult<()> {
+	let mut updates_by_file: HashMap<PathBuf, Vec<(&ProviderEntry, String)>> = HashMap::new();
+
+	for (provider, normalized) in unnormalized_providers(ctx) {
+		updates_by_file
+			.entry(provider.file.clone())
+			.or_default()
+			.push((provider, normalized));
+	}
+
+	for (file, updates) in updates_by_file {
+		let raw = std::fs::read_to_string(&file)?;
+		let base = match file_contents.remove(&file) {
+			Some(candidate) => normalize_line_endings(&candidate),
+			None => normalize_line_endings(&raw),
+		};
+		let (blocks, _) = parse_with_diagnostics(&base)?;
+		let mut result = base;
+		let mut changed = 0;
+
+		// Splice back-to-front so earlier offsets stay valid.
+		let mut ordered = updates;
+		ordered.sort_by_key(|(provider, _)| Reverse(provider.block.opening.end.offset));
+
+		for (provider, normalized) in ordered {
+			let Some(block) = blocks.iter().find(|block| {
+				matches!(block.r#type, BlockType::Provider) && block.name == provider.block.name
+			}) else {
+				continue;
+			};
+
+			replace_block_content(&mut result, block, &normalized);
+			changed += 1;
+		}
+
+		*updated_count += changed;
+		file_contents.insert(file, restore_line_endings(&result, &raw));
+	}
+
+	Ok(())
 }
 
 fn apply_formatter_pipeline(

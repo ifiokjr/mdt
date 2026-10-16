@@ -31,3 +31,4 @@ packages/.tmp/
 
 # local agent tooling state
 .video_agent/
+.zcode/
