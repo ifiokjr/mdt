@@ -164,6 +164,10 @@ pub struct MdtConfig {
 	/// the opening tag and the closing tag starts on its own line.
 	#[serde(default)]
 	pub padding: Option<PaddingConfig>,
+	/// Internal formatting applied to block content, independent of any
+	/// external `[[formatters]]` pipeline.
+	#[serde(default)]
+	pub format: FormatConfig,
 	/// Ordered formatter pipeline entries used to normalize full-file output.
 	/// Each matching formatter reads the candidate file from stdin and writes
 	/// the full replacement content to stdout.
@@ -192,7 +196,8 @@ pub struct MdtConfig {
 /// When `comparison` is `"lenient"`, `mdt check` trims trailing whitespace
 /// on every line and collapses runs of blank lines before comparing expected
 /// and actual block content. It does not normalize indentation, table
-/// padding, or JSON layout; use `[[formatters]]` for those.
+/// padding, or JSON layout; use `[format] tables` or `[[formatters]]` for
+/// those.
 ///
 /// `mdt update` always writes exact bytes regardless of this setting.
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -214,6 +219,30 @@ pub enum ComparisonMode {
 	/// count, trailing whitespace, and other insignificant whitespace so
 	/// formatter rewrites do not cause false staleness.
 	Lenient,
+}
+
+/// Configuration for mdt's internal formatting of block content.
+///
+/// ```toml
+/// [format]
+/// tables = true
+/// ```
+///
+/// Internal formatting runs inside block boundaries only — never on text
+/// outside blocks and never inside fenced code blocks — and happens before
+/// transformers and padding. It mirrors what markdown formatters such as
+/// dprint do to tables, so template files and formatter-owned output files
+/// converge byte-for-byte without ignoring either side.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FormatConfig {
+	/// Align GFM table columns inside block content (default `false`).
+	///
+	/// When `true`, `mdt update` also rewrites provider blocks in `*.t.md`
+	/// files whose tables are unaligned, so templates and their consumers
+	/// carry identical table bytes.
+	#[serde(default)]
+	pub tables: bool,
 }
 
 /// Controls the number of blank lines between a tag and its content.
@@ -304,7 +333,7 @@ pub struct PaddingConfig {
 ///
 /// A formatter that fails or exits non-zero is an error (exit status 2); mdt never falls back to unformatted output. Without `[[formatters]]`, mdt runs no formatter.
 ///
-/// Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. CI must install the same formatter versions you use locally.
+/// Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. `[format] tables = true` removes the table-alignment half of that fight — mdt aligns tables inside blocks itself, the same way dprint does, in templates and outputs alike, so the formatter finds nothing left to change. CI must install the same formatter versions you use locally.
 /// <!-- {/mdtFormatterPipelineDocs} -->
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]

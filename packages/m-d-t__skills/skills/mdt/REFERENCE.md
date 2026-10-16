@@ -186,6 +186,9 @@ pkg = "package.json"
 before = 0
 after = 0
 
+[format]
+tables = true
+
 [check]
 comparison = "strict" # or "lenient"
 
@@ -228,8 +231,15 @@ ignore = ["**/*.t.md"]
 ### `[check]`
 
 - `"strict"` (default): byte-for-byte comparison.
-- `"lenient"`: trims trailing whitespace on each line and collapses runs of blank lines before comparing. It does not normalize indentation, table alignment, or JSON layout — use `[[formatters]]` for those.
+- `"lenient"`: trims trailing whitespace on each line and collapses runs of blank lines before comparing. It does not normalize indentation, table alignment, or JSON layout — use `[format] tables` or `[[formatters]]` for those.
 - `mdt update` always writes exact bytes.
+
+### `[format]`
+
+Internal formatting of block content; runs inside block boundaries only, never inside fenced code blocks, and before transformers and padding.
+
+- `tables = true`: aligns GFM table columns the way dprint and prettier do — every column pads to its widest cell by display width (CJK counts double), the delimiter row fills the width, alignment colons are preserved. `mdt update` also rewrites provider blocks in `*.t.md` files whose tables are unaligned, so templates and formatted outputs carry identical table bytes. Unaligned provider tables are reported as stale by `mdt check`.
+- Conservative by design: rows with more cells than the header, pipes inside code spans, tables glued to prose, and fenced examples are left untouched.
 
 ### `[[formatters]]`
 

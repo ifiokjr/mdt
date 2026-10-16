@@ -75,6 +75,7 @@ pub mod config;
 mod default_mdt_toml;
 mod engine;
 mod error;
+pub(crate) mod format;
 mod index_cache;
 pub mod init;
 pub(crate) mod lexer;

@@ -32,6 +32,7 @@ snailquote = { workspace = true, default-features = true }
 thiserror = { workspace = true, default-features = true }
 toml = { workspace = true, default-features = true }
 tracing = { workspace = true, default-features = true }
+unicode-width = { workspace = true, default-features = true }
 
 [dev-dependencies]
 insta = { workspace = true, features = ["yaml"], default-features = true }

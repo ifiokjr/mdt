@@ -592,6 +592,7 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -621,6 +622,7 @@ fn check_project_detects_stale() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -678,6 +680,7 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -713,6 +716,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -744,6 +748,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -868,6 +873,7 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -906,6 +912,7 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -936,6 +943,7 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -967,6 +975,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -981,6 +990,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -3717,6 +3727,7 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -4802,6 +4813,7 @@ fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -6941,6 +6953,7 @@ fn project_context_find_missing_providers() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -8088,6 +8101,7 @@ fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9827,6 +9841,7 @@ fn block_arguments_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9877,6 +9892,7 @@ fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9969,6 +9985,7 @@ fn check_project_reports_argument_count_mismatch() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -10000,6 +10017,7 @@ fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -10042,6 +10060,7 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12135,6 +12154,7 @@ fn tracing_check_project_creates_span_and_events() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12201,6 +12221,7 @@ fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12542,6 +12563,7 @@ fn tracing_check_project_has_formatters_flag() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12574,6 +12596,7 @@ fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: FormatConfig::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12700,4 +12723,193 @@ fn extract_line_comment_prefix_handles_indented_comments() {
 	let source = "  //! <!-- {=x} -->\n  //! content\n  //! <!-- {/x} -->";
 	let offset = source.find("<!-- {/x} -->").unwrap();
 	assert_eq!(extract_line_comment_prefix(source, offset), "  //! ");
+}
+
+// --- internal table normalization -----------------------------------------
+//
+// Goldens below are pinned to `dprint fmt --stdin` output from
+// markdown-0.22.1; deviations are deliberate and documented in
+// `mdt_core/src/format.rs`.
+
+use crate::format::normalize_markdown_tables as normalize_tables_under_test;
+
+fn assert_normalized(input: &str, expected: &str) {
+	let normalized = normalize_tables_under_test(input);
+	assert_eq!(normalized, expected);
+	assert_eq!(
+		normalize_tables_under_test(&normalized),
+		normalized,
+		"normalization must be idempotent"
+	);
+}
+
+#[test]
+fn normalize_tables_aligns_columns_to_the_widest_cell() {
+	assert_normalized(
+		"| a | bb |\n| --- | --- |\n| ccc | d |\n| e | ffff |\n",
+		"| a   | bb   |\n| --- | ---- |\n| ccc | d    |\n| e   | ffff |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_pads_cells_according_to_alignment_colons() {
+	assert_normalized(
+		"| left | center | right | none |\n| :--- | :----: | ----: | --- |\n| x | y | z | w \
+		 |\n| longer-cell | c | r | n |\n",
+		"| left        | center | right | none |\n| :---------- | :----: | ----: | ---- \
+		 |\n| x           |   y    |     z | w    |\n| longer-cell |   c    |     r | n    \
+		 |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_measures_cjk_cells_by_display_width() {
+	assert_normalized(
+		"| 名前 | 説明 |\n| --- | --- |\n| 日本語の長いテキスト | x |\n| short | yy |\n",
+		"| 名前                 | 説明 |\n| -------------------- | ---- |\n| 日本語の長いテキスト \
+		 | x    |\n| short                | yy   |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_keeps_escaped_pipes_literal() {
+	assert_normalized(
+		"| a \\| b | c |\n| --- | --- |\n| d | e \\| f |\n",
+		"| a \\| b | c      |\n| ------ | ------ |\n| d      | e \\| f |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_pads_rows_with_missing_cells() {
+	assert_normalized(
+		"| h1 | h2 | h3 |\n| --- | --- | --- |\n| a | b |\n",
+		"| h1 | h2 | h3 |\n| -- | -- | -- |\n| a  | b  |    |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_leaves_rows_with_extra_cells_untouched() {
+	// dprint truncates the overflowing cell; mdt never destroys content, so
+	// the whole table stays as authored.
+	let input = "| h1 | h2 |\n| --- | --- |\n| a | b | extra |\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_adds_missing_outer_pipes() {
+	assert_normalized(
+		"a | b\n--- | ---\nc | d\n",
+		"| a | b |\n| - | - |\n| c | d |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_preserves_list_indentation() {
+	assert_normalized(
+		"- item\n\n  | a | b |\n  | --- | --- |\n  | ccc | d |\n",
+		"- item\n\n  | a   | b |\n  | --- | - |\n  | ccc | d |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_skips_fenced_code_blocks() {
+	let input = "Example:\n\n```text\n| a | b |\n| --- | --- |\n| c | d |\n```\n\nAfter.\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_skips_markdown_fenced_code_blocks() {
+	// dprint formats ```markdown fences recursively; mdt leaves every fence
+	// alone so embedded examples keep their bytes.
+	let input = "```markdown\n| a | b |\n| --- | --- |\n```\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_formats_adjacent_tables_independently() {
+	assert_normalized(
+		"| a | b |\n| --- | --- |\n| c | d |\n\n| ee | f |\n| --- | --- |\n| g | h |\n",
+		"| a | b |\n| - | - |\n| c | d |\n\n| ee | f |\n| -- | - |\n| g  | h |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_leaves_tables_glued_to_prose_untouched() {
+	// dprint splits the block and inserts a blank line; mdt moves no content
+	// between blocks.
+	let input = "Prose directly above.\n| a | b |\n| --- | --- |\n| c | d |\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_does_not_swallow_trailing_prose() {
+	// The pipe-less line is prose, not a row (dprint disagrees); only the
+	// real rows are aligned.
+	assert_normalized(
+		"| a | b |\n| --- | --- |\n| c | d |\nTail line without a pipe.\n",
+		"| a | b |\n| - | - |\n| c | d |\nTail line without a pipe.\n",
+	);
+}
+
+#[test]
+fn normalize_tables_formats_tables_after_headings_without_blank_lines() {
+	assert_normalized(
+		"## Heading\n| a | b |\n| --- | --- |\n| ccc | d |\n",
+		"## Heading\n| a   | b |\n| --- | - |\n| ccc | d |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_trims_cells_and_shrinks_wide_delimiters() {
+	assert_normalized(
+		"|  a  | b   |\n| --- | --- |\n| c   |   d |\n",
+		"| a | b |\n| - | - |\n| c | d |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_handles_empty_cells() {
+	assert_normalized(
+		"| a |  | c |\n| --- | --- | --- |\n|  | b |  |\n",
+		"| a |   | c |\n| - | - | - |\n|   | b |   |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_enforces_the_colon_minimum_width() {
+	// `:-` and `-:` need two characters, so one-character columns widen to
+	// keep a dash.
+	assert_normalized(
+		"| a | b |\n| :- | -: |\n| c | d |\n",
+		"| a  |  b |\n| :- | -: |\n| c  |  d |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_keeps_template_syntax_verbatim() {
+	assert_normalized(
+		"| ver | note |\n| --- | --- |\n| {{ pkg.version }} | template syntax |\n",
+		"| ver               | note            |\n| ----------------- | --------------- |\n| {{ \
+		 pkg.version }} | template syntax |\n",
+	);
+}
+
+#[test]
+fn normalize_tables_leaves_code_span_pipes_untouched() {
+	// GFM splits cells before inline parsing, so the pipe inside the code
+	// span gives the row one cell more than the header. dprint truncates the
+	// extra cell; mdt leaves the whole table as authored.
+	let input = "| cmd | desc |\n| --- | --- |\n| `x|y` | plain |\n| `a` | b |\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_returns_content_without_tables_unchanged() {
+	let input = "# Heading\n\nParagraph with a | pipe.\n\n- list\n";
+	assert_normalized(input, input);
+}
+
+#[test]
+fn normalize_tables_preserves_content_without_trailing_newline() {
+	assert_normalized("| a | b |\n| --- | --- |", "| a | b |\n| - | - |");
 }

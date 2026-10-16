@@ -42,6 +42,7 @@
 		"site",
 		".devenv/**",
 		".monochange/**",
+		".zcode/**",
 		".changeset/**",
 		".templates/**",
 		"**/fixtures",
