@@ -17,12 +17,14 @@
 - **`mdt_list`**: providers and consumers with locations, transformers, arguments, and status (`current`, `stale`, `render_error`, or `orphan`). Pass `include_content: true` to include block content.
 - **`mdt_check`**: stale consumers, stale files, orphans with suggestions, render errors, and diagnostics.
 - **`mdt_update`**: sync every consumer; `dry_run: true` previews. It refuses to write while validation errors exist.
+- **`mdt_doctor`**: the same health checks as `mdt doctor` — config, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, and cache — each with a `status` (`pass`, `warn`, `fail`, or `skip`), `message`, and fix `hint`.
+- **`mdt_info`**: the same project inspection as `mdt info` — block counts, data namespaces, template directories and files, diagnostic totals, and cache state.
 - **`mdt_find_reuse`**: rank existing providers by name (`block_name`) or content (`content_query`) before you create a new one.
 - **`mdt_preview`**: a provider and each consumer's rendered and current content.
 - **`mdt_get_block`**: a provider (or `null`) and its consumers, by name.
 - **`mdt_init`**: set up a project the same way `mdt init` does.
 
-Every tool accepts an optional project `path`. `mdt_list`, `mdt_check`, and `mdt_update` also accept `ignore_unclosed_blocks`, `ignore_unused_blocks`, `ignore_invalid_names`, and `ignore_invalid_transformers`.
+Every tool accepts an optional project `path`. `mdt_list`, `mdt_check`, `mdt_update`, and `mdt_doctor` also accept `ignore_unclosed_blocks`, `ignore_unused_blocks`, `ignore_invalid_names`, and `ignore_invalid_transformers`.
 
 ### Responses
 

@@ -34,6 +34,7 @@ use mdt_core::render_template;
 use mdt_core::write_updates;
 use rmcp::model::CallToolResult;
 use serde::Serialize;
+use serde_json::Value;
 use serde_json::json;
 
 use crate::response::ConsumerInfo;
@@ -150,6 +151,55 @@ pub(crate) fn check(root: &Path, options: &ValidationOptions) -> Result<CallTool
 		"warnings": TemplateWarningInfo::list(&result.warnings, root),
 		"missing_provider_names": missing_provider_names,
 	})))
+}
+
+// ---------------------------------------------------------------------------
+// mdt_doctor
+// ---------------------------------------------------------------------------
+pub(crate) fn doctor(root: &Path, options: &ValidationOptions) -> CallToolResult {
+	let report = mdt_core::doctor::doctor_report(root, options);
+
+	let summary = format!(
+		"{} pass, {} warn, {} fail, {} skip",
+		report.summary.pass, report.summary.warn, report.summary.fail, report.summary.skip
+	);
+
+	json_result(json!({
+		"ok": report.ok,
+		"action": "doctor",
+		"summary": summary,
+		"counts": report.summary,
+		"checks": report.checks,
+	}))
+}
+
+// ---------------------------------------------------------------------------
+// mdt_info
+// ---------------------------------------------------------------------------
+/// Inspect `root` with [`mdt_core::info::info_report`], the implementation
+/// behind `mdt info`, flattening the report sections at the top level next to
+/// `ok`, `action`, and `summary`.
+pub(crate) fn info(root: &Path, options: &ValidationOptions) -> Result<CallToolResult, ToolError> {
+	let report = mdt_core::info::info_report(root, options)?;
+
+	let summary = format!(
+		"{} provider(s), {} consumer(s), {} orphan consumer(s), {} unused provider(s).",
+		report.blocks.providers,
+		report.blocks.consumers,
+		report.blocks.orphan_consumers,
+		report.blocks.unused_providers
+	);
+
+	let mut payload = serde_json::to_value(&report)
+		.unwrap_or_else(|error| panic!("an info report always serializes: {error}"));
+	let object = payload
+		.as_object_mut()
+		.unwrap_or_else(|| panic!("an info report always serializes to an object"));
+	object.insert("ok".to_string(), Value::Bool(true));
+	object.insert("action".to_string(), Value::from("info"));
+	object.insert("summary".to_string(), Value::from(summary));
+
+	Ok(json_result(payload))
 }
 
 // ---------------------------------------------------------------------------
