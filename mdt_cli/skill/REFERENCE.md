@@ -274,17 +274,17 @@ Global flags: `--ignore-unclosed-blocks` (unclosed and unmatched tags), `--ignor
 
 ## CLI
 
-| Command                                                             | Purpose                                                                                          |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `mdt init`                                                          | Add a starter `mdt.toml`, sample provider, synced sample readme (no README only), `.mdt/` ignore |
-| `mdt check [--diff] [--format text\|json\|github] [--watch]`        | Verify every consumer is linked and current                                                      |
-| `mdt update [--dry-run \| --watch]`                                 | Rewrite stale consumers                                                                          |
-| `mdt list`                                                          | Every block with `file:line`, transformers, and `[linked]`/`[orphan]`/`[inline]`                 |
-| `mdt info [--format json]`                                          | Project summary: blocks, data, templates, diagnostics, cache                                     |
-| `mdt doctor [--format json]`                                        | Health checks with hints (exit 1 on any FAIL)                                                    |
-| `mdt skill [--reference \| --install <DIR>]`                        | Print this skill, its reference, or write both to `<DIR>/mdt/`                                   |
-| `mdt assist <generic\|claude\|cursor\|copilot\|pi> [--format json]` | MCP config and skill setup for an assistant                                                      |
-| `mdt lsp` / `mdt mcp`                                               | Language server / MCP server over stdio                                                          |
+| Command                                                              | Purpose                                                                                            |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `mdt init`                                                           | Add a starter `mdt.toml`, sample provider, synced sample readme (no README only), `.mdt/` ignore   |
+| `mdt check [--diff] [--format text\|json\|github] [--watch]`         | Verify every consumer is linked and current                                                        |
+| `mdt update [--dry-run \| --watch] [--block <NAME>] [--file <PATH>]` | Rewrite stale consumers (all, or only the named blocks/files; validation still gates project-wide) |
+| `mdt list`                                                           | Every block with `file:line`, transformers, and `[linked]`/`[orphan]`/`[inline]`                   |
+| `mdt info [--format json]`                                           | Project summary: blocks, data, templates, diagnostics, cache                                       |
+| `mdt doctor [--format json]`                                         | Health checks with hints (exit 1 on any FAIL)                                                      |
+| `mdt skill [--reference \| --install <DIR>]`                         | Print this skill, its reference, or write both to `<DIR>/mdt/`                                     |
+| `mdt assist <generic\|claude\|cursor\|copilot\|pi> [--format json]`  | MCP config and skill setup for an assistant                                                        |
+| `mdt lsp` / `mdt mcp`                                                | Language server / MCP server over stdio                                                            |
 
 Global: `-p, --path <DIR>` (must exist, except for `init`), `-v, --verbose`, `--no-color`, and the `--ignore-*` flags. Environment: `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `MDT_LOG=debug` (logs to stderr), `MDT_CACHE_VERIFY_HASH=1` (hash-verified cache).
 
@@ -348,7 +348,7 @@ Global: `-p, --path <DIR>` (must exist, except for `init`), `-v, --verbose`, `--
 | `mdt_find_reuse` | `block_name?`, `content_query?`, `limit?` (1–20) | `candidates` ranked exact → same ignoring case/separators → prefix → substring → close spelling    |
 | `mdt_list`       | `include_content?` (default false), `ignore_*?`  | `providers`, `consumers` (with `type`, `line`, `status`), `diagnostics`                            |
 | `mdt_check`      | `ignore_*?`                                      | `stale`, `stale_files`, `orphans` (with `suggestions`), `render_errors`, `diagnostics`, `warnings` |
-| `mdt_update`     | `dry_run?`, `ignore_*?`                          | `updated_count`, `updated_files`, `render_errors`, `diagnostics`; refuses to write on errors       |
+| `mdt_update`     | `dry_run?`, `block_names?`, `ignore_*?`          | `updated_count`, `updated_files`, `render_errors`, `diagnostics`; refuses to write on errors       |
 | `mdt_preview`    | `block_name`                                     | The provider rendered for each consumer: `rendered_content`, `current_content`, `status`           |
 | `mdt_get_block`  | `block_name`                                     | `provider` (or null) and `consumers`                                                               |
 | `mdt_init`       | `path?`                                          | `config`, `sample`, `gitignore` outcomes, `written_files`, `next_steps` (same as `mdt init`)       |

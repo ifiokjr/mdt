@@ -21,6 +21,7 @@ use mdt_core::BlockType;
 use mdt_core::MdtConfig;
 use mdt_core::MdtError;
 use mdt_core::TemplateWarning;
+use mdt_core::UpdateScope;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::project::ConsumerEntry;
@@ -31,6 +32,7 @@ use mdt_core::project::ProviderEntry;
 use mdt_core::project::ScanOptions;
 use mdt_core::project::ValidationOptions;
 use mdt_core::project::inspect_project_cache;
+use mdt_core::project::normalize_lexically;
 use mdt_core::project::relative_display_path;
 use mdt_core::project::resolve_root as resolve_root_path;
 use mdt_core::project::scan_project_with_config;
@@ -192,7 +194,12 @@ fn main() {
 				format,
 				watch,
 			} => run_check(&args, diff, format, watch),
-			Commands::Update { dry_run, watch } => run_update(&args, dry_run, watch),
+			Commands::Update {
+				dry_run,
+				watch,
+				ref block,
+				ref file,
+			} => run_update(&args, dry_run, watch, block, file),
 			Commands::List => run_list(&args),
 			Commands::Info { format } => run_info(&args, format),
 			Commands::Doctor { format } => run_doctor(&args, format),
@@ -1331,8 +1338,14 @@ fn sorted_stale_files<'a>(
 	stale_files
 }
 
-fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn std::error::Error>> {
-	let succeeded = run_update_once(args, dry_run)?;
+fn run_update(
+	args: &MdtCli,
+	dry_run: bool,
+	watch: bool,
+	blocks: &[String],
+	files: &[PathBuf],
+) -> Result<(), Box<dyn std::error::Error>> {
+	let succeeded = run_update_once(args, dry_run, blocks, files)?;
 
 	if !watch {
 		if !succeeded {
@@ -1358,15 +1371,109 @@ fn run_update(args: &MdtCli, dry_run: bool, watch: bool) -> Result<(), Box<dyn s
 
 		println!("\nFile change detected, updating...");
 
-		if let Err(e) = run_update_once(args, false) {
+		if let Err(e) = run_update_once(args, false, blocks, files) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
 	}
 }
 
+/// Resolve `--block` and `--file` arguments into an [`UpdateScope`] against the
+/// scanned project. File paths resolve against the current directory and must
+/// stay inside the project root and match a scanned file with consumers.
+fn resolve_update_scope(
+	ctx: &ProjectContext,
+	root: &Path,
+	blocks: &[String],
+	files: &[PathBuf],
+) -> Result<UpdateScope, Box<dyn std::error::Error>> {
+	let mut scoped_files: Option<HashSet<PathBuf>> = None;
+
+	if !files.is_empty() {
+		let scanned: HashSet<&Path> = ctx
+			.project
+			.consumers
+			.iter()
+			.map(|consumer| consumer.file.as_path())
+			.collect();
+		let mut resolved: HashSet<PathBuf> = HashSet::new();
+
+		for file in files {
+			let absolute = normalize_lexically(&std::path::absolute(file)?);
+
+			if !absolute.starts_with(root) {
+				return Err(format!(
+					"file `{}` is outside the project root {}",
+					display_path(file),
+					display_path(root)
+				)
+				.into());
+			}
+
+			if !scanned.contains(absolute.as_path()) {
+				return Err(format!(
+					"no scanned file with consumer blocks matches `{}`; run `mdt list` to see \
+					 every consumer file",
+					display_path(file)
+				)
+				.into());
+			}
+
+			resolved.insert(absolute);
+		}
+
+		scoped_files = Some(resolved);
+	}
+
+	let mut scope = UpdateScope::all();
+
+	if !blocks.is_empty() {
+		scope = scope.with_blocks(blocks.iter().cloned());
+	}
+
+	if let Some(files) = scoped_files {
+		scope = scope.with_files(files);
+	}
+
+	Ok(scope)
+}
+
+/// Describe the scope for the `scoped to ...` line, or `None` when the update
+/// covers every consumer.
+fn describe_update_scope(root: &Path, blocks: &[String], files: &[PathBuf]) -> Option<String> {
+	let mut parts = Vec::new();
+
+	if !blocks.is_empty() {
+		let mut names: Vec<&str> = Vec::new();
+		for name in blocks {
+			if !names.contains(&name.as_str()) {
+				names.push(name);
+			}
+		}
+		parts.push(format!("{} block(s): {}", names.len(), names.join(", ")));
+	}
+
+	if !files.is_empty() {
+		let mut paths: Vec<String> = Vec::new();
+		for file in files {
+			let display = relative_display_path(file, root);
+			if !paths.contains(&display) {
+				paths.push(display);
+			}
+		}
+		parts.push(format!("{} file(s): {}", paths.len(), paths.join(", ")));
+	}
+
+	(!parts.is_empty()).then(|| parts.join("; "))
+}
+
 /// Run a single update. Returns `false` when some consumers could not be
 /// updated because their provider failed to render.
-fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::error::Error>> {
+fn run_update_once(
+	args: &MdtCli,
+	dry_run: bool,
+	blocks: &[String],
+	files: &[PathBuf],
+) -> Result<bool, Box<dyn std::error::Error>> {
 	let ctx = scan(args)?;
 	let root = resolve_root(args);
 
@@ -1374,8 +1481,15 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 		return Err(validation_failed());
 	}
 
+	let scope = resolve_update_scope(&ctx, &root, blocks, files)?;
+	let scoped = !blocks.is_empty() || !files.is_empty();
+
+	if let Some(description) = describe_update_scope(&root, blocks, files) {
+		println!("scoped to {description}");
+	}
+
 	let orphan_count = warn_orphans(&ctx, &root);
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &scope)?;
 
 	// Print template variable warnings (they don't prevent updates).
 	if !updates.warnings.is_empty() {
@@ -1399,8 +1513,9 @@ fn run_update_once(args: &MdtCli, dry_run: bool) -> Result<bool, Box<dyn std::er
 
 	if updates.updated_files.is_empty() {
 		if render_errors.is_empty() {
-			let scope = if orphan_count > 0 { "linked " } else { "" };
-			println!("All {scope}consumer blocks are already up to date.");
+			let linked = if orphan_count > 0 { "linked " } else { "" };
+			let in_scope = if scoped { "in-scope " } else { "" };
+			println!("All {linked}{in_scope}consumer blocks are already up to date.");
 		}
 
 		return Ok(render_errors.is_empty());

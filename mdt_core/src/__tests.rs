@@ -681,7 +681,7 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	assert_eq!(updates.updated_files.len(), 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
@@ -716,7 +716,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	assert_eq!(updates.updated_files.len(), 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
@@ -747,7 +747,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert!(updates.updated_files.is_empty());
 
 	Ok(())
@@ -770,7 +770,7 @@ fn compute_updates_replaces_inline_content() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -801,7 +801,7 @@ fn compute_updates_replaces_inline_content_in_markdown_table() -> MdtResult<()> 
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -834,7 +834,7 @@ fn compute_updates_inline_with_script_data_source() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -871,7 +871,7 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 2);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -909,7 +909,7 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	// Only the existing consumer should be updated
 	assert_eq!(updates.updated_count, 1);
 
@@ -939,7 +939,7 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 	assert!(updates.updated_files.is_empty());
 
@@ -970,7 +970,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	write_updates(&updates)?;
 	assert_eq!(updates.updated_count, 1);
 
@@ -984,8 +984,167 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
+
+	Ok(())
+}
+
+/// Two providers, each with one stale consumer in its own file.
+fn create_two_stale_blocks_project(root: &Path) {
+	std::fs::write(
+		root.join("template.t.md"),
+		"<!-- {@alpha} -->\n\nAlpha content.\n\n<!-- {/alpha} -->\n\n<!-- {@beta} -->\n\nBeta \
+		 content.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		root.join("alpha.md"),
+		"<!-- {=alpha} -->\n\nStale alpha.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write alpha: {e}"));
+	std::fs::write(
+		root.join("beta.md"),
+		"<!-- {=beta} -->\n\nStale beta.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write beta: {e}"));
+}
+
+fn project_context_at(root: &Path) -> MdtResult<ProjectContext> {
+	Ok(ProjectContext {
+		project: scan_project(root)?,
+		data: HashMap::new(),
+		padding: None,
+		formatters: Vec::new(),
+		markdown_codeblocks: CodeBlockFilter::default(),
+		comparison: ComparisonMode::default(),
+		root: root.to_path_buf(),
+	})
+}
+
+#[test]
+fn compute_updates_scoped_to_block_updates_only_matching_consumers() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_two_stale_blocks_project(tmp.path());
+
+	let ctx = project_context_at(tmp.path())?;
+	let scope = UpdateScope::all().with_blocks(["alpha".to_string()]);
+	let updates = compute_updates(&ctx, &scope)?;
+
+	assert_eq!(updates.updated_count, 1);
+	assert_eq!(updates.updated_files.len(), 1);
+	let alpha = updates
+		.updated_files
+		.get(&tmp.path().join("alpha.md"))
+		.unwrap_or_else(|| panic!("expected alpha.md to be updated"));
+	assert!(alpha.contains("Alpha content."));
+
+	write_updates(&updates)?;
+
+	// The out-of-scope consumer is untouched; a full update still fixes it.
+	let beta = std::fs::read_to_string(tmp.path().join("beta.md"))
+		.unwrap_or_else(|e| panic!("read beta: {e}"));
+	assert!(beta.contains("Stale beta."));
+
+	let ctx = project_context_at(tmp.path())?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
+	assert_eq!(updates.updated_count, 1);
+	let beta_update = updates
+		.updated_files
+		.get(&tmp.path().join("beta.md"))
+		.unwrap_or_else(|| panic!("expected beta.md to be updated"));
+	assert!(beta_update.contains("Beta content."));
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_scoped_to_file_updates_only_that_file() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_two_stale_blocks_project(tmp.path());
+
+	let ctx = project_context_at(tmp.path())?;
+	let scope = UpdateScope::all().with_files([tmp.path().join("alpha.md")]);
+	let updates = compute_updates(&ctx, &scope)?;
+
+	assert_eq!(updates.updated_count, 1);
+	assert_eq!(
+		updates.updated_files.keys().collect::<Vec<_>>(),
+		vec![&tmp.path().join("alpha.md")]
+	);
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_scope_with_unknown_block_name_errors() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_two_stale_blocks_project(tmp.path());
+
+	let ctx = project_context_at(tmp.path())?;
+	let scope = UpdateScope::all().with_blocks(["alpga".to_string()]);
+	let error = compute_updates(&ctx, &scope).map(|_| ()).unwrap_err();
+
+	assert!(matches!(error, MdtError::UnknownBlock { .. }));
+	let rendered = error.to_string();
+	assert!(rendered.contains("alpga"), "got: {rendered}");
+
+	use miette::Diagnostic as _;
+	assert_eq!(
+		error.code().map(|code| code.to_string()),
+		Some("mdt::unknown_block".to_string())
+	);
+	let help = error
+		.help()
+		.map(|help| help.to_string())
+		.unwrap_or_default();
+	assert!(
+		help.contains("alpha"),
+		"suggestions should mention `alpha`: {help}"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_scope_ignores_out_of_scope_render_errors() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write config: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"name":"x"}"#)
+		.unwrap_or_else(|e| panic!("write package: {e}"));
+	// `broken` fails to render (unclosed expression); `good` renders.
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@broken} -->\n\n{{ pkg.name \n\n<!-- {/broken} -->\n\n<!-- {@good} -->\n\nGood \
+		 content.\n\n<!-- {/good} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=broken} -->\n\nold\n\n<!-- {/broken} -->\n\n<!-- {=good} -->\n\nold\n\n<!-- \
+		 {/good} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write readme: {e}"));
+
+	let mut ctx = project_context_at(tmp.path())?;
+	ctx.data = HashMap::from([("pkg".to_string(), serde_json::json!({"name": "x"}))]);
+
+	// The out-of-scope render failure neither blocks the write nor reports.
+	let scope = UpdateScope::all().with_blocks(["good".to_string()]);
+	let updates = compute_updates(&ctx, &scope)?;
+	assert!(updates.render_errors.is_empty());
+	assert_eq!(updates.updated_count, 1);
+
+	// An in-scope render failure still reports and leaves content untouched.
+	let scope = UpdateScope::all().with_blocks(["broken".to_string()]);
+	let updates = compute_updates(&ctx, &scope)?;
+	assert_eq!(updates.render_errors.len(), 1);
+	assert_eq!(updates.render_errors[0].block_name, "broken");
+	assert!(updates.updated_files.is_empty());
 
 	Ok(())
 }
@@ -1022,7 +1181,7 @@ patterns = ["**/*.md"]
 	assert!(result.stale_files.is_empty());
 	assert_eq!(result.stale[0].expected_content.trim(), "BETA");
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let updated_content = updates
 		.updated_files
@@ -1069,7 +1228,7 @@ patterns = ["**/*.md"]
 	assert!(result.stale.is_empty());
 	assert_eq!(result.stale_files.len(), 1);
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 	assert_eq!(updates.updated_files.len(), 1);
 	let updated_content = updates
@@ -1111,7 +1270,7 @@ ignore = ["readme.md"]
 	let ctx = scan_project_with_config(tmp.path())?;
 	let result = check_project(&ctx)?;
 	assert!(result.is_ok());
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert!(updates.updated_files.is_empty());
 
 	Ok(())
@@ -1145,7 +1304,7 @@ patterns = ["**/*.md"]
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let update_result = compute_updates(&ctx)?;
+	let update_result = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(update_result.updated_count, 0);
 	let updated_file = update_result
 		.updated_files
@@ -1226,7 +1385,7 @@ fn formatter_pipeline_ignores_excluded_blocks() -> MdtResult<()> {
 
 	let ctx = scan_project_with_config(tmp.path())?;
 	assert_eq!(check_project(&ctx)?.stale.len(), 1);
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let written = &updates.updated_files[&tmp.path().join("readme.md")];
 	assert!(written.contains("Hello"));
@@ -1261,7 +1420,7 @@ fn compute_updates_reports_render_errors_and_updates_healthy_consumers() -> MdtR
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	assert_eq!(updates.render_errors.len(), 1);
 	let error = &updates.render_errors[0];
@@ -1300,7 +1459,7 @@ fn formatter_pipeline_invalid_command_template_returns_formatter_error() -> MdtR
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let err = compute_updates(&ctx).unwrap_err();
+	let err = compute_updates(&ctx, &UpdateScope::all()).unwrap_err();
 	assert!(matches!(
 		err,
 		MdtError::Formatter { reason, .. } if reason.contains("invalid formatter command template")
@@ -1333,7 +1492,7 @@ fn formatter_pipeline_failures_return_formatter_error() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let err = compute_updates(&ctx).unwrap_err();
+	let err = compute_updates(&ctx, &UpdateScope::all()).unwrap_err();
 	assert!(
 		matches!(err, MdtError::Formatter { .. }),
 		"expected Formatter error but got: {err:?}"
@@ -1368,7 +1527,7 @@ fn compute_updates_with_template_rendering() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -2351,7 +2510,7 @@ fn markdown_closing_tags_never_take_heading_or_bullet_prefixes() -> MdtResult<()
 	);
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	let written = &updates.updated_files[&tmp.path().join("readme.md")];
 	assert_eq!(
 		written,
@@ -3720,7 +3879,7 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 2);
 	assert_eq!(updates.updated_files.len(), 2);
 
@@ -4182,7 +4341,7 @@ fn pad_blocks_markdown_update() -> MdtResult<()> {
 
 	let ctx = scan_project_with_config(tmp.path())?;
 	assert!(ctx.padding.is_some());
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4217,7 +4376,7 @@ fn pad_blocks_prevents_squashed_content() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4253,7 +4412,7 @@ fn default_padding_with_line_prefix_starts_content_on_new_line() -> MdtResult<()
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4295,7 +4454,7 @@ fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4354,7 +4513,7 @@ fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4407,7 +4566,7 @@ fn pad_blocks_rust_triple_slash_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4451,7 +4610,7 @@ fn pad_blocks_typescript_jsdoc() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4496,7 +4655,7 @@ fn pad_blocks_python_hash_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4539,7 +4698,7 @@ fn pad_blocks_go_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4583,7 +4742,7 @@ fn pad_blocks_java_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4627,7 +4786,7 @@ fn pad_blocks_c_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4669,13 +4828,13 @@ fn pad_blocks_idempotent() -> MdtResult<()> {
 
 	// First update
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	write_updates(&updates)?;
 
 	// Second update should be noop
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 
 	Ok(())
@@ -4735,7 +4894,7 @@ fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4787,7 +4946,7 @@ fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4840,7 +4999,7 @@ fn pad_blocks_kotlin_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4884,7 +5043,7 @@ fn pad_blocks_swift_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4926,7 +5085,7 @@ fn pad_blocks_cpp_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -4968,7 +5127,7 @@ fn pad_blocks_csharp_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -5015,7 +5174,7 @@ fn padding_zero_rust_doc_comments() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -5060,13 +5219,13 @@ fn padding_zero_idempotent() -> MdtResult<()> {
 
 	// First update
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	write_updates(&updates)?;
 
 	// Second update should be noop
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 
 	Ok(())
@@ -5092,7 +5251,7 @@ fn padding_zero_markdown() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -5126,7 +5285,7 @@ fn padding_false_inline() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -5164,7 +5323,7 @@ fn padding_two_blank_lines() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -5210,7 +5369,7 @@ fn padding_mixed_before_zero_after_one() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -7656,7 +7815,7 @@ fn scan_project_with_extra_template_dirs() -> MdtResult<()> {
 	assert_eq!(ctx.project.consumers.len(), 1);
 
 	// Verify update works
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -8440,7 +8599,7 @@ fn scan_project_with_config_pad_blocks_and_data() -> MdtResult<()> {
 	assert_eq!(ctx.project.consumers.len(), 1);
 
 	// Also verify the update works with pad_blocks and data
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -8950,7 +9109,7 @@ fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 	assert_eq!(ctx.data["info"]["version"], "3.0.0");
 	assert_eq!(ctx.project.consumers.len(), 1);
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -9487,7 +9646,7 @@ fn compute_updates_reports_undefined_variable_warnings() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	// The update should still proceed (rendering with empty string for undefined)
 	assert!(updates.warnings.len() == 1);
@@ -9764,7 +9923,7 @@ fn block_arguments_end_to_end() -> MdtResult<()> {
 		root: tmp.path().to_path_buf(),
 	};
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 
 	let updated_content = updates
@@ -9814,7 +9973,7 @@ fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
 		root: tmp.path().to_path_buf(),
 	};
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 2);
 
 	let a_content = updates
@@ -9865,7 +10024,7 @@ fn block_arguments_with_data_and_args() -> MdtResult<()> {
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 
 	let content = updates
@@ -9937,7 +10096,7 @@ fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
 		root: tmp.path().to_path_buf(),
 	};
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 
 	let content = updates
@@ -10417,7 +10576,7 @@ Every container starts with fully initialized backing storage.
 		.unwrap_or_else(|e| panic!("write consumer: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	let consumer_path = tmp.path().join("lib.rs");
 	let updated_content = updates
@@ -10469,7 +10628,7 @@ old content
 		.unwrap_or_else(|e| panic!("write consumer: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	let readme_path = tmp.path().join("readme.md");
 	let updated_content = updates
@@ -10556,7 +10715,7 @@ fn update_idempotent_multiline_link_definitions() -> MdtResult<()> {
 		.unwrap_or_else(|e| panic!("write consumer: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	// When content already matches, there should be no updates
 	assert_eq!(
@@ -10597,7 +10756,7 @@ old content
 
 	// First update
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	write_updates(&updates)?;
 
 	// Read back the updated content
@@ -10618,7 +10777,7 @@ old content
 
 	// Second update — should be idempotent
 	let ctx2 = scan_project_with_config(tmp.path())?;
-	let updates2 = compute_updates(&ctx2)?;
+	let updates2 = compute_updates(&ctx2, &UpdateScope::all())?;
 	assert_eq!(
 		updates2.updated_count, 0,
 		"Second update should find nothing to change"
@@ -11754,7 +11913,7 @@ patterns = ["**/*.md"]
 	let result = check_project(&ctx)?;
 	assert!(result.is_ok());
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 	assert!(updates.updated_files.is_empty());
 
@@ -11787,7 +11946,7 @@ fn formatter_enabled_paths_fall_back_to_unformatted_logic_when_no_patterns_match
 	assert!(result.stale_files.is_empty());
 	assert!(result.render_errors.is_empty());
 
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	assert_eq!(updates.updated_files.len(), 1);
 	assert!(
@@ -11870,7 +12029,7 @@ fn formatter_enabled_compute_updates_skips_non_eligible_blocks() -> MdtResult<()
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 	assert!(updates.updated_files.is_empty());
 
@@ -11904,7 +12063,7 @@ patterns = ["**/*.md"]
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let err = compute_updates(&ctx).unwrap_err();
+	let err = compute_updates(&ctx, &UpdateScope::all()).unwrap_err();
 
 	assert!(matches!(err, MdtError::Formatter { reason, .. } if reason == "boom"));
 
@@ -11938,7 +12097,7 @@ patterns = ["**/*.rs"]
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let err = compute_updates(&ctx).unwrap_err();
+	let err = compute_updates(&ctx, &UpdateScope::all()).unwrap_err();
 	assert!(
 		matches!(err, MdtError::Formatter { reason, .. } if reason.contains("changed the number of consumer blocks from 1 to 0"))
 	);
@@ -12137,7 +12296,7 @@ fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let _updates = compute_updates(&ctx)?;
+	let _updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	assert!(logs_contain("computing updates"));
 	assert!(logs_contain("providers=1"));
@@ -12510,7 +12669,7 @@ fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
-	let _updates = compute_updates(&ctx)?;
+	let _updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	assert!(logs_contain("has_formatters=false"));
 

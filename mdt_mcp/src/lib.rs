@@ -135,6 +135,10 @@ pub struct UpdateParam {
 	/// Report what would change without writing any file.
 	#[serde(default)]
 	pub dry_run: bool,
+	/// Only update consumers of these block names. Unknown names are an
+	/// error result (code `mdt::block_not_found`) with suggested providers.
+	#[serde(default)]
+	pub block_names: Option<Vec<String>>,
 	#[serde(flatten)]
 	pub validation: ValidationParam,
 }
@@ -333,11 +337,15 @@ impl MdtMcpServer {
 		name = "mdt_update",
 		description = "Write the latest provider content into every stale consumer block, exactly \
 		               like `mdt update`. With `dry_run: true`, reports what would change without \
-		               writing. Refuses to write when validation errors exist (isError, code \
-		               `mdt::validation`, with `diagnostics`). Returns JSON with `ok` (false when \
-		               a consumer failed to render), `summary`, `dry_run`, `updated_count`, \
-		               `updated_files`, `render_errors` (consumers left unchanged), \
-		               `diagnostics`, `warnings`, and `missing_provider_names`.",
+		               writing. With `block_names`, syncs only consumers of those blocks (the \
+		               scan stays project-wide; validation still gates on every error). Refuses \
+		               to write when validation errors exist (isError, code `mdt::validation`, \
+		               with `diagnostics`); an unknown block name is isError with code \
+		               `mdt::block_not_found` and suggested provider names. Returns JSON with \
+		               `ok` (false when a consumer failed to render), `summary`, `dry_run`, \
+		               `block_names`, `updated_count`, `updated_files`, `render_errors` \
+		               (consumers left unchanged), `diagnostics`, `warnings`, and \
+		               `missing_provider_names`.",
 		annotations(
 			read_only_hint = false,
 			destructive_hint = true,
@@ -347,11 +355,12 @@ impl MdtMcpServer {
 	async fn update(&self, Parameters(params): Parameters<UpdateParam>) -> CallToolResult {
 		let options = ValidationOptions::from(params.validation);
 		let dry_run = params.dry_run;
+		let block_names = params.block_names.unwrap_or_default();
 		self.run_tool(
 			"update",
 			params.path,
 			RootRequirement::ExistingDirectory,
-			move |root| tools::update(&root, &options, dry_run),
+			move |root| tools::update(&root, &options, dry_run, &block_names),
 		)
 		.await
 	}
