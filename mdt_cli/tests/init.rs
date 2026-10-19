@@ -48,7 +48,8 @@ fn init_creates_valid_template() -> std::io::Result<()> {
 		.success();
 
 	let template_content = std::fs::read_to_string(tmp.path().join(".templates/template.t.md"))?;
-	let blocks = mdt_core::parse(&template_content)?;
+	let blocks = mdt_core::parse(&template_content)
+		.unwrap_or_else(|error| panic!("sample template should parse: {error}"));
 	assert!(!blocks.is_empty(), "init should create at least one block");
 	assert_eq!(blocks[0].r#type, mdt_core::BlockType::Provider);
 

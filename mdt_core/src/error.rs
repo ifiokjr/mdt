@@ -120,16 +120,6 @@ pub enum MdtError {
 	)]
 	FileTooLarge { path: String, size: u64, limit: u64 },
 
-	/// No longer returned: scanning visits each directory once, so symlink
-	/// aliases and cycles are skipped instead of failing the scan.
-	#[deprecated(note = "scanning skips already-visited directories instead of failing")]
-	#[error("symlink cycle detected at: `{path}`")]
-	#[diagnostic(
-		code(mdt::symlink_cycle),
-		help("remove the circular symlink or exclude this path")
-	)]
-	SymlinkCycle { path: String },
-
 	#[error("formatter failed for `{file}` while running `{command}`: {reason}")]
 	#[diagnostic(
 		code(mdt::formatter),
@@ -153,11 +143,3 @@ pub enum MdtError {
 }
 
 pub type MdtResult<T> = Result<T, MdtError>;
-
-/// Converts an `MdtError` into an `std::io::Error` for test compatibility.
-/// This allows tests to use `?` with mixed error types.
-impl From<MdtError> for std::io::Error {
-	fn from(error: MdtError) -> Self {
-		std::io::Error::other(error.to_string())
-	}
-}
