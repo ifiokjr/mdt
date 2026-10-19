@@ -4,7 +4,7 @@
 [graph]
 targets = []
 all-features = true
-exclude = ["monochange_book"]
+exclude = ["mdt_book"]
 
 [advisories]
 db-path = "~/.cargo/advisory-db"
