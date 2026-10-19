@@ -57,7 +57,7 @@ Install version <!-- {~version:"{{ pkg.version }}"} -->0.0.0<!-- {/version} --> 
 ```
 
 - Padding never applies to inline blocks, so they stay on one line.
-- In a table cell, leave out `|` transformers: GFM splits the row on `|` before mdt sees the comment, and the tag is not recognized.
+- Transformer chains work in table cells: mdt reads the row's raw text before GFM splits cells on `|`, so `{~ver:"{{ pkg.version }}"|code}` keeps its transformer in a cell.
 
 ### Block arguments
 

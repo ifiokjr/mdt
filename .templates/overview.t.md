@@ -112,7 +112,7 @@ The block's first argument is a minijinja template:
 - Inline blocks do not read a provider; everything comes from the template argument and the `[data]` context. Without `[data]`, the argument is written as-is.
 - Transformers (`|trim`, `|code`, and so on) run after the template is rendered.
 - Padding never applies to inline blocks, so they stay on one line.
-- In markdown, inline blocks work in paragraphs, lists, headings, and table cells. In table cells, do not add transformers: GFM splits cells on `|`, so the tag is not recognized.
+- In markdown, inline blocks work in paragraphs, lists, headings, and table cells, including full transformer chains in table cells.
 - Tags inside fenced code blocks and inline code spans in markdown are examples, not live blocks.
 - In source files, inline tags follow the source scanning rules, including `[exclude] markdown_codeblocks`.
 
@@ -132,6 +132,16 @@ Install version <!-- {~releaseVersion:"{{ "{{" }} pkg.version {{ "}}" }}"} -->0.
 | Package | Version                                                                               |
 | ------- | ------------------------------------------------------------------------------------- |
 | mdt     | <!-- {~mdtVersion:"{{ "{{" }} pkg.version {{ "}}" }}"} -->0.0.0<!-- {/mdtVersion} --> |
+```
+
+### Inline value in a table cell with a transformer
+
+Transformers work inside table cells: mdt reads the row before GFM splits cells on `|`, so the pipe before `code` stays part of the tag.
+
+```text
+| Package | Version                                                               |
+| ------- | --------------------------------------------------------------------- |
+| mdt     | <!-- {~mdtVersion:"{{ "{{" }} pkg.version {{ "}}" }}"|code} -->`0.0.0`<!-- {/mdtVersion} --> |
 ```
 
 ### Inline value with a transformer
