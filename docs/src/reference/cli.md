@@ -212,12 +212,16 @@ Write the latest provider content into every consumer.
 mdt update
 mdt update --dry-run
 mdt update --watch
+mdt update --block <NAME> [--block <NAME>...]
+mdt update --file <PATH> [--file <PATH>...]
 ```
 
-| Option      | Description                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| `--dry-run` | Print how many blocks and which files would change, without writing. Cannot be used with `--watch`. |
-| `--watch`   | Update again whenever files change.                                                                 |
+| Option           | Description                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| `--dry-run`      | Print how many blocks and which files would change, without writing. Cannot be used with `--watch`.  |
+| `--watch`        | Update again whenever files change.                                                                  |
+| `--block <NAME>` | Only update consumers of the named block. Repeatable. Unknown names exit 2 with the closest matches. |
+| `--file <PATH>`  | Only update consumers in the given file. Repeatable. Paths resolve against the current directory.    |
 
 Output:
 
@@ -248,6 +252,29 @@ error: block `a` at r.md:1:1 was not updated: unknown filter: filter truncate is
 ```
 
 `--dry-run` shows which files would change; use `mdt check --diff` to see the content.
+
+#### Scoped updates
+
+`--block` and `--file` sync a subset instead of the whole project — useful for agents and focused edits. The scan stays whole-project (so providers, orphans, and validation still see everything); only the write is scoped. Validation gates project-wide exactly like a full update: any validation error refuses the scoped write. Render failures in out-of-scope consumers never block a scoped run, in-scope failures are still reported and counted, and `[[formatters]]` only run for files the scope touches. `--block` and `--file` combine as an intersection, and `--watch` re-runs the same scope. Counts and file lists cover only the scoped work:
+
+```text
+scoped to 1 block(s): intro
+Updated 2 block(s) in 1 file(s).
+```
+
+```text
+scoped to 2 file(s): readme.md, docs/guide.md
+All in-scope consumer blocks are already up to date.
+```
+
+`--block` with a name that no provider or consumer has exits 2 with suggestions:
+
+```text
+error: unknown block name(s) in update scope: intr
+  help: did you mean: intro? run `mdt list` to see every block name
+```
+
+`--file` paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error. A later full `mdt update` still syncs everything a scoped run left alone.
 
 Watch mode prints the first result, then re-runs after each change:
 

@@ -228,3 +228,190 @@ The current version is 3.1.4.
 
 	Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Scoped updates (--block / --file)
+// ---------------------------------------------------------------------------
+#[test]
+fn update_block_scopes_to_matching_consumers() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_block_scopes_to_matching_consumers__stdout",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--block")
+				.arg("alpha")
+		);
+	});
+
+	// Only the in-scope file was rewritten.
+	let one = std::fs::read_to_string(tmp.path().join("one.md"))?;
+	insta::assert_snapshot!(
+		"update_block_scopes_to_matching_consumers__one_md",
+		one.as_str()
+	);
+	let two = std::fs::read_to_string(tmp.path().join("two.md"))?;
+	assert!(
+		two.contains("Stale beta."),
+		"out-of-scope file must stay stale"
+	);
+
+	// A later full update still fixes the rest.
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_block_scopes_to_matching_consumers__then_full_stdout",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
+	let two = std::fs::read_to_string(tmp.path().join("two.md"))?;
+	assert!(two.contains("Beta content."));
+
+	Ok(())
+}
+
+#[test]
+fn update_block_with_unknown_name_fails_with_suggestions() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::mdt_cmd()
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.arg("--block")
+		.arg("alpga")
+		.assert()
+		.code(2)
+		.stderr(predicates::str::contains("unknown block name(s)"))
+		.stderr(predicates::str::contains("alpga"))
+		.stderr(predicates::str::contains("alpha"));
+
+	let one = std::fs::read_to_string(tmp.path().join("one.md"))?;
+	assert!(
+		one.contains("Stale alpha."),
+		"failed scoped update must not write"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn update_file_scopes_to_matching_file() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_file_scopes_to_matching_file__stdout",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--file")
+				.arg(tmp.path().join("one.md"))
+		);
+	});
+
+	let one = std::fs::read_to_string(tmp.path().join("one.md"))?;
+	assert!(one.contains("Alpha content."));
+	let two = std::fs::read_to_string(tmp.path().join("two.md"))?;
+	assert!(
+		two.contains("Stale beta."),
+		"out-of-scope file must stay stale"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn update_file_outside_project_root_fails() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+	let outside = tmp
+		.path()
+		.parent()
+		.unwrap_or(tmp.path())
+		.join("elsewhere.md");
+
+	common::mdt_cmd()
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.arg("--file")
+		.arg(&outside)
+		.assert()
+		.code(2)
+		.stderr(predicates::str::contains("is outside the project root"));
+
+	Ok(())
+}
+
+#[test]
+fn update_file_matching_no_scanned_file_fails() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::mdt_cmd()
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.arg("--file")
+		.arg(tmp.path().join("nope.md"))
+		.assert()
+		.code(2)
+		.stderr(predicates::str::contains(
+			"no scanned file with consumer blocks matches",
+		));
+
+	Ok(())
+}
+
+#[test]
+fn update_dry_run_scoped_to_block_keeps_files() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_dry_run_scoped_to_block__stdout",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--dry-run")
+				.arg("--block")
+				.arg("alpha")
+		);
+	});
+
+	let one = std::fs::read_to_string(tmp.path().join("one.md"))?;
+	assert!(one.contains("Stale alpha."), "dry run must not write");
+
+	Ok(())
+}
+
+#[test]
+fn update_scoped_to_in_sync_block_reports_no_changes() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_scoped", tmp.path());
+
+	common::mdt_cmd()
+		.arg("update")
+		.arg("--path")
+		.arg(tmp.path())
+		.arg("--block")
+		.arg("alpha")
+		.assert()
+		.success();
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_scoped_to_in_sync_block__stdout",
+			common::mdt_cmd_for_path(tmp.path())
+				.arg("update")
+				.arg("--block")
+				.arg("alpha")
+		);
+	});
+
+	Ok(())
+}

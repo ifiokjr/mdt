@@ -88,6 +88,15 @@ pub enum MdtError {
 	)]
 	UnknownTransformer(String),
 
+	#[error("unknown block name(s) in update scope: {names}")]
+	#[diagnostic(code(mdt::unknown_block), help("{help}"))]
+	UnknownBlock {
+		/// The requested name(s) that match no provider or consumer.
+		names: String,
+		/// How to proceed: the closest existing names, or how to list them.
+		help: String,
+	},
+
 	#[error("transformer `{name}` expects {expected} argument(s), got {got}")]
 	#[diagnostic(code(mdt::invalid_transformer_args))]
 	InvalidTransformerArgs {

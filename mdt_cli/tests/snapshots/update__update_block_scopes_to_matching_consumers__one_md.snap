@@ -1,0 +1,11 @@
+---
+source: mdt_cli/tests/update.rs
+expression: one.as_str()
+---
+# One
+
+<!-- {=alpha} -->
+
+Alpha content.
+
+<!-- {/alpha} -->
