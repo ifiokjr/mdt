@@ -269,6 +269,36 @@ fn check_github_paths_are_relative_to_the_checkout_for_sub_projects() -> std::io
 }
 
 #[test]
+fn check_github_paths_are_relative_to_the_repository_from_sub_projects() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	// A CI step with `working-directory:` runs mdt inside the sub-project;
+	// GitHub still reads annotation paths relative to the checkout root.
+	std::fs::create_dir_all(tmp.path().join("repo/.git"))?;
+	write(tmp.path(), "repo/packages/lib/mdt.toml", "");
+	write(
+		tmp.path(),
+		"repo/packages/lib/.templates/intro.t.md",
+		"<!-- {@intro} -->\n\nHello\n\n<!-- {/intro} -->\n",
+	);
+	write(
+		tmp.path(),
+		"repo/packages/lib/readme.md",
+		"<!-- {=intro} -->\n\nstale\n\n<!-- {/intro} -->\n",
+	);
+
+	common::mdt_cmd()
+		.current_dir(tmp.path().join("repo/packages/lib"))
+		.args(["check", "--format", "github"])
+		.assert()
+		.code(1)
+		.stdout(predicate::str::contains(
+			"::error file=packages/lib/readme.md,line=1,col=1::",
+		));
+
+	Ok(())
+}
+
+#[test]
 fn check_machine_formats_report_scan_errors() -> std::io::Result<()> {
 	let tmp = tempfile::tempdir()?;
 	write(tmp.path(), "mdt.toml", "[paddding]\nbefore = 0\n");

@@ -1091,9 +1091,11 @@ fn print_github_diagnostic(diag: &ProjectDiagnostic, options: &ValidationOptions
 type Location<'a> = (&'a Path, usize, usize);
 
 /// A GitHub Actions workflow command. File paths are relative to the
-/// working directory — the repository checkout in CI — rather than to the
-/// mdt project, so annotations for `--path packages/lib` land on the right
-/// file. Messages are escaped so multi-line errors stay one command.
+/// repository checkout — the nearest enclosing git work tree, or the working
+/// directory when no git repository encloses the file — so annotations land
+/// on the right file for `--path sub` runs and for steps with a
+/// `working-directory:`. Messages are escaped so multi-line errors stay one
+/// command.
 fn github_annotation(level: &str, location: Option<Location<'_>>, message: &str) -> String {
 	let message = message
 		.replace('%', "%25")
@@ -1102,15 +1104,43 @@ fn github_annotation(level: &str, location: Option<Location<'_>>, message: &str)
 	let Some((file, line, column)) = location else {
 		return format!("::{level}::{message}");
 	};
+	format!(
+		"::{level} file={},line={line},col={column}::{message}",
+		github_annotation_path(file)
+	)
+}
+
+/// Path of `file` the way GitHub reads annotation paths: relative to the
+/// repository checkout. The nearest enclosing git work tree covers both
+/// `--path sub` runs from the checkout root and runs from inside a
+/// sub-project (`working-directory:` steps); outside a git repository the
+/// working directory is the best available anchor.
+fn github_annotation_path(file: &Path) -> String {
 	// Compare canonical paths: the working directory is physical, while a
 	// `--path` may go through a symlink (macOS `/var` is `/private/var`).
 	let canonical = |path: &Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-	let cwd = canonical(&std::env::current_dir().unwrap_or_default());
 	let file = canonical(file);
-	let file = file
-		.strip_prefix(&cwd)
-		.map_or_else(|_| display_path(&file), display_path);
-	format!("::{level} file={file},line={line},col={column}::{message}")
+	if let Some(root) = git_work_tree_root(&file) {
+		return display_path(file.strip_prefix(&root).unwrap_or(&file));
+	}
+	let cwd = canonical(&std::env::current_dir().unwrap_or_default());
+	file.strip_prefix(&cwd)
+		.map_or_else(|_| display_path(&file), display_path)
+}
+
+/// Nearest ancestor directory of `file` that holds a `.git` entry (a
+/// directory for normal repositories, a file for linked work trees and
+/// submodules).
+fn git_work_tree_root(file: &Path) -> Option<PathBuf> {
+	let mut dir = file.parent()?.to_path_buf();
+	loop {
+		if dir.join(".git").exists() {
+			return Some(dir);
+		}
+		if !dir.pop() {
+			return None;
+		}
+	}
 }
 
 /// The diagnostic code of an error, when it is one of mdt's.
