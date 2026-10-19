@@ -69,6 +69,68 @@ struct TableBlock {
 	rows: Vec<Vec<String>>,
 }
 
+/// Apply the enabled `[format]` rules to block content.
+///
+/// Table alignment runs first so the trailing-whitespace rule sees the
+/// re-rendered delimiter row. Both rules skip fenced code blocks: internal
+/// formatting never rewrites code.
+pub(crate) fn normalize(content: &str, rules: &crate::config::ResolvedFormatRules) -> String {
+	if !rules.tables && !rules.trailing_whitespace {
+		return content.to_string();
+	}
+
+	let content = if rules.tables {
+		normalize_markdown_tables(content)
+	} else {
+		content.to_string()
+	};
+
+	if rules.trailing_whitespace {
+		trim_trailing_whitespace(&content)
+	} else {
+		content
+	}
+}
+
+/// Trim trailing whitespace from every line, leaving fenced code blocks
+/// untouched.
+///
+/// Idempotent, like every `[format]` rule: trimming already-trimmed content
+/// returns it unchanged.
+pub(crate) fn trim_trailing_whitespace(content: &str) -> String {
+	if !content
+		.bytes()
+		.any(|b| b == b' ' || b == b'\t' || b == b'\r')
+	{
+		return content.to_string();
+	}
+
+	let mut fence: Option<(char, usize)> = None;
+
+	let lines: Vec<String> = content
+		.split('\n')
+		.map(|line| {
+			if let Some((fence_char, fence_len)) = fence {
+				if is_closing_fence(line, fence_char, fence_len) {
+					fence = None;
+				}
+
+				return line.to_string();
+			}
+
+			if let Some((fence_char, fence_len)) = opening_fence(line) {
+				fence = Some((fence_char, fence_len));
+
+				return line.to_string();
+			}
+
+			line.trim_end().to_string()
+		})
+		.collect();
+
+	lines.join("\n")
+}
+
 /// Align every GFM table in `content`.
 ///
 /// Idempotent: normalizing already-normalized content returns it unchanged.

@@ -236,13 +236,54 @@ pub enum ComparisonMode {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormatConfig {
-	/// Align GFM table columns inside block content (default `false`).
+	/// Named rule set. `"dprint-markdown"` turns on every `[format]` rule
+	/// mdt implements; an explicit rule key overrides the preset for that
+	/// rule alone.
+	#[serde(default)]
+	pub preset: Option<FormatPreset>,
+	/// Align GFM table columns inside block content (unset: follow the
+	/// preset, else off).
 	///
-	/// When `true`, `mdt update` also rewrites provider blocks in `*.t.md`
+	/// When on, `mdt update` also rewrites provider blocks in `*.t.md`
 	/// files whose tables are unaligned, so templates and their consumers
 	/// carry identical table bytes.
 	#[serde(default)]
+	pub tables: Option<bool>,
+	/// Trim trailing whitespace from every line of block content, outside
+	/// fenced code blocks (unset: follow the preset, else off).
+	#[serde(default)]
+	pub trailing_whitespace: Option<bool>,
+}
+
+/// Named `[format]` rule sets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FormatPreset {
+	/// The rules mdt implements that dprint-plugin-markdown also applies to
+	/// block content: `tables` and `trailing_whitespace`.
+	DprintMarkdown,
+}
+
+/// `[format]` rules with `preset` defaults applied: an unset rule follows
+/// the preset; an explicit key always wins.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ResolvedFormatRules {
+	/// Align GFM table columns (see [`FormatConfig::tables`]).
 	pub tables: bool,
+	/// Trim trailing whitespace outside fenced code blocks.
+	pub trailing_whitespace: bool,
+}
+
+impl FormatConfig {
+	/// Resolve the preset defaults against the explicit rule keys.
+	pub fn resolved(&self) -> ResolvedFormatRules {
+		let preset = matches!(self.preset, Some(FormatPreset::DprintMarkdown));
+
+		ResolvedFormatRules {
+			tables: self.tables.unwrap_or(preset),
+			trailing_whitespace: self.trailing_whitespace.unwrap_or(preset),
+		}
+	}
 }
 
 /// Controls the number of blank lines between a tag and its content.
