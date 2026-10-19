@@ -6,12 +6,14 @@
 //! - **`mdt_list`**: providers and consumers with locations, transformers, arguments, and status (`current`, `stale`, `render_error`, or `orphan`). Pass `include_content: true` to include block content.
 //! - **`mdt_check`**: stale consumers, stale files, orphans with suggestions, render errors, and diagnostics.
 //! - **`mdt_update`**: sync every consumer; `dry_run: true` previews. It refuses to write while validation errors exist.
+//! - **`mdt_doctor`**: the same health checks as `mdt doctor` — config, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, and cache — each with a `status` (`pass`, `warn`, `fail`, or `skip`), `message`, and fix `hint`.
+//! - **`mdt_info`**: the same project inspection as `mdt info` — block counts, data namespaces, template directories and files, diagnostic totals, and cache state.
 //! - **`mdt_find_reuse`**: rank existing providers by name (`block_name`) or content (`content_query`) before you create a new one.
 //! - **`mdt_preview`**: a provider and each consumer's rendered and current content.
 //! - **`mdt_get_block`**: a provider (or `null`) and its consumers, by name.
 //! - **`mdt_init`**: set up a project the same way `mdt init` does.
 //!
-//! Every tool accepts an optional project `path`. `mdt_list`, `mdt_check`, and `mdt_update` also accept `ignore_unclosed_blocks`, `ignore_unused_blocks`, `ignore_invalid_names`, and `ignore_invalid_transformers`.
+//! Every tool accepts an optional project `path`. `mdt_list`, `mdt_check`, `mdt_update`, and `mdt_doctor` also accept `ignore_unclosed_blocks`, `ignore_unused_blocks`, `ignore_invalid_names`, and `ignore_invalid_transformers`.
 //!
 //! ### Responses
 //!
@@ -137,6 +139,26 @@ pub struct UpdateParam {
 	pub dry_run: bool,
 	#[serde(flatten)]
 	pub validation: ValidationParam,
+}
+
+/// Parameters for `mdt_doctor`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct DoctorParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
+	pub path: Option<String>,
+	#[serde(flatten)]
+	pub validation: ValidationParam,
+}
+
+/// Parameters for `mdt_info`.
+#[derive(Debug, Clone, Default, Deserialize, schemars::JsonSchema)]
+pub struct InfoParam {
+	/// Project root: absolute, or relative to the server root. Must resolve
+	/// to an existing directory inside the server root. Defaults to the
+	/// server root.
+	pub path: Option<String>,
 }
 
 /// Parameters for `mdt_list`.
@@ -325,6 +347,50 @@ impl MdtMcpServer {
 			params.path,
 			RootRequirement::ExistingDirectory,
 			move |root| tools::check(&root, &options),
+		)
+		.await
+	}
+
+	#[tool(
+		name = "mdt_doctor",
+		description = "Run the same health checks as `mdt doctor` to diagnose an mdt project. \
+		               Read-only. Checks config discovery and parsing, data sources, template \
+		               layout, duplicate providers, orphan consumers, unused providers, parser \
+		               diagnostics, consumer sync, and cache health. Returns JSON with `ok` \
+		               (false when any check fails), `summary`, `counts` (`pass`, `warn`, `fail`, \
+		               `skip`), and `checks`; each check carries `id`, `title`, `status` (`pass`, \
+		               `warn`, `fail`, or `skip`), `message`, and an optional `hint` describing \
+		               the fix.",
+		annotations(read_only_hint = true)
+	)]
+	async fn doctor(&self, Parameters(params): Parameters<DoctorParam>) -> CallToolResult {
+		let options = ValidationOptions::from(params.validation);
+		self.run_tool(
+			"doctor",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| Ok(tools::doctor(&root, &options)),
+		)
+		.await
+	}
+
+	#[tool(
+		name = "mdt_info",
+		description = "Inspect a project the same way `mdt info` does. Read-only. Returns JSON \
+		               with `ok`, `summary`, and the report sections at the top level: `project` \
+		               (root and resolved config), `blocks` (provider, consumer, orphan, and \
+		               unused counts), `data` (namespaces and their sources), `templates` \
+		               (configured dirs, canonical hints, discovered files), `diagnostics` \
+		               (totals and missing provider names), and `cache` (artifact state, schema \
+		               compatibility, and reuse telemetry).",
+		annotations(read_only_hint = true)
+	)]
+	async fn info(&self, Parameters(params): Parameters<InfoParam>) -> CallToolResult {
+		self.run_tool(
+			"info",
+			params.path,
+			RootRequirement::ExistingDirectory,
+			move |root| tools::info(&root, &ValidationOptions::default()),
 		)
 		.await
 	}

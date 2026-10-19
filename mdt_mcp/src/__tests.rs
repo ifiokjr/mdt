@@ -440,6 +440,189 @@ async fn check_reports_formatter_only_stale_files() {
 }
 
 // ===========================================================================
+// doctor
+// ===========================================================================
+/// The `checks` array from a doctor result as `(id, status)` pairs.
+fn doctor_checks(json: &serde_json::Value) -> Vec<(String, String)> {
+	json["checks"]
+		.as_array()
+		.unwrap_or_else(|| panic!("checks should be an array: {json}"))
+		.iter()
+		.map(|check| {
+			(
+				check["id"].as_str().unwrap_or_default().to_string(),
+				check["status"].as_str().unwrap_or_default().to_string(),
+			)
+		})
+		.collect()
+}
+
+#[tokio::test]
+async fn doctor_on_synced_project_reports_the_expected_checks() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_synced_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.doctor(Parameters(DoctorParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			..DoctorParam::default()
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true, "got: {json}");
+	assert_eq!(json["action"], "doctor");
+	assert_eq!(json["counts"]["fail"], 0, "got: {json}");
+	let checks = doctor_checks(&json);
+	let ids: Vec<&str> = checks.iter().map(|(id, _)| id.as_str()).collect();
+	assert_eq!(
+		ids,
+		[
+			"config_discovery",
+			"data_sources",
+			"template_layout",
+			"duplicate_providers",
+			"orphan_consumers",
+			"unused_providers",
+			"parser_diagnostics",
+			"consumer_sync",
+			"cache_artifact",
+			"cache_hash_mode",
+			"cache_efficiency",
+		],
+		"got: {json}"
+	);
+	let status_of = |id: &str| {
+		checks
+			.iter()
+			.find(|(check, _)| check == id)
+			.map_or("", |(_, status)| status.as_str())
+	};
+	assert_eq!(status_of("config_discovery"), "warn");
+	assert_eq!(status_of("data_sources"), "skip");
+	assert_eq!(status_of("consumer_sync"), "pass");
+	assert_eq!(status_of("cache_artifact"), "pass");
+	assert_eq!(json["summary"], "8 pass, 1 warn, 0 fail, 2 skip");
+}
+
+#[tokio::test]
+async fn doctor_on_stale_project_warns_on_consumer_sync() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_stale_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.doctor(Parameters(DoctorParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			..DoctorParam::default()
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	// A stale consumer is a warning, not a failure: only failing checks set
+	// `ok` false, exactly like `mdt doctor`. The other warn is
+	// `config_discovery` (the fixture has no config file).
+	assert_eq!(json["ok"], true, "got: {json}");
+	assert_eq!(json["counts"]["warn"], 2, "got: {json}");
+
+	let sync = json["checks"]
+		.as_array()
+		.into_iter()
+		.flatten()
+		.find(|check| check["id"] == "consumer_sync")
+		.unwrap_or_else(|| panic!("consumer_sync check missing: {json}"));
+	assert_eq!(sync["status"], "warn");
+	assert!(
+		sync["message"]
+			.as_str()
+			.is_some_and(|message| message.contains("1 stale consumer block(s)")),
+		"got: {json}"
+	);
+}
+
+#[tokio::test]
+async fn doctor_on_orphan_project_fails_the_health_report() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=missing} -->\n\ncontent\n\n<!-- {/missing} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write readme: {e}"));
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.doctor(Parameters(DoctorParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			..DoctorParam::default()
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false, "got: {json}");
+	assert_eq!(json["counts"]["fail"], 1, "got: {json}");
+	assert_eq!(
+		doctor_checks(&json)
+			.iter()
+			.find(|(id, _)| id == "orphan_consumers")
+			.map_or("", |(_, status)| status.as_str()),
+		"fail"
+	);
+}
+
+// ===========================================================================
+// info
+// ===========================================================================
+#[tokio::test]
+async fn info_reports_block_counts_and_cache_fields() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_synced_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.info(Parameters(InfoParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true, "got: {json}");
+	assert_eq!(json["action"], "info");
+	assert!(
+		json["summary"]
+			.as_str()
+			.is_some_and(|summary| summary.contains("1 provider(s), 1 consumer(s)")),
+		"got: {json}"
+	);
+
+	// The report sections are flattened at the top level, exactly as
+	// `mdt info --format json` prints them.
+	assert_eq!(json["project"]["resolved_config"], "none");
+	assert_eq!(json["blocks"]["providers"], 1);
+	assert_eq!(json["blocks"]["consumers"], 1);
+	assert_eq!(json["blocks"]["orphan_consumers"], 0);
+	assert_eq!(json["blocks"]["unused_providers"], 0);
+	assert_eq!(json["templates"]["file_count"], 1);
+	assert_eq!(json["diagnostics"]["total"], 0);
+	assert!(
+		json["cache"]["path"]
+			.as_str()
+			.is_some_and(|path| path.ends_with(".mdt/cache/index-v2.json")),
+		"got: {json}"
+	);
+	assert_eq!(json["cache"]["exists"], true);
+	assert_eq!(json["cache"]["readable"], true);
+	assert_eq!(json["cache"]["valid"], true);
+	assert_eq!(json["cache"]["schema_version"], 3);
+	assert_eq!(json["cache"]["schema_supported"], true);
+	assert_eq!(json["cache"]["project_key_matches"], true);
+	assert_eq!(json["cache"]["hash_verification_enabled"], false);
+	assert_eq!(json["cache"]["scan_count"], 1);
+	assert_eq!(json["cache"]["full_project_hit_rate"], "0.0%");
+	assert_eq!(json["cache"]["file_reuse_rate"], "0.0%");
+}
+
+// ===========================================================================
 // update
 // ===========================================================================
 #[tokio::test]
@@ -1675,6 +1858,21 @@ async fn call_project_tools(
 				.await,
 		),
 		(
+			"doctor",
+			server
+				.doctor(Parameters(DoctorParam {
+					path: path.clone(),
+					..DoctorParam::default()
+				}))
+				.await,
+		),
+		(
+			"info",
+			server
+				.info(Parameters(InfoParam { path: path.clone() }))
+				.await,
+		),
+		(
 			"find_reuse",
 			server
 				.find_reuse(Parameters(ReuseParam {
@@ -2607,6 +2805,19 @@ async fn tools_report_an_invalid_config_as_an_error_result() {
 
 	for (action, result) in call_project_tools(&server, ".").await {
 		let json = extract_json(&result);
+		// `mdt_doctor` diagnoses a broken config instead of failing on it: it
+		// reports a `config_parse` check with status `fail`.
+		if action == "doctor" {
+			assert_eq!(result.is_error, Some(false), "{action}: {json}");
+			assert_eq!(json["ok"], false, "{action}");
+			let parse_failed = json["checks"]
+				.as_array()
+				.into_iter()
+				.flatten()
+				.any(|check| check["id"] == "config_parse" && check["status"] == "fail");
+			assert!(parse_failed, "{action}: {json}");
+			continue;
+		}
 		assert_eq!(result.is_error, Some(true), "{action}: {json}");
 		assert_eq!(json["ok"], false, "{action}");
 		assert_eq!(json["action"], action);

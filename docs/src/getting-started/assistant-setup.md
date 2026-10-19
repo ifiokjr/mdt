@@ -170,6 +170,6 @@ A relative `--path` resolves against the launch directory; use an absolute path 
 
 ## MCP tools
 
-The MCP server exposes `mdt_find_reuse`, `mdt_list`, `mdt_get_block`, `mdt_preview`, `mdt_check`, `mdt_update`, and `mdt_init`. Ask agents to call `mdt_find_reuse` or `mdt_list` before creating a new provider.
+The MCP server exposes `mdt_find_reuse`, `mdt_list`, `mdt_get_block`, `mdt_preview`, `mdt_check`, `mdt_update`, `mdt_doctor`, `mdt_info`, and `mdt_init`. Ask agents to call `mdt_find_reuse` or `mdt_list` before creating a new provider.
 
 Every response is JSON with `ok`, `action`, and `summary`. A failure is returned as a tool result with `ok: false` and an `error` object (`code`, `message`, and sometimes `help`), for example `mdt::path_outside_root` for a path outside the server root.
