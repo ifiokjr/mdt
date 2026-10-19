@@ -1,4 +1,6 @@
 [padding]
+before = 1
+after = 1
 
 [data]
 package = "package.json"

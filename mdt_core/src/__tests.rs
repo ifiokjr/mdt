@@ -4164,11 +4164,48 @@ fn stale_entry_includes_line_and_column() {
 }
 
 // --- padding tests ---
+
 #[test]
-fn pad_blocks_markdown_update() -> MdtResult<()> {
+fn bare_padding_section_defaults_to_zero() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
 	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
 		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello world.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"# Title\n\n<!-- {=greeting} -->\n\nOld content.\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	// An omitted key behaves like an absent section: content on the next
+	// line, no blank lines added.
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	let content = updates
+		.updated_files
+		.values()
+		.next()
+		.unwrap_or_else(|| panic!("expected one file"));
+	assert_eq!(
+		content.as_str(),
+		"# Title\n\n<!-- {=greeting} -->\n\nHello world.\n\n<!-- {/greeting} -->\n"
+	);
+
+	Ok(())
+}
+
+#[test]
+fn pad_blocks_markdown_update() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@greeting} -->\n\nHello world.\n\n<!-- {/greeting} -->\n",
@@ -4187,7 +4224,7 @@ fn pad_blocks_markdown_update() -> MdtResult<()> {
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
 	});
-	// With before=1/after=1 (default), extra blank line is added.
+	// With before=1/after=1 (configured), an extra blank line is added.
 	// Content from provider already has \n\n prefix/suffix, plus padding adds
 	// one more blank line.
 	assert_eq!(
@@ -4201,8 +4238,11 @@ fn pad_blocks_markdown_update() -> MdtResult<()> {
 #[test]
 fn pad_blocks_prevents_squashed_content() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	// Provider whose content has no surrounding newlines after trim
 	std::fs::write(
 		tmp.path().join("template.t.md"),
@@ -4275,8 +4315,11 @@ fn default_padding_with_line_prefix_starts_content_on_new_line() -> MdtResult<()
 #[test]
 fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@docs} -->\n\nHello from mdt.\n\n<!-- {/docs} -->\n",
@@ -4322,8 +4365,11 @@ fn pad_blocks_rust_doc_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		concat!(
@@ -4388,8 +4434,11 @@ fn pad_blocks_rust_doc_comments_multiline() -> MdtResult<()> {
 #[test]
 fn pad_blocks_rust_triple_slash_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@fn_docs} -->\n\nDoes something useful.\n\n<!-- {/fn_docs} -->\n",
@@ -4430,8 +4479,11 @@ fn pad_blocks_rust_triple_slash_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_typescript_jsdoc() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@jsdocs} -->\n\nGreets the user.\n\n<!-- {/jsdocs} -->\n",
@@ -4476,8 +4528,11 @@ fn pad_blocks_typescript_jsdoc() -> MdtResult<()> {
 #[test]
 fn pad_blocks_python_hash_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@pydocs} -->\n\nPython docs here.\n\n<!-- {/pydocs} -->\n",
@@ -4520,8 +4575,11 @@ fn pad_blocks_python_hash_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_go_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@godocs} -->\n\nGo function docs.\n\n<!-- {/godocs} -->\n",
@@ -4562,8 +4620,11 @@ fn pad_blocks_go_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_java_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@javadocs} -->\n\nJava method docs.\n\n<!-- {/javadocs} -->\n",
@@ -4608,8 +4669,11 @@ fn pad_blocks_java_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_c_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@cdocs} -->\n\nC function docs.\n\n<!-- {/cdocs} -->\n",
@@ -4650,8 +4714,11 @@ fn pad_blocks_c_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_idempotent() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@docs} -->\n\nContent here.\n\n<!-- {/docs} -->\n",
@@ -4684,8 +4751,11 @@ fn pad_blocks_idempotent() -> MdtResult<()> {
 #[test]
 fn pad_blocks_check_detects_stale() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@docs} -->\n\nNew content.\n\n<!-- {/docs} -->\n",
@@ -4753,8 +4823,11 @@ fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 #[test]
 fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		concat!(
@@ -4819,8 +4892,11 @@ fn pad_blocks_rust_multiline_preserves_blank_lines() -> MdtResult<()> {
 #[test]
 fn pad_blocks_kotlin_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@ktdocs} -->\n\nKotlin function docs.\n\n<!-- {/ktdocs} -->\n",
@@ -4865,8 +4941,11 @@ fn pad_blocks_kotlin_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_swift_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@swiftdocs} -->\n\nSwift function docs.\n\n<!-- {/swiftdocs} -->\n",
@@ -4907,8 +4986,11 @@ fn pad_blocks_swift_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_cpp_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@cppdocs} -->\n\nC++ function docs.\n\n<!-- {/cppdocs} -->\n",
@@ -4949,8 +5031,11 @@ fn pad_blocks_cpp_comments() -> MdtResult<()> {
 #[test]
 fn pad_blocks_csharp_comments() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@csdocs} -->\n\nC# method docs.\n\n<!-- {/csdocs} -->\n",
@@ -6136,7 +6221,7 @@ fn config_load_with_all_sections() -> MdtResult<()> {
 			"max_file_size = 5000\n",
 			"disable_gitignore = true\n",
 			"\n",
-			"[padding]\n",
+			"[padding]\nbefore = 1\nafter = 1\n",
 			"\n",
 			"[data]\n",
 			"pkg = \"package.json\"\n",
@@ -7513,7 +7598,7 @@ fn config_load_full_config_from_disk() -> MdtResult<()> {
 			"max_file_size = 5000\n",
 			"disable_gitignore = true\n",
 			"\n",
-			"[padding]\n",
+			"[padding]\nbefore = 1\nafter = 1\n",
 			"\n",
 			"[data]\n",
 			"pkg = \"package.json\"\n",
@@ -8211,8 +8296,11 @@ fn config_toml_nested_array_of_tables() -> MdtResult<()> {
 #[test]
 fn scan_project_with_config_pad_blocks_flag() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	std::fs::write(tmp.path().join("mdt.toml"), "[padding]\n")
-		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[padding]\nbefore = 1\nafter = 1\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
 	std::fs::write(
 		tmp.path().join("template.t.md"),
 		"<!-- {@block} -->\n\ncontent\n\n<!-- {/block} -->\n",
@@ -8868,7 +8956,7 @@ fn config_load_reads_valid_toml_content() -> MdtResult<()> {
 			"max_file_size = 5242880\n",
 			"disable_gitignore = true\n",
 			"\n",
-			"[padding]\n",
+			"[padding]\nbefore = 1\nafter = 1\n",
 			"\n",
 			"[data]\n",
 			"pkg = \"package.json\"\n",
@@ -8910,7 +8998,7 @@ fn scan_project_with_config_all_sections_loaded() -> MdtResult<()> {
 		concat!(
 			"max_file_size = 1048576\n",
 			"\n",
-			"[padding]\n",
+			"[padding]\nbefore = 1\nafter = 1\n",
 			"\n",
 			"[data]\n",
 			"info = \"info.yaml\"\n",
@@ -11390,7 +11478,7 @@ fn padding_value_line_count_and_default_cover_all_variants() {
 	assert_eq!(PaddingValue::Bool(false).line_count(), None);
 	assert_eq!(PaddingValue::Bool(true).line_count(), Some(1));
 	assert_eq!(PaddingValue::Lines(3).line_count(), Some(3));
-	assert!(matches!(PaddingValue::default(), PaddingValue::Lines(1)));
+	assert!(matches!(PaddingValue::default(), PaddingValue::Lines(0)));
 }
 
 #[test]

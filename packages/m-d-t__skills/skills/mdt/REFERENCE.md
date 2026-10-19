@@ -134,7 +134,7 @@ Padding controls the lines between the tags and the content.
 - **Default** (no `[padding]` section): `before = 0`, `after = 0` — content starts on the line after the opening tag and the closing tag starts on its own line, keeping its comment prefix (`//! <!-- {/x} -->`).
 - **Values:** `false` keeps content on the tag's line; `0` puts it on the next line; `1` adds one blank line; `2+` adds more. In source files blank padding lines take the comment prefix with trailing whitespace trimmed (`//!`, `///`, `*`).
 - **Padding adds to the content's own newlines.** Untrimmed provider content keeps its surrounding blank lines; use `|trim` when you want padding alone to decide.
-- With a `[padding]` section, an omitted key defaults to `1`.
+- An omitted `[padding]` key behaves like an absent section: `0` (content on the next line). Padding applies only when configured.
 - An indented closing tag (in a list item or docstring) keeps its indentation.
 
 ```toml
