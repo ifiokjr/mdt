@@ -139,6 +139,52 @@ fn format_eval_update_aligns_template_and_output_tables() {
 }
 
 #[test]
+fn format_eval_preset_enables_table_and_whitespace_rules() {
+	let tmp = tempfile::tempdir().expect("tempdir");
+	common::copy_fixture("format_eval_preset", tmp.path());
+
+	assert!(
+		!run_check(tmp.path()),
+		"check must report the preset-normalized provider as stale"
+	);
+
+	run_update(tmp.path());
+
+	let template =
+		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+
+	let provider_block = block_content(&template, "<!-- {@mixed} -->", "<!-- {/mixed} -->");
+	let consumer_block = block_content(&readme, "<!-- {=mixed} -->", "<!-- {/mixed} -->");
+
+	assert_eq!(
+		provider_block, consumer_block,
+		"template and output must carry identical bytes under the preset"
+	);
+
+	assert!(
+		provider_block.contains("| `one`   | first row   |"),
+		"table must be aligned with cells padded to column width: {provider_block}"
+	);
+	assert!(
+		provider_block.contains("Trailing spaces on this line\n"),
+		"prose lines must lose their trailing whitespace: {provider_block}"
+	);
+	assert!(
+		provider_block.contains("kept as-is   \n"),
+		"trailing whitespace inside fenced code blocks must survive: {provider_block}"
+	);
+
+	assert!(run_check(tmp.path()), "check must pass after update");
+
+	// A second update must be a no-op.
+	run_update(tmp.path());
+	let template_again =
+		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
+	similar_asserts::assert_eq!(template, template_again);
+}
+
+#[test]
 fn format_eval_disabled_by_default_preserves_provider_bytes() {
 	let tmp = tempfile::tempdir().expect("tempdir");
 	common::copy_fixture("format_eval_tables_disabled", tmp.path());

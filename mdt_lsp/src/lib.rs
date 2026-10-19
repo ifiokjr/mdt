@@ -34,8 +34,8 @@ use mdt_core::BlockType;
 use mdt_core::CodeBlockFilter;
 use mdt_core::ComparisonMode;
 use mdt_core::ExpectedContent;
-use mdt_core::FormatConfig;
 use mdt_core::ParseDiagnostic;
+use mdt_core::config::ResolvedFormatRules;
 use mdt_core::content_matches;
 use mdt_core::expected_consumer_content;
 use mdt_core::formatter_applies;
@@ -107,7 +107,7 @@ fn empty_project_context() -> ProjectContext {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 	}
 }
