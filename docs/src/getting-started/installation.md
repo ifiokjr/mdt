@@ -26,6 +26,16 @@ npx -y @m-d-t/cli@<version> check
 
 Download the archive for your platform from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest) and put the `mdt` binary on your `PATH`. This works in any project without Node.js or Rust.
 
+## Homebrew
+
+On macOS or Linux, install from the tap with prebuilt binaries — no Node.js or Rust toolchain needed:
+
+```sh
+brew install ifiokjr/mdt/mdt
+```
+
+Upgrade with `brew upgrade mdt`. New releases land in the tap automatically when they are published.
+
 ## Cargo
 
 If you already have a Rust toolchain:
