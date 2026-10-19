@@ -5,6 +5,8 @@ use markdown::ParseOptions;
 use markdown::mdast::Html;
 use markdown::mdast::Node;
 use markdown::to_mdast;
+use markdown::unist::Point as UnistPoint;
+use markdown::unist::Position as UnistPosition;
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::debug;
@@ -406,25 +408,86 @@ thread_local! {
 }
 
 pub fn get_html_nodes(content: impl AsRef<str>) -> MdtResult<Vec<Html>> {
+	let content = content.as_ref();
 	let mdast = GFM_PARSE_OPTIONS
-		.with(|options| to_mdast(content.as_ref(), options))
+		.with(|options| to_mdast(content, options))
 		.map_err(|e| MdtError::Markdown(e.to_string()))?;
 	let mut html_nodes = vec![];
-	collect_html(&mdast, &mut html_nodes);
+	collect_html(&mdast, &mut html_nodes, content);
 
 	Ok(html_nodes)
 }
 
-fn collect_html(node: &Node, nodes: &mut Vec<Html>) {
+fn collect_html(node: &Node, nodes: &mut Vec<Html>, content: &str) {
 	match node {
 		Node::Html(html) => nodes.push(html.clone()),
+		// GFM splits table cells on `|` before inline parsing, so a tag
+		// comment containing a pipe — an inline block with transformers, or a
+		// pipe inside a quoted template string — is cut into text fragments
+		// that never form an `Html` node. Scan the row's raw source instead,
+		// where the comment is whole.
+		Node::TableRow(_) => collect_html_from_row_span(node.position().cloned(), nodes, content),
 		_ => {
 			if let Some(node) = node.children() {
 				for child in node {
-					collect_html(child, nodes);
+					collect_html(child, nodes, content);
 				}
 			}
 		}
+	}
+}
+
+/// Scan the raw source span of a table row for HTML comments, appending each
+/// one as an `Html` node with its exact source position.
+///
+/// Unlike the AST, the raw scan does not split the row at `|`, so comments
+/// containing pipes survive whole and downstream lexing sees the same tag text
+/// it would see outside a table. A row is always a single line, so offsets
+/// advance one column per byte — the same arithmetic markdown-rs uses for
+/// non-tab content.
+fn collect_html_from_row_span(
+	position: Option<UnistPosition>,
+	nodes: &mut Vec<Html>,
+	content: &str,
+) {
+	let Some(position) = position else {
+		return;
+	};
+	let start = position.start.offset;
+	let end = position.end.offset.min(content.len());
+	if start >= end {
+		return;
+	}
+
+	let raw = &content[start..end];
+	let line = position.start.line;
+	let base_column = position.start.column;
+	let mut search_from = 0;
+
+	while let Some(open) = raw[search_from..].find("<!--") {
+		let comment_start = search_from + open;
+		let Some(close) = raw[comment_start + 4..].find("-->") else {
+			break;
+		};
+		let comment_end = comment_start + 4 + close + 3;
+
+		nodes.push(Html {
+			value: raw[comment_start..comment_end].to_string(),
+			position: Some(UnistPosition {
+				start: UnistPoint {
+					line,
+					column: base_column + comment_start,
+					offset: start + comment_start,
+				},
+				end: UnistPoint {
+					line,
+					column: base_column + comment_end,
+					offset: start + comment_end,
+				},
+			}),
+		});
+
+		search_from = comment_end;
 	}
 }
 

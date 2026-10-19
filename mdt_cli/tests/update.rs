@@ -1,5 +1,6 @@
 mod common;
 
+use assert_cmd::assert::OutputAssertExt;
 use insta_cmd::assert_cmd_snapshot;
 use rstest::rstest;
 
@@ -169,6 +170,57 @@ fn update_multiline_idempotent_after_write() -> std::io::Result<()> {
 			common::mdt_cmd_for_path(tmp.path()).arg("update")
 		);
 	});
+
+	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	similar_asserts::assert_eq!(after_first, after_second);
+
+	Ok(())
+}
+
+#[test]
+fn update_inline_table_cell_with_transformer_round_trip() -> std::io::Result<()> {
+	let tmp = tempfile::tempdir()?;
+	common::copy_fixture("update_inline_table_transformer", tmp.path());
+
+	// Before updating, the table cells with transformer chains are stale.
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("check")
+		.assert()
+		.failure();
+
+	common::with_redacted_temp_dir(tmp.path(), || {
+		assert_cmd_snapshot!(
+			"update_inline_table_cell_with_transformer_round_trip__stdout",
+			common::mdt_cmd_for_path(tmp.path()).arg("update")
+		);
+	});
+
+	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	let expected = r#"# Versions
+
+<!-- {=versionNote} -->
+The current version is 3.1.4.
+<!-- {/versionNote} -->
+
+| Package | Version                                                               |
+| ------- | --------------------------------------------------------------------- |
+| mdt     | <!-- {~tableVersion:"{{ pkg.version }}"|code} -->`3.1.4`<!-- {/tableVersion} --> |
+| cli     | <!-- {~cliVersion:"v{{ pkg.version }}"|replace:".":"-"|code} -->`v3-1-4`<!-- {/cliVersion} --> |
+"#;
+	similar_asserts::assert_eq!(content, expected);
+
+	// After updating, a fresh check is clean and a second update is a no-op.
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("check")
+		.assert()
+		.success();
+
+	let after_first = content;
+	common::mdt_cmd_for_path(tmp.path())
+		.arg("update")
+		.arg("--dry-run")
+		.assert()
+		.success();
 
 	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
 	similar_asserts::assert_eq!(after_first, after_second);

@@ -1,0 +1,17 @@
+---
+source: mdt_cli/tests/update.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - "[TEMP_DIR]"
+    - update
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+Updated 3 block(s) in 1 file(s).
+
+----- stderr -----
