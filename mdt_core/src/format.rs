@@ -74,7 +74,7 @@ struct TableBlock {
 /// Table alignment runs first so the trailing-whitespace rule sees the
 /// re-rendered delimiter row. Both rules skip fenced code blocks: internal
 /// formatting never rewrites code.
-pub(crate) fn normalize(content: &str, rules: &crate::config::ResolvedFormatRules) -> String {
+pub(crate) fn normalize(content: &str, rules: crate::config::ResolvedFormatRules) -> String {
 	if !rules.tables && !rules.trailing_whitespace {
 		return content.to_string();
 	}

@@ -152,7 +152,7 @@ fn format_eval_update_aligns_template_and_output_tables() {
 
 #[test]
 fn format_eval_preset_enables_table_and_whitespace_rules() {
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_preset", tmp.path());
 
 	assert!(
@@ -162,9 +162,10 @@ fn format_eval_preset_enables_table_and_whitespace_rules() {
 
 	run_update(tmp.path());
 
-	let template =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+	let template = read_text(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	let readme = read_text(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
 
 	let provider_block = block_content(&template, "<!-- {@mixed} -->", "<!-- {/mixed} -->");
 	let consumer_block = block_content(&readme, "<!-- {=mixed} -->", "<!-- {/mixed} -->");
@@ -191,8 +192,8 @@ fn format_eval_preset_enables_table_and_whitespace_rules() {
 
 	// A second update must be a no-op.
 	run_update(tmp.path());
-	let template_again =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
+	let template_again = read_text(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
 	similar_asserts::assert_eq!(template, template_again);
 }
 

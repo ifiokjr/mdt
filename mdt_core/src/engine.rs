@@ -493,7 +493,7 @@ fn expected_content(
 			// Internal formatting runs before transformers so consumers that
 			// wrap content in comment prefixes or code fences receive the
 			// same bytes a markdown formatter would produce.
-			let rendered_content = crate::format::normalize(&rendered_content, &ctx.format);
+			let rendered_content = crate::format::normalize(&rendered_content, ctx.format);
 
 			let transformed = apply_transformers_with_data(
 				&rendered_content,
@@ -1005,7 +1005,7 @@ fn unnormalized_providers(ctx: &ProjectContext) -> Vec<(&ProviderEntry, String)>
 		.providers
 		.values()
 		.filter_map(|provider| {
-			let normalized = crate::format::normalize(&provider.content, &ctx.format);
+			let normalized = crate::format::normalize(&provider.content, ctx.format);
 			(normalized != provider.content).then_some((provider, normalized))
 		})
 		.collect()
