@@ -156,6 +156,6 @@ Exit codes: `0` in sync; `1` stale, orphan (consumer with no provider), or rende
 ## Agents
 
 - `mdt skill --install .claude/skills` (or `.agents/skills`, `.pi/skills`, `.github/skills`) installs this skill for a project; `mdt assist <claude|cursor|copilot|pi|generic>` prints MCP setup for each client.
-- MCP server (`mdt mcp`): `mdt_find_reuse` (call before creating a provider), `mdt_list`, `mdt_check`, `mdt_update` (`dry_run`), `mdt_preview`, `mdt_get_block`, `mdt_init`. Responses are JSON with `ok`, `action`, and `summary`.
+- MCP server (`mdt mcp`): `mdt_find_reuse` (call before creating a provider), `mdt_list`, `mdt_check`, `mdt_update` (`dry_run`, `block_names` for scoped updates), `mdt_preview`, `mdt_get_block`, `mdt_init`. Responses are JSON with `ok`, `action`, and `summary`.
 
 For the full reference — every config key, padding rules, transformer details, diagnostics, and JSON output — run `mdt skill --reference` or read [REFERENCE.md](REFERENCE.md).

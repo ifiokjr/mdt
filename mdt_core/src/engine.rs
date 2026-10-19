@@ -169,6 +169,114 @@ pub struct UpdateResult {
 	pub warnings: Vec<TemplateWarning>,
 }
 
+/// Which consumer blocks a [`compute_updates`] run rewrites: every consumer,
+/// or only those matching the given block names and files.
+///
+/// The scan stays whole-project — only the write is scoped — so missing
+/// provider and orphan detection keep seeing the full project. A consumer is
+/// rewritten only when it matches every dimension that is set: with both
+/// `blocks` and `files`, the intersection is updated. `None` means no
+/// restriction on that dimension; [`UpdateScope::all`] (and `Default`) selects
+/// every consumer, exactly like an unscoped `mdt update`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct UpdateScope {
+	/// Consumer block names to update. `None` updates every block name.
+	pub blocks: Option<HashSet<String>>,
+	/// Consumer file paths (absolute, as recorded by the scan) to update.
+	/// `None` updates every file.
+	pub files: Option<HashSet<PathBuf>>,
+}
+
+impl UpdateScope {
+	/// A scope that updates every consumer, like an unscoped `mdt update`.
+	pub fn all() -> Self {
+		Self {
+			blocks: None,
+			files: None,
+		}
+	}
+
+	/// Restrict this scope to consumers of the given block names.
+	#[must_use]
+	pub fn with_blocks<I: IntoIterator<Item = String>>(mut self, names: I) -> Self {
+		self.blocks = Some(names.into_iter().collect());
+		self
+	}
+
+	/// Restrict this scope to consumers in the given files.
+	#[must_use]
+	pub fn with_files<I: IntoIterator<Item = PathBuf>>(mut self, files: I) -> Self {
+		self.files = Some(files.into_iter().collect());
+		self
+	}
+
+	/// Whether `consumer` is selected: it must match every set dimension.
+	fn matches(&self, consumer: &ConsumerEntry) -> bool {
+		self.blocks
+			.as_ref()
+			.is_none_or(|blocks| blocks.contains(&consumer.block.name))
+			&& self
+				.files
+				.as_ref()
+				.is_none_or(|files| files.contains(&consumer.file))
+	}
+}
+
+/// Whether `name` matches a provider or any consumer block in the project —
+/// whether a scoped update can select it. Inline blocks have no provider, so
+/// consumer names count too.
+pub fn has_block_named(ctx: &ProjectContext, name: &str) -> bool {
+	ctx.project.providers.contains_key(name)
+		|| ctx
+			.project
+			.consumers
+			.iter()
+			.any(|consumer| consumer.block.name == name)
+}
+
+/// Reject block names that select nothing. Each unknown name is reported with
+/// the closest existing provider names so a typo is easy to fix.
+fn validate_scope(ctx: &ProjectContext, scope: &UpdateScope) -> MdtResult<()> {
+	let Some(blocks) = &scope.blocks else {
+		return Ok(());
+	};
+
+	let unknown: Vec<&str> = blocks
+		.iter()
+		.map(String::as_str)
+		.filter(|name| !has_block_named(ctx, name))
+		.collect();
+
+	if unknown.is_empty() {
+		return Ok(());
+	}
+
+	let mut suggestions: Vec<String> = Vec::new();
+	for name in &unknown {
+		for suggestion in
+			suggest_similar_provider_names(name, ctx.project.providers.keys().map(String::as_str))
+		{
+			let suggestion = suggestion.to_string();
+			if !suggestions.contains(&suggestion) {
+				suggestions.push(suggestion);
+			}
+		}
+	}
+
+	let mut help = if suggestions.is_empty() {
+		String::new()
+	} else {
+		format!("did you mean: {}? ", suggestions.join(", "))
+	};
+	help.push_str("run `mdt list` to see every block name");
+
+	Err(MdtError::UnknownBlock {
+		names: unknown.join(", "),
+		help,
+	})
+}
+
 /// Render provider content through minijinja using the given data context.
 /// If data is empty or the content has no template syntax, returns the
 /// content unchanged.
@@ -618,7 +726,7 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	let mut stale_files = Vec::new();
 	let mut render_errors = Vec::new();
 	let mut orphans = Vec::new();
-	let warnings = collect_template_warnings(ctx);
+	let warnings = collect_template_warnings(ctx, &UpdateScope::all());
 	debug!(warnings = warnings.len(), "collected template warnings");
 
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
@@ -732,21 +840,29 @@ pub fn check_project(ctx: &ProjectContext) -> MdtResult<CheckResult> {
 	})
 }
 
-/// Compute the updated file contents for all consumer blocks.
+/// Compute the updated file contents for the consumer blocks `scope` selects.
 ///
 /// Consumers whose provider fails to render are left untouched and reported
-/// in [`UpdateResult::render_errors`]; every other consumer is still updated.
-#[instrument(skip(ctx), fields(
+/// in [`UpdateResult::render_errors`]; every other in-scope consumer is still
+/// updated. Render failures for out-of-scope consumers never reach this
+/// function, so they neither block the scoped write nor appear in the result.
+/// `[[formatters]]` run only for files the scope touches: a file enters the
+/// pipeline when at least one of its consumers is in scope. Use
+/// [`UpdateScope::all`] to update every consumer, like an unscoped
+/// `mdt update`.
+#[instrument(skip(ctx, scope), fields(
 	root = %ctx.root.display(),
 	providers = ctx.project.providers.len(),
 	consumers = ctx.project.consumers.len(),
 	has_formatters = !ctx.formatters.is_empty(),
 ))]
-pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
+pub fn compute_updates(ctx: &ProjectContext, scope: &UpdateScope) -> MdtResult<UpdateResult> {
 	debug!("computing updates");
 
+	validate_scope(ctx, scope)?;
+
 	if ctx.formatters.is_empty() {
-		return compute_updates_without_formatters(ctx);
+		return compute_updates_without_formatters(ctx, scope);
 	}
 
 	let formatter_pipeline = FormatterPipeline::compile(&ctx.formatters);
@@ -754,14 +870,25 @@ pub fn compute_updates(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 	let mut render_errors = Vec::new();
-	let warnings = collect_template_warnings(ctx);
+	let warnings = collect_template_warnings(ctx, scope);
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 
 	for (file, consumers) in consumers_by_file {
+		let scoped_consumers: Vec<&ConsumerEntry> = consumers
+			.into_iter()
+			.filter(|consumer| scope.matches(consumer))
+			.collect();
+
+		// Formatter normalization rewrites the whole file, so a scoped update
+		// leaves files without a single in-scope consumer alone.
+		if scoped_consumers.is_empty() {
+			continue;
+		}
+
 		trace!(file = %file.display(), "processing file for updates");
 		let raw = std::fs::read_to_string(&file)?;
 		let original = normalize_line_endings(&raw);
-		let ordered_consumers = sort_consumers_in_file(consumers);
+		let ordered_consumers = sort_consumers_in_file(scoped_consumers);
 		let mut candidate = original.clone();
 		let mut eligible = vec![false; ordered_consumers.len()];
 		let mut raw_expected: Vec<Option<String>> = vec![None; ordered_consumers.len()];
@@ -839,7 +966,7 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 	let mut stale = Vec::new();
 	let mut render_errors = Vec::new();
 	let mut orphans = Vec::new();
-	let warnings = collect_template_warnings(ctx);
+	let warnings = collect_template_warnings(ctx, &UpdateScope::all());
 
 	// Cache file contents so the closing-tag comment prefix can be recovered
 	// from the source when padding is enabled.
@@ -878,11 +1005,14 @@ fn check_project_without_formatters(ctx: &ProjectContext) -> MdtResult<CheckResu
 	})
 }
 
-fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateResult> {
+fn compute_updates_without_formatters(
+	ctx: &ProjectContext,
+	scope: &UpdateScope,
+) -> MdtResult<UpdateResult> {
 	let mut file_contents: HashMap<PathBuf, String> = HashMap::new();
 	let mut updated_count = 0;
 	let mut render_errors = Vec::new();
-	let warnings = collect_template_warnings(ctx);
+	let warnings = collect_template_warnings(ctx, scope);
 	let consumers_by_file = group_consumers_by_file(&ctx.project.consumers);
 	let mut render_cache = RenderCache::new(&ctx.data);
 
@@ -896,6 +1026,10 @@ fn compute_updates_without_formatters(ctx: &ProjectContext) -> MdtResult<UpdateR
 		sorted_consumers.sort_by_key(|b| Reverse(b.block.opening.end.offset));
 
 		for consumer in sorted_consumers {
+			if !scope.matches(consumer) {
+				continue;
+			}
+
 			let new_content = match expected_content(ctx, &mut render_cache, consumer, &original) {
 				ExpectedContent::Rendered(new_content) => new_content,
 				ExpectedContent::NoProvider => continue,
@@ -1232,16 +1366,17 @@ fn parse_candidate_consumer_contents(
 	Ok(consumer_contents)
 }
 
-/// Collect warnings about undefined template variables across all provider
-/// blocks that have at least one consumer. Each provider is checked at most
-/// once even if it has multiple consumers.
-fn collect_template_warnings(ctx: &ProjectContext) -> Vec<TemplateWarning> {
+/// Collect warnings about undefined template variables across provider blocks
+/// that have at least one consumer in `scope`. Each provider is checked at
+/// most once even if it has multiple consumers. Checks pass
+/// [`UpdateScope::all`] so they keep reporting on the whole project.
+fn collect_template_warnings(ctx: &ProjectContext, scope: &UpdateScope) -> Vec<TemplateWarning> {
 	let mut warnings = Vec::new();
 	let mut checked_providers: HashSet<String> = HashSet::new();
 
 	// Only check providers that are actually referenced by consumers.
 	for consumer in &ctx.project.consumers {
-		if consumer.block.r#type != BlockType::Consumer {
+		if consumer.block.r#type != BlockType::Consumer || !scope.matches(consumer) {
 			continue;
 		}
 

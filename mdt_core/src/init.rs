@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use crate::MdtConfig;
 use crate::MdtResult;
+use crate::UpdateScope;
 use crate::compute_updates;
 use crate::default_mdt_toml::DEFAULT_MDT_TOML;
 use crate::project::scan_project_with_config;
@@ -248,8 +249,8 @@ fn find_readme(root: &Path) -> MdtResult<Option<PathBuf>> {
 /// other files in an existing project.
 fn sync_file(root: &Path, file: &Path) -> MdtResult<()> {
 	let ctx = scan_project_with_config(root)?;
-	let mut updates = compute_updates(&ctx)?;
-	updates.updated_files.retain(|path, _| path == file);
+	let scope = UpdateScope::all().with_files([file.to_path_buf()]);
+	let updates = compute_updates(&ctx, &scope)?;
 	write_updates(&updates)
 }
 

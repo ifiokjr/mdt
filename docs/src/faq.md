@@ -113,7 +113,7 @@ The default scan only picks markdown and supported source extensions, and reads 
 
 ## Can I run mdt on a subset of files?
 
-No. mdt always scans the whole project so every consumer can find its provider. You can shape the project instead:
+Yes. `mdt update` accepts `--block <NAME>` and `--file <PATH>` (both repeatable, and combinable as an intersection), so you can sync only the consumers of one block or only one file. The scan itself stays whole-project so every consumer can find its provider; validation also still gates on the whole project. Unknown `--block` names and `--file` paths outside the project root (or matching no scanned file with consumers) are errors, so a typo never silently syncs nothing. A later full `mdt update` picks up whatever a scoped run left alone. To shape which files take part at all:
 
 - `--path <dir>` runs mdt on a different project root, such as one sub-project in a monorepo. Without it, mdt uses the nearest directory with an mdt config, starting from the current one and walking up within the git repository, so running inside a sub-project targets that sub-project.
 - `[exclude] patterns` skips files and directories.

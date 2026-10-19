@@ -6764,7 +6764,8 @@ fn open_fixture_file(root: &Path, file: &str) -> (WorkspaceState, Uri) {
 /// The content `mdt update` writes to `file` in the project at `root`.
 fn mdt_update_output(root: &Path, file: &str) -> String {
 	let ctx = scan_project_with_config(root).unwrap_or_else(|e| panic!("scan failed: {e}"));
-	let updates = mdt_core::compute_updates(&ctx).unwrap_or_else(|e| panic!("update failed: {e}"));
+	let updates = mdt_core::compute_updates(&ctx, &mdt_core::UpdateScope::all())
+		.unwrap_or_else(|e| panic!("update failed: {e}"));
 	assert!(
 		updates.render_errors.is_empty(),
 		"{:?}",

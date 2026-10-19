@@ -27,6 +27,7 @@
 //! - [`MdtConfig`]: configuration loaded from `mdt.toml`.
 //! - [`CheckResult`]: stale consumers, stale files, orphans, and render errors found by a check.
 //! - [`UpdateResult`]: the file contents to write, plus consumers skipped because their provider failed to render.
+//! - [`UpdateScope`]: the block names and files an update rewrites; [`UpdateScope::all`] syncs everything.
 //!
 //! ## Data Interpolation
 //!
@@ -46,7 +47,7 @@
 //!
 //! ```rust,no_run
 //! use mdt_core::project::scan_project_with_config;
-//! use mdt_core::{check_project, compute_updates, write_updates};
+//! use mdt_core::{UpdateScope, check_project, compute_updates, write_updates};
 //! use std::path::Path;
 //!
 //! let ctx = scan_project_with_config(Path::new(".")).unwrap();
@@ -57,8 +58,8 @@
 //!     eprintln!("{} stale consumer(s) found", result.stale.len());
 //! }
 //!
-//! // Update all consumer blocks
-//! let updates = compute_updates(&ctx).unwrap();
+//! // Update all consumer blocks (`.with_blocks(["intro"])` would sync one)
+//! let updates = compute_updates(&ctx, &UpdateScope::all()).unwrap();
 //! write_updates(&updates).unwrap();
 //! ```
 //! <!-- {/mdtCoreOverview} -->
