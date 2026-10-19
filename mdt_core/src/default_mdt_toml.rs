@@ -38,9 +38,24 @@ pub(crate) const DEFAULT_MDT_TOML: &str = r#"# mdt.toml
 #   "strict"  -> exact bytes (default)
 #   "lenient" -> ignore trailing whitespace and runs of blank lines
 # Lenient mode still compares indentation, table padding, and JSON layout; use
-# [[formatters]] for those. `mdt update` always writes exact bytes.
+# [format] tables or [[formatters]] for those. `mdt update` always writes
+# exact bytes.
 # [check]
 # comparison = "lenient"
+
+# [format] turns on mdt's internal formatting of block content. Internal
+# formatting runs inside block boundaries only — never on text outside blocks
+# and never inside fenced code blocks — and happens before transformers and
+# padding. It mirrors what markdown formatters such as dprint do, so template
+# files and formatter-owned output files converge byte-for-byte without
+# ignoring either side.
+#   tables -> align GFM table columns: every column pads to its widest cell
+#             (display width, so CJK counts double) and the delimiter row
+#             fills the width. With it on, `mdt update` also rewrites
+#             provider blocks in `*.t.md` files whose tables are unaligned,
+#             so templates and their consumers carry identical table bytes.
+# [format]
+# tables = true
 
 # [data] maps namespaces to data that providers can use as minijinja
 # variables, for example `{{ package.version }}`. Entry forms:
@@ -99,7 +114,9 @@ pub(crate) const DEFAULT_MDT_TOML: &str = r#"# mdt.toml
 #               globs: write `vendor/**`, not `vendor/`.
 #   ignore   -> globs to skip, same syntax
 # Keep `*.t.md` files out of formatter scope, here and in the formatter's own
-# config, because markdown formatters rewrite provider text.
+# config, because markdown formatters rewrite provider text. `[format] tables`
+# (above) already keeps table alignment from fighting: templates and outputs
+# converge without the formatter touching `*.t.md` files.
 # [[formatters]]
 # command = "dprint fmt --stdin \"{{ filePath }}\""
 # patterns = ["**/*.md"]

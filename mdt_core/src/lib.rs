@@ -76,6 +76,7 @@ mod default_mdt_toml;
 mod engine;
 #[allow(unused_assignments)]
 mod error;
+pub(crate) mod format;
 mod index_cache;
 pub mod init;
 pub(crate) mod lexer;

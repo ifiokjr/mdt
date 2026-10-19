@@ -26,7 +26,7 @@ Each matching entry:
 
 A formatter that fails or exits non-zero is an error (exit status 2); mdt never falls back to unformatted output. Without `[[formatters]]`, mdt runs no formatter.
 
-Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. CI must install the same formatter versions you use locally.
+Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. `[format] tables = true` removes the table-alignment half of that fight — mdt aligns tables inside blocks itself, the same way dprint does, in templates and outputs alike, so the formatter finds nothing left to change. CI must install the same formatter versions you use locally.
 
 <!-- {/mdtFormatterPipelineDocs} -->
 
@@ -40,13 +40,13 @@ With formatters configured, `mdt check` can also report **stale files**: files t
 
 `mdt check --format json` prints one object with every key present:
 
-| Key           | Entries                                                                   |
-| ------------- | ------------------------------------------------------------------------- |
-| `ok`          | `true` when every consumer is linked and current                          |
-| `stale`       | Stale consumers: `file`, `block`, `line`, `column`                        |
-| `stale_files` | Files a formatter would change: `file`                                    |
+| Key           | Entries                                                                      |
+| ------------- | ---------------------------------------------------------------------------- |
+| `ok`          | `true` when every consumer is linked and current                             |
+| `stale`       | Stale consumers: `file`, `block`, `line`, `column`                           |
+| `stale_files` | Files a formatter would change: `file`                                       |
 | `orphans`     | Consumers with no provider: `file`, `block`, `line`, `column`, `suggestions` |
-| `errors`      | Render errors: `file`, `block`, `line`, `column`, `message`               |
+| `errors`      | Render errors: `file`, `block`, `line`, `column`, `message`                  |
 | `diagnostics` | Errors and warnings: `severity`, `code`, `file`, `line`, `column`, `message` |
 
 A clean project:

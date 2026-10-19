@@ -40,9 +40,10 @@ In a monorepo, each sub-project (a directory with its own `mdt.toml`, `.mdt.toml
 
 ## How do I keep formatters from fighting mdt?
 
-1. **Configure `[[formatters]]`** so mdt runs your formatter on every file it writes or checks. This is the real fix for `mdt update`, formatter, `mdt check` loops.
-2. **Keep `*.t.md` out of the formatter's scope**, both in its own config and in the formatter entry's `ignore`, so provider text is never rewritten.
-3. **Include indentation in the prefix** for consumers nested inside a class or `impl` (`linePrefix:"    /// ":true`), or the formatter re-indents them.
+1. **Enable `[format] tables`** so mdt aligns table columns inside blocks itself — templates and outputs converge to the same bytes the formatter produces, with no formatter required.
+2. **Configure `[[formatters]]`** so mdt runs your formatter on every file it writes or checks. This is the real fix for `mdt update`, formatter, `mdt check` loops.
+3. **Keep `*.t.md` out of the formatter's scope**, both in its own config and in the formatter entry's `ignore`, so provider text is never rewritten.
+4. **Include indentation in the prefix** for consumers nested inside a class or `impl` (`linePrefix:"    /// ":true`), or the formatter re-indents them.
 
 See [Troubleshooting: Formatter loops](./troubleshooting.md#formatter-loops).
 

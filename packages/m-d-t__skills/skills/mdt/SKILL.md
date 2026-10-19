@@ -103,7 +103,16 @@ Providers render with minijinja once `[data]` exists: `{{ pkg.version }}`, `{% i
 
 ## Formatters
 
-`mdt check` compares bytes. A formatter that rewraps a synced file makes it stale again. Fix it once in `mdt.toml` so mdt runs the formatter itself:
+`mdt check` compares bytes. A formatter that rewraps a synced file makes it stale again. For table-padding drift, enable mdt's internal alignment first — no formatter needed:
+
+```toml
+[format]
+tables = true
+```
+
+`mdt update` then aligns GFM table columns inside blocks the same way dprint/prettier do (display-width columns, CJK aware) and rewrites provider `*.t.md` files to match, so templates and outputs carry identical table bytes. It never touches fenced code blocks or text outside blocks.
+
+For everything else a formatter rewrites, fix it once in `mdt.toml` so mdt runs the formatter itself:
 
 ```toml
 [[formatters]]
@@ -123,7 +132,7 @@ patterns = ["**/*.rs"]
 - Also exclude `*.t.md` in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite `#` lines and `**` globs inside provider text.
 - With formatters, `mdt check` also reports **stale files** (formatting drift anywhere in a file with a consumer); `mdt update` fixes them.
 - CI must install the same formatter versions, or `mdt check` fails.
-- Whitespace-only drift can instead use `[check] comparison = "lenient"` (trailing spaces and blank-line runs only — not indentation or tables).
+- Whitespace-only drift can instead use `[check] comparison = "lenient"` (trailing spaces and blank-line runs only — not indentation or table alignment; use `[format] tables` for tables).
 
 ## CI
 

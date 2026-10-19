@@ -249,9 +249,20 @@ The cache lives in `.mdt/`; add it to `.gitignore` (`mdt init` does this in git 
 
 **Symptom:** `mdt update`, then your formatter, then `mdt check` reports the same consumers as stale, every time. The formatter rewrites the generated text (table padding, indentation, wrapping) and mdt sees drift.
 
+### Fix: enable `[format] tables` for table alignment
+
+If the drift is table padding, the cheapest fix needs no formatter at all. mdt aligns GFM table columns inside blocks itself — the same column-width, padding, and delimiter rules dprint and prettier use — and rewrites provider `*.t.md` files to match:
+
+```toml
+[format]
+tables = true
+```
+
+After `mdt update`, templates and outputs carry identical table bytes, so the external formatter finds nothing left to change. Alignment runs inside block boundaries only, never inside fenced code blocks.
+
 ### Fix: configure `[[formatters]]`
 
-Tell mdt to run the same formatter on each file it writes or checks, so both sides agree:
+For everything else the formatter rewrites (indentation, emphasis, wrapping), tell mdt to run the same formatter on each file it writes or checks, so both sides agree:
 
 ```toml
 [[formatters]]
