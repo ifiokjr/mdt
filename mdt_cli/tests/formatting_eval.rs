@@ -64,7 +64,7 @@ fn dprint_available() -> bool {
 fn dprint_format(content: &str) -> String {
 	let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
 		.parent()
-		.expect("mdt_cli sits inside the workspace root");
+		.unwrap_or_else(|| panic!("mdt_cli sits inside the workspace root"));
 
 	let mut child = Command::new("dprint")
 		.arg("fmt")
@@ -75,15 +75,17 @@ fn dprint_format(content: &str) -> String {
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
 		.spawn()
-		.expect("spawn dprint");
+		.unwrap_or_else(|error| panic!("spawn dprint: {error}"));
 
 	child
 		.stdin
 		.take()
-		.expect("dprint stdin")
+		.unwrap_or_else(|| panic!("dprint stdin"))
 		.write_all(content.as_bytes())
-		.expect("write dprint stdin");
-	let output = child.wait_with_output().expect("dprint output");
+		.unwrap_or_else(|error| panic!("write dprint stdin: {error}"));
+	let output = child
+		.wait_with_output()
+		.unwrap_or_else(|error| panic!("dprint output: {error}"));
 
 	assert!(
 		output.status.success(),
@@ -96,7 +98,7 @@ fn dprint_format(content: &str) -> String {
 
 #[test]
 fn format_eval_update_aligns_template_and_output_tables() {
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_tables", tmp.path());
 
 	assert!(
@@ -106,9 +108,10 @@ fn format_eval_update_aligns_template_and_output_tables() {
 
 	run_update(tmp.path());
 
-	let template =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
 
 	let provider_block = block_content(&template, "<!-- {@table} -->", "<!-- {/table} -->");
 	let consumer_block = block_content(&readme, "<!-- {=table} -->", "<!-- {/table} -->");
@@ -131,28 +134,77 @@ fn format_eval_update_aligns_template_and_output_tables() {
 
 	// A second update must be a no-op.
 	run_update(tmp.path());
-	let template_again =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
-	let readme_again = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+	let template_again = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	let readme_again = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
 	similar_asserts::assert_eq!(template, template_again);
 	similar_asserts::assert_eq!(readme, readme_again);
 }
 
 #[test]
+fn format_eval_preset_enables_table_and_whitespace_rules() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
+	common::copy_fixture("format_eval_preset", tmp.path());
+
+	assert!(
+		!run_check(tmp.path()),
+		"check must report the preset-normalized provider as stale"
+	);
+
+	run_update(tmp.path());
+
+	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
+
+	let provider_block = block_content(&template, "<!-- {@mixed} -->", "<!-- {/mixed} -->");
+	let consumer_block = block_content(&readme, "<!-- {=mixed} -->", "<!-- {/mixed} -->");
+
+	assert_eq!(
+		provider_block, consumer_block,
+		"template and output must carry identical bytes under the preset"
+	);
+
+	assert!(
+		provider_block.contains("| `one`   | first row   |"),
+		"table must be aligned with cells padded to column width: {provider_block}"
+	);
+	assert!(
+		provider_block.contains("Trailing spaces on this line\n"),
+		"prose lines must lose their trailing whitespace: {provider_block}"
+	);
+	assert!(
+		provider_block.contains("kept as-is   \n"),
+		"trailing whitespace inside fenced code blocks must survive: {provider_block}"
+	);
+
+	assert!(run_check(tmp.path()), "check must pass after update");
+
+	// A second update must be a no-op.
+	run_update(tmp.path());
+	let template_again = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	similar_asserts::assert_eq!(template, template_again);
+}
+
+#[test]
 fn format_eval_disabled_by_default_preserves_provider_bytes() {
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_tables_disabled", tmp.path());
 
 	run_update(tmp.path());
 
-	let template =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
 	let source_template = std::fs::read_to_string(
 		Path::new(env!("CARGO_MANIFEST_DIR"))
 			.join("tests/fixtures/format_eval_tables_disabled/template.t.md"),
 	)
-	.expect("read fixture template");
+	.unwrap_or_else(|error| panic!("read fixture template: {error}"));
 
 	similar_asserts::assert_eq!(
 		template,
@@ -169,12 +221,13 @@ fn format_eval_disabled_by_default_preserves_provider_bytes() {
 
 #[test]
 fn format_eval_tables_normalize_before_comment_transformers() {
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_tables_source", tmp.path());
 
 	run_update(tmp.path());
 
-	let lib = std::fs::read_to_string(tmp.path().join("lib.rs")).expect("read lib.rs");
+	let lib = std::fs::read_to_string(tmp.path().join("lib.rs"))
+		.unwrap_or_else(|error| panic!("read lib.rs: {error}"));
 
 	assert_eq!(
 		block_content(
@@ -191,18 +244,20 @@ fn format_eval_tables_normalize_before_comment_transformers() {
 	);
 
 	run_update(tmp.path());
-	let lib_again = std::fs::read_to_string(tmp.path().join("lib.rs")).expect("read lib.rs");
+	let lib_again = std::fs::read_to_string(tmp.path().join("lib.rs"))
+		.unwrap_or_else(|error| panic!("read lib.rs: {error}"));
 	similar_asserts::assert_eq!(lib, lib_again);
 }
 
 #[test]
 fn format_eval_tables_leave_fenced_code_blocks_untouched() {
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_tables_fence", tmp.path());
 
 	run_update(tmp.path());
 
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
 	let consumer_block = block_content(&readme, "<!-- {=mixed} -->", "<!-- {/mixed} -->");
 
 	assert!(
@@ -214,8 +269,8 @@ fn format_eval_tables_leave_fenced_code_blocks_untouched() {
 		"real tables outside fences are aligned:\n{consumer_block}"
 	);
 
-	let template =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
+	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
 	assert_eq!(
 		block_content(&template, "<!-- {@mixed} -->", "<!-- {/mixed} -->"),
 		consumer_block,
@@ -230,14 +285,15 @@ fn format_eval_output_matches_real_dprint_when_available() {
 		return;
 	}
 
-	let tmp = tempfile::tempdir().expect("tempdir");
+	let tmp = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir: {error}"));
 	common::copy_fixture("format_eval_tables", tmp.path());
 
 	run_update(tmp.path());
 
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md")).expect("read readme");
-	let template =
-		std::fs::read_to_string(tmp.path().join("template.t.md")).expect("read template");
+	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+		.unwrap_or_else(|error| panic!("read readme: {error}"));
+	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+		.unwrap_or_else(|error| panic!("read template: {error}"));
 
 	// The external formatter must be a no-op on both sides. Combined with the
 	// exact-bytes assertions above, this proves the two formatters agree:

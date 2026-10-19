@@ -592,7 +592,7 @@ fn check_project_with_matching_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -622,7 +622,7 @@ fn check_project_detects_stale() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -680,7 +680,7 @@ fn compute_updates_replaces_content() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -716,7 +716,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -748,7 +748,7 @@ fn compute_updates_preserves_crlf_line_endings() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -873,7 +873,7 @@ fn compute_updates_multiple_consumers_same_file() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -912,7 +912,7 @@ fn compute_updates_skips_missing_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -943,7 +943,7 @@ fn compute_updates_noop_when_in_sync() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -975,7 +975,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -990,7 +990,7 @@ fn compute_updates_idempotent() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -3727,7 +3727,7 @@ fn parse_multiple_consumers_same_provider() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -4743,7 +4743,7 @@ fn default_padding_puts_content_on_next_line() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -6868,7 +6868,7 @@ fn project_context_find_missing_providers() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -8025,7 +8025,7 @@ fn scan_project_crlf_content_normalized() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9774,7 +9774,7 @@ fn block_arguments_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9825,7 +9825,7 @@ fn block_arguments_multiple_consumers_different_args() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9918,7 +9918,7 @@ fn check_project_reports_argument_count_mismatch() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9950,7 +9950,7 @@ fn block_arguments_with_transformers_end_to_end() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -9993,7 +9993,7 @@ fn block_arguments_up_to_date_consumer() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12087,7 +12087,7 @@ fn tracing_check_project_creates_span_and_events() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12154,7 +12154,7 @@ fn tracing_compute_updates_creates_span_and_events() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12496,7 +12496,7 @@ fn tracing_check_project_has_formatters_flag() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12529,7 +12529,7 @@ fn tracing_compute_updates_has_formatters_flag() -> MdtResult<()> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
-		format: FormatConfig::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: tmp.path().to_path_buf(),
 	};
@@ -12664,7 +12664,8 @@ fn extract_line_comment_prefix_handles_indented_comments() {
 // markdown-0.22.1; deviations are deliberate and documented in
 // `mdt_core/src/format.rs`.
 
-use crate::format::normalize_markdown_tables as normalize_tables_under_test;
+use format::normalize_markdown_tables as normalize_tables_under_test;
+use format::trim_trailing_whitespace as trim_trailing_under_test;
 
 fn assert_normalized(input: &str, expected: &str) {
 	let normalized = normalize_tables_under_test(input);
@@ -12756,6 +12757,50 @@ fn normalize_tables_skips_markdown_fenced_code_blocks() {
 	// alone so embedded examples keep their bytes.
 	let input = "```markdown\n| a | b |\n| --- | --- |\n```\n";
 	assert_normalized(input, input);
+}
+
+#[test]
+fn trim_trailing_whitespace_skips_fenced_code_blocks() {
+	let content = "line one   \nfenced   \n```text\nkept   \n```\nlast \t\n";
+	let trimmed = trim_trailing_under_test(content);
+	assert_eq!(trimmed, "line one\nfenced\n```text\nkept   \n```\nlast\n");
+}
+
+#[test]
+fn trim_trailing_whitespace_is_idempotent_and_untouched_content_short_circuits() {
+	let trimmed = trim_trailing_under_test("clean\nlines\nonly");
+	assert_eq!(trimmed, "clean\nlines\nonly");
+	let twice = trim_trailing_under_test(&trimmed);
+	assert_eq!(twice, trimmed);
+}
+
+#[test]
+fn format_config_resolves_preset_with_explicit_overrides() {
+	let off = FormatConfig::default();
+	assert!(!off.resolved().tables);
+	assert!(!off.resolved().trailing_whitespace);
+
+	let preset = FormatConfig {
+		preset: Some(FormatPreset::DprintMarkdown),
+		..FormatConfig::default()
+	};
+	assert!(preset.resolved().tables);
+	assert!(preset.resolved().trailing_whitespace);
+
+	let overridden = FormatConfig {
+		preset: Some(FormatPreset::DprintMarkdown),
+		tables: Some(false),
+		..FormatConfig::default()
+	};
+	assert!(!overridden.resolved().tables);
+	assert!(overridden.resolved().trailing_whitespace);
+
+	let explicit_only = FormatConfig {
+		trailing_whitespace: Some(true),
+		..FormatConfig::default()
+	};
+	assert!(!explicit_only.resolved().tables);
+	assert!(explicit_only.resolved().trailing_whitespace);
 }
 
 #[test]

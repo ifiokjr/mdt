@@ -285,7 +285,7 @@ pub struct ProjectContext {
 	/// `None` means no padding is applied.
 	pub padding: Option<PaddingConfig>,
 	/// Internal formatting applied to block content.
-	pub format: crate::config::FormatConfig,
+	pub format: crate::config::ResolvedFormatRules,
 	/// Ordered formatter pipeline entries used to normalize full-file output.
 	pub formatters: Vec<FormatterConfig>,
 	/// Source scanning code block filtering needed when reparsing source files.
@@ -554,7 +554,9 @@ pub fn scan_project_with_config(root: &Path) -> MdtResult<ProjectContext> {
 	let padding = config.as_ref().and_then(|c| c.padding.clone());
 	let format = config
 		.as_ref()
-		.map_or_else(crate::config::FormatConfig::default, |c| c.format);
+		.map_or_else(crate::config::ResolvedFormatRules::default, |c| {
+			c.format.resolved()
+		});
 	let formatters = config
 		.as_ref()
 		.map_or_else(Vec::new, |c| c.formatters.clone());

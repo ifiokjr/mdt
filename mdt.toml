@@ -52,16 +52,22 @@ after = 0
 # padding. It mirrors what markdown formatters such as dprint do, so template
 # files and formatter-owned output files converge byte-for-byte without
 # ignoring either side.
+#   preset = "dprint-markdown" -> turn on every rule below (the dprint
+#             behaviors mdt implements); an explicit rule key overrides the
+#             preset for that rule alone
 #   tables -> align GFM table columns: every column pads to its widest cell
 #             (display width, so CJK counts double) and the delimiter row
 #             fills the width. With it on, `mdt update` also rewrites
 #             provider blocks in `*.t.md` files whose tables are unaligned,
 #             so templates and their consumers carry identical table bytes.
+#   trailing_whitespace -> trim trailing whitespace from every line of block
+#             content (outside fenced code blocks), in providers and
+#             consumers alike
 #
-# This repo enables table alignment so dprint and mdt agree on tables without
-# excluding any file from either tool.
+# This repo uses the preset so dprint and mdt agree without excluding any
+# file from either tool.
 [format]
-tables = true
+preset = "dprint-markdown"
 
 # [data] maps namespaces to data that providers can use as minijinja
 # variables, for example `{{ cargo.workspace.package.version }}`. Entry forms:
