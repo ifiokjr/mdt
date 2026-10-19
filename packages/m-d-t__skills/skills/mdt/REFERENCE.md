@@ -349,6 +349,8 @@ Global: `-p, --path <DIR>` (must exist, except for `init`), `-v, --verbose`, `--
 | `mdt_list`       | `include_content?` (default false), `ignore_*?`  | `providers`, `consumers` (with `type`, `line`, `status`), `diagnostics`                            |
 | `mdt_check`      | `ignore_*?`                                      | `stale`, `stale_files`, `orphans` (with `suggestions`), `render_errors`, `diagnostics`, `warnings` |
 | `mdt_update`     | `dry_run?`, `ignore_*?`                          | `updated_count`, `updated_files`, `render_errors`, `diagnostics`; refuses to write on errors       |
+| `mdt_doctor`     | `ignore_*?`                                      | `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (`id`, `title`, `status`, `message`, `hint`)   |
+| `mdt_info`       |                                                  | `project`, `blocks`, `data`, `templates`, `diagnostics`, `cache` sections, as `mdt info` reports   |
 | `mdt_preview`    | `block_name`                                     | The provider rendered for each consumer: `rendered_content`, `current_content`, `status`           |
 | `mdt_get_block`  | `block_name`                                     | `provider` (or null) and `consumers`                                                               |
 | `mdt_init`       | `path?`                                          | `config`, `sample`, `gitignore` outcomes, `written_files`, `next_steps` (same as `mdt init`)       |

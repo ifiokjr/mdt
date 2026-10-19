@@ -18,6 +18,8 @@
 //! - [`project`]: walks the project and discovers provider and consumer blocks.
 //! - [`source_scanner`]: finds tags inside code comments (Rust, TypeScript, Python, Go, Java, Dart, and more).
 //! - [`init`]: the project setup shared by `mdt init` and the MCP `mdt_init` tool.
+//! - [`doctor`]: the project health checks shared by `mdt doctor` and the MCP `mdt_doctor` tool.
+//! - [`info`]: the project inspection shared by `mdt info` and the MCP `mdt_info` tool.
 //!
 //! ## Key Types
 //!
@@ -73,10 +75,12 @@ pub use source_scanner::*;
 
 pub mod config;
 mod default_mdt_toml;
+pub mod doctor;
 mod engine;
 #[allow(unused_assignments)]
 mod error;
 mod index_cache;
+pub mod info;
 pub mod init;
 pub(crate) mod lexer;
 
