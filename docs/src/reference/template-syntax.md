@@ -56,7 +56,7 @@ The block's first argument is a minijinja template:
 - Inline blocks do not read a provider; everything comes from the template argument and the `[data]` context. Without `[data]`, the argument is written as-is.
 - Transformers (`|trim`, `|code`, and so on) run after the template is rendered.
 - Padding never applies to inline blocks, so they stay on one line.
-- In markdown, inline blocks work in paragraphs, lists, headings, and table cells. In table cells, do not add transformers: GFM splits cells on `|`, so the tag is not recognized.
+- In markdown, inline blocks work in paragraphs, lists, headings, and table cells, including full transformer chains in table cells.
 - Tags inside fenced code blocks and inline code spans in markdown are examples, not live blocks.
 - In source files, inline tags follow the source scanning rules, including `[exclude] markdown_codeblocks`.
 
@@ -78,6 +78,16 @@ Install version <!-- {~releaseVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/releas
 | Package | Version                                                               |
 | ------- | --------------------------------------------------------------------- |
 | mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/mdtVersion} --> |
+```
+
+### Inline value in a table cell with a transformer
+
+Transformers work inside table cells: mdt reads the row before GFM splits cells on `|`, so the pipe before `code` stays part of the tag.
+
+```text
+| Package | Version                                                               |
+| ------- | --------------------------------------------------------------------- |
+| mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"|code} -->`0.0.0`<!-- {/mdtVersion} --> |
 ```
 
 ### Inline value with a transformer
@@ -174,7 +184,7 @@ The provider content here is `\n\nThis content includes the newlines above and b
 **Markdown files** (`.md`, `.mdx`, `.markdown`):
 
 - Tags inside fenced code blocks and inline code spans are inert. That is how documentation shows tag examples, including this page.
-- GFM tables split cells on `|`, so a tag with transformers inside a table cell is cut apart and not recognized; its closing tag is then a `mdt::unmatched_closing_tag` error. In table cells, use an inline block without transformers.
+- Tags are recognized inside GFM table cells, including tags with transformers. mdt scans a table row's raw text before GFM splits cells on `|`, so pipes inside a tag (`{~name:"... "|code}`) stay part of the tag. Escaped pipes (`\|`) in cell text behave as GFM defines them.
 
 **Source files**: tags are found in any comment, and also inside string literals. See [Source File Support](../guide/source-files.md).
 

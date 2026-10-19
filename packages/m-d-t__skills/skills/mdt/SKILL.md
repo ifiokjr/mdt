@@ -49,7 +49,7 @@ After `mdt update` the consumer contains the fenced command. Rules:
 - Names match `[A-Za-z_][A-Za-z0-9_-]*` and are case-sensitive. The sigil must follow `{` directly: `{@name}` works, `{ @name }` is not a tag (reported as an invalid tag in markdown; in code comments its leftover closing tag is reported as unmatched).
 - Provider names are unique across the project. A `{@name}` outside a `*.t.md` file is ignored (with a warning).
 - Blocks never nest (`mdt::nested_block`): inside a consumer, `mdt update` would overwrite the inner block; inside a provider, its tags would be copied into every consumer. Use `{{ ... }}` data in providers instead of inline blocks.
-- Inline blocks render a data value in place: `Version <!-- {~v:"{{ pkg.version }}"} -->0.0.0<!-- {/v} -->`. Use them for values inside sentences and table cells (in a table cell, leave out `|` transformers — the table syntax splits on `|`).
+- Inline blocks render a data value in place: `Version <!-- {~v:"{{ pkg.version }}"} -->0.0.0<!-- {/v} -->`. Use them for values inside sentences and table cells; transformer chains work in table cells too.
 - Tags inside fenced code blocks and inline code in markdown are inert examples. An example that contains its own `` ``` `` fence needs a 4-backtick outer fence, or the inner fence closes the outer one early.
 
 ## Transformers
