@@ -6986,15 +6986,6 @@ fn tokenize_single_quoted_string_keeps_escapes_literal() -> MdtResult<()> {
 }
 
 // --- Error display coverage ---
-#[test]
-#[allow(deprecated)]
-fn error_symlink_cycle_message() {
-	let err = MdtError::SymlinkCycle {
-		path: "/some/path".to_string(),
-	};
-	assert!(err.to_string().contains("/some/path"));
-	assert!(err.to_string().contains("symlink cycle"));
-}
 
 #[test]
 fn error_file_too_large_message() {
@@ -8084,18 +8075,6 @@ fn is_template_file_more_edge_cases() {
 	assert!(!is_template_file(Path::new("t.md")));
 	assert!(!is_template_file(Path::new("readme.mdx")));
 	assert!(!is_template_file(Path::new("notes.txt")));
-}
-
-// --- Coverage: error.rs SymlinkCycle display ---
-#[test]
-#[allow(deprecated)]
-fn error_symlink_cycle_display_format() {
-	let err = MdtError::SymlinkCycle {
-		path: "/circular/link".to_string(),
-	};
-	let msg = err.to_string();
-	assert!(msg.contains("symlink cycle"));
-	assert!(msg.contains("/circular/link"));
 }
 
 // --- Coverage: error.rs FileTooLarge display ---

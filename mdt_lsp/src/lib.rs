@@ -402,20 +402,14 @@ impl MdtLanguageServer {
 
 impl LanguageServer for MdtLanguageServer {
 	async fn initialize(&self, params: InitializeParams) -> LspResult<InitializeResult> {
-		// Determine workspace root — prefer `workspace_folders` (modern LSP),
-		// fall back to the deprecated `root_uri` for older clients.
+		// Determine workspace root from `workspace_folders`; the deprecated
+		// `root_uri` fallback was removed in the 1.0 cleanup — clients that
+		// only send `root_uri` get cwd-based root discovery instead.
 		let root = params
 			.workspace_folders
 			.as_ref()
 			.and_then(|folders| folders.first())
-			.and_then(|folder| folder.uri.to_file_path().map(std::borrow::Cow::into_owned))
-			.or_else(|| {
-				#[allow(deprecated)]
-				params
-					.root_uri
-					.as_ref()
-					.and_then(|uri| uri.to_file_path().map(std::borrow::Cow::into_owned))
-			});
+			.and_then(|folder| folder.uri.to_file_path().map(std::borrow::Cow::into_owned));
 
 		// Scan off the async runtime (the walk reads every managed file and
 		// may run config-declared data scripts), then apply under a short
