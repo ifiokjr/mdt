@@ -9,6 +9,12 @@ exclude = ["monochange_book"]
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = [
+  # RUSTSEC-2024-0449 (assigned 2026-10-12): `unsafe-libyaml` is unmaintained.
+  # Transitive only, via `serde_yaml_ng` (the maintained `serde_yaml` fork);
+  # no maintained pure-Rust YAML backend exists yet. Revisit when one lands.
+  "RUSTSEC-2024-0449",
+]
 
 [licenses]
 allow = [
