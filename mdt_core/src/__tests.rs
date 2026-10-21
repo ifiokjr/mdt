@@ -6109,7 +6109,7 @@ fn config_load_data_yaml_malformed_errors() {
 		.unwrap_or_else(|| panic!("expected Some"));
 	let result = config.load_data(tmp.path());
 	// YAML parsing of the malformed content may or may not fail depending on
-	// the serde_yaml_ng tolerance. We just ensure no panic.
+	// the YAML parser's tolerance. We just ensure no panic.
 	let _ = result;
 }
 

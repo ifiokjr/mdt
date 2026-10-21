@@ -24,9 +24,9 @@ memchr = { workspace = true, default-features = true }
 miette = { workspace = true, features = ["fancy"], default-features = true }
 minijinja = { workspace = true, default-features = true }
 serde = { workspace = true, features = ["derive"], default-features = true }
+serde-saphyr = { workspace = true, features = ["deserialize"] }
 serde_ini = { workspace = true, default-features = true }
 serde_json = { workspace = true, default-features = true }
-serde_yaml_ng = { workspace = true, default-features = true }
 similar = { workspace = true, default-features = true }
 snailquote = { workspace = true, default-features = true }
 thiserror = { workspace = true, default-features = true }

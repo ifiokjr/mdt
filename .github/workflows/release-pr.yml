@@ -21,8 +21,15 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     permissions:
+      # Dispatch the publish dry run against the release branch.
+      actions: write
+      # Upload the release files as git blobs and a tree. This pushes no
+      # branch; the monochange GitHub App writes the release commit and pull
+      # request on monochange.dev, and this run proves its repository with an
+      # OIDC token.
       contents: write
-      pull-requests: write
+      pull-requests: read
+      id-token: write
     steps:
       - name: checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,36 +41,6 @@ jobs:
         uses: ./.github/actions/devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: configure release git identity
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: |
-          set -euo pipefail
-          if user_info="$(gh api user --jq '{id: .id, login: .login, name: .name}')"; then
-            user_id="$(echo "$user_info" | jq -r '.id')"
-            user_login="$(echo "$user_info" | jq -r '.login')"
-            user_name="$(echo "$user_info" | jq -r '.name // .login')"
-          else
-            user_id="41898282"
-            user_login="github-actions[bot]"
-            user_name="github-actions[bot]"
-          fi
-
-          git config user.name "$user_name"
-          git config user.email "${user_id}+${user_login}@users.noreply.github.com"
-        shell: devenv shell -- bash -e {0}
-
-      - name: configure release git credentials
-        env:
-          RELEASE_PR_MERGE_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "$RELEASE_PR_MERGE_TOKEN" ]; then
-            echo "::error::RELEASE_PR_MERGE_TOKEN is required for release pull request automation." >&2
-            exit 1
-          fi
-          git remote set-url origin "https://x-access-token:${RELEASE_PR_MERGE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
       - name: refresh tags from origin
         run: git fetch --force --tags origin
@@ -105,19 +82,19 @@ jobs:
       - name: refresh release pull request
         if: steps.release_record.outputs.is_release_commit != 'true' && steps.pending_changesets.outputs.has_changesets == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-          GITHUB_COMMIT_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
-        run: |
-          set -euo pipefail
-          export GITHUB_TOKEN="$GH_TOKEN"
-
-          mc --log-level=debug run release --commit --create-pr --no-verify=true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # monochange.dev's GitHub App creates a verified release commit and
+          # opens the release pull request as the monochange bot, so the pull
+          # request's own workflows run without a personal access token.
+          MONOCHANGE_RELEASE_BACKEND: hosted
+        run: mc --log-level=debug run release --commit --create-pr --no-verify=true
         shell: devenv shell -- bash -e {0}
 
       - name: dispatch publish dry run
         if: steps.release_record.outputs.is_release_commit != 'true' && steps.pending_changesets.outputs.has_changesets == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PR_MERGE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Simulate the full publish against the release PR's own commit: the
@@ -125,6 +102,9 @@ jobs:
           # pipeline, but creates no tag, no draft release, and publishes
           # nothing.
           release_branch="monochange/release/release"
+          # The release commit was created remotely; fetch it before reading
+          # its release record.
+          git fetch --no-tags origin "+refs/heads/${release_branch}:refs/heads/${release_branch}"
           tag="$(mc step release-record --from "$release_branch" --format json \
             | jq -r '.record.release_targets[] | select(.tag == true) | .tag_name' \
             | head -1)"
