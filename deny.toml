@@ -28,6 +28,12 @@ confidence-threshold = 0.8
 allow = ["GPL-3.0-only"]
 crate = "snailquote"
 
+# encoding_rs bundles WHATWG index data under BSD-3-Clause; serde-saphyr
+# reads YAML through it to detect the input encoding.
+[[licenses.exceptions]]
+allow = ["BSD-3-Clause"]
+crate = "encoding_rs"
+
 [bans]
 multiple-versions = "allow"
 wildcards = "deny"
