@@ -35,9 +35,9 @@ predicates = { default-features = false, version = "^3" }
 rmcp = { default-features = false, version = "3.4.0" }
 rstest = { default-features = false, version = "^0.27" }
 serde = { default-features = false, version = "^1" }
+serde-saphyr = { default-features = false, version = "^2" }
 serde_ini = { default-features = false, version = "^0.2" }
 serde_json = { default-features = false, version = "^1" }
-serde_yaml_ng = { default-features = false, version = "^0.10" }
 similar = { default-features = false, version = "3.1.1" }
 similar-asserts = { default-features = false, version = "2.0.0" }
 snailquote = { default-features = false, version = "^0.3" }
