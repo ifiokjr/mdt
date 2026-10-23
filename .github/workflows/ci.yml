@@ -33,12 +33,12 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: ifiokjr/monostyle@c320d9c0bd2d85e8c939e8ac74c2b4e40ea2da5f # v0.3.26
+      - uses: ifiokjr/monostyle@ab5d8d2f6af6ea12d5655a11ab61b92c2365ddfe # v0.3.27
         if: always()
         with:
           version: 0.3.25
       - name: run zizmor
-        uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
         with:
           inputs: ".github/workflows/ .github/actions/"
           advanced-security: true
@@ -146,7 +146,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
 
       - name: install nextest
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: nextest
 
