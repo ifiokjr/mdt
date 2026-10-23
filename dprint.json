@@ -39,6 +39,7 @@
 	"excludes": [
 		"**/dist",
 		"docs/book",
+		"site",
 		".devenv/**",
 		".monochange/**",
 		".changeset/**",

@@ -181,6 +181,14 @@ in
       description = "Build the mdbook documentation.";
       binary = "bash";
     };
+    "build:site" = {
+      exec = ''
+        set -e
+        pnpm site:build
+      '';
+      description = "Build the website (landing page and docs) into site/.";
+      binary = "bash";
+    };
     "test:all" = {
       exec = ''
         set -e

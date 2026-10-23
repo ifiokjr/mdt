@@ -14,14 +14,17 @@
 		"fmt:check": "oxfmt --check \"**/*.ts\"",
 		"lint": "oxlint --type-aware .",
 		"lint:syntax": "oxlint .",
-		"build": "tsdown"
+		"build": "tsdown",
+		"site:build": "tsx scripts/site/build.ts"
 	},
 	"devDependencies": {
 		"@rslint/tsgo": "^0.7.3",
 		"@types/node": "^26.6.4",
+		"marked": "^16.4.2",
 		"oxfmt": "^0.71.0",
 		"oxlint": "^1.86.0",
 		"oxlint-tsgolint": "^7.0.2003",
+		"shiki": "^3.23.0",
 		"tsdown": "^0.23.0",
 		"tsx": "^4.23.15",
 		"typescript": "^7.0.2",
