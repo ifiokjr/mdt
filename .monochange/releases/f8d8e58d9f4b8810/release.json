@@ -1,0 +1,754 @@
+{
+  "schema_version": "0.10",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-10-23T08:20:54Z",
+  "command": "release",
+  "version": "0.9.7",
+  "versions": {
+    "mdt": "0.9.7"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.7",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.7",
+      "rendered_title": "v0.9.7 (2026-10-23)",
+      "rendered_changelog_title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.7",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/yaml-data-files-saphyr.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/yaml-data-files-saphyr.md",
+      "summary": "Parse YAML data files with serde-saphyr",
+      "details": "`[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "47d72fbb71c3d3f00ca37d1e07bc1806550bca79",
+            "short_sha": "47d72fb",
+            "url": "https://github.com/ifiokjr/mdt/commit/47d72fbb71c3d3f00ca37d1e07bc1806550bca79",
+            "authored_at": "2026-10-21T14:36:18+01:00",
+            "committed_at": "2026-10-21T14:36:18+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#225",
+            "title": "ci: open release pull requests through monochange.dev",
+            "url": "https://github.com/ifiokjr/mdt/pull/225",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "47d72fbb71c3d3f00ca37d1e07bc1806550bca79",
+            "short_sha": "47d72fb",
+            "url": "https://github.com/ifiokjr/mdt/commit/47d72fbb71c3d3f00ca37d1e07bc1806550bca79",
+            "authored_at": "2026-10-21T14:36:18+01:00",
+            "committed_at": "2026-10-21T14:36:18+01:00",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#225",
+            "title": "ci: open release pull requests through monochange.dev",
+            "url": "https://github.com/ifiokjr/mdt/pull/225",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "output": "default",
+      "stream": "default",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Parse YAML data files with serde-saphyr.** `[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed.\n  _Packages:_ 🟢 _mdt_core_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #225](https://github.com/ifiokjr/mdt/pull/225)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\nGrouped release for `mdt`.\n\n### 🐛 Fixed\n\n- **Parse YAML data files with serde-saphyr.** `[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed.\n  _Packages:_ 🟢 _mdt_core_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #225](https://github.com/ifiokjr/mdt/pull/225)"
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Parse YAML data files with serde-saphyr.** `[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #225](https://github.com/ifiokjr/mdt/pull/225)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### 🐛 Fixed\n\n- **Parse YAML data files with serde-saphyr.** `[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #225](https://github.com/ifiokjr/mdt/pull/225)"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_mcp` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.7 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.7 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.7 as part of group `mdt`.**"
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}

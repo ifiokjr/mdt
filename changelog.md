@@ -1,3 +1,11 @@
+## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)
+
+Grouped release for `mdt`.
+
+### 🐛 Fixed
+
+- **Parse YAML data files with serde-saphyr.** `[data]` files with a `.yaml` or `.yml` extension are now parsed with [`serde-saphyr`](https://crates.io/crates/serde-saphyr) instead of `serde_yaml_ng`. `serde_yaml_ng` depends on `unsafe-libyaml`, which is unmaintained ([RUSTSEC-2024-0449](https://rustsec.org/advisories/RUSTSEC-2024-0449)) and failed the `cargo-deny` advisories check. The new parser is written in safe Rust and deserializes into the same `serde_json::Value`, so templates see the same data. No configuration change is needed. _Packages:_ 🟢 _mdt_core_ _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #225](https://github.com/ifiokjr/mdt/pull/225)
+
 ## [0.9.6](https://github.com/ifiokjr/mdt/releases/tag/v0.9.6) (2026-10-07)
 
 Grouped release for `mdt`.
