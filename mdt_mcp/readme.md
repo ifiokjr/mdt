@@ -67,7 +67,7 @@ Add it to your MCP client configuration:
 
 ```toml
 [dependencies]
-mdt_mcp = "0.9.6"
+mdt_mcp = "0.9.7"
 ```
 
 <!-- {/mdtMcpInstall} -->
