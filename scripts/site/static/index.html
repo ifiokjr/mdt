@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mdt · Write it once. Sync it everywhere.</title>
+<meta name="description" content="mdt keeps your READMEs, doc comments, and docs sites in sync. Write a block of docs once, reuse it everywhere with a tiny comment-tag language, and catch drift in CI.">
+<meta property="og:title" content="mdt · Write it once. Sync it everywhere.">
+<meta property="og:description" content="Write a block of docs once, reuse it in markdown, code comments, and your docs site. mdt update syncs it, mdt check catches drift in CI.">
+<meta property="og:image" content="https://ifiokjr.github.io/mdt/assets/og.png">
+<meta property="og:url" content="https://ifiokjr.github.io/mdt/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://ifiokjr.github.io/mdt/">
+<link rel="icon" href="assets/mdt-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{const t=localStorage.getItem("mdt-theme");if(t)document.documentElement.dataset.theme=t}catch{}</script>
+<script src="assets/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+	<div class="topbar-inner">
+		<a class="brand" href="index.html" aria-label="mdt home">
+			<img src="assets/mdt-mark.svg" alt="" width="30" height="30">
+			<span>mdt</span>
+		</a>
+		<nav class="topnav" aria-label="Primary">
+			<a href="docs/index.html">Docs</a>
+			<a href="docs/getting-started/quick-start.html">Quick start</a>
+			<a href="docs/reference/cli.html">CLI</a>
+			<a href="https://github.com/ifiokjr/mdt" rel="noopener">GitHub</a>
+		</nav>
+		<button class="search-trigger" type="button" data-search-open aria-label="Search the docs">
+			<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+			<span>Search</span><kbd>/</kbd>
+		</button>
+		<button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode">
+			<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 2a8 8 0 1 0 0 16z" fill="currentColor"/><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+		</button>
+	</div>
+</header>
+
+<main id="content">
+	<section class="hero">
+		<div class="wrap">
+			<div class="hero-copy">
+				<a class="eyebrow" href="https://github.com/ifiokjr/mdt/releases/latest" rel="noopener"><b>v{{version}}</b> markdown templates for humans and agents</a>
+				<h1>Write it once.<br><em>Sync it everywhere.</em></h1>
+				<p class="lede">mdt keeps the same words in your README, your doc comments, and your docs site. Write a block once with <code>{@name}</code>, drop <code>{=name}</code> wherever it belongs, and let <code>mdt update</code> do the copying.</p>
+				<div class="ctas">
+					<a class="btn btn-ink" href="docs/getting-started/quick-start.html">Start in two minutes →</a>
+					<button class="btn btn-copy" type="button" data-copy="npm install -g @m-d-t/cli"><span class="cmd">npm install -g @m-d-t/cli</span><span class="copied">copied to clipboard</span></button>
+				</div>
+			</div>
+
+			<div class="playground" data-playground data-state="synced">
+				<div class="sheet provider">
+					<div class="sheet-head"><span class="file">.templates/install.t.md</span><span class="tag tag-provider">provider</span></div>
+					<pre><span class="c-tag">&lt;!-- {<b>@install</b>} --&gt;</span>
+<textarea data-source aria-label="Provider content: edit me" spellcheck="false">Install the CLI:
+
+npm install my-lib</textarea><span class="c-tag">&lt;!-- {<b>/install</b>} --&gt;</span></pre>
+					<p class="hint">Edit the provider. Watch the copies drift.</p>
+				</div>
+
+				<div class="wires">
+					<svg viewBox="0 0 120 400" preserveAspectRatio="none" aria-hidden="true">
+						<path d="M0 200 C60 200 60 60 120 60"/>
+						<path d="M0 200 C60 200 60 200 120 200"/>
+						<path d="M0 200 C60 200 60 340 120 340"/>
+					</svg>
+					<button class="sync-btn" type="button" data-sync>mdt update<small>sync copies</small></button>
+				</div>
+
+				<div class="copies">
+					<div class="sheet" data-copy-kind="markdown">
+						<div class="sheet-head"><span class="file">readme.md</span><span class="tag tag-consumer">consumer</span></div>
+						<pre><span class="c-tag">&lt;!-- {<b>=install</b>} --&gt;</span>
+<span class="body" data-body></span>
+<span class="c-tag">&lt;!-- {<b>/install</b>} --&gt;</span></pre>
+					</div>
+					<div class="sheet" data-copy-kind="rust">
+						<div class="sheet-head"><span class="file">src/lib.rs</span><span class="tag tag-consumer">consumer</span></div>
+						<pre><span class="c-tag">//! &lt;!-- {<b>=install</b><span class="c-tx">|trim|linePrefix:"//! ":true</span>} --&gt;</span>
+<span class="body" data-body></span>
+<span class="c-tag">//! &lt;!-- {<b>/install</b>} --&gt;</span></pre>
+					</div>
+					<div class="sheet" data-copy-kind="fence">
+						<div class="sheet-head"><span class="file">docs/setup.md</span><span class="tag tag-consumer">consumer</span></div>
+						<pre><span class="c-tag">&lt;!-- {<b>=install</b><span class="c-tx">|trim|codeBlock:"text"</span>} --&gt;</span>
+<span class="body" data-body></span>
+<span class="c-tag">&lt;!-- {<b>/install</b>} --&gt;</span></pre>
+					</div>
+				</div>
+
+				<p class="status" aria-live="polite"><span class="prompt">$ mdt check</span><span class="result" data-status>Check passed: all consumer blocks are up to date.</span></p>
+			</div>
+		</div>
+	</section>
+
+	<section class="band">
+		<div class="wrap">
+			<div class="band-head">
+				<div>
+					<p class="kicker">The whole language</p>
+					<h2>Four tags.<br><em>That's it.</em></h2>
+				</div>
+				<p>mdt tags are HTML comments, so they vanish when markdown renders. No build step in your docs, no new file format, nothing to learn past this row of cards.</p>
+			</div>
+			<div class="tags">
+				<article class="tag-card">
+					<span class="glyph">{<b>@</b>name}</span>
+					<h3>Provider</h3>
+					<p>Defines a block once, in a <code>*.t.md</code> template file.</p>
+				</article>
+				<article class="tag-card">
+					<span class="glyph">{<b>=</b>name}</span>
+					<h3>Consumer</h3>
+					<p>Marks a spot that should hold a copy. Markdown or code comments.</p>
+				</article>
+				<article class="tag-card">
+					<span class="glyph">{<b>~</b>name:""}</span>
+					<h3>Inline</h3>
+					<p>A one-line value, like a version number in the middle of a sentence.</p>
+				</article>
+				<article class="tag-card">
+					<span class="glyph">{<b>/</b>name}</span>
+					<h3>Close</h3>
+					<p>Ends any block. Everything between the tags belongs to mdt.</p>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<section class="band">
+		<div class="wrap">
+			<div class="band-head">
+				<div>
+					<p class="kicker">Where it works</p>
+					<h2>Docs that live<br><em>in your code.</em></h2>
+				</div>
+				<p>Consumers work inside source comments, so your doc comments, your README, and your docs site can all quote the same paragraph. A transformer adds the comment marker to every line.</p>
+			</div>
+			<div class="langs" data-langs>
+				<div class="lang-tabs" role="tablist" aria-label="Languages">
+					<button role="tab" aria-selected="true" data-lang="rust">Rust <span>.rs</span></button>
+					<button role="tab" aria-selected="false" data-lang="ts">TypeScript <span>.ts</span></button>
+					<button role="tab" aria-selected="false" data-lang="dart">Dart <span>.dart</span></button>
+					<button role="tab" aria-selected="false" data-lang="py">Python <span>.py</span></button>
+					<button role="tab" aria-selected="false" data-lang="go">Go <span>.go</span></button>
+				</div>
+<pre class="lang-panel" role="tabpanel" data-lang-panel="rust"><span class="dim">//! &lt;!-- {<span class="mark">=clientDocs</span>|trim|linePrefix:"//! ":true} --&gt;</span>
+<span class="hl">//! A fast HTTP client.
+//!
+//! Supports async and blocking modes.</span>
+<span class="dim">//! &lt;!-- {<span class="mark">/clientDocs</span>} --&gt;</span>
+pub struct Client;</pre>
+<pre class="lang-panel" role="tabpanel" data-lang-panel="ts" hidden><span class="dim">/**
+ * &lt;!-- {<span class="mark">=clientDocs</span>|trim|linePrefix:" * ":true} --&gt;</span>
+<span class="hl"> * A fast HTTP client.
+ *
+ * Supports async and blocking modes.</span>
+<span class="dim"> * &lt;!-- {<span class="mark">/clientDocs</span>} --&gt;
+ */</span>
+export class Client {}</pre>
+<pre class="lang-panel" role="tabpanel" data-lang-panel="dart" hidden><span class="dim">/// &lt;!-- {<span class="mark">=clientDocs</span>|trim|linePrefix:"/// ":true} --&gt;</span>
+<span class="hl">/// A fast HTTP client.
+///
+/// Supports async and blocking modes.</span>
+<span class="dim">/// &lt;!-- {<span class="mark">/clientDocs</span>} --&gt;</span>
+class Client {}</pre>
+<pre class="lang-panel" role="tabpanel" data-lang-panel="py" hidden>class Client:
+    <span class="dim">"""
+    &lt;!-- {<span class="mark">=clientDocs</span>|trim|indent:"    "} --&gt;</span>
+<span class="hl">    A fast HTTP client.
+
+    Supports async and blocking modes.</span>
+<span class="dim">    &lt;!-- {<span class="mark">/clientDocs</span>} --&gt;
+    """</span></pre>
+<pre class="lang-panel" role="tabpanel" data-lang-panel="go" hidden><span class="dim">// &lt;!-- {<span class="mark">=clientDocs</span>|trim|linePrefix:"// ":true} --&gt;</span>
+<span class="hl">// A fast HTTP client.
+//
+// Supports async and blocking modes.</span>
+<span class="dim">// &lt;!-- {<span class="mark">/clientDocs</span>} --&gt;</span>
+type Client struct{}</pre>
+			</div>
+			<p class="lang-more">Also JavaScript, Java, Kotlin, Swift, C, C++, and C#, plus any extension you add. <a href="docs/guide/source-files.html">Source file support →</a></p>
+		</div>
+	</section>
+
+	<section class="band">
+		<div class="wrap">
+			<div class="band-head">
+				<div>
+					<p class="kicker">Small, sharp tools</p>
+					<h2>More than<br><em>copy and paste.</em></h2>
+				</div>
+				<p>Pull values from your manifests, reshape a block for each place it lands, and fail the build the moment two copies disagree.</p>
+			</div>
+			<div class="split">
+				<article class="feature">
+					<h3>Data in, docs out</h3>
+					<p>Point mdt at <code>package.json</code>, <code>Cargo.toml</code>, or any data file. The version in your docs is the version you ship.</p>
+<pre><span class="dim"># mdt.toml</span>
+[data]
+pkg = "package.json"
+
+<span class="dim">&lt;!-- {@install} --&gt;</span>
+npm i my-lib@<span class="mark">{{ pkg.version }}</span>
+<span class="dim">&lt;!-- {/install} --&gt;</span></pre>
+				</article>
+				<article class="feature">
+					<h3>Transformers</h3>
+					<p>One block, many shapes. Trim it, fence it, indent it, prefix every line, or replace text on the way out.</p>
+<pre><span class="dim">&lt;!-- {=install</span><span class="mark">|trim</span>
+<span class="mark">  |codeBlock:"sh"</span><span class="dim">} --&gt;</span>
+<span class="dim">```sh</span>
+npm i my-lib@0.9.7
+<span class="dim">```</span>
+<span class="dim">&lt;!-- {/install} --&gt;</span></pre>
+				</article>
+				<article class="feature">
+					<h3>Drift fails CI</h3>
+					<p><code>mdt check</code> exits non-zero when any copy is stale and tells you exactly which block, in which file. Add one line to your workflow.</p>
+<pre><span class="dim"># .github/workflows/ci.yml</span>
+- run: npx -y @m-d-t/cli check
+
+<span class="mark">Check failed.</span>
+  block `install` at readme.md:3:1
+<span class="dim">Run `mdt update`.</span></pre>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<section class="band">
+		<div class="wrap">
+			<div class="agents">
+				<div>
+					<p class="kicker">Built for agents</p>
+					<h2>Your agent writes it once.<br><em>mdt puts it everywhere.</em></h2>
+					<p>Agents are great at editing docs and terrible at remembering the four other places the same sentence lives. mdt gives them one place to write and a command that proves nothing drifted.</p>
+					<ul>
+						<li>An agent skill built into the binary: <code>mdt skill --install .claude/skills</code></li>
+						<li>An MCP server with tools to list, preview, check, and update blocks</li>
+						<li>A language server for go-to-provider, hovers, and diagnostics in your editor</li>
+					</ul>
+				</div>
+<pre class="terminal"><span class="dim">$</span> mdt check
+<span class="mark">Check failed.</span>
+  stale consumers: 2
+
+Stale consumers:
+  block `install` at readme.md:3:1
+  block `install` at src/lib.rs:1:5
+
+<span class="dim">$</span> mdt update
+<span class="ok">Updated 2 block(s) in 2 file(s).</span>
+
+<span class="dim">$</span> mdt check
+<span class="ok">Check passed: all consumer blocks are up to date.</span></pre>
+			</div>
+		</div>
+	</section>
+
+	<section class="closing">
+		<div class="wrap">
+			<p class="kicker">Get started</p>
+			<h2 class="band-title" style="font-family:var(--serif);font-weight:400;font-size:clamp(44px,6vw,80px);line-height:1">Stop updating docs<br><em style="color:var(--red-ink)">in five places.</em></h2>
+			<div class="ctas">
+				<button class="btn btn-copy" type="button" data-copy="npx -y @m-d-t/cli init"><span class="cmd">npx -y @m-d-t/cli init</span><span class="copied">copied to clipboard</span></button>
+				<a class="btn btn-ink" href="docs/index.html">Read the docs →</a>
+			</div>
+		</div>
+	</section>
+</main>
+
+<footer class="footer">
+	<div class="wrap">
+		<a class="brand" href="index.html"><img src="assets/mdt-mark.svg" alt="" width="24" height="24"><span>mdt</span></a>
+		<span>v{{version}} · Unlicense</span>
+		<span class="spacer"></span>
+		<a href="docs/index.html">Docs</a>
+		<a href="https://github.com/ifiokjr/mdt" rel="noopener">GitHub</a>
+		<a href="https://www.npmjs.com/package/@m-d-t/cli" rel="noopener">npm</a>
+		<a href="https://crates.io/crates/mdt_cli" rel="noopener">crates.io</a>
+		<span>Made by <a href="https://github.com/ifiokjr" rel="noopener">Ifiok Jr.</a></span>
+	</div>
+</footer>
+{{search}}
+</body>
+</html>

@@ -29,26 +29,26 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: install mdbook
-        uses: taiki-e/install-action@e407f7bafb71fd004bc5c2da3032e5470cbb6ef0 # v2.87.24
+      - name: setup node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          tool: mdbook
+          node-version: 24
+
+      - name: install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10
+
+      - name: install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: setup pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         with:
           enablement: true
 
-      - name: build mdbook
-        run: mdbook build docs
-
-      - name: assemble site
-        run: |
-          mkdir -p site/assets
-          cp docs/landing/index.html site/index.html
-          cp assets/mdt-demo.gif assets/mdt-icon.svg assets/mdt-lockup-dark.svg site/assets/
-          mv assets/mdt-lockup-dark.svg site/assets/mdt-lockup.svg
-          cp -r docs/book site/book
+      - name: build site
+        run: pnpm site:build site
 
       - name: upload pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
