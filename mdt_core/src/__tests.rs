@@ -12958,3 +12958,81 @@ fn normalize_tables_returns_content_without_tables_unchanged() {
 fn normalize_tables_preserves_content_without_trailing_newline() {
 	assert_normalized("| a | b |\n| --- | --- |", "| a | b |\n| - | - |");
 }
+
+// --- Doctor and info reports ---
+#[test]
+fn doctor_report_passes_a_synced_project() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nExpected content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nExpected content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = doctor::doctor_report(tmp.path(), &ValidationOptions::default());
+
+	assert!(report.ok, "got: {report:?}");
+	assert_eq!(report.summary.fail, 0);
+	assert!(
+		report
+			.checks
+			.iter()
+			.any(|check| check.id == "consumer_sync" && check.status == doctor::DoctorStatus::Pass)
+	);
+}
+
+#[test]
+fn doctor_report_fails_on_orphan_consumers() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=missing} -->\n\ncontent\n\n<!-- {/missing} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = doctor::doctor_report(tmp.path(), &ValidationOptions::default());
+
+	assert!(!report.ok, "got: {report:?}");
+	assert_eq!(report.summary.fail, 1);
+	assert!(report.checks.iter().any(|check| {
+		check.id == "orphan_consumers" && check.status == doctor::DoctorStatus::Fail
+	}));
+}
+
+#[test]
+fn info_report_counts_blocks_and_reports_missing_config() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@block} -->\n\nExpected content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"<!-- {=block} -->\n\nExpected content.\n\n<!-- {/block} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let report = info::info_report(tmp.path(), &ValidationOptions::default())?;
+
+	assert_eq!(report.blocks.providers, 1);
+	assert_eq!(report.blocks.consumers, 1);
+	assert_eq!(report.blocks.orphan_consumers, 0);
+	assert_eq!(report.blocks.unused_providers, 0);
+	assert_eq!(report.project.resolved_config, "none");
+	assert_eq!(report.templates.discovered_files, ["template.t.md"]);
+	assert_eq!(report.diagnostics.total, 0);
+	assert!(
+		report.cache.path.ends_with(".mdt/cache/index-v2.json"),
+		"got: {}",
+		report.cache.path
+	);
+	assert!(report.cache.artifact.exists);
+
+	Ok(())
+}
