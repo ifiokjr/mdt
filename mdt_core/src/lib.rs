@@ -24,12 +24,12 @@
 //! ## Key Types
 //!
 //! - [`Block`]: a parsed provider, consumer, or inline block with its name, type, position, and transformers.
+//! - [`UpdateScope`]: the block names and files an update rewrites; [`UpdateScope::all`] syncs everything.
 //! - [`Transformer`]: a pipe-delimited content filter (such as `trim`, `indent`, or `linePrefix`) applied during injection.
 //! - [`ProjectContext`]: a scanned project with its loaded template data, ready for checking or updating.
 //! - [`MdtConfig`]: configuration loaded from `mdt.toml`.
 //! - [`CheckResult`]: stale consumers, stale files, orphans, and render errors found by a check.
 //! - [`UpdateResult`]: the file contents to write, plus consumers skipped because their provider failed to render.
-//! - [`UpdateScope`]: the block names and files an update rewrites; [`UpdateScope::all`] syncs everything.
 //!
 //! ## Data Interpolation
 //!

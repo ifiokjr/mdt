@@ -171,6 +171,7 @@ Markdown / source file
 ## Key Types
 
 - [`Block`]: a parsed provider, consumer, or inline block with its name, type, position, and transformers.
+- [`UpdateScope`]: the block names and files an update rewrites; [`UpdateScope::all`] syncs everything.
 - [`Transformer`]: a pipe-delimited content filter (such as `trim`, `indent`, or `linePrefix`) applied during injection.
 - [`ProjectContext`]: a scanned project with its loaded template data, ready for checking or updating.
 - [`MdtConfig`]: configuration loaded from `mdt.toml`.
@@ -195,7 +196,7 @@ Supported sources: files and commands. Supported formats: text, JSON, TOML, YAML
 
 ```rust,no_run
 use mdt_core::project::scan_project_with_config;
-use mdt_core::{check_project, compute_updates, write_updates};
+use mdt_core::{UpdateScope, check_project, compute_updates, write_updates};
 use std::path::Path;
 
 let ctx = scan_project_with_config(Path::new(".")).unwrap();
@@ -206,8 +207,8 @@ if !result.is_ok() {
     eprintln!("{} stale consumer(s) found", result.stale.len());
 }
 
-// Update all consumer blocks
-let updates = compute_updates(&ctx).unwrap();
+// Update all consumer blocks (`.with_blocks(["intro"])` would sync one)
+let updates = compute_updates(&ctx, &UpdateScope::all()).unwrap();
 write_updates(&updates).unwrap();
 ```
 
