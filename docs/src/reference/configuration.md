@@ -300,7 +300,7 @@ Each matching entry:
 
 A formatter that fails or exits non-zero is an error (exit status 2); mdt never falls back to unformatted output. Without `[[formatters]]`, mdt runs no formatter.
 
-Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. CI must install the same formatter versions you use locally.
+Keep `*.t.md` files out of formatter scope, both in `ignore` and in the formatter's own config (dprint `excludes`, `.prettierignore`): markdown formatters rewrite provider text such as `#` lines and `**` globs. `[format] tables = true` removes the table-alignment half of that fight — mdt aligns tables inside blocks itself, the same way dprint does, in templates and outputs alike, so the formatter finds nothing left to change. CI must install the same formatter versions you use locally.
 
 <!-- {/mdtFormatterPipelineDocs} -->
 
