@@ -250,6 +250,16 @@ Install version <!-- {~releaseVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/releas
 | mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"} -->0.0.0<!-- {/mdtVersion} --> |
 ```
 
+### Inline value in a table cell with a transformer
+
+Transformers work inside table cells: mdt reads the row before GFM splits cells on `|`, so the pipe before `code` stays part of the tag.
+
+```text
+| Package | Version                                                               |
+| ------- | --------------------------------------------------------------------- |
+| mdt     | <!-- {~mdtVersion:"{{ pkg.version }}"|code} -->`0.0.0`<!-- {/mdtVersion} --> |
+```
+
 ### Inline value with a transformer
 
 ```markdown

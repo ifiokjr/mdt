@@ -181,6 +181,89 @@ fn parse_inline_block_inside_markdown_fence_is_ignored() -> MdtResult<()> {
 }
 
 #[test]
+fn parse_inline_block_with_transformer_inside_markdown_table_cell() -> MdtResult<()> {
+	let input = r#"| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~version:"{{ pkg.version }}"|code} -->`0.0.0`<!-- {/version} --> |
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "version");
+	assert_eq!(blocks[0].r#type, BlockType::Inline);
+	assert_eq!(blocks[0].arguments, vec!["{{ pkg.version }}".to_string()]);
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Code);
+
+	Ok(())
+}
+
+#[test]
+fn parse_inline_block_with_transformer_chain_inside_markdown_table_cell() -> MdtResult<()> {
+	let input = r#"| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~version:"{{ pkg.version }}"|replace:"0":"9"|code} -->`0.0.0`<!-- {/version} --> |
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].transformers.len(), 2);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Replace);
+	assert_eq!(
+		blocks[0].transformers[0].args,
+		vec![
+			Argument::String("0".to_string()),
+			Argument::String("9".to_string())
+		]
+	);
+	assert_eq!(blocks[0].transformers[1].r#type, TransformerType::Code);
+
+	Ok(())
+}
+
+#[test]
+fn parse_inline_block_with_pipe_in_template_inside_markdown_table_cell() -> MdtResult<()> {
+	let input = r#"| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~version:"{{ pkg.version }}|x"} -->0.0.0|x<!-- {/version} --> |
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "version");
+	assert_eq!(blocks[0].arguments, vec!["{{ pkg.version }}|x".to_string()]);
+
+	Ok(())
+}
+
+#[test]
+fn parse_inline_block_with_escaped_pipe_in_template_inside_markdown_table_cell() -> MdtResult<()> {
+	let input = r#"| Package | Version |
+| ------- | ------- |
+| mdt     | <!-- {~label:"a\|b"} -->a\|b<!-- {/label} --> |
+"#;
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "label");
+	assert_eq!(blocks[0].arguments.len(), 1);
+
+	Ok(())
+}
+
+#[test]
+fn parse_table_cell_with_escaped_pipe_and_code_span_text() -> MdtResult<()> {
+	// Cell text with an escaped pipe and a code span (the pipe inside the code
+	// span still splits cells per GFM) keeps parsing as before, and the inline
+	// block next to it is found.
+	let input = "| Package | Version |\n| ------- | ------- |\n| mdt     | a \\| b <!-- \
+	             {~version:\"{{ pkg.version }}\"|code} -->`0.0.0`<!-- {/version} --> |\n";
+	let blocks = parse(input)?;
+	assert_eq!(blocks.len(), 1);
+	assert_eq!(blocks[0].name, "version");
+	assert_eq!(blocks[0].transformers.len(), 1);
+	assert_eq!(blocks[0].transformers[0].r#type, TransformerType::Code);
+
+	Ok(())
+}
+
+#[test]
 fn parse_missing_close_tag_errors() {
 	let input = "<!-- {@openBlock} -->\n\nContent without close tag.\n";
 	let result = parse(input);
@@ -814,6 +897,90 @@ fn compute_updates_replaces_inline_content_in_markdown_table() -> MdtResult<()> 
 	assert!(content.contains(
 		"| mdt     | <!-- {~version:\"{{ pkg.version }}\"} -->1.2.3<!-- {/version} --> |"
 	));
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_replaces_inline_transformer_content_in_markdown_table() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"| Package | Version                                                               |\n| \
+		 ------- | --------------------------------------------------------------------- |\n| mdt     \
+		 | <!-- {~version:\"{{ pkg.version }}\"|code} -->`0.0.0`<!-- {/version} --> |\n| other   \
+		 | row |\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	// Only the rendered value between the tags changes; the rest of the table
+	// row (and the following row) is preserved byte-for-byte.
+	assert_eq!(
+		content,
+		"| Package | Version                                                               |\n| \
+		 ------- | --------------------------------------------------------------------- |\n| mdt     \
+		 | <!-- {~version:\"{{ pkg.version }}\"|code} -->`1.2.3`<!-- {/version} --> |\n| other   \
+		 | row |\n"
+	);
+
+	// Round trip: write the update, then a fresh scan and check is clean.
+	std::fs::write(tmp.path().join("readme.md"), content).unwrap_or_else(|e| panic!("write: {e}"));
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
+	let check = check_project(&ctx)?;
+	assert!(check.is_ok(), "expected clean check after update");
+
+	Ok(())
+}
+
+#[test]
+fn compute_updates_inline_transformer_chain_in_markdown_table() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	std::fs::write(
+		tmp.path().join("mdt.toml"),
+		"[data]\npkg = \"package.json\"\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(tmp.path().join("package.json"), r#"{"version":"1.2.3"}"#)
+		.unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::write(
+		tmp.path().join("readme.md"),
+		"| Package | Version                                                                        \
+		 |\n| ------- | ------------------------------------------------------------------------ \
+		 |\n| mdt     | see <!-- {~version:\"v{{ pkg.version }}\"|replace:\".\":\"-\"|code} -->`v0-0-0`<!-- \
+		 {/version} --> |\n",
+	)
+	.unwrap_or_else(|e| panic!("write: {e}"));
+
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 1);
+	let content = updates.updated_files.values().next().unwrap_or_else(|| {
+		panic!("expected one file");
+	});
+	assert!(content.contains(
+		"| mdt     | see <!-- {~version:\"v{{ pkg.version }}\"|replace:\".\":\"-\"|code} \
+		 -->`v1-2-3`<!-- {/version} --> |"
+	));
+
+	std::fs::write(tmp.path().join("readme.md"), content).unwrap_or_else(|e| panic!("write: {e}"));
+	let ctx = scan_project_with_config(tmp.path())?;
+	let updates = compute_updates(&ctx)?;
+	assert_eq!(updates.updated_count, 0);
 
 	Ok(())
 }
