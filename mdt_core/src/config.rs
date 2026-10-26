@@ -159,10 +159,9 @@ pub struct MdtConfig {
 	#[serde(default = "default_max_file_size")]
 	pub max_file_size: u64,
 	/// Padding configuration controlling blank lines between tags and content.
-	/// When absent, content starts on the line after the opening tag and the
-	/// closing tag starts on its own line (`before = 0`, `after = 0`). When
-	/// present, `before` and `after` control how many blank lines separate
-	/// tags from content.
+	/// Omitted keys default to `0`, so an absent section and a present one
+	/// with omitted keys behave identically: content starts on the line after
+	/// the opening tag and the closing tag starts on its own line.
 	#[serde(default)]
 	pub padding: Option<PaddingConfig>,
 	/// Ordered formatter pipeline entries used to normalize full-file output.
@@ -251,7 +250,7 @@ impl PaddingValue {
 
 impl Default for PaddingValue {
 	fn default() -> Self {
-		Self::Lines(1)
+		Self::Lines(0)
 	}
 }
 
@@ -263,9 +262,10 @@ impl Default for PaddingValue {
 /// after = 1
 /// ```
 ///
-/// When the `[padding]` section is present, `before` and `after` default to
-/// `1` (one blank line). Set values to `0` for content on the next line with
-/// no blank lines, or `false` for content inline with the tag.
+/// An omitted key and an absent section behave the same: content on the
+/// next line, no blank lines. Padding applies only when configured — write
+/// `1` (or more) for blank lines, or `false` for content inline with the
+/// tag.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PaddingConfig {

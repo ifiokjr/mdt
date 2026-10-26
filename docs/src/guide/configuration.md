@@ -35,11 +35,12 @@ mdt reads the first of `mdt.toml`, `.mdt.toml`, or `.config/mdt.toml` in the pro
 
 # [padding] sets the blank lines between a consumer's tags and its content.
 #   false -> content on the same line as the tag
-#   0     -> content on the next line (the default without this section)
+#   0     -> content on the next line (the default; also what an omitted key means)
 #   1     -> one blank line (2, 3, ... for more)
-# With the section present, an omitted key defaults to 1. Padding is added on
-# top of the provider's own leading and trailing newlines; add `|trim` to a
-# consumer for exact control. Inline blocks are never padded.
+# Padding applies only when configured: an omitted key behaves like an absent
+# section. Padding is added on top of the provider's own leading and trailing
+# newlines; add `|trim` to a consumer for exact control. Inline blocks are
+# never padded.
 # [padding]
 # before = 0
 # after = 0
@@ -232,11 +233,12 @@ The mdt repository's own annotated config, synced from the same source as the fi
 
 # [padding] sets the blank lines between a consumer's tags and its content.
 #   false -> content on the same line as the tag
-#   0     -> content on the next line (the default without this section)
+#   0     -> content on the next line (the default; also what an omitted key means)
 #   1     -> one blank line (2, 3, ... for more)
-# With the section present, an omitted key defaults to 1. Padding is added on
-# top of the provider's own leading and trailing newlines; add `|trim` to a
-# consumer for exact control. Inline blocks are never padded.
+# Padding applies only when configured: an omitted key behaves like an absent
+# section. Padding is added on top of the provider's own leading and trailing
+# newlines; add `|trim` to a consumer for exact control. Inline blocks are
+# never padded.
 #
 # This repo writes out the default so the section is documented here.
 [padding]
