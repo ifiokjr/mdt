@@ -195,7 +195,8 @@ fn update_inline_table_cell_with_transformer_round_trip() -> std::io::Result<()>
 		);
 	});
 
-	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	// Windows checks the fixture out with CRLF and mdt preserves line endings.
+	let content = std::fs::read_to_string(tmp.path().join("readme.md"))?.replace("\r\n", "\n");
 	let expected = r#"# Versions
 
 <!-- {=versionNote} -->
@@ -222,7 +223,7 @@ The current version is 3.1.4.
 		.assert()
 		.success();
 
-	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?;
+	let after_second = std::fs::read_to_string(tmp.path().join("readme.md"))?.replace("\r\n", "\n");
 	similar_asserts::assert_eq!(after_first, after_second);
 
 	Ok(())
