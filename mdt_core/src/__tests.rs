@@ -921,7 +921,7 @@ fn compute_updates_replaces_inline_transformer_content_in_markdown_table() -> Md
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -939,7 +939,7 @@ fn compute_updates_replaces_inline_transformer_content_in_markdown_table() -> Md
 	// Round trip: write the update, then a fresh scan and check is clean.
 	std::fs::write(tmp.path().join("readme.md"), content).unwrap_or_else(|e| panic!("write: {e}"));
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 	let check = check_project(&ctx)?;
 	assert!(check.is_ok(), "expected clean check after update");
@@ -967,7 +967,7 @@ fn compute_updates_inline_transformer_chain_in_markdown_table() -> MdtResult<()>
 	.unwrap_or_else(|e| panic!("write: {e}"));
 
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 1);
 	let content = updates.updated_files.values().next().unwrap_or_else(|| {
 		panic!("expected one file");
@@ -979,7 +979,7 @@ fn compute_updates_inline_transformer_chain_in_markdown_table() -> MdtResult<()>
 
 	std::fs::write(tmp.path().join("readme.md"), content).unwrap_or_else(|e| panic!("write: {e}"));
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	assert_eq!(updates.updated_count, 0);
 
 	Ok(())
