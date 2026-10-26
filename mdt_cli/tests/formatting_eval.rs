@@ -18,6 +18,14 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
+/// Read a file with line endings normalized to `\n`.
+///
+/// Windows runners check fixtures out with CRLF and mdt preserves a file's
+/// line endings, so the assertions below compare LF-normalized text.
+fn read_text(path: impl AsRef<Path>) -> std::io::Result<String> {
+	std::fs::read_to_string(path).map(|content| content.replace("\r\n", "\n"))
+}
+
 fn block_content(file: &str, opening: &str, closing: &str) -> String {
 	let start = file.find(opening).unwrap_or_else(|| {
 		panic!("opening tag {opening} not found in:\n{file}");
@@ -108,9 +116,9 @@ fn format_eval_update_aligns_template_and_output_tables() {
 
 	run_update(tmp.path());
 
-	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let template = read_text(tmp.path().join("template.t.md"))
 		.unwrap_or_else(|error| panic!("read template: {error}"));
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let readme = read_text(tmp.path().join("readme.md"))
 		.unwrap_or_else(|error| panic!("read readme: {error}"));
 
 	let provider_block = block_content(&template, "<!-- {@table} -->", "<!-- {/table} -->");
@@ -134,9 +142,9 @@ fn format_eval_update_aligns_template_and_output_tables() {
 
 	// A second update must be a no-op.
 	run_update(tmp.path());
-	let template_again = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let template_again = read_text(tmp.path().join("template.t.md"))
 		.unwrap_or_else(|error| panic!("read template: {error}"));
-	let readme_again = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let readme_again = read_text(tmp.path().join("readme.md"))
 		.unwrap_or_else(|error| panic!("read readme: {error}"));
 	similar_asserts::assert_eq!(template, template_again);
 	similar_asserts::assert_eq!(readme, readme_again);
@@ -149,11 +157,11 @@ fn format_eval_disabled_by_default_preserves_provider_bytes() {
 
 	run_update(tmp.path());
 
-	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let template = read_text(tmp.path().join("template.t.md"))
 		.unwrap_or_else(|error| panic!("read template: {error}"));
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let readme = read_text(tmp.path().join("readme.md"))
 		.unwrap_or_else(|error| panic!("read readme: {error}"));
-	let source_template = std::fs::read_to_string(
+	let source_template = read_text(
 		Path::new(env!("CARGO_MANIFEST_DIR"))
 			.join("tests/fixtures/format_eval_tables_disabled/template.t.md"),
 	)
@@ -179,8 +187,8 @@ fn format_eval_tables_normalize_before_comment_transformers() {
 
 	run_update(tmp.path());
 
-	let lib = std::fs::read_to_string(tmp.path().join("lib.rs"))
-		.unwrap_or_else(|error| panic!("read lib.rs: {error}"));
+	let lib =
+		read_text(tmp.path().join("lib.rs")).unwrap_or_else(|error| panic!("read lib.rs: {error}"));
 
 	assert_eq!(
 		block_content(
@@ -197,8 +205,8 @@ fn format_eval_tables_normalize_before_comment_transformers() {
 	);
 
 	run_update(tmp.path());
-	let lib_again = std::fs::read_to_string(tmp.path().join("lib.rs"))
-		.unwrap_or_else(|error| panic!("read lib.rs: {error}"));
+	let lib_again =
+		read_text(tmp.path().join("lib.rs")).unwrap_or_else(|error| panic!("read lib.rs: {error}"));
 	similar_asserts::assert_eq!(lib, lib_again);
 }
 
@@ -209,7 +217,7 @@ fn format_eval_tables_leave_fenced_code_blocks_untouched() {
 
 	run_update(tmp.path());
 
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let readme = read_text(tmp.path().join("readme.md"))
 		.unwrap_or_else(|error| panic!("read readme: {error}"));
 	let consumer_block = block_content(&readme, "<!-- {=mixed} -->", "<!-- {/mixed} -->");
 
@@ -222,7 +230,7 @@ fn format_eval_tables_leave_fenced_code_blocks_untouched() {
 		"real tables outside fences are aligned:\n{consumer_block}"
 	);
 
-	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let template = read_text(tmp.path().join("template.t.md"))
 		.unwrap_or_else(|error| panic!("read template: {error}"));
 	assert_eq!(
 		block_content(&template, "<!-- {@mixed} -->", "<!-- {/mixed} -->"),
@@ -243,9 +251,9 @@ fn format_eval_output_matches_real_dprint_when_available() {
 
 	run_update(tmp.path());
 
-	let readme = std::fs::read_to_string(tmp.path().join("readme.md"))
+	let readme = read_text(tmp.path().join("readme.md"))
 		.unwrap_or_else(|error| panic!("read readme: {error}"));
-	let template = std::fs::read_to_string(tmp.path().join("template.t.md"))
+	let template = read_text(tmp.path().join("template.t.md"))
 		.unwrap_or_else(|error| panic!("read template: {error}"));
 
 	// The external formatter must be a no-op on both sides. Combined with the
