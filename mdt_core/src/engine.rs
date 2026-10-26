@@ -1547,7 +1547,44 @@ fn collect_template_warnings(ctx: &ProjectContext, scope: &UpdateScope) -> Vec<T
 pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 	for (path, content) in &updates.updated_files {
 		trace!(path = %path.display(), "writing updated file");
-		std::fs::write(path, content)?;
+		write_file_atomically(path, content)?;
+	}
+
+	Ok(())
+}
+
+/// Replace `path` with `content` without ever leaving a truncated file.
+///
+/// The content goes to a hidden sibling temporary file (named with the process
+/// id so concurrent mdt runs cannot collide) which then atomically replaces
+/// the original via rename. An interrupted update — a crash, a signal, a full
+/// disk mid-write — leaves the original file untouched instead of a
+/// half-written one; the rename itself is atomic on every supported platform.
+/// A writer whose destination is a symlink writes through to the resolved
+/// file, matching `fs::write` semantics.
+fn write_file_atomically(path: &Path, content: &str) -> MdtResult<()> {
+	let destination = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+	let file_name = destination
+		.file_name()
+		.unwrap_or_default()
+		.to_string_lossy();
+	let temporary = destination.with_file_name(format!(".{file_name}.{}.tmp", std::process::id()));
+
+	if let Err(error) = std::fs::write(&temporary, content) {
+		let _ = std::fs::remove_file(&temporary);
+		return Err(error.into());
+	}
+
+	// The temporary file is created with default permissions; carry the
+	// original's over so an executable or read-only file keeps its mode.
+	// Best-effort: filesystems without permission support still get the write.
+	if let Ok(metadata) = std::fs::metadata(&destination) {
+		let _ = std::fs::set_permissions(&temporary, metadata.permissions());
+	}
+
+	if let Err(error) = std::fs::rename(&temporary, &destination) {
+		let _ = std::fs::remove_file(&temporary);
+		return Err(error.into());
 	}
 
 	Ok(())

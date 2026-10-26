@@ -3387,6 +3387,95 @@ fn write_updates_creates_files() -> MdtResult<()> {
 	Ok(())
 }
 
+#[test]
+fn write_updates_leaves_no_temporary_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("output.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	let entries: Vec<_> = std::fs::read_dir(tmp.path())
+		.unwrap_or_else(|e| panic!("read_dir: {e}"))
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap_or_else(|e| panic!("read_dir entries: {e}"))
+		.into_iter()
+		.map(|entry| entry.file_name().to_string_lossy().into_owned())
+		.collect();
+	assert_eq!(entries, vec!["output.md".to_string()]);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_preserves_file_permissions() -> MdtResult<()> {
+	use std::os::unix::fs::PermissionsExt as _;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("script-like.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::set_permissions(&file_path, std::fs::Permissions::from_mode(0o755))
+		.unwrap_or_else(|e| panic!("chmod: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	let mode = std::fs::metadata(&file_path)
+		.unwrap_or_else(|e| panic!("metadata: {e}"))
+		.permissions()
+		.mode();
+	assert_eq!(mode & 0o777, 0o755);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_leaves_original_intact_when_write_fails() {
+	use std::os::unix::fs::PermissionsExt as _;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("output.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+
+	// A read-only directory stops the temporary sibling from being created.
+	std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o555))
+		.unwrap_or_else(|e| panic!("chmod: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	let result = write_updates(&updates);
+
+	std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755))
+		.unwrap_or_else(|e| panic!("restore chmod: {e}"));
+
+	assert!(result.is_err());
+	let content = std::fs::read_to_string(&file_path).unwrap_or_else(|e| panic!("read: {e}"));
+	assert_eq!(content, "original");
+}
+
 // --- Error type tests ---
 #[test]
 fn error_missing_closing_tag_message() {

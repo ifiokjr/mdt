@@ -1175,8 +1175,9 @@ fn run_update(
 		return Ok(());
 	}
 
-	// Watch mode
-	println!("\nWatching for file changes... (press Ctrl+C to stop)");
+	// Watch mode. Status messages go to stderr so update output on stdout
+	// stays machine-readable, matching `check --watch`.
+	eprintln!("\nWatching for file changes... (press Ctrl+C to stop)");
 
 	let root = resolve_root(args);
 	let (tx, rx) = mpsc::channel();
@@ -1189,7 +1190,7 @@ fn run_update(
 		// Debounce: drain additional events within 200ms.
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
-		println!("\nFile change detected, updating...");
+		eprintln!("\nFile change detected, updating...");
 
 		if let Err(e) = run_update_once(args, false, blocks, files) {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
