@@ -187,7 +187,7 @@ before = 0
 after = 0
 
 [format]
-tables = true
+preset = "dprint-markdown" # or set rules individually: tables = true
 
 [check]
 comparison = "strict" # or "lenient"
@@ -238,7 +238,9 @@ ignore = ["**/*.t.md"]
 
 Internal formatting of block content; runs inside block boundaries only, never inside fenced code blocks, and before transformers and padding.
 
+- `preset = "dprint-markdown"`: turns on every rule below — the dprint behaviors mdt implements. An explicit rule key overrides the preset for that rule alone.
 - `tables = true`: aligns GFM table columns the way dprint and prettier do — every column pads to its widest cell by display width (CJK counts double), the delimiter row fills the width, alignment colons are preserved. `mdt update` also rewrites provider blocks in `*.t.md` files whose tables are unaligned, so templates and formatted outputs carry identical table bytes. Unaligned provider tables are reported as stale by `mdt check`.
+- `trailing_whitespace = true`: trims trailing whitespace from every line of block content (outside fenced code blocks), in providers and consumers alike, so strict comparison stops diverging from formatters that trim.
 - Conservative by design: rows with more cells than the header, pipes inside code spans, tables glued to prose, and fenced examples are left untouched.
 
 ### `[[formatters]]`

@@ -490,14 +490,10 @@ fn expected_content(
 				Err(message) => return ExpectedContent::RenderFailed(message),
 			};
 
-			// Internal table alignment runs before transformers so consumers
-			// that wrap content in comment prefixes or code fences receive
-			// the same alignment a markdown formatter would produce.
-			let rendered_content = if ctx.format.tables {
-				crate::format::normalize_markdown_tables(&rendered_content)
-			} else {
-				rendered_content
-			};
+			// Internal formatting runs before transformers so consumers that
+			// wrap content in comment prefixes or code fences receive the
+			// same bytes a markdown formatter would produce.
+			let rendered_content = crate::format::normalize(&rendered_content, ctx.format);
 
 			let transformed = apply_transformers_with_data(
 				&rendered_content,
@@ -1001,7 +997,7 @@ fn replace_block_content(result: &mut String, block: &Block, new_content: &str) 
 /// Providers whose content changes under `[format] tables` normalization,
 /// paired with the normalized content.
 fn unnormalized_providers(ctx: &ProjectContext) -> Vec<(&ProviderEntry, String)> {
-	if !ctx.format.tables {
+	if !ctx.format.tables && !ctx.format.trailing_whitespace {
 		return Vec::new();
 	}
 
@@ -1009,7 +1005,7 @@ fn unnormalized_providers(ctx: &ProjectContext) -> Vec<(&ProviderEntry, String)>
 		.providers
 		.values()
 		.filter_map(|provider| {
-			let normalized = crate::format::normalize_markdown_tables(&provider.content);
+			let normalized = crate::format::normalize(&provider.content, ctx.format);
 			(normalized != provider.content).then_some((provider, normalized))
 		})
 		.collect()
