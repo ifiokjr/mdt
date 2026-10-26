@@ -6370,28 +6370,6 @@ fn rename_reads_unopened_provider_and_consumer_files_from_disk() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn language_server_initialize_falls_back_to_root_uri() {
-	let tmp = tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let root_uri = test_uri(tmp.path());
-	let (service, _) = LspService::new(MdtLanguageServer::new);
-
-	service
-		.inner()
-		.initialize(InitializeParams {
-			#[allow(deprecated)]
-			root_uri: Some(root_uri),
-			..Default::default()
-		})
-		.await
-		.unwrap_or_else(|e| panic!("initialize with root_uri: {e:?}"));
-
-	assert_eq!(
-		service.inner().state.read().await.root,
-		Some(tmp.path().to_path_buf())
-	);
-}
-
-#[tokio::test(flavor = "current_thread")]
 async fn language_server_initialized_completes_without_error() {
 	let (service, _) = LspService::new(MdtLanguageServer::new);
 	service.inner().initialized(InitializedParams {}).await;

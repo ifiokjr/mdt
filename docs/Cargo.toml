@@ -1,5 +1,5 @@
 [package]
-name = "monochange_book"
+name = "mdt_book"
 version = { workspace = true }
 edition = { workspace = true }
 publish = false
