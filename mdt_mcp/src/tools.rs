@@ -13,9 +13,11 @@ use std::path::Path;
 use mdt_core::BlockType;
 use mdt_core::ExpectedContent;
 use mdt_core::MdtError;
+use mdt_core::UpdateScope;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::expected_consumer_content;
+use mdt_core::has_block_named;
 use mdt_core::init::ConfigOutcome;
 use mdt_core::init::GitignoreOutcome;
 use mdt_core::init::InitReport;
@@ -30,6 +32,7 @@ use mdt_core::project::is_markdown_path;
 use mdt_core::project::normalize_line_endings;
 use mdt_core::project::relative_display_path;
 use mdt_core::project::scan_project_with_config;
+use mdt_core::project::suggest_similar_provider_names;
 use mdt_core::render_template;
 use mdt_core::write_updates;
 use rmcp::model::CallToolResult;
@@ -209,12 +212,13 @@ pub(crate) fn update(
 	root: &Path,
 	options: &ValidationOptions,
 	dry_run: bool,
+	block_names: &[String],
 ) -> Result<CallToolResult, ToolError> {
 	let ctx = scan_project_with_config(root)?;
 	let diagnostics = diagnostics(&ctx, root, options);
 
 	// Like `mdt update`, validation errors stop the update before anything
-	// is written.
+	// is written — project-wide, even for a block-scoped run.
 	let diagnostic_errors = error_count(&diagnostics);
 
 	if diagnostic_errors > 0 {
@@ -231,7 +235,31 @@ pub(crate) fn update(
 		.with_detail("diagnostics", &diagnostics));
 	}
 
-	let updates = compute_updates(&ctx)?;
+	let scope = if block_names.is_empty() {
+		UpdateScope::all()
+	} else {
+		for name in block_names {
+			if !has_block_named(&ctx, name) {
+				let suggestions: Vec<String> = suggest_similar_provider_names(
+					name,
+					ctx.project.providers.keys().map(String::as_str),
+				)
+				.into_iter()
+				.map(str::to_string)
+				.collect();
+				return Err(ToolError::new(
+					BLOCK_NOT_FOUND,
+					format!("No block named `{name}` found in the project."),
+				)
+				.with_detail("block_names", block_names)
+				.with_detail("suggestions", suggestions));
+			}
+		}
+
+		UpdateScope::all().with_blocks(block_names.iter().cloned())
+	};
+
+	let updates = compute_updates(&ctx, &scope)?;
 
 	if !dry_run && !updates.updated_files.is_empty() {
 		write_updates(&updates)?;
@@ -268,10 +296,15 @@ pub(crate) fn update(
 		}
 	};
 
+	// `null` when the update is not scoped, so clients can tell "every block"
+	// from "the empty set".
+	let scoped_block_names = (!block_names.is_empty()).then(|| json!(block_names));
+
 	Ok(json_result(json!({
 		"ok": render_errors.is_empty(),
 		"action": "update",
 		"dry_run": dry_run,
+		"block_names": scoped_block_names,
 		"summary": summary,
 		"updated_count": updates.updated_count,
 		"updated_files": updated_files,

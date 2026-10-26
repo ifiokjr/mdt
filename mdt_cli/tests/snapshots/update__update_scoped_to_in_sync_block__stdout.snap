@@ -1,0 +1,20 @@
+---
+source: mdt_cli/tests/update.rs
+info:
+  program: mdt
+  args:
+    - "--path"
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpgR8Jum
+    - update
+    - "--block"
+    - alpha
+  env:
+    NO_COLOR: "1"
+---
+success: true
+exit_code: 0
+----- stdout -----
+scoped to 1 block(s): alpha
+All in-scope consumer blocks are already up to date.
+
+----- stderr -----

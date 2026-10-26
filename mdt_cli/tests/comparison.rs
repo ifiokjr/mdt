@@ -1,6 +1,7 @@
 mod common;
 
 use mdt_core::MdtResult;
+use mdt_core::UpdateScope;
 use mdt_core::check_project;
 use mdt_core::compute_updates;
 use mdt_core::project::scan_project_with_config;
@@ -63,7 +64,7 @@ fn lenient_content_changes_are_snapshotted(
 #[test]
 fn lenient_update_writes_exact_source_bytes() -> MdtResult<()> {
 	let (tmp, ctx) = load_fixture("lenient_word_change");
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 
 	insta::assert_debug_snapshot!(updates.updated_count, @r#"1"#);
 

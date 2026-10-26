@@ -114,8 +114,9 @@ pub enum Commands {
 	/// reported, and the command exits with status 1; validation errors stop
 	/// the update with status 2.
 	///
-	/// Use `--dry-run` to preview changes without writing to disk, or
-	/// `--watch` to automatically re-run whenever source files change.
+	/// Use `--dry-run` to preview changes without writing to disk, `--watch`
+	/// to automatically re-run whenever source files change, or `--block` and
+	/// `--file` to sync only a subset of the project.
 	Update {
 		/// Print how many blocks and which files would change, without
 		/// writing anything. Use `mdt check --diff` to see the content.
@@ -126,6 +127,18 @@ pub enum Commands {
 		/// template files and consumer files for modifications.
 		#[arg(long, default_value_t = false)]
 		watch: bool,
+
+		/// Only update consumers of the named block. Repeatable; an update
+		/// with `--block a --block b` syncs consumers of both names. Unknown
+		/// names are an error listing the closest existing ones.
+		#[arg(long, value_name = "NAME")]
+		block: Vec<String>,
+
+		/// Only update consumers in the given file. Repeatable. Paths resolve
+		/// against the current directory and must stay inside the project
+		/// root; a path matching no scanned file with consumers is an error.
+		#[arg(long, value_name = "PATH")]
+		file: Vec<PathBuf>,
 	},
 	/// List all provider and consumer blocks in the project.
 	///

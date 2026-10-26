@@ -778,6 +778,125 @@ async fn update_includes_template_warnings_in_json() {
 	assert_eq!(json["warnings"][0]["undefined_variables"][0], "pkgg.name");
 }
 
+/// Create a project with two providers, each with a stale consumer in its own
+/// file, for block-scoped updates.
+fn create_scoped_update_project(root: &Path) {
+	let template = "\
+<!-- {@alpha} -->
+
+Alpha content.
+
+<!-- {/alpha} -->
+
+<!-- {@beta} -->
+
+Beta content.
+
+<!-- {/beta} -->
+";
+	std::fs::write(root.join("template.t.md"), template)
+		.unwrap_or_else(|e| panic!("write template: {e}"));
+	std::fs::write(
+		root.join("alpha.md"),
+		"<!-- {=alpha} -->\n\nStale alpha.\n\n<!-- {/alpha} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write alpha: {e}"));
+	std::fs::write(
+		root.join("beta.md"),
+		"<!-- {=beta} -->\n\nStale beta.\n\n<!-- {/beta} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write beta: {e}"));
+}
+
+#[tokio::test]
+async fn update_with_block_names_updates_only_that_block() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_scoped_update_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+			block_names: Some(vec!["alpha".to_string()]),
+			..UpdateParam::default()
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], true, "got: {json}");
+	assert_eq!(json["action"], "update");
+	assert_eq!(json["block_names"], serde_json::json!(["alpha"]));
+	assert_eq!(json["updated_count"], 1);
+	assert_eq!(json["updated_files"], serde_json::json!(["alpha.md"]));
+
+	let alpha = std::fs::read_to_string(tmp.path().join("alpha.md"))
+		.unwrap_or_else(|e| panic!("read alpha: {e}"));
+	assert!(alpha.contains("Alpha content."));
+	let beta = std::fs::read_to_string(tmp.path().join("beta.md"))
+		.unwrap_or_else(|e| panic!("read beta: {e}"));
+	assert!(
+		beta.contains("Stale beta."),
+		"out-of-scope file must stay stale"
+	);
+}
+
+#[tokio::test]
+async fn update_with_block_names_dry_run_does_not_write() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_scoped_update_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: true,
+			block_names: Some(vec!["alpha".to_string()]),
+			..UpdateParam::default()
+		}))
+		.await;
+
+	let json = extract_json(&result);
+	assert_eq!(json["dry_run"], true);
+	assert_eq!(json["updated_count"], 1);
+	assert_eq!(json["updated_files"], serde_json::json!(["alpha.md"]));
+
+	let alpha = std::fs::read_to_string(tmp.path().join("alpha.md"))
+		.unwrap_or_else(|e| panic!("read alpha: {e}"));
+	assert!(alpha.contains("Stale alpha."), "dry run must not write");
+}
+
+#[tokio::test]
+async fn update_with_unknown_block_name_is_error_with_suggestions() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	create_scoped_update_project(tmp.path());
+
+	let server = MdtMcpServer::with_base_root(tmp.path());
+	let result = server
+		.update(Parameters(UpdateParam {
+			path: Some(tmp.path().to_string_lossy().to_string()),
+			dry_run: false,
+			block_names: Some(vec!["alpga".to_string()]),
+			..UpdateParam::default()
+		}))
+		.await;
+
+	assert_eq!(result.is_error, Some(true));
+	let json = extract_json(&result);
+	assert_eq!(json["ok"], false);
+	assert_eq!(json["action"], "update");
+	assert_eq!(json["error"]["code"], "mdt::block_not_found");
+	assert_eq!(json["block_names"], serde_json::json!(["alpga"]));
+	assert_eq!(json["suggestions"], serde_json::json!(["alpha"]));
+
+	let alpha = std::fs::read_to_string(tmp.path().join("alpha.md"))
+		.unwrap_or_else(|e| panic!("read alpha: {e}"));
+	assert!(
+		alpha.contains("Stale alpha."),
+		"failed scoped update must not write"
+	);
+}
+
 // ===========================================================================
 // list
 // ===========================================================================
@@ -3247,7 +3366,8 @@ fn create_padded_synced_project(root: &Path) {
 	.unwrap_or_else(|e| panic!("write readme: {e}"));
 	let ctx =
 		mdt_core::project::scan_project_with_config(root).unwrap_or_else(|e| panic!("scan: {e}"));
-	let updates = mdt_core::compute_updates(&ctx).unwrap_or_else(|e| panic!("updates: {e}"));
+	let updates = mdt_core::compute_updates(&ctx, &mdt_core::UpdateScope::all())
+		.unwrap_or_else(|e| panic!("updates: {e}"));
 	mdt_core::write_updates(&updates).unwrap_or_else(|e| panic!("write updates: {e}"));
 	let ctx =
 		mdt_core::project::scan_project_with_config(root).unwrap_or_else(|e| panic!("rescan: {e}"));
