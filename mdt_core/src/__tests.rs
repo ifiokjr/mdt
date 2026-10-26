@@ -1194,6 +1194,7 @@ fn project_context_at(root: &Path) -> MdtResult<ProjectContext> {
 		padding: None,
 		formatters: Vec::new(),
 		markdown_codeblocks: CodeBlockFilter::default(),
+		format: ResolvedFormatRules::default(),
 		comparison: ComparisonMode::default(),
 		root: root.to_path_buf(),
 	})
@@ -4521,7 +4522,7 @@ fn bare_padding_section_defaults_to_zero() -> MdtResult<()> {
 	// An omitted key behaves like an absent section: content on the next
 	// line, no blank lines added.
 	let ctx = scan_project_with_config(tmp.path())?;
-	let updates = compute_updates(&ctx)?;
+	let updates = compute_updates(&ctx, &UpdateScope::all())?;
 	let content = updates
 		.updated_files
 		.values()
