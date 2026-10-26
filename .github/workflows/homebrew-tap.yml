@@ -1,0 +1,165 @@
+name: homebrew-tap
+
+# Publish the release binaries to the Homebrew tap (ifiokjr/homebrew-mdt).
+#
+# One-time owner setup this workflow assumes:
+#   1. Create the empty repository `ifiokjr/homebrew-mdt` (the tap).
+#   2. Create a fine-grained personal access token with read/write Contents
+#      access to that repository, and add it as the `HOMEBREW_TAP_TOKEN`
+#      secret here. `GITHUB_TOKEN` cannot push across repositories.
+# Without the secret the workflow fails with instructions and publishes
+# nothing.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish to the tap (for example v0.8.0)."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-tap-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  update-formula:
+    name: update homebrew tap
+    if: >-
+      github.repository_owner == 'ifiokjr' &&
+      startsWith(inputs.tag || github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAP_REPOSITORY: ifiokjr/homebrew-mdt
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - name: check tap token
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::error::The HOMEBREW_TAP_TOKEN secret is missing. Create a fine-grained \
+          PAT with Contents read/write access to ${TAP_REPOSITORY} and add it as \
+          HOMEBREW_TAP_TOKEN in the repository secrets." >&2
+            exit 1
+          fi
+
+      - name: download release archives and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/assets
+          # Homebrew needs macOS arm/intel and Linux arm/intel (glibc) builds.
+          targets=(
+            aarch64-apple-darwin
+            x86_64-apple-darwin
+            aarch64-unknown-linux-gnu
+            x86_64-unknown-linux-gnu
+          )
+          for target in "${targets[@]}"; do
+            asset="mdt-${target}-${RELEASE_TAG}.tar.gz"
+            gh release download "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern "$asset" \
+              --output "/tmp/assets/${asset}"
+          done
+          (cd /tmp/assets && shasum -a 256 ./*.tar.gz) > /tmp/assets/checksums.txt
+          cat /tmp/assets/checksums.txt
+
+      - name: generate formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          checksum() {
+            awk -v asset="mdt-$1-${RELEASE_TAG}.tar.gz" '$2 == asset { print $1 }' /tmp/assets/checksums.txt
+          }
+          asset_url() {
+            echo "https://github.com/ifiokjr/mdt/releases/download/${RELEASE_TAG}/mdt-$1-${RELEASE_TAG}.tar.gz"
+          }
+          require_checksum() {
+            local sum
+            sum="$(checksum "$1")"
+            if [ -z "$sum" ]; then
+              echo "::error::missing checksum for $1" >&2
+              exit 1
+            fi
+            echo "$sum"
+          }
+          cat > /tmp/mdt.rb <<FORMULA
+          # typed: strict
+          # frozen_string_literal: true
+          # Managed by the homebrew-tap workflow in ifiokjr/mdt — do not edit by hand.
+
+          class Mdt < Formula
+            desc "Markdown templates that keep READMEs, doc comments, and docs sites in sync"
+            homepage "https://github.com/ifiokjr/mdt"
+            url "$(asset_url aarch64-apple-darwin)"
+            version "${version}"
+            sha256 "$(require_checksum aarch64-apple-darwin)"
+            license "Unlicense"
+            livecheck do
+              url :stable
+              regex(/^v?(\d+(?:\.\d+)+)$/i)
+              strategy :github_latest
+            end
+            on_macos do
+              if Hardware::CPU.intel?
+                url "$(asset_url x86_64-apple-darwin)"
+                sha256 "$(require_checksum x86_64-apple-darwin)"
+              end
+            end
+            on_linux do
+              if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+                url "$(asset_url aarch64-unknown-linux-gnu)"
+                sha256 "$(require_checksum aarch64-unknown-linux-gnu)"
+              end
+              if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
+                url "$(asset_url x86_64-unknown-linux-gnu)"
+                sha256 "$(require_checksum x86_64-unknown-linux-gnu)"
+              end
+            end
+
+            def install
+              bin.install "mdt"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/mdt --version")
+            end
+          end
+          FORMULA
+          cat /tmp/mdt.rb
+
+      - name: push formula to the tap
+        shell: bash
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 \
+            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPOSITORY}.git" \
+            /tmp/tap
+          mkdir -p /tmp/tap/Formula
+          cp /tmp/mdt.rb /tmp/tap/Formula/mdt.rb
+          cd /tmp/tap
+          git config user.name "mdt release bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Formula/mdt.rb
+          if git diff --cached --quiet; then
+            echo "Formula is already up to date for ${RELEASE_TAG}."
+            exit 0
+          fi
+          git commit -m "mdt ${RELEASE_TAG#v} [skip ci]"
+          git push origin HEAD
+          echo "Pushed mdt ${RELEASE_TAG#v} to ${TAP_REPOSITORY}."

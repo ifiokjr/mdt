@@ -135,6 +135,12 @@ npm install -g @m-d-t/cli
 npx -y @m-d-t/cli --help
 ```
 
+- On macOS or Linux, install with Homebrew (no Node.js or Rust needed):
+
+```sh
+brew install ifiokjr/mdt/mdt
+```
+
 - Or download a prebuilt binary from the [latest GitHub release](https://github.com/ifiokjr/mdt/releases/latest).
 - Or build from source with Cargo (slower):
 
