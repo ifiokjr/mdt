@@ -13452,3 +13452,69 @@ fn info_report_counts_blocks_and_reports_missing_config() -> MdtResult<()> {
 
 	Ok(())
 }
+
+#[cfg(unix)]
+#[test]
+fn write_updates_fails_when_rename_fails() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Renaming a file over a directory fails with EISDIR after the temporary
+	// sibling was already written successfully.
+	let destination = tmp.path().join("output.md");
+	std::fs::create_dir_all(&destination).unwrap_or_else(|e| panic!("create dir: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(destination.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	let result = write_updates(&updates);
+
+	assert!(result.is_err());
+
+	// The destination is untouched and the failed write left no temporary
+	// sibling behind.
+	assert!(destination.is_dir());
+	let entries: Vec<String> = std::fs::read_dir(tmp.path())
+		.unwrap_or_else(|e| panic!("read_dir: {e}"))
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap_or_else(|e| panic!("read_dir entries: {e}"))
+		.into_iter()
+		.map(|entry| entry.file_name().to_string_lossy().into_owned())
+		.collect();
+	assert_eq!(entries, vec!["output.md".to_string()]);
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_writes_through_a_symlinked_destination() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let real = tmp.path().join("real.md");
+	std::fs::write(&real, "original").unwrap_or_else(|e| panic!("write: {e}"));
+	let link = tmp.path().join("link.md");
+	std::os::unix::fs::symlink(&real, &link).unwrap_or_else(|e| panic!("symlink: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(link.clone(), "updated through the link".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	// The write landed in the resolved file and the link stayed a link.
+	let content = std::fs::read_to_string(&real)?;
+	assert_eq!(content, "updated through the link");
+	assert!(
+		std::fs::symlink_metadata(&link)
+			.unwrap_or_else(|e| panic!("symlink_metadata: {e}"))
+			.file_type()
+			.is_symlink()
+	);
+
+	Ok(())
+}

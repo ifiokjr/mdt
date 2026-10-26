@@ -1,5 +1,8 @@
 mod skill;
 
+#[cfg(test)]
+mod __tests;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
@@ -563,22 +566,36 @@ fn run_check(
 
 	// Watch mode. Status messages go to stderr so `--format json` output on
 	// stdout stays machine-readable.
-	eprintln!("\nWatching for file changes... (press Ctrl+C to stop)");
-
 	let root = resolve_root(args);
-	let (tx, rx) = mpsc::channel();
+	let (tx, mut rx) = mpsc::channel();
 
 	// Keep the watcher guard alive for the lifetime of the loop.
 	let _watcher = spawn_watcher(&root, tx)?;
 
-	loop {
-		rx.recv()?;
+	watch_loop(&mut rx, "checking", || {
+		run_check_once(args, show_diff, format).map(|_| ())
+	});
+
+	Ok(())
+}
+
+/// Run `rerun` after every watched change, until the watcher is dropped and
+/// its sender closes. Status messages go to stderr so stdout stays
+/// machine-readable for `--format json` and piped output.
+fn watch_loop(
+	rx: &mut mpsc::Receiver<()>,
+	verb: &str,
+	mut rerun: impl FnMut() -> Result<(), Box<dyn std::error::Error>>,
+) {
+	eprintln!("\nWatching for file changes... (press Ctrl+C to stop)");
+
+	while rx.recv().is_ok() {
 		// Debounce: drain additional events within 200ms.
 		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
 
-		eprintln!("\nFile change detected, checking...");
+		eprintln!("\nFile change detected, {verb}...");
 
-		if let Err(e) = run_check_once(args, show_diff, format) {
+		if let Err(e) = rerun() {
 			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
 		}
 	}
@@ -1177,25 +1194,17 @@ fn run_update(
 
 	// Watch mode. Status messages go to stderr so update output on stdout
 	// stays machine-readable, matching `check --watch`.
-	eprintln!("\nWatching for file changes... (press Ctrl+C to stop)");
-
 	let root = resolve_root(args);
-	let (tx, rx) = mpsc::channel();
+	let (tx, mut rx) = mpsc::channel();
 
 	// Keep the watcher guard alive for the lifetime of the loop.
 	let _watcher = spawn_watcher(&root, tx)?;
 
-	loop {
-		rx.recv()?;
-		// Debounce: drain additional events within 200ms.
-		while rx.recv_timeout(Duration::from_millis(200)).is_ok() {}
+	watch_loop(&mut rx, "updating", || {
+		run_update_once(args, false, blocks, files).map(|_| ())
+	});
 
-		eprintln!("\nFile change detected, updating...");
-
-		if let Err(e) = run_update_once(args, false, blocks, files) {
-			eprintln!("{} {e}", styled!(stderr, "error:", red_bold));
-		}
-	}
+	Ok(())
 }
 
 /// Resolve `--block` and `--file` arguments into an [`UpdateScope`] against the
