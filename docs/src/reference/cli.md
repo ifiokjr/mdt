@@ -222,6 +222,7 @@ mdt update --file <PATH> [--file <PATH>...]
 | `--watch`        | Update again whenever files change.                                                                  |
 | `--block <NAME>` | Only update consumers of the named block. Repeatable. Unknown names exit 2 with the closest matches. |
 | `--file <PATH>`  | Only update consumers in the given file. Repeatable. Paths resolve against the current directory.    |
+| `--format`       | Output format: `text` (default) or `json`.                                                           |
 
 Output:
 
@@ -276,7 +277,27 @@ error: unknown block name(s) in update scope: intr
 
 `--file` paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error. A later full `mdt update` still syncs everything a scoped run left alone.
 
-Watch mode prints the first result, then re-runs after each change:
+`--file` scoped runs and the up-to-date message above aside, scoping does not change the output.
+
+`--format json` prints one JSON object describing the run, so pipelines and the MCP server can consume update results:
+
+```sh
+mdt update --format json
+mdt update --dry-run --format json
+```
+
+| Key              | Contents                                                                          |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `ok`             | `false` when any consumer failed to render or the run was stopped by errors.      |
+| `dry_run`        | Whether this was a dry run.                                                       |
+| `updated_blocks` | Number of consumer blocks updated (or that would be, in a dry run).               |
+| `updated_files`  | Project-relative paths of changed files, sorted.                                  |
+| `errors`         | Render errors, with `file`, `block`, `line`, `column`, and `message`.             |
+| `orphans`        | Consumers with no provider, with did-you-mean `suggestions`.                      |
+| `warnings`       | Undefined template variable warnings.                                             |
+| `diagnostics`    | Scan diagnostics; validation or config errors stop the run with a non-empty list. |
+
+Watch mode prints the first result, then re-runs after each change. Status messages (`Watching for file changes...`, `File change detected, updating...`) go to stderr, so piped stdout stays machine-readable:
 
 ```text
 All consumer blocks are already up to date.
@@ -293,7 +314,12 @@ List every provider and consumer with its location.
 
 ```sh
 mdt list
+mdt list --format json
 ```
+
+| Option     | Description                                |
+| ---------- | ------------------------------------------ |
+| `--format` | Output format: `text` (default) or `json`. |
 
 ```text
 Providers:
@@ -315,6 +341,8 @@ Consumers:
 | `[inline]` | An inline block that renders its own template argument. |
 
 Transformers and their arguments appear after the location. Diagnostics print before the listing. With validation errors the listing still prints and the command exits 2; errors that stop the scan, such as a config error or a duplicate provider, print only the error.
+
+`--format json` prints the same information with `providers` (`name`, `file`, `line`, `column`, `consumers`), `consumers` (`name`, `file`, `line`, `column`, `type`, `status`, `transformers`), `summary` (`providers`, `consumers`), and `diagnostics` keys.
 
 ### `mdt info`
 
@@ -405,9 +433,40 @@ mdt assist cursor --format json
 
 JSON output has `id`, `assistant`, `strategy`, `skill` (`print_command`, `install_command`), `mcp_config`, `mcp_config_file`, `mcp_install_command`, `repo_guidance`, and `notes`.
 
+### `mdt completions`
+
+Generate a shell completion script on stdout.
+
+```sh
+mdt completions bash
+mdt completions zsh
+mdt completions fish
+mdt completions powershell
+mdt completions elvish
+```
+
+Install the output per your shell's conventions, for example:
+
+```sh
+mdt completions bash > ~/.local/share/bash-completion/completions/mdt
+mdt completions zsh > "${fpath[1]}/_mdt"
+mdt completions fish > ~/.config/fish/completions/mdt.fish
+```
+
+### `mdt hook`
+
+Manage the mdt git pre-commit hook.
+
+```sh
+mdt hook install
+mdt hook install --force
+```
+
+`install` writes a `.git/hooks/pre-commit` script that runs `mdt check` before every commit and refuses the commit while consumer blocks are stale or invalid. Re-running it on the unchanged mdt hook is a no-op; an existing hook with different content is refused unless `--force` replaces it. The hook runs `mdt check` from the repository root, so monorepos with sub-projects should keep checking sub-projects with `mdt check --path` in CI. Remove `.git/hooks/pre-commit` to uninstall. See [CI Integration](../guide/ci-integration.md) for the pre-commit framework alternative.
+
 ### `mdt lsp`
 
-Start the language server over stdin/stdout. Configure your editor to run `mdt lsp` for markdown and source files. The server uses the editor's workspace folder as the project root.
+Start the language server over stdin/stdout. Configure your editor to run `mdt lsp` for markdown and source files; see [Editor Setup](../getting-started/editor-setup.md) for copy-paste configurations. The server uses the editor's workspace folder as the project root.
 
 ```sh
 mdt lsp

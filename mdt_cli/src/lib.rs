@@ -139,13 +139,22 @@ pub enum Commands {
 		/// root; a path matching no scanned file with consumers is an error.
 		#[arg(long, value_name = "PATH")]
 		file: Vec<PathBuf>,
+		/// Output format for update results. Use `text` for human-readable
+		/// output or `json` for programmatic consumption.
+		#[arg(long, value_enum, default_value_t = UpdateOutputFormat::Text)]
+		format: UpdateOutputFormat,
 	},
 	/// List all provider and consumer blocks in the project.
 	///
 	/// Displays every provider block (from `*.t.md` files) and consumer block
 	/// found across the project, along with file paths and block names. Useful
 	/// for auditing template coverage and discovering orphaned consumers.
-	List,
+	List {
+		/// Output format for list results. Use `text` for human-readable
+		/// output or `json` for programmatic consumption.
+		#[arg(long, value_enum, default_value_t = ListOutputFormat::Text)]
+		format: ListOutputFormat,
+	},
 	/// Print a diagnostic summary of the current project.
 	///
 	/// Shows discovered providers/consumers, orphan and unused counts,
@@ -206,6 +215,28 @@ pub enum Commands {
 		#[arg(long, value_name = "DIR")]
 		install: Option<PathBuf>,
 	},
+	/// Generate shell completion scripts.
+	///
+	/// Prints a completion script for the given shell to stdout. Install it
+	/// per your shell's conventions, for example into `~/.zsh/completions/`
+	/// or your bash completion directory.
+	Completions {
+		/// Which shell to generate completions for.
+		#[arg(value_enum)]
+		shell: clap_complete::Shell,
+	},
+	/// Install or remove the mdt git pre-commit hook.
+	///
+	/// `mdt hook install` writes a `.git/hooks/pre-commit` script that runs
+	/// `mdt check` before every commit and refuses the commit when consumer
+	/// blocks are stale or invalid. The hook runs `mdt check` from the
+	/// repository root, so monorepos with sub-projects should keep using
+	/// `mdt check --path` in CI instead. Remove `.git/hooks/pre-commit` to
+	/// uninstall.
+	Hook {
+		#[command(subcommand)]
+		command: HookCommand,
+	},
 	/// Start the mdt language server (LSP).
 	///
 	/// Communicates over stdin/stdout using the Language Server Protocol.
@@ -241,6 +272,39 @@ pub enum OutputFormat {
 	/// every failure (and `::warning` for warnings) that appear inline on pull
 	/// request diffs.
 	Github,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum UpdateOutputFormat {
+	/// Human-readable text output with colors and formatting.
+	Text,
+	/// JSON output for programmatic consumption, with `ok`, `dry_run`,
+	/// `updated_blocks`, `updated_files`, `errors` (render errors), `orphans`,
+	/// `warnings` (undefined template variables), and `diagnostics`.
+	Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ListOutputFormat {
+	/// Human-readable text output with colors and formatting.
+	Text,
+	/// JSON output for programmatic consumption, with `providers`,
+	/// `consumers`, `summary`, and `diagnostics`.
+	Json,
+}
+
+#[derive(Debug, Clone, Copy, Subcommand)]
+pub enum HookCommand {
+	/// Write the `mdt check` pre-commit hook into `.git/hooks/pre-commit`.
+	///
+	/// Refuses to overwrite an existing hook that differs from the mdt one
+	/// unless `--force` is given; re-installing the unchanged hook is a no-op.
+	Install {
+		/// Replace an existing pre-commit hook even when it differs from the
+		/// mdt hook.
+		#[arg(long, default_value_t = false)]
+		force: bool,
+	},
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

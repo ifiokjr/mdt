@@ -169,14 +169,34 @@ See [Monorepo setups](../advanced/monorepos.md) for a loop that finds every sub-
 
 ## Pre-commit hook
 
+`mdt hook install` writes the hook for you; re-running it is a no-op, and it refuses to clobber a different existing hook unless you pass `--force`:
+
+```sh
+mdt hook install
+```
+
+The hook it installs is:
+
 ```sh
 #!/bin/sh
-# .git/hooks/pre-commit
+# Installed by `mdt hook install`; remove this file to uninstall.
 if ! mdt check; then
-  echo "mdt check failed. Run 'mdt update' or fix the errors above before committing."
-  exit 1
+echo "mdt check failed. Run 'mdt update' or fix the errors above before committing."
+exit 1
 fi
 ```
+
+With the [pre-commit framework](https://pre-commit.com/), use the hook this repository publishes instead:
+
+```yaml
+repos:
+  - repo: https://github.com/ifiokjr/mdt
+    rev: v0.9.6 # use the latest release tag
+    hooks:
+      - id: mdt-check
+```
+
+The hook and the framework entry both run plain `mdt check` from the repository root. Monorepos whose mdt projects live in sub-directories should call `mdt check --path` per project in CI instead; see [Monorepo setups](../advanced/monorepos.md).
 
 ## This repository's workflows
 

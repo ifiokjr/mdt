@@ -1,3 +1,4 @@
+mod hook;
 mod skill;
 
 #[cfg(test)]
@@ -11,14 +12,18 @@ use std::process;
 use std::sync::mpsc;
 use std::time::Duration;
 
+use clap::CommandFactory as _;
 use clap::Parser;
 use mdt_cli::AssistOutputFormat;
 use mdt_cli::Assistant;
 use mdt_cli::Commands;
 use mdt_cli::DoctorOutputFormat;
+use mdt_cli::HookCommand;
 use mdt_cli::InfoOutputFormat;
+use mdt_cli::ListOutputFormat;
 use mdt_cli::MdtCli;
 use mdt_cli::OutputFormat;
+use mdt_cli::UpdateOutputFormat;
 use mdt_core::BlockType;
 use mdt_core::MdtConfig;
 use mdt_core::MdtError;
@@ -183,7 +188,7 @@ fn main() {
 		args.command,
 		Commands::Check { .. }
 			| Commands::Update { .. }
-			| Commands::List
+			| Commands::List { .. }
 			| Commands::Info { .. }
 			| Commands::Doctor { .. }
 	) {
@@ -202,12 +207,15 @@ fn main() {
 				watch,
 				ref block,
 				ref file,
-			} => run_update(&args, dry_run, watch, block, file),
-			Commands::List => run_list(&args),
+				format,
+			} => run_update(&args, dry_run, watch, block, file, format),
+			Commands::List { format } => run_list(&args, format),
 			Commands::Info { format } => run_info(&args, format),
 			Commands::Doctor { format } => run_doctor(&args, format),
 			Commands::Assist { assistant, format } => run_assist(assistant, format),
 			Commands::Skill { reference, install } => run_skill(reference, install.as_deref()),
+			Commands::Completions { shell } => run_completions(shell),
+			Commands::Hook { command } => run_hook(&args, command),
 			Commands::Lsp => run_lsp(),
 			Commands::Mcp => run_mcp(&args),
 		}
@@ -496,9 +504,8 @@ fn validation_failed() -> Box<dyn std::error::Error> {
 	"validation errors found; fix the errors above".into()
 }
 
-/// Warn about consumers whose name matches no provider. `check` reports
-/// these as failures instead.
-fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
+/// Consumer blocks whose name matches no provider, in file and line order.
+fn orphan_consumers(ctx: &ProjectContext) -> Vec<&ConsumerEntry> {
 	let mut orphans: Vec<&ConsumerEntry> = ctx
 		.project
 		.consumers
@@ -511,6 +518,13 @@ fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
 	orphans.sort_by(|a, b| {
 		(&a.file, a.block.opening.start.line).cmp(&(&b.file, b.block.opening.start.line))
 	});
+	orphans
+}
+
+/// Warn about consumers whose name matches no provider. `check` reports
+/// these as failures instead.
+fn warn_orphans(ctx: &ProjectContext, root: &Path) -> usize {
+	let orphans = orphan_consumers(ctx);
 	let count = orphans.len();
 
 	for consumer in orphans {
@@ -1175,21 +1189,34 @@ fn sorted_stale_files<'a>(
 	stale_files
 }
 
+/// How a single `mdt update` run ended.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum UpdateStatus {
+	/// Every linked consumer was updated (or already current).
+	Clean,
+	/// Some consumers were skipped because their provider failed to render
+	/// (exit status 1).
+	PartialFailure,
+	/// Validation or config errors stopped the update (exit status 2).
+	Invalid,
+}
+
 fn run_update(
 	args: &MdtCli,
 	dry_run: bool,
 	watch: bool,
 	blocks: &[String],
 	files: &[PathBuf],
+	format: UpdateOutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	let succeeded = run_update_once(args, dry_run, blocks, files)?;
+	let status = run_update_once(args, dry_run, blocks, files, format)?;
 
 	if !watch {
-		if !succeeded {
-			process::exit(1);
+		match status {
+			UpdateStatus::Clean => return Ok(()),
+			UpdateStatus::PartialFailure => process::exit(1),
+			UpdateStatus::Invalid => process::exit(2),
 		}
-
-		return Ok(());
 	}
 
 	// Watch mode. Status messages go to stderr so update output on stdout
@@ -1201,7 +1228,7 @@ fn run_update(
 	let _watcher = spawn_watcher(&root, tx)?;
 
 	watch_loop(&mut rx, "updating", || {
-		run_update_once(args, false, blocks, files).map(|_| ())
+		run_update_once(args, false, blocks, files, format).map(|_| ())
 	});
 
 	Ok(())
@@ -1296,99 +1323,198 @@ fn describe_update_scope(root: &Path, blocks: &[String], files: &[PathBuf]) -> O
 	(!parts.is_empty()).then(|| parts.join("; "))
 }
 
-/// Run a single update. Returns `false` when some consumers could not be
-/// updated because their provider failed to render.
+/// Render errors as JSON entries, in file and position order.
+fn render_error_json_entries<'a>(
+	errors: impl IntoIterator<Item = &'a mdt_core::RenderError>,
+	root: &Path,
+) -> Vec<serde_json::Value> {
+	let mut entries: Vec<_> = errors
+		.into_iter()
+		.map(|err| {
+			serde_json::json!({
+				"file": relative_display_path(&err.file, root),
+				"block": err.block_name,
+				"line": err.line,
+				"column": err.column,
+				"message": err.message,
+			})
+		})
+		.collect();
+	entries.sort_by(|a, b| {
+		a["file"]
+			.as_str()
+			.unwrap_or_default()
+			.cmp(b["file"].as_str().unwrap_or_default())
+			.then_with(|| a["line"].as_u64().cmp(&b["line"].as_u64()))
+			.then_with(|| a["column"].as_u64().cmp(&b["column"].as_u64()))
+			.then_with(|| {
+				a["block"]
+					.as_str()
+					.unwrap_or_default()
+					.cmp(b["block"].as_str().unwrap_or_default())
+			})
+	});
+	entries
+}
+
+/// Orphan consumer blocks (consumers whose name matches no provider) with
+/// did-you-mean suggestions, as JSON entries.
+fn orphan_json_entries(ctx: &ProjectContext, root: &Path) -> Vec<serde_json::Value> {
+	orphan_consumers(ctx)
+		.into_iter()
+		.map(|consumer| {
+			let suggestions: Vec<String> = suggest_similar_provider_names(
+				&consumer.block.name,
+				ctx.project.providers.keys().map(String::as_str),
+			)
+			.into_iter()
+			.map(str::to_string)
+			.collect();
+			serde_json::json!({
+				"file": relative_display_path(&consumer.file, root),
+				"block": consumer.block.name,
+				"line": consumer.block.opening.start.line,
+				"column": consumer.block.opening.start.column,
+				"suggestions": suggestions,
+			})
+		})
+		.collect()
+}
+
+/// Run a single update. Returns [`UpdateStatus::PartialFailure`] when some
+/// consumers could not be updated because their provider failed to render.
 fn run_update_once(
 	args: &MdtCli,
 	dry_run: bool,
 	blocks: &[String],
 	files: &[PathBuf],
-) -> Result<bool, Box<dyn std::error::Error>> {
-	let ctx = scan(args)?;
+	format: UpdateOutputFormat,
+) -> Result<UpdateStatus, Box<dyn std::error::Error>> {
+	let ctx = match (scan(args), format) {
+		(Ok(ctx), _) => ctx,
+		(Err(error), UpdateOutputFormat::Text) => return Err(error),
+		// Machine output reports scan failures (bad config, duplicate
+		// providers, unreadable files) in its own shape instead of leaving
+		// stdout empty.
+		(Err(error), UpdateOutputFormat::Json) => {
+			let output = serde_json::json!({
+				"ok": false,
+				"dry_run": dry_run,
+				"updated_blocks": 0,
+				"updated_files": [],
+				"errors": [],
+				"orphans": [],
+				"warnings": [],
+				"diagnostics": [{
+					"severity": "error",
+					"code": error_code(error.as_ref()),
+					"file": null,
+					"line": null,
+					"column": null,
+					"message": error.to_string(),
+				}],
+			});
+			println!("{output}");
+			return Ok(UpdateStatus::Invalid);
+		}
+	};
 	let root = resolve_root(args);
+	let options = validation_options(args);
 
-	if report_diagnostics(args, &ctx) {
-		return Err(validation_failed());
+	let has_errors = match format {
+		UpdateOutputFormat::Text => report_diagnostics(args, &ctx),
+		UpdateOutputFormat::Json => has_error_diagnostics(args, &ctx),
+	};
+
+	if has_errors {
+		if matches!(format, UpdateOutputFormat::Json) {
+			let diagnostics: Vec<_> = sorted_diagnostics(&ctx, &root)
+				.into_iter()
+				.filter(|diag| diag.is_error(&options) || !diag.is_ignored(&options))
+				.map(|diag| diagnostic_json(diag, &root, &options))
+				.collect();
+			let output = serde_json::json!({
+				"ok": false,
+				"dry_run": dry_run,
+				"updated_blocks": 0,
+				"updated_files": [],
+				"errors": [],
+				"orphans": orphan_json_entries(&ctx, &root),
+				"warnings": [],
+				"diagnostics": diagnostics,
+			});
+			println!("{output}");
+		} else {
+			return Err(validation_failed());
+		}
+
+		return Ok(UpdateStatus::Invalid);
 	}
 
 	let scope = resolve_update_scope(&ctx, &root, blocks, files)?;
 	let scoped = !blocks.is_empty() || !files.is_empty();
 
-	if let Some(description) = describe_update_scope(&root, blocks, files) {
-		println!("scoped to {description}");
-	}
+	if matches!(format, UpdateOutputFormat::Text) {
+		if let Some(description) = describe_update_scope(&root, blocks, files) {
+			println!("scoped to {description}");
+		}
 
-	let orphan_count = warn_orphans(&ctx, &root);
+		warn_orphans(&ctx, &root);
+	}
+	let orphan_count = orphan_consumers(&ctx).len();
 	let updates = compute_updates(&ctx, &scope)?;
 
 	// Print template variable warnings (they don't prevent updates).
-	if !updates.warnings.is_empty() {
+	if matches!(format, UpdateOutputFormat::Text) && !updates.warnings.is_empty() {
 		print_template_warnings(&updates.warnings, &root);
 	}
 
 	let mut render_errors: Vec<_> = updates.render_errors.iter().collect();
 	render_errors.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
 
-	for err in &render_errors {
-		eprintln!(
-			"{} block `{}` at {}:{}:{} was not updated: {}",
-			styled!(stderr, "error:", red_bold),
-			err.block_name,
-			relative_display_path(&err.file, &root),
-			err.line,
-			err.column,
-			err.message
-		);
+	if matches!(format, UpdateOutputFormat::Text) {
+		for err in &render_errors {
+			eprintln!(
+				"{} block `{}` at {}:{}:{} was not updated: {}",
+				styled!(stderr, "error:", red_bold),
+				err.block_name,
+				relative_display_path(&err.file, &root),
+				err.line,
+				err.column,
+				err.message
+			);
+		}
 	}
 
-	if updates.updated_files.is_empty() {
+	if matches!(format, UpdateOutputFormat::Text) && updates.updated_files.is_empty() {
 		if render_errors.is_empty() {
 			let linked = if orphan_count > 0 { "linked " } else { "" };
 			let in_scope = if scoped { "in-scope " } else { "" };
 			println!("All {linked}{in_scope}consumer blocks are already up to date.");
 		}
 
-		return Ok(render_errors.is_empty());
+		return Ok(if render_errors.is_empty() {
+			UpdateStatus::Clean
+		} else {
+			UpdateStatus::PartialFailure
+		});
 	}
 
 	if dry_run {
-		if updates.updated_count == 0 {
-			println!(
-				"Dry run: would normalize {} file(s) via formatter integration:",
-				updates.updated_files.len()
-			);
-		} else {
-			println!(
-				"Dry run: would update {} block(s) in {} file(s):",
-				updates.updated_count,
-				updates.updated_files.len()
-			);
-		}
+		if matches!(format, UpdateOutputFormat::Text) {
+			if updates.updated_count == 0 {
+				println!(
+					"Dry run: would normalize {} file(s) via formatter integration:",
+					updates.updated_files.len()
+				);
+			} else {
+				println!(
+					"Dry run: would update {} block(s) in {} file(s):",
+					updates.updated_count,
+					updates.updated_files.len()
+				);
+			}
 
-		let mut paths: Vec<_> = updates.updated_files.keys().collect();
-		paths.sort();
-
-		for path in paths {
-			let rel = relative_display_path(path, &root);
-			println!("  {rel}");
-		}
-	} else {
-		write_updates(&updates)?;
-
-		if updates.updated_count == 0 {
-			println!(
-				"Normalized {} file(s) via formatter integration.",
-				updates.updated_files.len()
-			);
-		} else {
-			println!(
-				"Updated {} block(s) in {} file(s).",
-				updates.updated_count,
-				updates.updated_files.len()
-			);
-		}
-
-		if args.verbose {
 			let mut paths: Vec<_> = updates.updated_files.keys().collect();
 			paths.sort();
 
@@ -1397,18 +1523,180 @@ fn run_update_once(
 				println!("  {rel}");
 			}
 		}
+	} else {
+		write_updates(&updates)?;
+
+		if matches!(format, UpdateOutputFormat::Text) {
+			if updates.updated_count == 0 {
+				println!(
+					"Normalized {} file(s) via formatter integration.",
+					updates.updated_files.len()
+				);
+			} else {
+				println!(
+					"Updated {} block(s) in {} file(s).",
+					updates.updated_count,
+					updates.updated_files.len()
+				);
+			}
+
+			if args.verbose {
+				let mut paths: Vec<_> = updates.updated_files.keys().collect();
+				paths.sort();
+
+				for path in paths {
+					let rel = relative_display_path(path, &root);
+					println!("  {rel}");
+				}
+			}
+		}
 	}
 
-	Ok(render_errors.is_empty())
+	if matches!(format, UpdateOutputFormat::Json) {
+		let updated_files: Vec<String> = {
+			let mut paths: Vec<_> = updates
+				.updated_files
+				.keys()
+				.map(|path| relative_display_path(path, &root))
+				.collect();
+			paths.sort();
+			paths
+		};
+		let warnings: Vec<_> = template_warning_locations(&updates.warnings, &ctx)
+			.into_iter()
+			.map(|(warning, location)| {
+				serde_json::json!({
+					"severity": "warning",
+					"code": "mdt::undefined_variables",
+					"file": relative_display_path(&warning.provider_file, &root),
+					"line": location.map(|(_, line, _)| line),
+					"column": location.map(|(_, _, column)| column),
+					"message": template_warning_message(warning, &root),
+				})
+			})
+			.collect();
+		let diagnostics: Vec<_> = sorted_diagnostics(&ctx, &root)
+			.into_iter()
+			.filter(|diag| diag.is_error(&options) || !diag.is_ignored(&options))
+			.map(|diag| diagnostic_json(diag, &root, &options))
+			.collect();
+		let output = serde_json::json!({
+			"ok": render_errors.is_empty(),
+			"dry_run": dry_run,
+			"updated_blocks": updates.updated_count,
+			"updated_files": updated_files,
+			"errors": render_error_json_entries(render_errors.iter().copied(), &root),
+			"orphans": orphan_json_entries(&ctx, &root),
+			"warnings": warnings,
+			"diagnostics": diagnostics,
+		});
+		println!("{output}");
+	}
+
+	Ok(if render_errors.is_empty() {
+		UpdateStatus::Clean
+	} else {
+		UpdateStatus::PartialFailure
+	})
 }
 
 /// List every block. Validation errors are reported but never hide the
 /// listing — it is the tool for diagnosing them — and still exit with
 /// status 2 afterwards.
-fn run_list(args: &MdtCli) -> Result<(), Box<dyn std::error::Error>> {
+fn run_list(args: &MdtCli, format: ListOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
 	let ctx = scan(args)?;
 	let root = resolve_root(args);
-	let has_errors = report_diagnostics(args, &ctx);
+	let has_errors = match format {
+		ListOutputFormat::Text => report_diagnostics(args, &ctx),
+		ListOutputFormat::Json => has_error_diagnostics(args, &ctx),
+	};
+
+	if matches!(format, ListOutputFormat::Json) {
+		let options = validation_options(args);
+		let diagnostics: Vec<_> = sorted_diagnostics(&ctx, &root)
+			.into_iter()
+			.filter(|diag| diag.is_error(&options) || !diag.is_ignored(&options))
+			.map(|diag| diagnostic_json(diag, &root, &options))
+			.collect();
+
+		// One pass over consumers instead of a scan per provider.
+		let mut consumer_counts: HashMap<&str, usize> = HashMap::new();
+
+		for consumer in &ctx.project.consumers {
+			if consumer.block.r#type == BlockType::Consumer {
+				*consumer_counts
+					.entry(consumer.block.name.as_str())
+					.or_default() += 1;
+			}
+		}
+
+		let mut provider_names: Vec<_> = ctx.project.providers.keys().collect();
+		provider_names.sort();
+
+		let providers: Vec<_> = provider_names
+			.into_iter()
+			.map(|name| {
+				let entry = &ctx.project.providers[name];
+				serde_json::json!({
+					"name": name,
+					"file": relative_display_path(&entry.file, &root),
+					"line": entry.block.opening.start.line,
+					"column": entry.block.opening.start.column,
+					"consumers": consumer_counts.get(name.as_str()).copied().unwrap_or(0),
+				})
+			})
+			.collect();
+
+		let consumers: Vec<_> = ctx
+			.project
+			.consumers
+			.iter()
+			.map(|consumer| {
+				let (kind, status) = match consumer.block.r#type {
+					BlockType::Consumer => {
+						let has_provider = ctx.project.providers.contains_key(&consumer.block.name);
+						let status = if has_provider { "linked" } else { "orphan" };
+						("consumer", status)
+					}
+					BlockType::Inline => ("inline", "inline"),
+					BlockType::Provider => ("provider", "provider"),
+					_ => ("unknown", "unknown"),
+				};
+				let transformers: Vec<String> = consumer
+					.block
+					.transformers
+					.iter()
+					.map(describe_transformer)
+					.collect();
+				serde_json::json!({
+					"name": consumer.block.name,
+					"file": relative_display_path(&consumer.file, &root),
+					"line": consumer.block.opening.start.line,
+					"column": consumer.block.opening.start.column,
+					"type": kind,
+					"status": status,
+					"transformers": transformers,
+				})
+			})
+			.collect();
+
+		let output = serde_json::json!({
+			"providers": providers,
+			"consumers": consumers,
+			"summary": {
+				"providers": ctx.project.providers.len(),
+				"consumers": ctx.project.consumers.len(),
+			},
+			"diagnostics": diagnostics,
+		});
+		println!("{output}");
+
+		if has_errors {
+			return Err(validation_failed());
+		}
+
+		return Ok(());
+	}
 
 	if ctx.project.providers.is_empty() && ctx.project.consumers.is_empty() {
 		println!("No provider or consumer blocks found.");
@@ -1968,6 +2256,47 @@ fn run_skill(reference: bool, install: Option<&Path>) -> Result<(), Box<dyn std:
 
 	for path in written {
 		println!("  {}", display_path(path));
+	}
+
+	Ok(())
+}
+
+// The `Ok` keeps this arm the same type as the other command handlers.
+#[allow(clippy::unnecessary_wraps)]
+fn run_completions(shell: clap_complete::Shell) -> Result<(), Box<dyn std::error::Error>> {
+	let mut command = MdtCli::command();
+	clap_complete::generate(shell, &mut command, "mdt", &mut std::io::stdout());
+
+	Ok(())
+}
+
+fn run_hook(args: &MdtCli, command: HookCommand) -> Result<(), Box<dyn std::error::Error>> {
+	let root = resolve_root(args);
+
+	match command {
+		HookCommand::Install { force } => {
+			let outcome = hook::install(&root, force)?;
+			match outcome {
+				hook::InstallOutcome::Installed(path) => {
+					println!(
+						"Installed the mdt pre-commit hook at {}",
+						display_path(&path)
+					);
+				}
+				hook::InstallOutcome::AlreadyInstalled(path) => {
+					println!(
+						"The mdt pre-commit hook at {} is already installed",
+						display_path(&path)
+					);
+				}
+				hook::InstallOutcome::Replaced(path) => {
+					println!(
+						"Replaced the existing pre-commit hook at {}",
+						display_path(&path)
+					);
+				}
+			}
+		}
 	}
 
 	Ok(())
