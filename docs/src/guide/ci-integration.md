@@ -50,16 +50,15 @@ jobs:
 ::error file=readme.md,line=3,col=1::Consumer block `install` is out of date; run `mdt update`
 ::error file=readme.md,line=3,col=1::consumer `installguide` at readme.md:3:1 has no provider (did you mean `installGuide`?)
 ::error file=readme.md,line=6,col=1::Template render failed for block `badges`: argument count mismatch: provider `badges` declares 1 parameter(s), but consumer passes 2
-::error file=readme.md::Formatter-normalized file output is out of date; run `mdt update`
+::error file=readme.md,line=1,col=1::Formatter-normalized file output is out of date; run `mdt update`
 ::warning file=.templates/docs.t.md,line=1,col=1::provider block `installGuide` has no consumers
 ```
 
 Validation errors, such as `mdt::invalid_tag` or `mdt::nested_block`, are annotated the same way. A one-line summary goes to stderr.
 
-Limitations:
+Annotation paths are relative to the repository checkout — the nearest enclosing git work tree — so annotations land on the right file whether mdt runs from the checkout root, with `--path packages/lib`, or from inside a sub-project (a step with `working-directory:`). Outside a git repository, paths are relative to the working directory.
 
-- Annotation paths are relative to the mdt project root. For a sub-project (checked with `--path` or from inside its directory), GitHub reads them relative to the repository root, so the inline annotation can land on the wrong file. The message text still names the right file.
-- Errors that stop the scan before any file is checked (an invalid `mdt.toml`, duplicate providers, an unreadable file) print a full report on stderr instead of annotations. The step still fails with exit 2.
+Errors that stop the scan before any file is checked (an invalid `mdt.toml`, duplicate providers, an unreadable file) print one file-less `::error` annotation carrying the error message. The step still fails with exit 2.
 
 ### Show the diff
 
