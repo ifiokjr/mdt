@@ -17,6 +17,7 @@ rust-version = "1.86.0"
 [workspace.dependencies]
 assert_cmd = { default-features = false, version = "^2" }
 clap = { default-features = false, version = "^4" }
+clap_complete = { default-features = false, version = "^4" }
 derive_more = { version = "2", features = ["deref", "deref_mut"], default-features = false }
 float-cmp = { default-features = false, version = "^0.10" }
 globset = { default-features = false, version = "^0.4" }

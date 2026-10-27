@@ -297,6 +297,19 @@ Global flags: `--ignore-unclosed-blocks` (unclosed and unmatched tags), `--ignor
 | `mdt skill [--reference \| --install <DIR>]`                         | Print this skill, its reference, or write both to `<DIR>/mdt/`                                     |
 | `mdt assist <generic\|claude\|cursor\|copilot\|pi> [--format json]`  | MCP config and skill setup for an assistant                                                        |
 | `mdt lsp` / `mdt mcp`                                                | Language server / MCP server over stdio                                                            |
+| Command                                                              | Purpose                                                                                            |
+| -------------------------------------------------------------------  | ------------------------------------------------------------------------------------------------   |
+| `mdt init`                                                           | Add a starter `mdt.toml`, sample provider, synced sample readme (no README only), `.mdt/` ignore   |
+| `mdt check [--diff] [--format text\|json\|github] [--watch]`         | Verify every consumer is linked and current                                                        |
+| `mdt update [--dry-run \| --watch] [--format text\|json]`            | Rewrite stale consumers (JSON output for CI and tools)                                             |
+| `mdt list [--format json]`                                           | Every block with `file:line`, transformers, and `[linked]`/`[orphan]`/`[inline]`                   |
+| `mdt info [--format json]`                                           | Project summary: blocks, data, templates, diagnostics, cache                                       |
+| `mdt doctor [--format json]`                                         | Health checks with hints (exit 1 on any FAIL)                                                      |
+| `mdt skill [--reference \| --install <DIR>]`                         | Print this skill, its reference, or write both to `<DIR>/mdt/`                                     |
+| `mdt assist <generic\|claude\|cursor\|copilot\|pi> [--format json]`  | MCP config and skill setup for an assistant                                                        |
+| `mdt completions <shell>`                                            | Shell completion script (bash, zsh, fish, powershell, elvish)                                      |
+| `mdt hook install [--force]`                                         | Install the `mdt check` pre-commit hook into `.git/hooks/`                                         |
+| `mdt lsp` / `mdt mcp`                                                | Language server / MCP server over stdio                                                            |
 
 Global: `-p, --path <DIR>` (must exist, except for `init`), `-v, --verbose`, `--no-color`, and the `--ignore-*` flags. Environment: `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `MDT_LOG=debug` (logs to stderr), `MDT_CACHE_VERIFY_HASH=1` (hash-verified cache).
 

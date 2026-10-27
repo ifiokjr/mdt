@@ -1,0 +1,16 @@
+# pre-commit framework hooks for mdt.
+#
+# Usage in a consuming repository:
+#
+#   repos:
+#     - repo: https://github.com/ifiokjr/mdt
+#       rev: v0.9.6 # use the latest release tag
+#       hooks:
+#         - id: mdt-check
+- id: mdt-check
+  name: mdt check
+  description: Check that mdt template consumer blocks are up to date.
+  entry: mdt check
+  language: system
+  always_run: true
+  pass_filenames: false

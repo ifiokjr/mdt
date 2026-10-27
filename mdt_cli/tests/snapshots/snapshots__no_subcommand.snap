@@ -4,7 +4,7 @@ info:
   program: mdt
   args:
     - "--path"
-    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpDK3lZz
+    - /var/folders/lm/90xr38kd5y52p5y6jj2ny_dr0000gn/T/.tmpYSBgyq
   env:
     NO_COLOR: "1"
 ---
@@ -14,7 +14,7 @@ exit_code: 2
 
 ----- stderr -----
 error: 'mdt' requires a subcommand but one was not provided
-  [subcommands: init, check, update, list, info, doctor, assist, skill, lsp, mcp, help]
+  [subcommands: init, check, update, list, info, doctor, assist, skill, completions, hook, lsp, mcp, help]
 
 Usage: mdt [OPTIONS] <COMMAND>
 

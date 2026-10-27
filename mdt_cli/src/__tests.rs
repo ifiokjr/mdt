@@ -11,6 +11,7 @@ use clap::Parser as _;
 use mdt_cli::MdtCli;
 
 use super::OutputFormat;
+use super::UpdateOutputFormat;
 use super::run_check;
 use super::run_update;
 use super::watch_loop;
@@ -114,7 +115,7 @@ fn update_watch_mode_enters_the_watch_loop() -> std::io::Result<()> {
 			"--path",
 			watch_root.as_os_str().to_string_lossy().as_ref(),
 		]);
-		let _ = run_update(&args, false, true, &[], &[]);
+		let _ = run_update(&args, false, true, &[], &[], UpdateOutputFormat::Text);
 	});
 
 	std::thread::sleep(Duration::from_millis(600));
