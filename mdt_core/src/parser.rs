@@ -409,8 +409,19 @@ thread_local! {
 
 pub fn get_html_nodes(content: impl AsRef<str>) -> MdtResult<Vec<Html>> {
 	let content = content.as_ref();
+	// The markdown crate asserts (panics) on some malformed documents, and
+	// every scanned file reaches this call — a crafted `.md` in a cloned
+	// repository or pull request must not crash the whole scan. Contain the
+	// panic at this boundary and report the document the same way a failed
+	// parse reports it. `AssertUnwindSafe` holds: the options are only read
+	// and rebuilt per thread, and nothing of ours is left half-mutated.
 	let mdast = GFM_PARSE_OPTIONS
-		.with(|options| to_mdast(content, options))
+		.with(|options| {
+			std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| to_mdast(content, options)))
+		})
+		.map_err(|_| {
+			MdtError::Markdown("the markdown parser panicked on this document".to_string())
+		})?
 		.map_err(|e| MdtError::Markdown(e.to_string()))?;
 	let mut html_nodes = vec![];
 	collect_html(&mdast, &mut html_nodes, content);
