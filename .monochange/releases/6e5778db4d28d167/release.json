@@ -1,0 +1,2130 @@
+{
+  "schema_version": "0.10",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-10-27T20:52:44Z",
+  "command": "release",
+  "version": "0.9.8",
+  "versions": {
+    "mdt": "0.9.8"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.8",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.8",
+      "rendered_title": "v0.9.8 (2026-10-27)",
+      "rendered_changelog_title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.8",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/1793007560-mdt-core.md",
+    ".changeset/1793010121-mdt-cli.md",
+    ".changeset/1793010909-mdt-core.md",
+    ".changeset/format-presets.md",
+    ".changeset/github-annotation-repo-paths.md",
+    ".changeset/homebrew-tap.md",
+    ".changeset/internal-table-formatting.md",
+    ".changeset/legacy-shims-removal.md",
+    ".changeset/mcp-doctor-info-tools.md",
+    ".changeset/scoped-update-operations.md",
+    ".changeset/table-cell-transformers.md",
+    ".changeset/unify-padding-defaults.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/1793007560-mdt-core.md",
+      "summary": "Consumer files are written atomically and update watch logs to stderr",
+      "details": "write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "497dbcf8fecb15d35fd16d6a5e823c74ef334a70",
+            "short_sha": "497dbcf",
+            "url": "https://github.com/ifiokjr/mdt/commit/497dbcf8fecb15d35fd16d6a5e823c74ef334a70",
+            "authored_at": "2026-10-27T18:37:12Z",
+            "committed_at": "2026-10-27T18:37:12Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#235",
+            "title": "fix(core): atomic consumer-file writes; update watch status to stderr",
+            "url": "https://github.com/ifiokjr/mdt/pull/235",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "497dbcf8fecb15d35fd16d6a5e823c74ef334a70",
+            "short_sha": "497dbcf",
+            "url": "https://github.com/ifiokjr/mdt/commit/497dbcf8fecb15d35fd16d6a5e823c74ef334a70",
+            "authored_at": "2026-10-27T18:37:12Z",
+            "committed_at": "2026-10-27T18:37:12Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#235",
+            "title": "fix(core): atomic consumer-file writes; update watch status to stderr",
+            "url": "https://github.com/ifiokjr/mdt/pull/235",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/1793010121-mdt-cli.md",
+      "summary": "update and list JSON output, shell completions, and a pre-commit hook installer",
+      "details": "**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.",
+      "targets": [
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "feat"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "feat"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "a9470f0870158d01d2a6a11a7e16a13326c17a65",
+            "short_sha": "a9470f0",
+            "url": "https://github.com/ifiokjr/mdt/commit/a9470f0870158d01d2a6a11a7e16a13326c17a65",
+            "authored_at": "2026-10-27T20:25:46Z",
+            "committed_at": "2026-10-27T20:25:46Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#236",
+            "title": "feat(cli): update and list --format json, shell completions, mdt hook install",
+            "url": "https://github.com/ifiokjr/mdt/pull/236",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "a9470f0870158d01d2a6a11a7e16a13326c17a65",
+            "short_sha": "a9470f0",
+            "url": "https://github.com/ifiokjr/mdt/commit/a9470f0870158d01d2a6a11a7e16a13326c17a65",
+            "authored_at": "2026-10-27T20:25:46Z",
+            "committed_at": "2026-10-27T20:25:46Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#236",
+            "title": "feat(cli): update and list --format json, shell completions, mdt hook install",
+            "url": "https://github.com/ifiokjr/mdt/pull/236",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/1793010909-mdt-core.md",
+      "summary": "Cold scans parse files across every available core and release binaries shrink",
+      "details": "scan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.\n\nThe release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.\n\nThe benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "perf"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "d359fea808961de02fbfa168b1094cb59a231252",
+            "short_sha": "d359fea",
+            "url": "https://github.com/ifiokjr/mdt/commit/d359fea808961de02fbfa168b1094cb59a231252",
+            "authored_at": "2026-10-27T20:37:35Z",
+            "committed_at": "2026-10-27T20:37:35Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#237",
+            "title": "perf(core): parallel cold-scan parsing, tuned release profile, source-file benchmarks",
+            "url": "https://github.com/ifiokjr/mdt/pull/237",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "d359fea808961de02fbfa168b1094cb59a231252",
+            "short_sha": "d359fea",
+            "url": "https://github.com/ifiokjr/mdt/commit/d359fea808961de02fbfa168b1094cb59a231252",
+            "authored_at": "2026-10-27T20:37:35Z",
+            "committed_at": "2026-10-27T20:37:35Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#237",
+            "title": "perf(core): parallel cold-scan parsing, tuned release profile, source-file benchmarks",
+            "url": "https://github.com/ifiokjr/mdt/pull/237",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/format-presets.md",
+      "summary": "[format] preset and trailing-whitespace rule",
+      "details": "`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "dd5d3b80ef81d663c80db1120ab52e418f2698f1",
+            "short_sha": "dd5d3b8",
+            "url": "https://github.com/ifiokjr/mdt/commit/dd5d3b80ef81d663c80db1120ab52e418f2698f1",
+            "authored_at": "2026-10-26T10:00:13Z",
+            "committed_at": "2026-10-26T10:00:13Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#218",
+            "title": "feat(core): [format] preset and trailing-whitespace rule",
+            "url": "https://github.com/ifiokjr/mdt/pull/218",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "dd5d3b80ef81d663c80db1120ab52e418f2698f1",
+            "short_sha": "dd5d3b8",
+            "url": "https://github.com/ifiokjr/mdt/commit/dd5d3b80ef81d663c80db1120ab52e418f2698f1",
+            "authored_at": "2026-10-26T10:00:13Z",
+            "committed_at": "2026-10-26T10:00:13Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#218",
+            "title": "feat(core): [format] preset and trailing-whitespace rule",
+            "url": "https://github.com/ifiokjr/mdt/pull/218",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/github-annotation-repo-paths.md",
+      "summary": "GitHub annotations resolve paths against the repository root",
+      "details": "`mdt check --format github` now writes annotation paths relative to the nearest enclosing git work tree instead of the process working directory. Annotations already landed correctly for `--path <sub-project>` runs from the checkout root; now they also land correctly when mdt runs from inside a sub-project — a CI step with `working-directory:` — where working-directory-relative paths used to point GitHub at the wrong file. Outside a git repository, paths stay relative to the working directory.\n\nThe CI integration guide no longer describes the old behavior as a limitation: it documents the repository-root rule and that scan-stopping errors print one file-less `::error` annotation.",
+      "targets": [
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "patch"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "7dcd8a40009002a4b177b4290ddc10755683dfeb",
+            "short_sha": "7dcd8a4",
+            "url": "https://github.com/ifiokjr/mdt/commit/7dcd8a40009002a4b177b4290ddc10755683dfeb",
+            "authored_at": "2026-10-26T08:14:59Z",
+            "committed_at": "2026-10-26T08:14:59Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#211",
+            "title": "fix(cli): resolve github annotation paths against the repository root",
+            "url": "https://github.com/ifiokjr/mdt/pull/211",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "7dcd8a40009002a4b177b4290ddc10755683dfeb",
+            "short_sha": "7dcd8a4",
+            "url": "https://github.com/ifiokjr/mdt/commit/7dcd8a40009002a4b177b4290ddc10755683dfeb",
+            "authored_at": "2026-10-26T08:14:59Z",
+            "committed_at": "2026-10-26T08:14:59Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#211",
+            "title": "fix(cli): resolve github annotation paths against the repository root",
+            "url": "https://github.com/ifiokjr/mdt/pull/211",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/homebrew-tap.md",
+      "summary": "Homebrew install channel",
+      "details": "`brew install ifiokjr/mdt/mdt` installs the prebuilt `mdt` binary on macOS and Linux — a fourth install channel next to npm, the GitHub release archives, and cargo, for users without Node.js or a Rust toolchain.\n\nA new `homebrew-tap` workflow regenerates `Formula/mdt.rb` (macOS arm/intel, Linux arm/intel glibc, SHA256-pinned release archives) and pushes it to the `ifiokjr/homebrew-mdt` tap whenever a release is published. One-time owner setup is documented in the workflow: create the tap repository and add a fine-grained `HOMEBREW_TAP_TOKEN` secret with Contents access to it.",
+      "targets": [
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "4381bca9a090b127a599a2f168bf44f7e6aaa16a",
+            "short_sha": "4381bca",
+            "url": "https://github.com/ifiokjr/mdt/commit/4381bca9a090b127a599a2f168bf44f7e6aaa16a",
+            "authored_at": "2026-10-26T13:21:21Z",
+            "committed_at": "2026-10-26T13:21:21Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#219",
+            "title": "chore: publish a homebrew tap on release",
+            "url": "https://github.com/ifiokjr/mdt/pull/219",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "4381bca9a090b127a599a2f168bf44f7e6aaa16a",
+            "short_sha": "4381bca",
+            "url": "https://github.com/ifiokjr/mdt/commit/4381bca9a090b127a599a2f168bf44f7e6aaa16a",
+            "authored_at": "2026-10-26T13:21:21Z",
+            "committed_at": "2026-10-26T13:21:21Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#219",
+            "title": "chore: publish a homebrew tap on release",
+            "url": "https://github.com/ifiokjr/mdt/pull/219",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/internal-table-formatting.md",
+      "summary": "Add `[format] tables` — mdt's internal GFM table alignment.",
+      "details": "When enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "feat"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "feat"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "363f99d1e883474a430d98b418fa6e775db1a514",
+            "short_sha": "363f99d",
+            "url": "https://github.com/ifiokjr/mdt/commit/363f99d1e883474a430d98b418fa6e775db1a514",
+            "authored_at": "2026-10-26T09:39:34Z",
+            "committed_at": "2026-10-26T09:39:34Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#214",
+            "title": "feat: add [format] tables — internal GFM table alignment",
+            "url": "https://github.com/ifiokjr/mdt/pull/214",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "363f99d1e883474a430d98b418fa6e775db1a514",
+            "short_sha": "363f99d",
+            "url": "https://github.com/ifiokjr/mdt/commit/363f99d1e883474a430d98b418fa6e775db1a514",
+            "authored_at": "2026-10-26T09:39:34Z",
+            "committed_at": "2026-10-26T09:39:34Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#214",
+            "title": "feat: add [format] tables — internal GFM table alignment",
+            "url": "https://github.com/ifiokjr/mdt/pull/214",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/legacy-shims-removal.md",
+      "summary": "Remove dead shims ahead of 1.0",
+      "details": "- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_lsp",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "a39eccbb28c6ac4094e3429e0491590e3670b280",
+            "short_sha": "a39eccb",
+            "url": "https://github.com/ifiokjr/mdt/commit/a39eccbb28c6ac4094e3429e0491590e3670b280",
+            "authored_at": "2026-10-26T08:38:06Z",
+            "committed_at": "2026-10-26T08:38:06Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#212",
+            "title": "chore!: remove dead shims ahead of 1.0",
+            "url": "https://github.com/ifiokjr/mdt/pull/212",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "a39eccbb28c6ac4094e3429e0491590e3670b280",
+            "short_sha": "a39eccb",
+            "url": "https://github.com/ifiokjr/mdt/commit/a39eccbb28c6ac4094e3429e0491590e3670b280",
+            "authored_at": "2026-10-26T08:38:06Z",
+            "committed_at": "2026-10-26T08:38:06Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#212",
+            "title": "chore!: remove dead shims ahead of 1.0",
+            "url": "https://github.com/ifiokjr/mdt/pull/212",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/mcp-doctor-info-tools.md",
+      "summary": "Add mdt_doctor and mdt_info MCP tools",
+      "details": "The MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_mcp",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "2b9021bb31bd2918cd101fd8fa60ecfd76ee74f4",
+            "short_sha": "2b9021b",
+            "url": "https://github.com/ifiokjr/mdt/commit/2b9021bb31bd2918cd101fd8fa60ecfd76ee74f4",
+            "authored_at": "2026-10-26T11:28:13Z",
+            "committed_at": "2026-10-26T11:28:13Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#215",
+            "title": "feat(mcp): add mdt_doctor and mdt_info tools",
+            "url": "https://github.com/ifiokjr/mdt/pull/215",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "2b9021bb31bd2918cd101fd8fa60ecfd76ee74f4",
+            "short_sha": "2b9021b",
+            "url": "https://github.com/ifiokjr/mdt/commit/2b9021bb31bd2918cd101fd8fa60ecfd76ee74f4",
+            "authored_at": "2026-10-26T11:28:13Z",
+            "committed_at": "2026-10-26T11:28:13Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#215",
+            "title": "feat(mcp): add mdt_doctor and mdt_info tools",
+            "url": "https://github.com/ifiokjr/mdt/pull/215",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/scoped-update-operations.md",
+      "summary": "Scoped update operations",
+      "details": "`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_mcp",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "6a9a438589d2b99db8230cfeb02c2f64626570ba",
+            "short_sha": "6a9a438",
+            "url": "https://github.com/ifiokjr/mdt/commit/6a9a438589d2b99db8230cfeb02c2f64626570ba",
+            "authored_at": "2026-10-26T13:12:18Z",
+            "committed_at": "2026-10-26T13:12:18Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#217",
+            "title": "feat(cli): scoped updates with --block and --file",
+            "url": "https://github.com/ifiokjr/mdt/pull/217",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "6a9a438589d2b99db8230cfeb02c2f64626570ba",
+            "short_sha": "6a9a438",
+            "url": "https://github.com/ifiokjr/mdt/commit/6a9a438589d2b99db8230cfeb02c2f64626570ba",
+            "authored_at": "2026-10-26T13:12:18Z",
+            "committed_at": "2026-10-26T13:12:18Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#217",
+            "title": "feat(cli): scoped updates with --block and --file",
+            "url": "https://github.com/ifiokjr/mdt/pull/217",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/table-cell-transformers.md",
+      "summary": "Parse inline-block transformers inside GFM table cells",
+      "details": "GFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "b423cb843533de6fe98a60465494eb11f27c4b2a",
+            "short_sha": "b423cb8",
+            "url": "https://github.com/ifiokjr/mdt/commit/b423cb843533de6fe98a60465494eb11f27c4b2a",
+            "authored_at": "2026-10-26T11:45:11Z",
+            "committed_at": "2026-10-26T11:45:11Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#216",
+            "title": "feat(core): parse inline-block transformers inside table cells",
+            "url": "https://github.com/ifiokjr/mdt/pull/216",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "b423cb843533de6fe98a60465494eb11f27c4b2a",
+            "short_sha": "b423cb8",
+            "url": "https://github.com/ifiokjr/mdt/commit/b423cb843533de6fe98a60465494eb11f27c4b2a",
+            "authored_at": "2026-10-26T11:45:11Z",
+            "committed_at": "2026-10-26T11:45:11Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#216",
+            "title": "feat(core): parse inline-block transformers inside table cells",
+            "url": "https://github.com/ifiokjr/mdt/pull/216",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/unify-padding-defaults.md",
+      "summary": "One padding default: omitted keys mean 0",
+      "details": "`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.",
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "minor"
+        },
+        {
+          "id": "mdt_cli",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "patch"
+        },
+        {
+          "id": "@m-d-t/skills",
+          "kind": "package",
+          "bump": "none",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "docs"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "55ca02605691e6c01800020d92e5ab25db02e9a8",
+            "short_sha": "55ca026",
+            "url": "https://github.com/ifiokjr/mdt/commit/55ca02605691e6c01800020d92e5ab25db02e9a8",
+            "authored_at": "2026-10-26T08:39:41Z",
+            "committed_at": "2026-10-26T08:39:41Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#213",
+            "title": "feat(core)!: one padding default — omitted keys mean 0",
+            "url": "https://github.com/ifiokjr/mdt/pull/213",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "55ca02605691e6c01800020d92e5ab25db02e9a8",
+            "short_sha": "55ca026",
+            "url": "https://github.com/ifiokjr/mdt/commit/55ca02605691e6c01800020d92e5ab25db02e9a8",
+            "authored_at": "2026-10-26T08:39:41Z",
+            "committed_at": "2026-10-26T08:39:41Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#213",
+            "title": "feat(core)!: one padding default — omitted keys mean 0",
+            "url": "https://github.com/ifiokjr/mdt/pull/213",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "output": "default",
+      "stream": "default",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### [format] preset and trailing-whitespace rule\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).",
+              "#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.",
+              "#### Remove dead shims ahead of 1.0\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_lsp_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.",
+              "#### Add mdt_doctor and mdt_info MCP tools\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, 🟠 _mdt_mcp_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+              "#### Scoped update operations\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, 🟠 _mdt_mcp_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.",
+              "#### Parse inline-block transformers inside GFM table cells\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.",
+              "#### One padding default: omitted keys mean 0\n\n_Packages:_ 🟠 _mdt_core_, 🟢 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.",
+              "#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Packages:_ 🟠 _mdt_cli_, 🟠 _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands."
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Packages:_ 🟢 _mdt_core_, 🟢 _mdt_cli_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)",
+              "#### GitHub annotations resolve paths against the repository root\n\n_Packages:_ 🟢 _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #211](https://github.com/ifiokjr/mdt/pull/211)\n\n`mdt check --format github` now writes annotation paths relative to the nearest enclosing git work tree instead of the process working directory. Annotations already landed correctly for `--path <sub-project>` runs from the checkout root; now they also land correctly when mdt runs from inside a sub-project — a CI step with `working-directory:` — where working-directory-relative paths used to point GitHub at the wrong file. Outside a git repository, paths stay relative to the working directory.\n\nThe CI integration guide no longer describes the old behavior as a limitation: it documents the repository-root rule and that scan-stopping errors print one file-less `::error` annotation."
+            ]
+          },
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Homebrew install channel\n\n_Packages:_ ⚪ _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #219](https://github.com/ifiokjr/mdt/pull/219)\n\n`brew install ifiokjr/mdt/mdt` installs the prebuilt `mdt` binary on macOS and Linux — a fourth install channel next to npm, the GitHub release archives, and cargo, for users without Node.js or a Rust toolchain.\n\nA new `homebrew-tap` workflow regenerates `Formula/mdt.rb` (macOS arm/intel, Linux arm/intel glibc, SHA256-pinned release archives) and pushes it to the `ifiokjr/homebrew-mdt` tap whenever a release is published. One-time owner setup is documented in the workflow: create the tap repository and add a fine-grained `HOMEBREW_TAP_TOKEN` secret with Contents access to it."
+            ]
+          },
+          {
+            "title": "⚡ Performance",
+            "collapsed": true,
+            "entries": [
+              "#### Cold scans parse files across every available core and release binaries shrink\n\n_Packages:_ ⚪ _mdt_core_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #237](https://github.com/ifiokjr/mdt/pull/237)\n\nscan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.\n\nThe release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.\n\nThe benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\nGrouped release for `mdt`.\n\n### 🚀 Feature\n\n#### [format] preset and trailing-whitespace rule\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).\n\n#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.\n\n#### Remove dead shims ahead of 1.0\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_lsp_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.\n\n#### Add mdt_doctor and mdt_info MCP tools\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, 🟠 _mdt_mcp_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.\n\n#### Scoped update operations\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, 🟠 _mdt_mcp_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.\n\n#### Parse inline-block transformers inside GFM table cells\n\n_Packages:_ 🟠 _mdt_core_, 🟠 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.\n\n#### One padding default: omitted keys mean 0\n\n_Packages:_ 🟠 _mdt_core_, 🟢 _mdt_cli_, ⚪ _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.\n\n#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Packages:_ 🟠 _mdt_cli_, 🟠 _@m-d-t/skills_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.\n\n### 🐛 Fixed\n\n- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Packages:_ 🟢 _mdt_core_, 🟢 _mdt_cli_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)\n#### GitHub annotations resolve paths against the repository root\n\n_Packages:_ 🟢 _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #211](https://github.com/ifiokjr/mdt/pull/211)\n\n`mdt check --format github` now writes annotation paths relative to the nearest enclosing git work tree instead of the process working directory. Annotations already landed correctly for `--path <sub-project>` runs from the checkout root; now they also land correctly when mdt runs from inside a sub-project — a CI step with `working-directory:` — where working-directory-relative paths used to point GitHub at the wrong file. Outside a git repository, paths stay relative to the working directory.\n\nThe CI integration guide no longer describes the old behavior as a limitation: it documents the repository-root rule and that scan-stopping errors print one file-less `::error` annotation.\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Homebrew install channel\n\n_Packages:_ ⚪ _mdt_cli_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #219](https://github.com/ifiokjr/mdt/pull/219)\n\n`brew install ifiokjr/mdt/mdt` installs the prebuilt `mdt` binary on macOS and Linux — a fourth install channel next to npm, the GitHub release archives, and cargo, for users without Node.js or a Rust toolchain.\n\nA new `homebrew-tap` workflow regenerates `Formula/mdt.rb` (macOS arm/intel, Linux arm/intel glibc, SHA256-pinned release archives) and pushes it to the `ifiokjr/homebrew-mdt` tap whenever a release is published. One-time owner setup is documented in the workflow: create the tap repository and add a fine-grained `HOMEBREW_TAP_TOKEN` secret with Contents access to it.\n</details>\n\n<details>\n<summary><strong>⚡ Performance</strong></summary>\n\n#### Cold scans parse files across every available core and release binaries shrink\n\n_Packages:_ ⚪ _mdt_core_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #237](https://github.com/ifiokjr/mdt/pull/237)\n\nscan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.\n\nThe release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.\n\nThe benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path.\n</details>"
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.",
+              "#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).",
+              "#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.",
+              "#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+              "#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.",
+              "#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences."
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)",
+              "#### GitHub annotations resolve paths against the repository root\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #211](https://github.com/ifiokjr/mdt/pull/211)\n\n`mdt check --format github` now writes annotation paths relative to the nearest enclosing git work tree instead of the process working directory. Annotations already landed correctly for `--path <sub-project>` runs from the checkout root; now they also land correctly when mdt runs from inside a sub-project — a CI step with `working-directory:` — where working-directory-relative paths used to point GitHub at the wrong file. Outside a git repository, paths stay relative to the working directory.\n\nThe CI integration guide no longer describes the old behavior as a limitation: it documents the repository-root rule and that scan-stopping errors print one file-less `::error` annotation.",
+              "#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule."
+            ]
+          },
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### Homebrew install channel\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #219](https://github.com/ifiokjr/mdt/pull/219)\n\n`brew install ifiokjr/mdt/mdt` installs the prebuilt `mdt` binary on macOS and Linux — a fourth install channel next to npm, the GitHub release archives, and cargo, for users without Node.js or a Rust toolchain.\n\nA new `homebrew-tap` workflow regenerates `Formula/mdt.rb` (macOS arm/intel, Linux arm/intel glibc, SHA256-pinned release archives) and pushes it to the `ifiokjr/homebrew-mdt` tap whenever a release is published. One-time owner setup is documented in the workflow: create the tap repository and add a fine-grained `HOMEBREW_TAP_TOKEN` secret with Contents access to it."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### 🚀 Feature\n\n#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.\n\n#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).\n\n#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.\n\n#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.\n\n#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.\n\n#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.\n\n### 🐛 Fixed\n\n- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)\n#### GitHub annotations resolve paths against the repository root\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #211](https://github.com/ifiokjr/mdt/pull/211)\n\n`mdt check --format github` now writes annotation paths relative to the nearest enclosing git work tree instead of the process working directory. Annotations already landed correctly for `--path <sub-project>` runs from the checkout root; now they also land correctly when mdt runs from inside a sub-project — a CI step with `working-directory:` — where working-directory-relative paths used to point GitHub at the wrong file. Outside a git repository, paths stay relative to the working directory.\n\nThe CI integration guide no longer describes the old behavior as a limitation: it documents the repository-root rule and that scan-stopping errors print one file-less `::error` annotation.\n\n#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### Homebrew install channel\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #219](https://github.com/ifiokjr/mdt/pull/219)\n\n`brew install ifiokjr/mdt/mdt` installs the prebuilt `mdt` binary on macOS and Linux — a fourth install channel next to npm, the GitHub release archives, and cargo, for users without Node.js or a Rust toolchain.\n\nA new `homebrew-tap` workflow regenerates `Formula/mdt.rb` (macOS arm/intel, Linux arm/intel glibc, SHA256-pinned release archives) and pushes it to the `ifiokjr/homebrew-mdt` tap whenever a release is published. One-time owner setup is documented in the workflow: create the tap repository and add a fine-grained `HOMEBREW_TAP_TOKEN` secret with Contents access to it.\n</details>"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).",
+              "#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.",
+              "#### Remove dead shims ahead of 1.0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.",
+              "#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+              "#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.",
+              "#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.",
+              "#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule."
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)"
+            ]
+          },
+          {
+            "title": "⚡ Performance",
+            "collapsed": true,
+            "entries": [
+              "#### Cold scans parse files across every available core and release binaries shrink\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #237](https://github.com/ifiokjr/mdt/pull/237)\n\nscan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.\n\nThe release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.\n\nThe benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### 🚀 Feature\n\n#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).\n\n#### Add `[format] tables` — mdt's internal GFM table alignment.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)\n\nWhen enabled, `mdt update` aligns table columns inside block content using the\nsame rules as dprint's markdown plugin (column width = widest cell by display\nwidth with CJK counting double, delimiter row fills the width, alignment\ncolons preserved), applied before transformers and padding. Provider blocks in\n`*.t.md` files are rewritten to the aligned form too, so templates and\nformatter-owned output files carry identical table bytes and neither side\nneeds to be excluded from a formatter. `mdt check` reports unaligned provider\ntables as stale.\n\nThe normalizer is conservative: fenced code blocks, rows with more cells than\nthe header, pipes inside code spans, and tables glued to prose are left\nuntouched. Off by default; formatting never runs outside block boundaries.\n\n#### Remove dead shims ahead of 1.0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.\n\n#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.\n\n#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.\n\n#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.\n\n#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.\n\n### 🐛 Fixed\n\n- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)\n\n<details>\n<summary><strong>⚡ Performance</strong></summary>\n\n#### Cold scans parse files across every available core and release binaries shrink\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #237](https://github.com/ifiokjr/mdt/pull/237)\n\nscan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.\n\nThe release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.\n\nThe benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path.\n</details>"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### Remove dead shims ahead of 1.0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### 🚀 Feature\n\n#### Remove dead shims ahead of 1.0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)\n\n- `MdtError::SymlinkCycle` is gone. It was documented as \"no longer returned\" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.\n- The `From<MdtError> for std::io::Error` impl (\"for test compatibility\") is removed; the one CLI test that relied on it now panics with the parse error instead.\n- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.\n- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.\n\nNot removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample."
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+              "#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### 🚀 Feature\n\n#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.\n\n#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior."
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.8 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.8 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🚀 Feature",
+            "collapsed": false,
+            "entries": [
+              "#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands."
+            ]
+          },
+          {
+            "title": "📖 Documentation",
+            "collapsed": true,
+            "entries": [
+              "#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).",
+              "#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.",
+              "#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.",
+              "#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.",
+              "#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)\n\n### 🚀 Feature\n\n#### update and list JSON output, shell completions, and a pre-commit hook installer\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)\n\n**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.\n\n**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.\n\n**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.\n\nNew editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.\n\n<details>\n<summary><strong>📖 Documentation</strong></summary>\n\n#### [format] preset and trailing-whitespace rule\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)\n\n`[format]` grows from the single `tables` switch to a small rule set with a named preset:\n\n- `preset = \"dprint-markdown\"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.\n- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.\n\nLike `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).\n\n#### Add mdt_doctor and mdt_info MCP tools\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)\n\nThe MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:\n\n- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.\n- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.\n- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.\n- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.\n\n#### Scoped update operations\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)\n\n`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:\n\n- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.\n- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.\n- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.\n- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.\n\nDesign notes:\n\n- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.\n- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.\n- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.\n- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.\n- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.\n\n#### Parse inline-block transformers inside GFM table cells\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)\n\nGFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:\"{{ pkg.version }}\"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:\n\n- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.\n- Pipes inside a quoted template argument (`{~name:\"a|b\"}`) also stay part of the tag in table cells.\n- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.\n- Escaped pipes (`\\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.\n- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.\n\n#### One padding default: omitted keys mean 0\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)\n\n`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.\n\nNow an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.\n\nConfigs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.\n</details>"
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}
