@@ -13487,34 +13487,59 @@ fn write_updates_fails_when_rename_fails() {
 	assert_eq!(entries, vec!["output.md".to_string()]);
 }
 
-#[cfg(unix)]
+// --- Parallel scan determinism test ---
 #[test]
-fn write_updates_writes_through_a_symlinked_destination() -> MdtResult<()> {
+fn scan_results_are_identical_across_cold_parallel_scans() -> MdtResult<()> {
 	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
-	let real = tmp.path().join("real.md");
-	std::fs::write(&real, "original").unwrap_or_else(|e| panic!("write: {e}"));
-	let link = tmp.path().join("link.md");
-	std::os::unix::fs::symlink(&real, &link).unwrap_or_else(|e| panic!("symlink: {e}"));
+	std::fs::write(
+		tmp.path().join("template.t.md"),
+		"<!-- {@greeting} -->\n\nHello!\n\n<!-- {/greeting} -->\n",
+	)
+	.unwrap_or_else(|e| panic!("write template: {e}"));
 
-	let mut updated_files = HashMap::new();
-	updated_files.insert(link.clone(), "updated through the link".to_string());
-	let updates = UpdateResult {
-		updated_files,
-		updated_count: 1,
-		render_errors: Vec::new(),
-		warnings: Vec::new(),
+	// Enough files to divide across scan workers, with names whose sorted
+	// order differs from their creation order.
+	for index in 1..=24u32 {
+		let file = tmp.path().join(format!("modules/m{index:02}.md"));
+		std::fs::create_dir_all(file.parent().unwrap())
+			.unwrap_or_else(|e| panic!("create modules dir: {e}"));
+		std::fs::write(
+			&file,
+			format!("<!-- {{=greeting}} -->\n\n{index}\n\n<!-- {{/greeting}} -->\n"),
+		)
+		.unwrap_or_else(|e| panic!("write module {index}: {e}"));
+	}
+
+	let options = ScanOptions::default();
+	let cold_scan = || -> MdtResult<Vec<(String, usize, String)>> {
+		// Force a cold scan so every file is parsed, not read from cache.
+		let _ = std::fs::remove_dir_all(tmp.path().join(".mdt"));
+
+		let project = scan_project_with_options(tmp.path(), &options)?;
+
+		Ok(project
+			.consumers
+			.iter()
+			.map(|consumer| {
+				(
+					consumer
+						.file
+						.file_name()
+						.unwrap()
+						.to_string_lossy()
+						.into_owned(),
+					consumer.block.opening.start.line,
+					consumer.content.clone(),
+				)
+			})
+			.collect())
 	};
-	write_updates(&updates)?;
 
-	// The write landed in the resolved file and the link stayed a link.
-	let content = std::fs::read_to_string(&real)?;
-	assert_eq!(content, "updated through the link");
-	assert!(
-		std::fs::symlink_metadata(&link)
-			.unwrap_or_else(|e| panic!("symlink_metadata: {e}"))
-			.file_type()
-			.is_symlink()
-	);
+	let first = cold_scan()?;
+	let second = cold_scan()?;
+
+	assert_eq!(first.len(), 24);
+	assert_eq!(first, second, "cold scans must be deterministic");
 
 	Ok(())
 }

@@ -947,6 +947,57 @@ fn parse_file_for_scan(
 	})
 }
 
+/// Parse `files` across the available cores, returning results in input
+/// order. Small batches stay on the calling thread — worker startup costs
+/// more than it saves — and each worker owns a contiguous chunk, so no
+/// locking is needed and the per-thread GFM and pattern-matcher caches (see
+/// `parser.rs` and `patterns.rs`) are built once per worker.
+fn parse_files_parallel(
+	files: &[&PathBuf],
+	options: &ScanOptions,
+) -> Vec<MdtResult<index_cache::CachedFileData>> {
+	let worker_count = std::thread::available_parallelism()
+		.map_or(1, std::num::NonZeroUsize::get)
+		.min(files.len());
+
+	if worker_count <= 1 {
+		return files
+			.iter()
+			.map(|file| parse_file_for_scan(file, options))
+			.collect();
+	}
+
+	let chunk_size = files.len().div_ceil(worker_count);
+
+	std::thread::scope(|scope| {
+		let handles: Vec<_> = files
+			.chunks(chunk_size)
+			.map(|chunk| {
+				scope.spawn(move || {
+					chunk
+						.iter()
+						.map(|file| parse_file_for_scan(file, options))
+						.collect::<Vec<_>>()
+				})
+			})
+			.collect();
+
+		let mut results = Vec::with_capacity(files.len());
+
+		for handle in handles {
+			// A worker only panics when parsing itself panics; resume that
+			// panic on the scanning thread instead of swallowing it.
+			handle
+				.join()
+				.unwrap_or_else(|payload| std::panic::resume_unwind(payload))
+				.into_iter()
+				.for_each(|result| results.push(result));
+		}
+
+		results
+	})
+}
+
 fn build_project_from_file_data(
 	root: &Path,
 	files: &[PathBuf],
@@ -1063,6 +1114,7 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 	let mut merged_file_data = BTreeMap::new();
 	let mut reused_file_count = 0usize;
 	let mut reparsed_file_count = 0usize;
+	let mut cache_misses: Vec<&PathBuf> = Vec::new();
 
 	for file in &files {
 		let file_key = index_cache::relative_file_key(root, file);
@@ -1075,15 +1127,26 @@ pub fn scan_project_with_options(root: &Path, options: &ScanOptions) -> MdtResul
 			None
 		});
 
-		let entry = if let Some(entry) = cached_entry {
+		if let Some(entry) = cached_entry {
 			reused_file_count = reused_file_count.saturating_add(1);
-			entry
+			merged_file_data.insert(file_key, entry);
 		} else {
 			reparsed_file_count = reparsed_file_count.saturating_add(1);
-			parse_file_for_scan(file, options)?
-		};
+			cache_misses.push(file);
+		}
+	}
 
-		merged_file_data.insert(file_key, entry);
+	let parse_results = parse_files_parallel(&cache_misses, options);
+
+	// Merge in file order and stop at the first failure, matching the
+	// sequential behavior of parsing files one at a time.
+	for (file, result) in cache_misses.iter().zip(parse_results) {
+		match result {
+			Ok(entry) => {
+				merged_file_data.insert(index_cache::relative_file_key(root, file), entry);
+			}
+			Err(error) => return Err(error),
+		}
 	}
 
 	let project = build_project_from_file_data(root, &files, &merged_file_data)?;

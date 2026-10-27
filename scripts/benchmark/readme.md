@@ -4,7 +4,7 @@ This folder contains the CLI benchmark harness used by CI.
 
 ## Scripts
 
-- `generate_workload.sh`: creates a deterministic synthetic project with stale consumer blocks.
+- `generate_workload.sh`: creates a deterministic synthetic project with stale consumer blocks: markdown modules plus one Rust source file per group so every scenario also exercises the source-comment scanner.
 - `run_suite.sh`: runs benchmark scenarios for a single `mdt` binary and writes JSON output.
 - `compare_results.sh`: compares baseline/candidate benchmark JSON and writes comparison JSON + markdown.
 

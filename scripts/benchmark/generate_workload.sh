@@ -137,4 +137,33 @@ stale notes $module_id
 EOF_MODULE
 done
 
-echo "generated workload at $output_dir with $file_count markdown files"
+# One Rust source file per group, so the benchmark also exercises the
+# source-comment scanner (`// <!-- {=...} -->` tags) on every scenario.
+group_count=$(((file_count + 19) / 20))
+mkdir -p "$output_dir/src"
+
+for ((g = 1; g <= group_count; g++)); do
+	group_id=$(printf "%02d" "$g")
+
+	cat >"$output_dir/src/group-$group_id.rs" <<EOF_SOURCE
+//! Benchmark fixture group $group_id.
+
+// <!-- {=overview|trim|linePrefix:"// ":true} -->
+// stale overview group $group_id
+// <!-- {/overview} -->
+
+// <!-- {=usage|trim|linePrefix:"// ":true} -->
+// stale usage group $group_id
+// <!-- {/usage} -->
+
+// <!-- {=api|trim|linePrefix:"// ":true} -->
+// stale api group $group_id
+// <!-- {/api} -->
+
+pub fn group_${group_id}_fixture() -> &'static str {
+	"ok"
+}
+EOF_SOURCE
+done
+
+echo "generated workload at $output_dir with $file_count markdown files and $group_count rust source files"
