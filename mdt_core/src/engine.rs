@@ -1547,7 +1547,75 @@ fn collect_template_warnings(ctx: &ProjectContext, scope: &UpdateScope) -> Vec<T
 pub fn write_updates(updates: &UpdateResult) -> MdtResult<()> {
 	for (path, content) in &updates.updated_files {
 		trace!(path = %path.display(), "writing updated file");
-		std::fs::write(path, content)?;
+		write_file_atomically(path, content)?;
+	}
+
+	Ok(())
+}
+
+/// Replace `path` with `content` without ever leaving a truncated file.
+///
+/// The content goes to a hidden sibling temporary file (named with the process
+/// id so concurrent mdt runs cannot collide) which then atomically replaces
+/// the original via rename. An interrupted update — a crash, a signal, a full
+/// disk mid-write — leaves the original file untouched instead of a
+/// half-written one; the rename itself is atomic on every supported platform.
+/// A writer whose destination is a symlink writes through to the resolved
+/// file, matching `fs::write` semantics.
+fn write_file_atomically(path: &Path, content: &str) -> MdtResult<()> {
+	// One `lstat` decides the destination and preserves permissions: a
+	// symlink writes through to the resolved file (matching `fs::write`), a
+	// regular file reuses the same metadata for the permission carry-over,
+	// and a missing path means a new file. Avoids `canonicalize`, which
+	// walks every path component and measurably slows large updates.
+	let (destination, permissions) = match std::fs::symlink_metadata(path) {
+		Ok(metadata) if metadata.file_type().is_symlink() => {
+			let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+			let permissions = std::fs::symlink_metadata(&resolved).map(|m| m.permissions());
+			(resolved, permissions.ok())
+		}
+		Ok(metadata) => (path.to_path_buf(), Some(metadata.permissions())),
+		Err(_) => (path.to_path_buf(), None),
+	};
+	let file_name = destination
+		.file_name()
+		.unwrap_or_default()
+		.to_string_lossy();
+	let temporary = destination.with_file_name(format!(".{file_name}.{}.tmp", std::process::id()));
+
+	// Created with the original's permission bits where the platform
+	// supports it, so an executable or read-only file keeps its mode without
+	// a second chmod round-trip.
+	let write_result = (|| -> std::io::Result<()> {
+		#[cfg(unix)]
+		{
+			use std::io::Write as _;
+			use std::os::unix::fs::OpenOptionsExt as _;
+			use std::os::unix::fs::PermissionsExt as _;
+
+			let mut options = std::fs::File::options();
+			options.write(true).create(true).truncate(true);
+			if let Some(permissions) = &permissions {
+				options.mode(permissions.mode() & 0o7777);
+			}
+			let mut file = options.open(&temporary)?;
+			file.write_all(content.as_bytes())
+		}
+
+		#[cfg(not(unix))]
+		{
+			std::fs::write(&temporary, content)
+		}
+	})();
+
+	if let Err(error) = write_result {
+		let _ = std::fs::remove_file(&temporary);
+		return Err(error.into());
+	}
+
+	if let Err(error) = std::fs::rename(&temporary, &destination) {
+		let _ = std::fs::remove_file(&temporary);
+		return Err(error.into());
 	}
 
 	Ok(())

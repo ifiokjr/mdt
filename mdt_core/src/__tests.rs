@@ -3387,6 +3387,95 @@ fn write_updates_creates_files() -> MdtResult<()> {
 	Ok(())
 }
 
+#[test]
+fn write_updates_leaves_no_temporary_files() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("output.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	let entries: Vec<_> = std::fs::read_dir(tmp.path())
+		.unwrap_or_else(|e| panic!("read_dir: {e}"))
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap_or_else(|e| panic!("read_dir entries: {e}"))
+		.into_iter()
+		.map(|entry| entry.file_name().to_string_lossy().into_owned())
+		.collect();
+	assert_eq!(entries, vec!["output.md".to_string()]);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_preserves_file_permissions() -> MdtResult<()> {
+	use std::os::unix::fs::PermissionsExt as _;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("script-like.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+	std::fs::set_permissions(&file_path, std::fs::Permissions::from_mode(0o755))
+		.unwrap_or_else(|e| panic!("chmod: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	let mode = std::fs::metadata(&file_path)
+		.unwrap_or_else(|e| panic!("metadata: {e}"))
+		.permissions()
+		.mode();
+	assert_eq!(mode & 0o777, 0o755);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_leaves_original_intact_when_write_fails() {
+	use std::os::unix::fs::PermissionsExt as _;
+
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let file_path = tmp.path().join("output.md");
+	std::fs::write(&file_path, "original").unwrap_or_else(|e| panic!("write: {e}"));
+
+	// A read-only directory stops the temporary sibling from being created.
+	std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o555))
+		.unwrap_or_else(|e| panic!("chmod: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(file_path.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	let result = write_updates(&updates);
+
+	std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755))
+		.unwrap_or_else(|e| panic!("restore chmod: {e}"));
+
+	assert!(result.is_err());
+	let content = std::fs::read_to_string(&file_path).unwrap_or_else(|e| panic!("read: {e}"));
+	assert_eq!(content, "original");
+}
+
 // --- Error type tests ---
 #[test]
 fn error_missing_closing_tag_message() {
@@ -13360,6 +13449,72 @@ fn info_report_counts_blocks_and_reports_missing_config() -> MdtResult<()> {
 		report.cache.path
 	);
 	assert!(report.cache.artifact.exists);
+
+	Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_fails_when_rename_fails() {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	// Renaming a file over a directory fails with EISDIR after the temporary
+	// sibling was already written successfully.
+	let destination = tmp.path().join("output.md");
+	std::fs::create_dir_all(&destination).unwrap_or_else(|e| panic!("create dir: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(destination.clone(), "updated content".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	let result = write_updates(&updates);
+
+	assert!(result.is_err());
+
+	// The destination is untouched and the failed write left no temporary
+	// sibling behind.
+	assert!(destination.is_dir());
+	let entries: Vec<String> = std::fs::read_dir(tmp.path())
+		.unwrap_or_else(|e| panic!("read_dir: {e}"))
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap_or_else(|e| panic!("read_dir entries: {e}"))
+		.into_iter()
+		.map(|entry| entry.file_name().to_string_lossy().into_owned())
+		.collect();
+	assert_eq!(entries, vec!["output.md".to_string()]);
+}
+
+#[cfg(unix)]
+#[test]
+fn write_updates_writes_through_a_symlinked_destination() -> MdtResult<()> {
+	let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("tempdir: {e}"));
+	let real = tmp.path().join("real.md");
+	std::fs::write(&real, "original").unwrap_or_else(|e| panic!("write: {e}"));
+	let link = tmp.path().join("link.md");
+	std::os::unix::fs::symlink(&real, &link).unwrap_or_else(|e| panic!("symlink: {e}"));
+
+	let mut updated_files = HashMap::new();
+	updated_files.insert(link.clone(), "updated through the link".to_string());
+	let updates = UpdateResult {
+		updated_files,
+		updated_count: 1,
+		render_errors: Vec::new(),
+		warnings: Vec::new(),
+	};
+	write_updates(&updates)?;
+
+	// The write landed in the resolved file and the link stayed a link.
+	let content = std::fs::read_to_string(&real)?;
+	assert_eq!(content, "updated through the link");
+	assert!(
+		std::fs::symlink_metadata(&link)
+			.unwrap_or_else(|e| panic!("symlink_metadata: {e}"))
+			.file_type()
+			.is_symlink()
+	);
 
 	Ok(())
 }
