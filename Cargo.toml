@@ -3,7 +3,7 @@ members = ["docs", "mdt_cli", "mdt_core", "mdt_lsp", "mdt_mcp"]
 resolver = "2"
 
 [workspace.package]
-version = "0.9.7"
+version = "0.9.8"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["development-tools"]
 edition = "2024"
@@ -54,9 +54,9 @@ tracing-test = { default-features = false, version = "^0.2" }
 unicode-width = { default-features = false, version = "^0.2" }
 
 # Internal crates
-mdt_core = { path = "./mdt_core", version = "0.9.7" }
-mdt_lsp = { path = "./mdt_lsp", version = "0.9.7" }
-mdt_mcp = { path = "./mdt_mcp", version = "0.9.7" }
+mdt_core = { path = "./mdt_core", version = "0.9.8" }
+mdt_lsp = { path = "./mdt_lsp", version = "0.9.8" }
+mdt_mcp = { path = "./mdt_mcp", version = "0.9.8" }
 
 # Smaller and slightly faster release binaries for the published CLI:
 # cross-crate inlining through thin LTO, one codegen unit, and no symbols.
