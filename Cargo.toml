@@ -58,6 +58,13 @@ mdt_core = { path = "./mdt_core", version = "0.9.7" }
 mdt_lsp = { path = "./mdt_lsp", version = "0.9.7" }
 mdt_mcp = { path = "./mdt_mcp", version = "0.9.7" }
 
+# Smaller and slightly faster release binaries for the published CLI:
+# cross-crate inlining through thin LTO, one codegen unit, and no symbols.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
 [workspace.metadata.bin]
 cargo-semver-checks = { version = "0.48.0" }
 cargo-workspaces = { version = "0.4.2" }
