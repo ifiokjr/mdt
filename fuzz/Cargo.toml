@@ -1,0 +1,46 @@
+[package]
+name = "mdt-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.mdt_core]
+path = "../mdt_core"
+
+[dependencies.toml]
+default-features = false
+version = "^1"
+
+# Detached from the repository workspace so `cargo build --workspace` and the
+# release pipeline never compile the fuzz targets.
+[workspace]
+
+[profile.release]
+incremental = false
+
+[[bin]]
+name = "parse_markdown"
+path = "fuzz_targets/parse_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_source"
+path = "fuzz_targets/parse_source.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_config"
+path = "fuzz_targets/parse_config.rs"
+test = false
+doc = false
+bench = false

@@ -1,0 +1,50 @@
+name: fuzz
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  fuzz:
+    name: fuzz smoke (libFuzzer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FUZZ_SECONDS: "45"
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
+
+      - name: install cargo-fuzz
+        run: cargo install cargo-fuzz --locked --version 0.13.2
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: fuzz
+
+      - name: run fuzz targets
+        working-directory: fuzz
+        run: |
+          set -euo pipefail
+
+          for target in parse_markdown parse_source parse_config; do
+            echo "::group::fuzz $target"
+            cargo +nightly fuzz run "$target" -s none -- -max_total_time="${FUZZ_SECONDS}" -rss_limit_mb=2560
+            echo "::endgroup::"
+          done
