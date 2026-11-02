@@ -146,7 +146,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
 
       - name: install nextest
-        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
+        uses: taiki-e/install-action@1919c4a95903d2c33e4a221102edca87309fc14b # v2.89.0
         with:
           tool: nextest
 
