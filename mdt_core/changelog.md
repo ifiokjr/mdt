@@ -4,6 +4,111 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)
+
+### 🚀 Feature
+
+#### [format] preset and trailing-whitespace rule
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)
+
+`[format]` grows from the single `tables` switch to a small rule set with a named preset:
+
+- `preset = "dprint-markdown"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.
+- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.
+
+Like `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).
+
+#### Add `[format] tables` — mdt's internal GFM table alignment.
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #214](https://github.com/ifiokjr/mdt/pull/214)
+
+When enabled, `mdt update` aligns table columns inside block content using the same rules as dprint's markdown plugin (column width = widest cell by display width with CJK counting double, delimiter row fills the width, alignment colons preserved), applied before transformers and padding. Provider blocks in `*.t.md` files are rewritten to the aligned form too, so templates and formatter-owned output files carry identical table bytes and neither side needs to be excluded from a formatter. `mdt check` reports unaligned provider tables as stale.
+
+The normalizer is conservative: fenced code blocks, rows with more cells than the header, pipes inside code spans, and tables glued to prose are left untouched. Off by default; formatting never runs outside block boundaries.
+
+#### Remove dead shims ahead of 1.0
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #212](https://github.com/ifiokjr/mdt/pull/212)
+
+- `MdtError::SymlinkCycle` is gone. It was documented as "no longer returned" — scanning visits each directory once, so symlink aliases and cycles are skipped — and nothing constructed it.
+- The `From<MdtError> for std::io::Error` impl ("for test compatibility") is removed; the one CLI test that relied on it now panics with the parse error instead.
+- The LSP server no longer falls back to the deprecated `root_uri` in `initialize`. Clients that send only `root_uri` (no `workspace_folders`) get working-directory root discovery instead.
+- The docs workspace crate is renamed `monochange_book` → `mdt_book` (scaffolding inherited from an unrelated project), and the `docs/agents/README.md` structure stub is deleted — `AGENTS.md` already links the real pages.
+
+Not removed, deliberately: `LEGACY_TEMPLATE_PATHS` in `init`. Testing showed it is a robustness guard, not a compat shim — the existence check runs before any scan, so `mdt init` still succeeds on half-configured projects (invalid `mdt.toml`, or a `template.t.md` without parseable tags) instead of failing or writing a duplicate sample.
+
+#### Add mdt_doctor and mdt_info MCP tools
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)
+
+The MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:
+
+- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.
+- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.
+- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.
+- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.
+
+#### Scoped update operations
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)
+
+`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:
+
+- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.
+- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.
+- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.
+- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.
+
+Design notes:
+
+- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.
+- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.
+- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.
+- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.
+- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.
+
+#### Parse inline-block transformers inside GFM table cells
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)
+
+GFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:"{{ pkg.version }}"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:
+
+- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.
+- Pipes inside a quoted template argument (`{~name:"a|b"}`) also stay part of the tag in table cells.
+- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.
+- Escaped pipes (`\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.
+- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.
+
+#### One padding default: omitted keys mean 0
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)
+
+`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.
+
+Now an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.
+
+Configs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.
+
+### 🐛 Fixed
+
+- **Consumer files are written atomically and update watch logs to stderr.** write_updates now writes each updated file to a hidden sibling temporary file and renames it over the original, so an interrupted update can never leave a truncated consumer file. Original file permissions are preserved, new files are still created, and symlinked destinations write through to the resolved file. update --watch status messages moved from stdout to stderr, matching check --watch, so piped update output stays machine-readable. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #235](https://github.com/ifiokjr/mdt/pull/235)
+
+<details>
+<summary><strong>⚡ Performance</strong></summary>
+
+#### Cold scans parse files across every available core and release binaries shrink
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #237](https://github.com/ifiokjr/mdt/pull/237)
+
+scan_project_with_options now parses cache misses with scoped worker threads (one contiguous chunk per core, single-threaded for small batches) while keeping cache reuse, merge order, and the first-error-in-file-order semantics byte-identical to the sequential path. A determinism test cold-scans a 24-file project twice and asserts identical results.
+
+The release profile gains thin LTO, one codegen unit, and symbol stripping, so the published CLI binaries are smaller and marginally faster.
+
+The benchmark workload now generates Rust source files with comment consumers alongside the markdown modules, so every CI benchmark scenario (cold and warm check, diff, update, list, info) also exercises the source-comment scanner hot path.
+
+</details>
+
 ## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)
 
 ### 🐛 Fixed

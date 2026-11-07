@@ -84,7 +84,7 @@ write_updates(&updates).unwrap();
 
 ```toml
 [dependencies]
-mdt_core = "0.9.7"
+mdt_core = "0.9.8"
 ```
 
 <!-- {/mdtCoreInstall} -->

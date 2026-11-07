@@ -4,6 +4,90 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)
+
+### 🚀 Feature
+
+#### update and list JSON output, shell completions, and a pre-commit hook installer
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #236](https://github.com/ifiokjr/mdt/pull/236)
+
+**update --format json** and **list --format json** report results as one machine-readable JSON object (updated blocks and files, render errors, orphans, undefined-variable warnings, diagnostics), so CI pipelines and the MCP server can consume them; validation and config failures keep their exit codes and surface as diagnostics entries instead of empty stdout.
+
+**mdt completions <shell>** prints completion scripts for bash, zsh, fish, PowerShell, and Elvish.
+
+**mdt hook install** writes an executable .git/hooks/pre-commit that runs mdt check before every commit; it refuses to clobber a differing hook without --force and is a no-op when the mdt hook is already installed. A .pre-commit-hooks.yaml at the repository root exposes the same check to pre-commit-framework users as mdt-check.
+
+New editor setup documentation covers Neovim, Helix, and Emacs configuration for the existing mdt lsp server, and the CLI reference documents all of the above. The embedded agent skill command table lists the new commands.
+
+<details>
+<summary><strong>📖 Documentation</strong></summary>
+
+#### [format] preset and trailing-whitespace rule
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #218](https://github.com/ifiokjr/mdt/pull/218)
+
+`[format]` grows from the single `tables` switch to a small rule set with a named preset:
+
+- `preset = "dprint-markdown"` turns on every rule mdt implements — today `tables` and the new `trailing_whitespace` — so one line replaces the `[[formatters]]` subprocess pipeline for the common case. An explicit rule key overrides the preset for that rule alone.
+- `trailing_whitespace = true` trims trailing whitespace from every line of block content, outside fenced code blocks, in providers and consumers alike. This is the classic strict-check divergence: formatters trim trailing spaces, so `mdt check` failed forever on files a formatter touched inside a block. With the rule on, mdt and the formatter agree byte-for-byte.
+
+Like `tables`, the new rule runs inside block boundaries only, before transformers and padding, is idempotent, and `mdt update` rewrites provider blocks in `*.t.md` files that need it. The repo's own `mdt.toml` now uses the preset (dogfooding).
+
+#### Add mdt_doctor and mdt_info MCP tools
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #215](https://github.com/ifiokjr/mdt/pull/215)
+
+The MCP server can now self-diagnose, exactly like the CLI. The doctor and info report building moved from `mdt_cli` into `mdt_core`, so both surfaces share one implementation and the CLI output is unchanged:
+
+- `mdt_core::doctor` runs the same health checks as `mdt doctor` (config discovery and parsing, data sources, template layout, duplicate providers, orphan consumers, unused providers, parser diagnostics, consumer sync, cache artifact, hash mode, and efficiency) and returns a serializable `DoctorReport`.
+- `mdt_core::info` builds the same report as `mdt info` (`InfoReport`) with block counts, data namespaces, template directories and files, diagnostic totals, and cache state.
+- New `mdt_doctor` tool: read-only health checks with `counts` (`pass`/`warn`/`fail`/`skip`) and `checks` (each with `id`, `status`, `message`, and a fix `hint`); accepts the `ignore_*` options like `mdt_check`. A broken config is reported as a failing check, not a tool error.
+- New `mdt_info` tool: read-only project inspection with the report sections (`project`, `blocks`, `data`, `templates`, `diagnostics`, `cache`) flattened at the top level.
+
+#### Scoped update operations
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #217](https://github.com/ifiokjr/mdt/pull/217)
+
+`mdt update` can now sync a subset of the project instead of everything, for focused edits and agent workflows:
+
+- `mdt update --block <NAME>` (repeatable) updates only consumers of the named blocks. An unknown name exits 2 with the closest existing block names.
+- `mdt update --file <PATH>` (repeatable) updates only consumers in the given files. Paths resolve against the current directory and must stay inside the project root; a path matching no scanned file with consumers is an error.
+- The MCP `mdt_update` tool accepts `block_names` for the same block scoping; an unknown name is an `isError` result with code `mdt::block_not_found` and suggested provider names. `dry_run` keeps its meaning.
+- Output states the scope (`scoped to 1 block(s): intro`), and counts plus file lists cover only the scoped work.
+
+Design notes:
+
+- The scan stays whole-project (cheap, cached), so missing-provider and orphan semantics are unchanged; only the write is scoped.
+- Validation still gates project-wide, exactly like `mdt update` — any validation error refuses the scoped write.
+- Render failures in out-of-scope consumers never block a scoped run; in-scope failures are still reported and counted. `[[formatters]]` only run for files the scope touches.
+- `--watch` composes with scoping and re-runs the same scope; `--block` and `--file` combine as an intersection.
+- `mdt_core` exposes this as `UpdateScope` (`compute_updates(&ctx, &scope)`), with `UpdateScope::all()` matching the previous behavior.
+
+#### Parse inline-block transformers inside GFM table cells
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #216](https://github.com/ifiokjr/mdt/pull/216)
+
+GFM splits table rows on `|` before inline content is parsed, so an inline tag with a transformer chain (`<!-- {~name:"{{ pkg.version }}"|code} -->`) was cut into text fragments that never reached mdt, and its closing tag became a `mdt::unmatched_closing_tag` error. mdt now scans each table row's raw text before that split:
+
+- Inline blocks inside table cells keep their full transformer chain; the rendered value is written back with only that value changing, preserving the rest of the row byte-for-byte.
+- Pipes inside a quoted template argument (`{~name:"a|b"}`) also stay part of the tag in table cells.
+- A second `mdt check` after `mdt update` is clean, and `mdt update` is idempotent.
+- Escaped pipes (`\|`) and other cell text keep behaving exactly as GFM defines; behavior outside tables is unchanged.
+- One caveat: a markdown formatter that rewrites tables and does not know mdt tags (such as dprint formatting fenced `markdown` blocks) can still split such a row on the pipe — keep examples in `text` fences.
+
+#### One padding default: omitted keys mean 0
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #213](https://github.com/ifiokjr/mdt/pull/213)
+
+`[padding]` had two defaults: an absent section meant `before = 0, after = 0`, but a present section with an omitted key defaulted to `1` (one blank line). `[padding]` with only `after = 2` silently meant `before = 1, after = 2` — the most-documented confusion point in mdt's config.
+
+Now an omitted key behaves exactly like an absent section: content on the next line, no blank lines. Padding applies only when configured; write `before = 1` / `after = 1` explicitly when you want blank lines.
+
+Configs that relied on the implicit `1` (a bare `[padding]` section, or a section listing only one key) must now state the values. The annotated `mdt.toml`, the configuration guide, and the agent skill are updated to the new rule.
+
+</details>
+
 ## [0.9.7](https://github.com/ifiokjr/mdt/releases/tag/v0.9.7) (2026-10-23)
 
 ### Changed
