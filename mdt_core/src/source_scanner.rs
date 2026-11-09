@@ -51,8 +51,8 @@ pub fn parse_source_with_diagnostics(
 	let (blocks, mut diagnostics) = build_blocks_from_groups_with_diagnostics(&token_groups)?;
 
 	// Source code often mentions a closing tag in a string literal or a
-	// backtick code span (`"<!-- {/x} -->"`). That text is not a tag, so it
-	// must not fail the check as an unmatched closing tag.
+	// backtick code span (`"<!-- {/x} -->"`, `'<!-- {/x} -->'`). That text is
+	// not a tag, so it must not fail the check as an unmatched closing tag.
 	let line_table = LineTable::new(content);
 	diagnostics.retain(|diagnostic| {
 		let ParseDiagnostic::UnmatchedClosingTag { line, column, .. } = diagnostic else {
@@ -70,11 +70,13 @@ pub fn parse_source_with_diagnostics(
 }
 
 /// Whether `offset` sits inside a string literal or an inline code span on
-/// its line: an odd number of `"` or backticks precede it.
+/// its line: an odd number of `'`, `"`, or backticks precede it.
 fn is_quoted(content: &str, offset: usize) -> bool {
 	let line_start = content[..offset].rfind('\n').map_or(0, |index| index + 1);
 	let before = &content[line_start..offset];
-	before.matches('"').count() % 2 == 1 || before.matches('`').count() % 2 == 1
+	before.matches('\'').count() % 2 == 1
+		|| before.matches('"').count() % 2 == 1
+		|| before.matches('`').count() % 2 == 1
 }
 
 /// Pre-computed table of line-start byte offsets for efficient offset-to-point
