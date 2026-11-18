@@ -35,7 +35,7 @@ jobs:
       - name: install pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          version: 10
+          version: "12.21.0"
 
       - name: install JavaScript coverage tooling
         run: npm install --global c8@10
