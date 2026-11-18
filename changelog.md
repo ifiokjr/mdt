@@ -1,3 +1,27 @@
+## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)
+
+Grouped release for `mdt`.
+
+### 📝 Changed
+
+- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering. _Packages:_ 🟠 _mdt_core_ _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)
+
+### 🐛 Fixed
+
+- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported. _Packages:_ 🟢 _mdt_core_ _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)
+
+#### Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462).
+
+Before 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.
+
+_Packages:_ 🟢 _mdt_mcp_
+
+_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #250](https://github.com/ifiokjr/mdt/pull/250)
+
+mdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.
+
+The unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`).
+
 ## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)
 
 Grouped release for `mdt`.
