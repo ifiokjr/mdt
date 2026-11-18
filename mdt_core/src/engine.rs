@@ -278,6 +278,20 @@ fn validate_scope(ctx: &ProjectContext, scope: &UpdateScope) -> MdtResult<()> {
 	})
 }
 
+/// Minijinja 3 moved trailing-newline handling onto the syntax config.
+/// Keeping one trailing newline matches the source text mdt writes back.
+fn template_environment() -> minijinja::Environment<'static> {
+	let mut env = minijinja::Environment::new();
+	let syntax = minijinja::syntax::SyntaxConfig::builder()
+		.keep_trailing_newline(true)
+		.build()
+		.unwrap_or_else(|error| {
+			panic!("minijinja rejected the trailing-newline syntax config: {error}")
+		});
+	env.set_syntax(syntax);
+	env
+}
+
 /// Render provider content through minijinja using the given data context.
 /// If data is empty or the content has no template syntax, returns the
 /// content unchanged.
@@ -293,8 +307,7 @@ pub fn render_template(
 		return Ok(content.to_string());
 	}
 
-	let mut env = minijinja::Environment::new();
-	env.set_keep_trailing_newline(true);
+	let mut env = template_environment();
 	env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
 	env.add_template("__inline__", content)
 		.map_err(template_render_error)?;
@@ -303,7 +316,7 @@ pub fn render_template(
 		.get_template("__inline__")
 		.map_err(template_render_error)?;
 
-	let ctx = minijinja::Value::from_serialize(data);
+	let ctx = minijinja::Value::from(minijinja::value::Serde(data));
 	template.render(ctx).map_err(template_render_error)
 }
 
@@ -354,8 +367,7 @@ fn undeclared_variables(content: &str) -> Vec<String> {
 		return Vec::new();
 	}
 
-	let mut env = minijinja::Environment::new();
-	env.set_keep_trailing_newline(true);
+	let mut env = template_environment();
 	// We only need the template for static analysis, undefined behavior
 	// doesn't affect undeclared_variables.
 	let Ok(()) = env.add_template("__inline__", content) else {
@@ -1387,8 +1399,7 @@ fn interpolate_formatter_command(command: &str) -> Result<String, String> {
 		return Ok(command.to_string());
 	}
 
-	let mut env = minijinja::Environment::new();
-	env.set_keep_trailing_newline(true);
+	let mut env = template_environment();
 	env.add_template("__formatter_command__", command)
 		.map_err(|error| format!("invalid formatter command template: {error}"))?;
 
