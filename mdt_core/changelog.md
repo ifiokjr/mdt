@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This changelog is managed by [monochange](https://github.com/ifiokjr/monochange).
 
+## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)
+
+### 📝 Changed
+
+- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering. _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)
+
+### 🐛 Fixed
+
+- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported. _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)
+
 ## [0.9.8](https://github.com/ifiokjr/mdt/releases/tag/v0.9.8) (2026-10-27)
 
 ### 🚀 Feature
