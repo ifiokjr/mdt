@@ -2658,6 +2658,8 @@ fn template_warnings_flag_namespaced_variables_when_no_data_is_configured() -> M
 #[case::string_literal("const CLOSE: &str = \"<!-- {/x} -->\";\n", 0)]
 #[case::doc_code_span("/// Close blocks with `<!-- {/x} -->`.\npub fn f() {}\n", 0)]
 #[case::template_literal("const t = `<!-- {/x} -->`;\n", 0)]
+#[case::python_single_quote("EXAMPLE = '<!-- {/block} -->'\n", 0)]
+#[case::js_single_quote("const close = '<!-- {/x} -->';\n", 0)]
 #[case::comment("// <!-- { =x } -->\n// text\n// <!-- {/x} -->\n", 1)]
 fn source_unmatched_closing_tags_ignore_quoted_text(
 	#[case] content: &str,
