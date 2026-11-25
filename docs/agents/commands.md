@@ -48,6 +48,7 @@ Use these when repo scripts are not enough:
 - Treat the project as requiring stable Rust `>= 1.88`.
 - MSRV is `1.86.0`.
 - When in doubt, use the toolchain pinned by `rust-toolchain.toml`.
+- pnpm is pinned to 12.21.0 (`packageManager` in the root `package.json`). `engines.pnpm` is `>=12`. CI installs that exact version with `pnpm/action-setup`.
 
 ## Formatting
 

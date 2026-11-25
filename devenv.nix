@@ -9,12 +9,41 @@
 let
   currentDir = builtins.dirOf __curPos.file;
   extra = inputs.ifiokjr-nixpkgs.packages.${pkgs.stdenv.system};
+  # Pin the standalone pnpm binary to the same version as package.json
+  # `packageManager`. The ifiokjr-nixpkgs input still builds the wrapper
+  # (`pnpm-activate-env`); only the @pnpm/exe tarball is overridden.
+  # GHSA-w8f5-6m3h-r453 affects standalone pnpm below 10.34.8 and 11.28.8.
+  pnpmVersion = "12.21.0";
+  pnpmSystem = pkgs.stdenv.hostPlatform.system;
+  pnpmPlatform =
+    {
+      "x86_64-linux" = "exe.linux-x64";
+      "aarch64-linux" = "exe.linux-arm64";
+      "x86_64-darwin" = "exe.darwin-x64";
+      "aarch64-darwin" = "exe.darwin-arm64";
+    }
+    .${pnpmSystem};
+  pnpmHashes = {
+    "x86_64-linux" = "sha256-XoUyJ6T6OHqVz29hQAqD0fx+MWSUPADidfh1a3WTneI=";
+    "aarch64-linux" = "sha256-Byb5jAnw8P5vuR43bE0+d5OlRMHx7D4guq6yu5HEfh8=";
+    "x86_64-darwin" = "sha256-HgBNdOV+pUJwpMMDrzopzq6nv2IhmLr8KrY3Z58LBy8=";
+    "aarch64-darwin" = "sha256-uuPHJCCkM6NHtfH+GzfDMJyZxLtyIpphbYzgJraODjY=";
+  };
+  pnpm = extra.pnpm.overrideAttrs (old: {
+    version = pnpmVersion;
+    name = "pnpm-${pnpmVersion}";
+    srcs = [
+      (pkgs.fetchurl {
+        url = "https://registry.npmjs.org/@pnpm/${pnpmPlatform}/-/${pnpmPlatform}-${pnpmVersion}.tgz";
+        hash = pnpmHashes.${pnpmSystem};
+      })
+    ];
+  });
 in
 
 {
   packages =
-    with pkgs;
-    [
+    (with pkgs; [
       actionlint
       cargo-binstall
       cargo-deny
@@ -25,18 +54,20 @@ in
       deno
       dprint
       extra.monochange
-      extra.pnpm
       mdbook
       nixfmt
       nodejs
-      pnpm
       rustup
       shfmt
       taplo
       zizmor
+    ])
+    ++ [
+      # Let-bound pin, outside `with pkgs`, so nixpkgs' older `pnpm` cannot shadow it.
+      pnpm
     ]
-    ++ lib.optionals stdenv.isDarwin [
-      coreutils
+    ++ lib.optionals pkgs.stdenv.isDarwin [
+      pkgs.coreutils
     ];
 
   enterShell = ''

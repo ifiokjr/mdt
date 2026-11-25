@@ -10,9 +10,11 @@ This project uses [devenv](https://devenv.sh/) (Nix-based) for reproducible deve
 # Enter the dev shell (automatic with direnv, or manually):
 devenv shell
 
-# Install all tooling (cargo binaries):
+# Install all tooling (cargo binaries and pnpm modules):
 install:all
 ```
+
+pnpm is pinned to 12.21.0 (`packageManager` in the root `package.json`). `engines.pnpm` requires pnpm 12 or newer.
 
 Entering the dev shell also installs the repository git hooks managed by `devenv`:
 
