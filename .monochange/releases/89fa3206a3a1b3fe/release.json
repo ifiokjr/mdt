@@ -1,0 +1,990 @@
+{
+  "schema_version": "0.10",
+  "kind": "monochange.releaseRecord",
+  "created_at": "2026-11-18T11:36:06Z",
+  "command": "release",
+  "version": "0.9.9",
+  "versions": {
+    "mdt": "0.9.9"
+  },
+  "release_targets": [
+    {
+      "id": "mdt",
+      "kind": "group",
+      "version": "0.9.9",
+      "version_format": "primary",
+      "tag": true,
+      "release": true,
+      "tag_name": "v0.9.9",
+      "rendered_title": "v0.9.9 (2026-11-18)",
+      "rendered_changelog_title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+      "members": [
+        "mdt_core",
+        "mdt_cli",
+        "mdt_lsp",
+        "mdt_mcp",
+        "@m-d-t/cli",
+        "@m-d-t/cli-darwin-arm64",
+        "@m-d-t/cli-darwin-x64",
+        "@m-d-t/cli-linux-arm64-gnu",
+        "@m-d-t/cli-linux-arm64-musl",
+        "@m-d-t/cli-linux-x64-gnu",
+        "@m-d-t/cli-linux-x64-musl",
+        "@m-d-t/cli-win32-x64-msvc",
+        "@m-d-t/cli-win32-arm64-msvc",
+        "@m-d-t/skills"
+      ]
+    }
+  ],
+  "released_packages": [
+    "@m-d-t/cli",
+    "@m-d-t/cli-darwin-arm64",
+    "@m-d-t/cli-darwin-x64",
+    "@m-d-t/cli-linux-arm64-gnu",
+    "@m-d-t/cli-linux-arm64-musl",
+    "@m-d-t/cli-linux-x64-gnu",
+    "@m-d-t/cli-linux-x64-musl",
+    "@m-d-t/cli-win32-arm64-msvc",
+    "@m-d-t/cli-win32-x64-msvc",
+    "@m-d-t/skills",
+    "mdt_cli",
+    "mdt_core",
+    "mdt_lsp",
+    "mdt_mcp"
+  ],
+  "changed_files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "changelog.md",
+    "mdt_cli/Cargo.toml",
+    "mdt_cli/changelog.md",
+    "mdt_core/Cargo.toml",
+    "mdt_core/changelog.md",
+    "mdt_lsp/Cargo.toml",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/Cargo.toml",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli/package.json",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/package.json",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/package.json",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/package.json",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/package.json",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/package.json",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/package.json",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/package.json",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/package.json",
+    "packages/m-d-t__skills/changelog.md",
+    "packages/m-d-t__skills/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "package_publications": [
+    {
+      "package": "@m-d-t/cli",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-arm64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-darwin-x64",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-arm64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-gnu",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-linux-x64-musl",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-arm64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/cli-win32-x64-msvc",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "@m-d-t/skills",
+      "ecosystem": "npm",
+      "registry": "npm",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_cli",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_core",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_lsp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    },
+    {
+      "package": "mdt_mcp",
+      "ecosystem": "cargo",
+      "registry": "crates_io",
+      "version": "0.9.9",
+      "mode": "builtin",
+      "trusted_publishing": {
+        "enabled": true,
+        "mode": "required",
+        "repository": null,
+        "workflow": null,
+        "environment": null
+      }
+    }
+  ],
+  "updated_changelogs": [
+    "changelog.md",
+    "mdt_cli/changelog.md",
+    "mdt_core/changelog.md",
+    "mdt_lsp/changelog.md",
+    "mdt_mcp/changelog.md",
+    "packages/m-d-t__cli/changelog.md",
+    "packages/m-d-t__cli-darwin-arm64/changelog.md",
+    "packages/m-d-t__cli-darwin-x64/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+    "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+    "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+    "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+    "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+    "packages/m-d-t__skills/changelog.md"
+  ],
+  "deleted_changesets": [
+    ".changeset/minijinja-3.md",
+    ".changeset/rmcp-streamable-http-body-limit.md",
+    ".changeset/single-quoted-closing-tags.md"
+  ],
+  "changesets": [
+    {
+      "path": ".changeset/minijinja-3.md",
+      "summary": "Render templates with minijinja 3. Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering.",
+      "details": null,
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "minor",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "change"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "dependabot",
+            "display_name": "dependabot",
+            "url": "https://github.com/apps/dependabot",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "d35936424f405048e330f5af2cd8c2b2eb120437",
+            "short_sha": "d359364",
+            "url": "https://github.com/ifiokjr/mdt/commit/d35936424f405048e330f5af2cd8c2b2eb120437",
+            "authored_at": "2026-11-18T11:31:58Z",
+            "committed_at": "2026-11-18T11:31:58Z",
+            "author_name": "dependabot[bot]",
+            "author_email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#248",
+            "title": "build(deps): bump the cargo group across 1 directory with 7 updates",
+            "url": "https://github.com/ifiokjr/mdt/pull/248",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "dependabot",
+              "display_name": "dependabot",
+              "url": "https://github.com/apps/dependabot",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "dependabot",
+            "display_name": "dependabot",
+            "url": "https://github.com/apps/dependabot",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "d35936424f405048e330f5af2cd8c2b2eb120437",
+            "short_sha": "d359364",
+            "url": "https://github.com/ifiokjr/mdt/commit/d35936424f405048e330f5af2cd8c2b2eb120437",
+            "authored_at": "2026-11-18T11:31:58Z",
+            "committed_at": "2026-11-18T11:31:58Z",
+            "author_name": "dependabot[bot]",
+            "author_email": "49699333+dependabot[bot]@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#248",
+            "title": "build(deps): bump the cargo group across 1 directory with 7 updates",
+            "url": "https://github.com/ifiokjr/mdt/pull/248",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "dependabot",
+              "display_name": "dependabot",
+              "url": "https://github.com/apps/dependabot",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": [
+          {
+            "provider": "github",
+            "host": "github.com",
+            "id": "#83",
+            "title": "feat(cache): phase B incremental per-file index reuse",
+            "url": "https://github.com/ifiokjr/mdt/issues/83",
+            "relationship": "referenced_by_review_request"
+          }
+        ]
+      }
+    },
+    {
+      "path": ".changeset/rmcp-streamable-http-body-limit.md",
+      "summary": "Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462). Before 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.",
+      "details": "mdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.\n\nThe unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`).",
+      "targets": [
+        {
+          "id": "mdt_mcp",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "patch"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "6d3f54f0a754aa14b23e13449d21226843830657",
+            "short_sha": "6d3f54f",
+            "url": "https://github.com/ifiokjr/mdt/commit/6d3f54f0a754aa14b23e13449d21226843830657",
+            "authored_at": "2026-11-18T10:54:54Z",
+            "committed_at": "2026-11-18T10:54:54Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#250",
+            "title": "fix(mcp): upgrade rmcp past RUSTSEC-2026-0462",
+            "url": "https://github.com/ifiokjr/mdt/pull/250",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "6d3f54f0a754aa14b23e13449d21226843830657",
+            "short_sha": "6d3f54f",
+            "url": "https://github.com/ifiokjr/mdt/commit/6d3f54f0a754aa14b23e13449d21226843830657",
+            "authored_at": "2026-11-18T10:54:54Z",
+            "committed_at": "2026-11-18T10:54:54Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#250",
+            "title": "fix(mcp): upgrade rmcp past RUSTSEC-2026-0462",
+            "url": "https://github.com/ifiokjr/mdt/pull/250",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    },
+    {
+      "path": ".changeset/single-quoted-closing-tags.md",
+      "summary": "`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`. Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported.",
+      "details": null,
+      "targets": [
+        {
+          "id": "mdt_core",
+          "kind": "package",
+          "bump": "patch",
+          "origin": "direct-change",
+          "evidence_refs": [],
+          "change_type": "fix"
+        }
+      ],
+      "context": {
+        "provider": "github",
+        "host": "github.com",
+        "capabilities": {
+          "commit_web_urls": true,
+          "actor_profiles": true,
+          "review_request_lookup": true,
+          "related_issues": true,
+          "issue_comments": true
+        },
+        "introduced": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "60226a0f03b981f3041c983ca4b66cb235f01f1d",
+            "short_sha": "60226a0",
+            "url": "https://github.com/ifiokjr/mdt/commit/60226a0f03b981f3041c983ca4b66cb235f01f1d",
+            "authored_at": "2026-11-18T11:26:26Z",
+            "committed_at": "2026-11-18T11:26:26Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#247",
+            "title": "fix(core): ignore closing tags inside single-quoted strings",
+            "url": "https://github.com/ifiokjr/mdt/pull/247",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "last_updated": {
+          "actor": {
+            "provider": "github",
+            "host": "github.com",
+            "id": null,
+            "login": "ifiokjr",
+            "display_name": "ifiokjr",
+            "url": "https://github.com/ifiokjr",
+            "source": "review_request_author"
+          },
+          "commit": {
+            "provider": "github",
+            "host": "github.com",
+            "sha": "60226a0f03b981f3041c983ca4b66cb235f01f1d",
+            "short_sha": "60226a0",
+            "url": "https://github.com/ifiokjr/mdt/commit/60226a0f03b981f3041c983ca4b66cb235f01f1d",
+            "authored_at": "2026-11-18T11:26:26Z",
+            "committed_at": "2026-11-18T11:26:26Z",
+            "author_name": "Ifiok Jr.",
+            "author_email": "1160934+ifiokjr@users.noreply.github.com"
+          },
+          "review_request": {
+            "provider": "github",
+            "host": "github.com",
+            "kind": "pull_request",
+            "id": "#247",
+            "title": "fix(core): ignore closing tags inside single-quoted strings",
+            "url": "https://github.com/ifiokjr/mdt/pull/247",
+            "author": {
+              "provider": "github",
+              "host": "github.com",
+              "id": null,
+              "login": "ifiokjr",
+              "display_name": "ifiokjr",
+              "url": "https://github.com/ifiokjr",
+              "source": "review_request_author"
+            }
+          }
+        },
+        "related_issues": []
+      }
+    }
+  ],
+  "changelogs": [
+    {
+      "owner_id": "mdt",
+      "owner_kind": "group",
+      "output": "default",
+      "stream": "default",
+      "path": "changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [
+          "Grouped release for `mdt`."
+        ],
+        "sections": [
+          {
+            "title": "📝 Changed",
+            "collapsed": false,
+            "entries": [
+              "- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering.\n  _Packages:_ 🟠 _mdt_core_\n  _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)"
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported.\n  _Packages:_ 🟢 _mdt_core_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)",
+              "#### Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462).\n\nBefore 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.\n\n_Packages:_ 🟢 _mdt_mcp_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #250](https://github.com/ifiokjr/mdt/pull/250)\n\nmdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.\n\nThe unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`)."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\nGrouped release for `mdt`.\n\n### 📝 Changed\n\n- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering.\n  _Packages:_ 🟠 _mdt_core_\n  _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)\n\n### 🐛 Fixed\n\n- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported.\n  _Packages:_ 🟢 _mdt_core_\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)\n#### Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462).\n\nBefore 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.\n\n_Packages:_ 🟢 _mdt_mcp_\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #250](https://github.com/ifiokjr/mdt/pull/250)\n\nmdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.\n\nThe unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`)."
+    },
+    {
+      "owner_id": "mdt_cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_cli` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_core",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_core/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "📝 Changed",
+            "collapsed": false,
+            "entries": [
+              "- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering.\n  _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)"
+            ]
+          },
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### 📝 Changed\n\n- **Render templates with minijinja 3.** Trailing newlines still stay in the rendered block: that setting now lives on `SyntaxConfig` instead of `Environment`. Data contexts are passed through `Value::from(Serde(..))`, which needs minijinja's `serde` feature. Edge cases that minijinja changed to match Jinja2 (negative floor division, half-to-even `round`, and `title` after an apostrophe) follow the new engine. mdt does not set a fuel limit, so the new fuel accounting does not stop rendering.\n  _Owner:_ [@dependabot](https://github.com/apps/dependabot) · _Review:_ [PR #248](https://github.com/ifiokjr/mdt/pull/248) · _Related issues:_ [#83](https://github.com/ifiokjr/mdt/issues/83)\n\n### 🐛 Fixed\n\n- **`mdt check` no longer fails with `mdt::unmatched_closing_tag` when a source file mentions a closing tag inside a single-quoted string on the same line, such as Python or JavaScript `'<!-- {/name} -->'`.** Double quotes and backticks were already ignored. A real unmatched closing tag outside a quote is still reported.\n  _Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #247](https://github.com/ifiokjr/mdt/pull/247)"
+    },
+    {
+      "owner_id": "mdt_lsp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_lsp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `mdt_lsp` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "mdt_mcp",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "mdt_mcp/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "🐛 Fixed",
+            "collapsed": false,
+            "entries": [
+              "#### Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462).\n\nBefore 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #250](https://github.com/ifiokjr/mdt/pull/250)\n\nmdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.\n\nThe unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`)."
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### 🐛 Fixed\n\n#### Upgrade `rmcp` from 3.8.0 to 3.11.0 so `cargo deny` no longer fails on [RUSTSEC-2026-0462](https://rustsec.org/advisories/RUSTSEC-2026-0462).\n\nBefore 3.9.0, rmcp's built-in Streamable HTTP clients (`transport-streamable-http-client-reqwest` and `transport-streamable-http-client-unix-socket`) read non-streaming response bodies into memory with no size limit. A malicious or compromised MCP server could send a body that never ends, including during `initialize` before authentication, and exhaust the host process. 3.9.0 caps successful JSON bodies at 16 MiB and error bodies at 64 KiB. 3.11.0 is the current release and keeps that limit.\n\n_Owner:_ [@ifiokjr](https://github.com/ifiokjr) · _Review:_ [PR #250](https://github.com/ifiokjr/mdt/pull/250)\n\nmdt's server enables `server`, `transport-io`, and `macros` (stdio only) and does not turn those HTTP clients on. The advisory is still reported: `deny.toml` audits the locked crate with `all-features`, so the vulnerable version fails CI even though this binary does not link the affected transports. The version requirement is now `3.11.0`, which cargo treats as `^3.11.0` and will not resolve back to 3.8.0.\n\nThe unused `RUSTSEC-2024-0449` ignore is removed. That advisory covered unmaintained `unsafe-libyaml` through `serde_yaml_ng`. YAML data files already parse with `serde-saphyr`, and no crate in the graph matches the advisory anymore (`advisory-not-detected`)."
+    },
+    {
+      "owner_id": "@m-d-t/cli",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-arm64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-arm64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-arm64` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-darwin-x64",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-darwin-x64/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-darwin-x64` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-gnu` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-arm64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-arm64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-arm64-musl` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-gnu",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-gnu/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-gnu` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-linux-x64-musl",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-linux-x64-musl/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-linux-x64-musl` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-arm64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-arm64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-arm64-msvc` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/cli-win32-x64-msvc",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__cli-win32-x64-msvc/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/cli-win32-x64-msvc` was updated to 0.9.9 as part of group `mdt`.**"
+    },
+    {
+      "owner_id": "@m-d-t/skills",
+      "owner_kind": "package",
+      "output": "default",
+      "stream": "default",
+      "path": "packages/m-d-t__skills/changelog.md",
+      "format": "keep_a_changelog",
+      "notes": {
+        "title": "[0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)",
+        "summary": [],
+        "sections": [
+          {
+            "title": "Changed",
+            "collapsed": false,
+            "entries": [
+              "- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.9 as part of group `mdt`.**"
+            ]
+          }
+        ]
+      },
+      "rendered": "## [0.9.9](https://github.com/ifiokjr/mdt/releases/tag/v0.9.9) (2026-11-18)\n\n### Changed\n\n- **No package-specific changes were recorded; `@m-d-t/skills` was updated to 0.9.9 as part of group `mdt`.**"
+    }
+  ],
+  "provider": {
+    "kind": "github",
+    "owner": "ifiokjr",
+    "repo": "mdt",
+    "host": null
+  }
+}
