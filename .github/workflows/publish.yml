@@ -125,13 +125,13 @@ jobs:
 
       - name: setup cross toolchain
         if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
-        uses: taiki-e/setup-cross-toolchain-action@12b7ad4acfa95a1476779d6c06699b96ec1691f8 # v1.42.0
+        uses: taiki-e/setup-cross-toolchain-action@0375eb1d01bea430aa3202965839a7092960a23b # v1.43.1
         with:
           target: ${{ matrix.target }}
 
       - name: install cross
         if: contains(matrix.target, '-musl')
-        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        uses: taiki-e/install-action@073e1fd0bc889c9aee68dbaaa927cde1b5653a83 # v2.90.11
         with:
           tool: cross
 
